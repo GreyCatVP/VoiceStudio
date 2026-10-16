@@ -31,6 +31,7 @@ metadata and the backend fallback mirror it.
 - Commercial-safe mode (opt-in) refuses engines and tools whose weights are not cleared for commercial use, with a clear 403 — see docs/commercial-safe-mode.md (#2743)
 - Saved voices can be filtered by category; names like "HI · Family · Didi" group themselves, with a count per category (#2743)
 - `POST /v1/speak` speaks text in a saved voice with tuned defaults (its own language and seed, 32 steps, Sound more human), and `GET /v1/voices` lists saved voices by category and language — see docs/voice-api.md (#2743)
+- `/v1/speak` queues requests that arrive together and renders them one at a time in arrival order, instead of returning "busy" or rendering two at once (#2743)
 
 ### Changed
 

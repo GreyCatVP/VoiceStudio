@@ -1483,9 +1483,72 @@ class SpeakRequest(BaseModel):
     speed: float = Field(default=1.0, ge=0.25, le=4.0)
 
 
+# /v1/speak runs one request at a time, in arrival order: several scripts or
+# devices can send at once and each simply waits its turn instead of getting a
+# 429 or sharing the GPU with another render. asyncio.Lock wakes waiters FIFO.
+SPEAK_QUEUE_MAX = int(os.environ.get("OMNIVOICE_SPEAK_QUEUE_MAX", "32"))
+SPEAK_QUEUE_TIMEOUT_S = float(os.environ.get("OMNIVOICE_SPEAK_QUEUE_TIMEOUT_S", "1800"))
+_speak_locks: "dict[int, asyncio.Lock]" = {}
+_speak_waiting = 0
+
+
+def _speak_lock() -> asyncio.Lock:
+    """One lock per event loop (tests run several loops in one process)."""
+    loop = asyncio.get_running_loop()
+    lock = _speak_locks.get(id(loop))
+    if lock is None:
+        lock = _speak_locks[id(loop)] = asyncio.Lock()
+    return lock
+
+
+async def _speak_in_turn(make_request):
+    """Wait for this request's turn, then render; a busy GPU pool (another app job) is waited out, not returned."""
+    global _speak_waiting
+    import time
+    from fastapi.responses import Response
+
+    lock = _speak_lock()
+    if _speak_waiting >= SPEAK_QUEUE_MAX:
+        raise OpenAIError(
+            429,
+            f"{_speak_waiting} requests are already waiting for /v1/speak. Send this one again in a minute.",
+            code="speak_queue_full",
+            headers={"Retry-After": "60", "X-OmniVoice-Retryable": "true"},
+        )
+    queued_at = time.monotonic()
+    deadline = queued_at + SPEAK_QUEUE_TIMEOUT_S
+    _speak_waiting += 1
+    try:
+        await asyncio.wait_for(lock.acquire(), timeout=SPEAK_QUEUE_TIMEOUT_S)
+    except asyncio.TimeoutError as exc:
+        raise OpenAIError(
+            503,
+            f"This request waited {int(SPEAK_QUEUE_TIMEOUT_S)}s for its turn and was not started. Send it again.",
+            code="speak_queue_timeout",
+            headers={"Retry-After": "60", "X-OmniVoice-Retryable": "true"},
+        ) from exc
+    finally:
+        _speak_waiting -= 1
+    waited = time.monotonic() - queued_at
+    try:
+        while True:
+            try:
+                response: Response = await make_request()
+                break
+            except StarletteHTTPException as exc:
+                retry = (exc.headers or {}).get("Retry-After")
+                if exc.status_code != 429 or retry is None or time.monotonic() >= deadline:
+                    raise
+                await asyncio.sleep(min(30.0, max(1.0, float(retry)), max(0.0, deadline - time.monotonic())))
+        response.headers["X-OmniVoice-Queue-Wait"] = f"{waited:.1f}"  # seconds spent waiting for this turn
+        return response
+    finally:
+        lock.release()
+
+
 @router.post("/speak")
 async def speak(req: SpeakRequest):
-    """Speak `text` in a saved voice with the best settings. VoiceStudio extension."""
+    """Speak `text` in a saved voice with the best settings, one request at a time. VoiceStudio extension."""
     row = _resolve_voice_profile(req.voice)
     if row is None:
         raise OpenAIError(
@@ -1502,7 +1565,7 @@ async def speak(req: SpeakRequest):
             param="language",
             code="language_required",
         )
-    return await create_speech(SpeechRequest(
+    speech = SpeechRequest(
         model=req.model,
         input=req.text,
         voice=row["id"],
@@ -1513,7 +1576,8 @@ async def speak(req: SpeakRequest):
         humanize_strength=req.humanize_strength,
         num_step=req.num_step,
         speed=req.speed,
-    ))
+    )
+    return await _speak_in_turn(lambda: create_speech(speech))
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────

@@ -183,6 +183,87 @@ def test_remote_callers_need_the_api_key(monkeypatch, engine, profiles):
     assert remote.post("/v1/speak", json=body, headers=key).status_code == 200
 
 
+def _slow_engine(engine, monkeypatch, seconds=0.25):
+    """Make the test engine take `seconds` and record (text, start, end) per render."""
+    import threading
+    import time
+
+    spans: list = []
+    lock = threading.Lock()
+
+    def generate(self, text, **kw):
+        start = time.monotonic()
+        time.sleep(seconds)
+        with lock:
+            spans.append((text, start, time.monotonic()))
+        return torch.zeros(1, 2400)
+
+    monkeypatch.setattr(engine, "generate", generate)
+    return spans
+
+
+def _parallel_speak(bodies, stagger=0.05):
+    """Send the bodies concurrently (in list order, slightly staggered) and return the responses."""
+    import asyncio
+
+    import httpx
+    from main import app
+
+    async def run():
+        transport = httpx.ASGITransport(app=app, client=("127.0.0.1", 50000))
+        async with httpx.AsyncClient(transport=transport, base_url="http://127.0.0.1:3900") as ac:
+            async def one(i, body):
+                await asyncio.sleep(i * stagger)
+                return await ac.post("/v1/speak", json=body, timeout=60)
+
+            return await asyncio.gather(*(one(i, b) for i, b in enumerate(bodies)))
+
+    return asyncio.run(run())
+
+
+def test_concurrent_requests_run_one_at_a_time_in_arrival_order(engine, profiles, monkeypatch):
+    spans = _slow_engine(engine, monkeypatch)
+    pid = profiles(f"Queue {profiles.stem}")
+    bodies = [{"model": "tts-1", "text": f"line {c}", "voice": pid, "humanize": False} for c in "abc"]
+    responses = _parallel_speak(bodies)
+    assert [r.status_code for r in responses] == [200, 200, 200], [r.text for r in responses]
+    assert [s[0] for s in spans] == ["line a", "line b", "line c"]
+    for (_t, _s, end), (_t2, next_start, _e) in zip(spans, spans[1:]):
+        assert next_start >= end, "two renders overlapped"
+    waits = [float(r.headers["X-OmniVoice-Queue-Wait"]) for r in responses]
+    assert waits[2] > waits[0]
+
+
+def test_a_full_queue_is_a_clear_429(engine, profiles, monkeypatch):
+    from api.routers import openai_compat
+
+    _slow_engine(engine, monkeypatch, seconds=0.5)
+    monkeypatch.setattr(openai_compat, "SPEAK_QUEUE_MAX", 1)
+    pid = profiles(f"Full {profiles.stem}")
+    bodies = [{"model": "tts-1", "text": f"line {i}", "voice": pid, "humanize": False} for i in range(3)]
+    codes = [r.status_code for r in _parallel_speak(bodies)]
+    assert codes.count(429) == 1 and codes.count(200) == 2, codes
+
+
+def test_a_busy_gpu_pool_is_waited_out_not_returned(client, engine, profiles, monkeypatch):
+    from services import model_manager
+
+    calls = {"n": 0}
+    real = model_manager.check_gpu_admission
+
+    def busy_once(**kw):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise model_manager.GpuPoolBusyError("busy", retry_after=1)
+        return real(**kw)
+
+    monkeypatch.setattr(model_manager, "check_gpu_admission", busy_once)
+    pid = profiles(f"Busy {profiles.stem}")
+    res = _speak(client, text="नमस्ते", voice=pid)
+    assert res.status_code == 200, res.text
+    assert calls["n"] == 2
+
+
 @pytest.mark.parametrize(
     ("name", "category"),
     [("HI · Family · Didi", "Family"), ("AutoStory · Narrator", "AutoStory"), ("Plain", None), ("A·B", None)],

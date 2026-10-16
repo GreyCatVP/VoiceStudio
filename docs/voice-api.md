@@ -95,10 +95,25 @@ Errors use OpenAI's shape, `{"error": {"message", "type", "param", "code"}}`.
 | 404 | `voice_not_found` | No saved voice has that id or name. Pick one from `GET /v1/voices`. |
 | 409 | `ambiguous_voice` | Several voices share the name. Use one of the listed ids, or rename. |
 | 400 | `language_required` | The voice was saved with Auto. Pass `language`. |
-| 429 | | The GPU is busy. Wait for `Retry-After` seconds and send again. |
+| 429 | `speak_queue_full` | 32 requests are already waiting. Wait for `Retry-After` seconds and send again. |
+| 503 | `speak_queue_timeout` | The request waited 30 minutes without starting. Send it again. |
 
-Send one request at a time and allow long timeouts (30 minutes): a request
-waits for the GPU, and the first one after a restart also loads the model.
+## Several requests at once
+
+`/v1/speak` renders **one request at a time, in arrival order**. Scripts or
+devices can send together: each request waits for its turn instead of failing,
+and the GPU never renders two of them at once. If the app itself is using the
+GPU and its pool reports busy, the request waits that out as well.
+
+- The `X-OmniVoice-Queue-Wait` response header says how many seconds the request
+  waited for its turn.
+- Up to 32 requests can wait (`OMNIVOICE_SPEAK_QUEUE_MAX`); one more gets
+  `429 speak_queue_full` with `Retry-After`.
+- A request that waits longer than 30 minutes (`OMNIVOICE_SPEAK_QUEUE_TIMEOUT_S`)
+  gets `503 speak_queue_timeout` and was never started, so it is safe to resend.
+
+Give clients a long timeout (30 minutes): a request may wait behind others, and
+the first one after a restart also loads the model.
 
 ## Access from other devices
 
