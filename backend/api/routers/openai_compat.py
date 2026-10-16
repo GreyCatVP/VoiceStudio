@@ -14,6 +14,8 @@ Endpoints
     GET  /v1/models                → OpenAI aliases + installed engines
     GET  /v1/models/{id}           → one model
     GET  /v1/audio/voices          → list available voices (VoiceStudio extension)
+    GET  /v1/voices                → saved voices with category/language (VoiceStudio extension)
+    POST /v1/speak                 → text in a saved voice, tuned defaults (VoiceStudio extension)
 
 Errors on these routes use OpenAI's shape,
 ``{"error": {"message", "type", "param", "code"}}``, so the SDK raises typed
@@ -1396,6 +1398,122 @@ def list_voices():
         logger.warning("Voice profiles could not be loaded; returning built-in aliases only")
 
     return {"voices": voices, "engines": backends}
+
+
+# ── Simple voice API: GET /v1/voices, POST /v1/speak (VoiceStudio extension) ─
+#
+# For scripts and other local apps that just want "this text in that saved
+# voice, sounding its best": the caller names a saved voice and sends text;
+# the engine, language, seed and quality settings come from the voice and
+# from tuned defaults, and the request then runs through /v1/audio/speech.
+
+_LANGUAGE_CODES = {
+    "english": "en", "hindi": "hi", "spanish": "es", "french": "fr", "german": "de",
+    "italian": "it", "portuguese": "pt", "russian": "ru", "japanese": "ja",
+    "korean": "ko", "chinese": "zh", "arabic": "ar", "turkish": "tr", "polish": "pl",
+    "dutch": "nl", "swedish": "sv", "thai": "th", "vietnamese": "vi",
+    "indonesian": "id", "ukrainian": "uk", "bengali": "bn", "tamil": "ta",
+    "telugu": "te", "marathi": "mr", "gujarati": "gu", "punjabi": "pa", "urdu": "ur",
+}
+_LANGUAGE_CODE_RE = re.compile(r"^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$")
+_CATEGORY_SEPARATOR = re.compile(r"\s+·\s+")
+
+
+def _profile_language_code(value: Optional[str]) -> Optional[str]:
+    """A profile's stored language ("Hindi", "hi", "Auto") as an ISO code, or None."""
+    text = (value or "").strip()
+    if not text or text.lower() == "auto":
+        return None
+    if _LANGUAGE_CODE_RE.match(text):
+        return text
+    return _LANGUAGE_CODES.get(text.lower())
+
+
+def voice_category(name: str) -> Optional[str]:
+    """Group from a "Prefix · Group · Name" or "Group · Name" voice name (same rule as the app's filter)."""
+    parts = [p.strip() for p in _CATEGORY_SEPARATOR.split(name or "") if p.strip()]
+    if len(parts) >= 3:
+        return parts[1]
+    if len(parts) == 2:
+        return parts[0]
+    return None
+
+
+@router.get("/voices")
+def list_saved_voices(category: Optional[str] = None, language: Optional[str] = None):
+    """Saved voices usable with POST /v1/speak, with category and language. VoiceStudio extension."""
+    from core.db import db_conn
+
+    with db_conn() as conn:
+        rows = conn.execute(
+            "SELECT id, name, kind, language, personality, seed FROM voice_profiles ORDER BY name, id"
+        ).fetchall()
+    voices = []
+    for row in rows:
+        entry = {
+            "id": row["id"],
+            "name": row["name"],
+            "category": voice_category(row["name"]),
+            "language": _profile_language_code(row["language"]),
+            "kind": row["kind"],
+            "description": row["personality"] or "",
+        }
+        if category and (entry["category"] or "").lower() != category.strip().lower():
+            continue
+        if language and entry["language"] != language.strip():
+            continue
+        voices.append(entry)
+    categories = sorted({v["category"] for v in voices if v["category"]})
+    return {"voices": voices, "categories": categories, "count": len(voices)}
+
+
+class SpeakRequest(BaseModel):
+    """POST /v1/speak — a saved voice and text; everything else has tuned defaults."""
+    text: str = Field(..., min_length=1, max_length=4096, description="What to say. `[pause 500ms]` adds a pause.")
+    voice: str = Field(..., min_length=1, description="A saved voice's id or exact name (see GET /v1/voices).")
+    language: Optional[str] = Field(
+        default=None, description="ISO code such as 'hi' or 'en'. Defaults to the voice's own language."
+    )
+    response_format: SpeechFormat = Field(default="wav")
+    model: str = Field(default="voxcpm2", description="TTS engine id.")
+    seed: Optional[int] = Field(default=None, description="Defaults to the voice's saved seed.")
+    humanize: bool = Field(default=True, description="Breaths, room tone and natural pacing.")
+    humanize_strength: float = Field(default=0.65, ge=0.0, le=1.0)
+    num_step: int = Field(default=32, ge=1, le=64, description="Quality steps (VoxCPM2: higher is cleaner).")
+    speed: float = Field(default=1.0, ge=0.25, le=4.0)
+
+
+@router.post("/speak")
+async def speak(req: SpeakRequest):
+    """Speak `text` in a saved voice with the best settings. VoiceStudio extension."""
+    row = _resolve_voice_profile(req.voice)
+    if row is None:
+        raise OpenAIError(
+            404,
+            f"No saved voice is called '{req.voice.strip()}'. Use a name or id from GET /v1/voices.",
+            param="voice",
+            code="voice_not_found",
+        )
+    language = (req.language or "").strip() or _profile_language_code(row["language"])
+    if not language:
+        raise OpenAIError(
+            400,
+            f"Voice '{row['name']}' has no saved language. Pass `language`, for example 'hi' or 'en'.",
+            param="language",
+            code="language_required",
+        )
+    return await create_speech(SpeechRequest(
+        model=req.model,
+        input=req.text,
+        voice=row["id"],
+        language=language,
+        response_format=req.response_format,
+        seed=req.seed,
+        humanize=req.humanize,
+        humanize_strength=req.humanize_strength,
+        num_step=req.num_step,
+        speed=req.speed,
+    ))
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────

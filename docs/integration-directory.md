@@ -60,6 +60,8 @@ The **VoiceStudio API** page shows the current backend's OpenAI-compatible base
 URL with copyable `curl` and OpenAI Python SDK snippets for
 `/v1/audio/speech` and `/v1/audio/transcriptions`. Loopback requests need no
 key; remote ones need the backend's API key (see [API authentication](api-auth.md)).
+To speak in a saved voice without choosing engine settings, use `POST /v1/speak`
+and `GET /v1/voices` ([Voice API](voice-api.md)).
 
 The **Docker** and **GitHub Container Registry** pages give a `docker run` (POSIX shell and Windows PowerShell) and a
 Compose snippet for `palashdeb/omnivoice-studio:stable` and

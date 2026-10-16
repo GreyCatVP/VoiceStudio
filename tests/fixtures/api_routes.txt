@@ -177,6 +177,7 @@ GET /v1/audio/capabilities
 GET /v1/audio/voices
 GET /v1/models
 GET /v1/models/{model_id:path}
+GET /v1/voices
 GET /watermark/status
 PATCH /gallery/voices/{voice_id}
 PATCH /projects/{project_id}
@@ -312,6 +313,7 @@ POST /transcribe
 POST /v1/audio/speech
 POST /v1/audio/transcriptions
 POST /v1/audio/translations
+POST /v1/speak
 POST /watermark/detect
 POST /watermark/settings
 PUT /api/integrations/twilio/config
