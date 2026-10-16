@@ -9,6 +9,12 @@ describe('profile portraits', () => {
     expect(profileInitials('')).toBe('♪');
     expect(profileInitials('Émilie Rose')).toBe('ÉR');
   });
+  it('skips separators and brackets so initials are always letters', () => {
+    expect(profileInitials('HI · Mood · Rona (Crying)')).toBe('HC');
+    expect(profileInitials('Narrator (warm)')).toBe('NW');
+    expect(profileInitials('· — ()')).toBe('♪');
+    expect(profileInitials('हिंदी आवाज़')).toBe('हआ');
+  });
   it('falls back to initials when the saved image cannot load', () => {
     const view = render(<ProfileAvatar name="Scarlet Rose" imageUrl="/profiles/one/image" />);
     fireEvent.error(view.container.querySelector('img')!);

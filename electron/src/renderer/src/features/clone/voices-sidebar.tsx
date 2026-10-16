@@ -316,7 +316,8 @@ export function SavedVoices({
                   imageUrl={profile.image_url}
                   className={cn('pointer-events-none shrink-0', library ? 'size-9' : 'size-6')}
                 />
-                <div className="pointer-events-none min-w-0 flex-1">
+                {/* Reserve the action strip's width while it shows, so long names truncate instead of sitting under it. */}
+                <div className="pointer-events-none min-w-0 flex-1 group-focus-within/profile:pr-20 group-hover/profile:pr-20">
                   <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
                     <span className="truncate">{profile.name}</span>
                     <span

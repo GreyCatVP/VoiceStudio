@@ -2,13 +2,17 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { apiPath } from '@/lib/api/client';
 
+// The first letter or digit of a word, so "(Crying)" gives "C" and separators like "·" give nothing.
+const initialOf = (word: string) => Array.from(word).find((ch) => /[\p{L}\p{N}]/u.test(ch));
+
 export function profileInitials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  return words.length
-    ? [words[0], ...(words.length > 1 ? [words.at(-1)!] : [])]
-        .map((word) => Array.from(word)[0])
-        .join('')
-        .toLocaleUpperCase()
+  const letters = name
+    .trim()
+    .split(/\s+/)
+    .map(initialOf)
+    .filter((ch): ch is string => !!ch);
+  return letters.length
+    ? [letters[0], ...(letters.length > 1 ? [letters.at(-1)!] : [])].join('').toLocaleUpperCase()
     : '♪';
 }
 
