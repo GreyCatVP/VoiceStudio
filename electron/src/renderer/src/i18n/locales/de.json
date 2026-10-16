@@ -580,6 +580,8 @@
     "reveal": "Im Ordner anzeigen",
     "history_starred": "Markiert",
     "history_all": "Alle",
+    "category_filter": "Kategorie",
+    "category_all": "Alle Kategorien",
     "characters_other": "{{count}} Zeichen",
     "popular_languages": "Beliebt",
     "all_languages": "Alle Sprachen",

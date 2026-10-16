@@ -580,6 +580,8 @@
     "reveal": "Weergeven in map",
     "history_starred": "Met ster",
     "history_all": "Allemaal",
+    "category_filter": "Categorie",
+    "category_all": "Alle categorieën",
     "characters_other": "{{count}} tekens",
     "popular_languages": "Populair",
     "all_languages": "Alle talen",

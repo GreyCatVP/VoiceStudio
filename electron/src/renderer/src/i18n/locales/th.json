@@ -580,6 +580,8 @@
     "reveal": "แสดงในโฟลเดอร์",
     "history_starred": "ติดดาว",
     "history_all": "ทั้งหมด",
+    "category_filter": "หมวดหมู่",
+    "category_all": "ทุกหมวดหมู่",
     "characters_other": "{{count}} อักขระ",
     "popular_languages": "เป็นที่นิยม",
     "all_languages": "ทุกภาษา",

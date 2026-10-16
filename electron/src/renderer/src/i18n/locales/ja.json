@@ -580,6 +580,8 @@
     "reveal": "フォルダ内に表示",
     "history_starred": "スター付き",
     "history_all": "すべて",
+    "category_filter": "カテゴリ",
+    "category_all": "すべてのカテゴリ",
     "characters_other": "{{count}} 文字",
     "popular_languages": "人気のある",
     "all_languages": "すべての言語",

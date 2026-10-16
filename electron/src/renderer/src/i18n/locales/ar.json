@@ -588,6 +588,8 @@
     "reveal": "عرض في المجلد",
     "history_starred": "المميزة بنجمة",
     "history_all": "الكل",
+    "category_filter": "الفئة",
+    "category_all": "كل الفئات",
     "characters_other": "{{count}} حرفًا",
     "popular_languages": "شعبية",
     "all_languages": "جميع اللغات",

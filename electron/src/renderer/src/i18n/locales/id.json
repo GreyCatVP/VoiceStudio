@@ -580,6 +580,8 @@
     "reveal": "Tampilkan di folder",
     "history_starred": "Berbintang",
     "history_all": "Semua",
+    "category_filter": "Kategori",
+    "category_all": "Semua kategori",
     "characters_other": "{{count}} karakter",
     "popular_languages": "Populer",
     "all_languages": "Semua bahasa",

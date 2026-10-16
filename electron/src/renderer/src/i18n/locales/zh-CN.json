@@ -603,6 +603,8 @@
     "profile_deleted": "声音已删除",
     "history_clear": "清除历史记录",
     "history_all": "全部",
+    "category_filter": "分类",
+    "category_all": "全部分类",
     "popular_languages": "常用",
     "preview_voice": "预览声音",
     "search_languages": "搜索 {{count}} 语言...",

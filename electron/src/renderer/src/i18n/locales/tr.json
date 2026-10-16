@@ -580,6 +580,8 @@
     "reveal": "Klasörde göster",
     "history_starred": "Yıldızlı",
     "history_all": "Hepsi",
+    "category_filter": "Kategori",
+    "category_all": "Tüm kategoriler",
     "characters_other": "{{count}} karakter",
     "popular_languages": "Popüler",
     "all_languages": "Tüm diller",

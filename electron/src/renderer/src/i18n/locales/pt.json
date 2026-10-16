@@ -582,6 +582,8 @@
     "reveal": "Mostrar na pasta",
     "history_starred": "Marcadas",
     "history_all": "Todos",
+    "category_filter": "Categoria",
+    "category_all": "Todas as categorias",
     "characters_other": "{{count}} caracteres",
     "popular_languages": "Populares",
     "all_languages": "Todos os idiomas",

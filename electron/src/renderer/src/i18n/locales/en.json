@@ -443,6 +443,8 @@
     "history_reuse": "Reuse script",
     "history_starred": "Starred",
     "history_all": "All",
+    "category_filter": "Category",
+    "category_all": "All categories",
     "characters_one": "{{count}} character",
     "characters_other": "{{count}} characters",
     "popular_languages": "Popular",

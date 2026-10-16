@@ -592,6 +592,8 @@
     "profile_deleted": "음성이 삭제되었습니다.",
     "history_clear": "기록 지우기",
     "history_all": "모두",
+    "category_filter": "카테고리",
+    "category_all": "모든 카테고리",
     "search_languages": "{{count}} 언어 검색…",
     "no_language_match": "“{{query}}”와 일치하는 언어가 없습니다.",
     "transcript_hint": "참조 클립이 말하는 것. 엔진이 들을 수 있도록 비워두세요.",

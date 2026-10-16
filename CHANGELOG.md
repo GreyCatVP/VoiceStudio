@@ -29,6 +29,7 @@ metadata and the backend fallback mirror it.
 - Hindi scripts read numbers as spoken Hindi: cardinals, years (उन्नीस सौ चौरासी), rupees, clock times, ordinals, percent and Devanagari digits — see docs/hindi.md (#2743)
 - Sound more human (opt-in, Audio quality popover): breaths, a quiet room tone under pauses and natural pacing between sentences, on every engine (#2743)
 - Commercial-safe mode (opt-in) refuses engines and tools whose weights are not cleared for commercial use, with a clear 403 — see docs/commercial-safe-mode.md (#2743)
+- Saved voices can be filtered by category; names like "HI · Family · Didi" group themselves, with a count per category (#2743)
 
 ### Changed
 
@@ -45,6 +46,7 @@ metadata and the backend fallback mirror it.
 ### Fixed
 
 - On a PC with two NVIDIA cards, the setup check names the GPU VoiceStudio runs on, not the first card in the system (#2743)
+- A saved voice's play, edit and delete buttons no longer cover a long name, and avatar initials skip brackets and dots (#2743)
 
 ## [0.5.7] — 2026-10-07
 

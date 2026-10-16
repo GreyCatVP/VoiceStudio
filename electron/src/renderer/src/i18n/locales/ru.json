@@ -584,6 +584,8 @@
     "reveal": "Показать в папке",
     "history_starred": "Избранные",
     "history_all": "Все",
+    "category_filter": "Категория",
+    "category_all": "Все категории",
     "characters_other": "{{count}} символов",
     "popular_languages": "Популярный",
     "all_languages": "Все языки",

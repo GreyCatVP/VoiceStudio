@@ -582,6 +582,8 @@
     "reveal": "Afficher dans le dossier",
     "history_starred": "Étoilées",
     "history_all": "Tout",
+    "category_filter": "Catégorie",
+    "category_all": "Toutes les catégories",
     "characters_other": "{{count}} caractères",
     "popular_languages": "Populaire",
     "all_languages": "Toutes les langues",

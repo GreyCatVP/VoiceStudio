@@ -584,6 +584,8 @@
     "reveal": "Показати в папці",
     "history_starred": "Із зіркою",
     "history_all": "всі",
+    "category_filter": "Категорія",
+    "category_all": "Усі категорії",
     "characters_other": "{{count}} символів",
     "popular_languages": "Популярний",
     "all_languages": "Всі мови",

@@ -580,6 +580,8 @@
     "reveal": "在資料夾中顯示",
     "history_starred": "已加星",
     "history_all": "全部",
+    "category_filter": "分類",
+    "category_all": "全部分類",
     "characters_other": "{{count}} 個字符",
     "popular_languages": "熱門",
     "all_languages": "所有語言",

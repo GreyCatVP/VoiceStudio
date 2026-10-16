@@ -20,6 +20,13 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { formatClock } from '@/components/waveform-player';
@@ -38,6 +45,7 @@ import { queryKeys } from '@/lib/query';
 import { cn } from '@/lib/utils';
 import { runRendererTask } from '@/lib/global-error-recovery';
 import { ConfirmDialog } from './confirm-dialog';
+import { voiceCategories, voiceCategory } from './voice-category';
 import { displayTitle, formatRelative } from './format';
 import {
   DESIGN_DRAFT_EVENT,
@@ -50,6 +58,7 @@ import {
 import { useTtsReadiness, type TtsReadinessBlocker } from '@/hooks/use-tts-readiness';
 
 const VIRTUALIZE_ABOVE = 30;
+const ALL_CATEGORIES = '__all__';
 
 export function profileListPresentation(
   count: number,
@@ -108,19 +117,28 @@ export function SavedVoices({
   const [pendingDelete, setPendingDelete] = useState<Profile | null>(null);
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState<'all' | Profile['kind']>('all');
+  const [category, setCategory] = useState<string | null>(null);
 
   const allItems = profiles.data ?? [];
+  const categories = useMemo(
+    () => voiceCategories(allItems.map((profile) => profile.name)),
+    [allItems],
+  );
+  // A category that no longer exists (its last voice was deleted or renamed) stops filtering.
+  const activeCategory =
+    category && categories.some((entry) => entry.name === category) ? category : null;
   const items = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
     return allItems.filter(
       (profile) =>
         (kind === 'all' || profile.kind === kind) &&
+        (!activeCategory || voiceCategory(profile.name) === activeCategory) &&
         (!normalized ||
           `${profile.name} ${profile.instruct ?? ''} ${profile.ref_text ?? ''}`
             .toLocaleLowerCase()
             .includes(normalized)),
     );
-  }, [allItems, kind, query]);
+  }, [allItems, kind, activeCategory, query]);
   const showLibraryTools = library || allItems.length > 4;
   const hasBothKinds =
     allItems.some((profile) => profile.kind === 'clone') &&
@@ -262,6 +280,37 @@ export function SavedVoices({
                 <WandSparklesIcon />
               </ToggleGroupItem>
             </ToggleGroup>
+          ) : null}
+          {categories.length >= 2 ? (
+            <Select
+              value={activeCategory ?? ALL_CATEGORIES}
+              onValueChange={(value) =>
+                setCategory(value && value !== ALL_CATEGORIES ? String(value) : null)
+              }
+            >
+              <SelectTrigger
+                aria-label={t('clone.category_filter')}
+                className="w-full bg-sidebar-accent/25"
+              >
+                <SelectValue>{activeCategory ?? t('clone.category_all')}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_CATEGORIES}>
+                  {t('clone.category_all')}
+                  <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+                    {allItems.length}
+                  </span>
+                </SelectItem>
+                {categories.map((entry) => (
+                  <SelectItem key={entry.name} value={entry.name}>
+                    {entry.name}
+                    <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+                      {entry.count}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           ) : null}
         </div>
       ) : null}

@@ -580,6 +580,8 @@
     "reveal": "Visa i mapp",
     "history_starred": "Stjärnmärkta",
     "history_all": "Alla",
+    "category_filter": "Kategori",
+    "category_all": "Alla kategorier",
     "characters_other": "{{count}} tecken",
     "popular_languages": "Populärt",
     "all_languages": "Alla språk",
