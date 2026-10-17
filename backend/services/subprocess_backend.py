@@ -103,6 +103,42 @@ SPAWN_READY_TIMEOUT_S = 30.0
 _STDERR_TAIL_LINES = 12
 _STDERR_TAIL_CHARS = 800
 
+#: Pause before the one respawn after a sidecar crashed before it began
+#: generating. A native crash during the cold load is usually host memory
+#: pressure (another app loading multi-GB models at that moment), which tends
+#: to pass within seconds; a crash that repeats is reported as it is.
+COLD_LOAD_CRASH_RETRY_DELAY_S = 5.0
+
+#: Windows NTSTATUS exit codes worth naming in an error (the process died in
+#: native code, so Python never got to print a traceback).
+_NATIVE_CRASH_CODES = {
+    0xC0000005: "access violation",
+    0xC0000017: "out of memory",
+    0xC00000FD: "stack overflow",
+    0xC0000409: "fail-fast / buffer overrun",
+}
+
+
+class SidecarCrashedBeforeGenerating(RuntimeError):
+    """The sidecar died (not timed out) before it reported generating.
+
+    Nothing was synthesized yet, so the request can be replayed on a fresh
+    sidecar without duplicating work or output.
+    """
+
+
+def _describe_exit_code(code: Optional[int]) -> str:
+    """A short, user-readable note for a sidecar exit code, or ''."""
+    if code is None or code == 0:
+        return ""
+    unsigned = code & 0xFFFFFFFF
+    name = _NATIVE_CRASH_CODES.get(unsigned)
+    if name:
+        return f"exit code 0x{unsigned:08X}, a native {name}"
+    if code < 0:
+        return f"killed by signal {-code}"
+    return f"exit code {code}"
+
 #: Per-frame _recv read timeout (best-effort — applies to header read; body
 #: read is uninterruptible on a stdlib BufferedReader). Used by health_check
 #: to bound a hung sidecar: a ping must stay fast, so this stays short.
@@ -656,6 +692,33 @@ class SubprocessBackend(TTSBackend):
             return own
         return max(own, budget)
 
+    def _crash_failure_reason(self, proc) -> str:
+        """Say how a sidecar died mid-generate: its exit code and stderr tail.
+
+        Keeps the historical "sidecar closed pipe mid-generate" wording first,
+        since callers match on it, and adds what tells a native crash (an
+        access violation under memory pressure, no Python traceback) apart
+        from a Python error.
+        """
+        code = None
+        if proc is not None:
+            try:
+                code = proc.poll()
+            except Exception:
+                code = None
+        reason = f"{self.id} sidecar closed pipe mid-generate"
+        detail = _describe_exit_code(code)
+        if detail:
+            reason = f"{reason} ({detail})"
+            if (code & 0xFFFFFFFF) in _NATIVE_CRASH_CODES:
+                reason += (
+                    ". This usually means the computer ran short of memory, for example "
+                    "while another app was loading large models; retry, or close "
+                    "memory-heavy apps"
+                )
+        tail = self._stderr_tail_text()
+        return f"{reason}. Last stderr: {tail}" if tail else reason
+
     def _generate_failure_reason(self, elapsed_s: float, deadline_s: float) -> str:
         """Say whether generate() lost the sidecar to the deadline or a crash.
 
@@ -780,6 +843,103 @@ class SubprocessBackend(TTSBackend):
         except Exception as exc:
             return False, f"{type(exc).__name__}: {exc}"
 
+    #: See COLD_LOAD_CRASH_RETRY_DELAY_S; a class attribute so tests and
+    #: engines can tune it.
+    cold_load_crash_retry_delay_s = COLD_LOAD_CRASH_RETRY_DELAY_S
+
+    def _exchange(self, text: str, kw: dict) -> dict:
+        """Send one synthesize request and return the sidecar's terminal frame.
+
+        Raises SidecarCrashedBeforeGenerating when the sidecar died with a
+        crash exit code before it reported the generating stage (the request
+        can be replayed), and RuntimeError for every other lost sidecar.
+        """
+        with self._lock:
+            self._validate_generate_authorization()
+            self._spawn()
+            # getattr keeps lightweight protocol-loop test doubles valid;
+            # real instances always initialise _proc in __init__.
+            proc = getattr(self, "_proc", None)
+            msg = {"op": "synthesize", "text": text}
+            # Filter kwargs to JSON-safe primitives. Tensor / Path / etc.
+            # don't survive json.dumps and are silently dropped — the
+            # sidecar can't use them anyway.
+            for k, v in kw.items():
+                if _is_jsonable(v):
+                    msg[k] = v
+            if getattr(self, "supports_float_transport", False):
+                msg["audio_format"] = "f32le"
+            deadline_s = self._effective_recv_timeout_s(text)
+            started_at = time.monotonic()
+            generating = False
+            try:
+                self._send(msg)
+                reply = self._recv_with_timeout(deadline_s)
+            except (RuntimeError, OSError):
+                # A broken or malformed protocol stream cannot be reused.
+                # Reap it before releasing the request lock so an immediate
+                # retry cannot race poll() and write to the same dead pipe.
+                self._reap_unusable_process(proc)
+                raise
+            # A cold sidecar may emit non-terminal {"op": "progress"} frames
+            # (during a model load, etc.) before the terminal audio frame.
+            # Each recv re-arms the watchdog, so a long-but-active load
+            # survives while a silent wedge is still killed at the deadline.
+            #
+            # Each frame is also reported to the GPU pool's execution clock
+            # (#1367): the sidecar heartbeats every ~5s precisely to prove a
+            # cold download is healthy, and without this the outer 300s
+            # generate budget expired mid-download and blamed the hardware.
+            while reply is not None and reply.get("op") == "progress":
+                if reply.get("stage") == "generating":
+                    generating = True
+                try:
+                    from services.model_manager import (
+                        report_model_load_activity, running_on_gpu_pool,
+                    )
+                    # Pool jobs only: an off-pool caller (the diagnostic
+                    # probe) never runs _job(), so its thread ident would
+                    # never be cleared — and a pool worker later reusing
+                    # that ident would inherit up to a grace period of
+                    # unearned extension (CodeRabbit on #1379).
+                    #
+                    # Only COLD-LOAD frames are load evidence. A sidecar may
+                    # also heartbeat while it generates (so a slow CPU render
+                    # is not mistaken for a hang by the recv watchdog), but a
+                    # timer thread proves nothing about synthesis progress:
+                    # crediting it would let a stalled native generate hold
+                    # its GPU worker past the execution budget (#2435).
+                    if running_on_gpu_pool() and reply.get("stage") != "generating":
+                        report_model_load_activity()
+                except Exception:
+                    pass  # the heartbeat is best-effort; never fail a synth over it
+                try:
+                    reply = self._recv_with_timeout(deadline_s)
+                except (RuntimeError, OSError):
+                    self._reap_unusable_process(proc)
+                    raise
+            if not reply:
+                # Same EOF for a deadline kill and a crash; _last_recv_timed_out
+                # is what tells them apart (#2026's spawn path does the same).
+                if self._last_recv_timed_out:
+                    reason = self._generate_failure_reason(
+                        time.monotonic() - started_at, deadline_s
+                    )
+                    self._reap_unusable_process(proc)
+                    raise RuntimeError(reason)
+                # Reap first so the exit code is settled before it is read.
+                self._reap_unusable_process(proc)
+                reason = self._crash_failure_reason(proc)
+                code = None
+                try:
+                    code = proc.poll() if proc is not None else None
+                except Exception:
+                    code = None
+                if not generating and code not in (None, 0):
+                    raise SidecarCrashedBeforeGenerating(reason)
+                raise RuntimeError(reason)
+            return reply
+
     def generate(self, text: str, **kw) -> torch.Tensor:
         """Synthesize one utterance through the sidecar.
 
@@ -821,75 +981,18 @@ class SubprocessBackend(TTSBackend):
                 if slot_future is not None:
                     slot_future.cancel()
                 raise TimeoutError("timed out waiting for a free GPU worker")
-            with self._lock:
-                self._validate_generate_authorization()
-                self._spawn()
-                # getattr keeps lightweight protocol-loop test doubles valid;
-                # real instances always initialise _proc in __init__.
-                proc = getattr(self, "_proc", None)
-                msg = {"op": "synthesize", "text": text}
-                # Filter kwargs to JSON-safe primitives. Tensor / Path / etc.
-                # don't survive json.dumps and are silently dropped — the
-                # sidecar can't use them anyway.
-                for k, v in kw.items():
-                    if _is_jsonable(v):
-                        msg[k] = v
-                if getattr(self, "supports_float_transport", False):
-                    msg["audio_format"] = "f32le"
-                deadline_s = self._effective_recv_timeout_s(text)
-                started_at = time.monotonic()
-                try:
-                    self._send(msg)
-                    reply = self._recv_with_timeout(deadline_s)
-                except (RuntimeError, OSError):
-                    # A broken or malformed protocol stream cannot be reused.
-                    # Reap it before releasing the request lock so an immediate
-                    # retry cannot race poll() and write to the same dead pipe.
-                    self._reap_unusable_process(proc)
-                    raise
-                # A cold sidecar may emit non-terminal {"op": "progress"} frames
-                # (during a model load, etc.) before the terminal audio frame.
-                # Each recv re-arms the watchdog, so a long-but-active load
-                # survives while a silent wedge is still killed at the deadline.
-                #
-                # Each frame is also reported to the GPU pool's execution clock
-                # (#1367): the sidecar heartbeats every ~5s precisely to prove a
-                # cold download is healthy, and without this the outer 300s
-                # generate budget expired mid-download and blamed the hardware.
-                while reply is not None and reply.get("op") == "progress":
-                    try:
-                        from services.model_manager import (
-                            report_model_load_activity, running_on_gpu_pool,
-                        )
-                        # Pool jobs only: an off-pool caller (the diagnostic
-                        # probe) never runs _job(), so its thread ident would
-                        # never be cleared — and a pool worker later reusing
-                        # that ident would inherit up to a grace period of
-                        # unearned extension (CodeRabbit on #1379).
-                        #
-                        # Only COLD-LOAD frames are load evidence. A sidecar may
-                        # also heartbeat while it generates (so a slow CPU render
-                        # is not mistaken for a hang by the recv watchdog), but a
-                        # timer thread proves nothing about synthesis progress:
-                        # crediting it would let a stalled native generate hold
-                        # its GPU worker past the execution budget (#2435).
-                        if running_on_gpu_pool() and reply.get("stage") != "generating":
-                            report_model_load_activity()
-                    except Exception:
-                        pass  # the heartbeat is best-effort; never fail a synth over it
-                    try:
-                        reply = self._recv_with_timeout(deadline_s)
-                    except (RuntimeError, OSError):
-                        self._reap_unusable_process(proc)
-                        raise
-                if not reply:
-                    # Same EOF for a deadline kill and a crash; _last_recv_timed_out
-                    # is what tells them apart (#2026's spawn path does the same).
-                    reason = self._generate_failure_reason(
-                        time.monotonic() - started_at, deadline_s
-                    )
-                    self._reap_unusable_process(proc)
-                    raise RuntimeError(reason)
+            try:
+                reply = self._exchange(text, kw)
+            except SidecarCrashedBeforeGenerating as exc:
+                # Nothing was synthesized, so one replay on a fresh sidecar is
+                # safe. A native crash during the cold load is usually a
+                # passing host-memory squeeze; a second crash is reported.
+                logger.warning(
+                    "[%s] %s; respawning once in %gs",
+                    self.id, exc, self.cold_load_crash_retry_delay_s,
+                )
+                time.sleep(self.cold_load_crash_retry_delay_s)
+                reply = self._exchange(text, kw)
             if reply.get("op") == "error":
                 stage = str(reply.get("stage") or "unknown")
                 message = str(reply.get("message") or "unknown sidecar error")
