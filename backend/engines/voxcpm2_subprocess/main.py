@@ -48,11 +48,12 @@ _MODEL = None
 #: the VAE then ends the clip on that boundary, so the last syllable came out
 #: cut (15-25 ms drop from speech to silence, every line, every project). One
 #: extra patch lets the word finish; the parent still trims the silent tail.
-#: 0 turns the patch off (OMNIVOICE_VOXCPM_TAIL_PATCHES).
+#: Off by default (OMNIVOICE_VOXCPM_TAIL_PATCHES=1 turns it on): a test showed no
+#: gain, and the owner heard the voice language drift while it was on.
 try:
-    TAIL_PATCHES = max(0, min(4, int(os.environ.get("OMNIVOICE_VOXCPM_TAIL_PATCHES", "1"))))
+    TAIL_PATCHES = max(0, min(4, int(os.environ.get("OMNIVOICE_VOXCPM_TAIL_PATCHES", "0"))))
 except ValueError:
-    TAIL_PATCHES = 1
+    TAIL_PATCHES = 0
 
 
 class TailDelay:
