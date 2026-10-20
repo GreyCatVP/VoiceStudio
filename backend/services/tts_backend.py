@@ -1963,6 +1963,8 @@ class VoxCPM2Backend(TTSBackend):
             lambda: VoxCPM.from_pretrained(checkpoint, load_denoiser=False),
             "VoxCPM2",
         )
+        from engines.voxcpm2_subprocess.main import install_tail_patch
+        install_tail_patch(self._model)  # last syllable no longer cut at the stop patch
 
     def generate(self, text, **kw) -> torch.Tensor:
         self._check_language(kw.get("language"))
@@ -1980,6 +1982,8 @@ class VoxCPM2Backend(TTSBackend):
             if attempt:
                 seed = retry_seed(kw.get("seed"), attempt)
                 torch.manual_seed(seed if seed is not None else torch.seed())
+            if getattr(self._model, "_tail_delay", None) is not None:
+                self._model._tail_delay.reset()
             return self._finalize(self._model.generate(**generation_kwargs(text, **kw)))
 
         return render_guarded(render, text, sample_rate=self.sample_rate,

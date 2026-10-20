@@ -43,6 +43,67 @@ _TRANSIENT_MARKERS = (
 
 _MODEL = None
 
+#: Patches (0.16 s each) VoxCPM2 keeps generating after its own stop signal.
+#: Its stop head fires on the patch where the last word is still sounding, and
+#: the VAE then ends the clip on that boundary, so the last syllable came out
+#: cut (15-25 ms drop from speech to silence, every line, every project). One
+#: extra patch lets the word finish; the parent still trims the silent tail.
+#: 0 turns the patch off (OMNIVOICE_VOXCPM_TAIL_PATCHES).
+try:
+    TAIL_PATCHES = max(0, min(4, int(os.environ.get("OMNIVOICE_VOXCPM_TAIL_PATCHES", "1"))))
+except ValueError:
+    TAIL_PATCHES = 1
+
+
+class TailDelay:
+    """Holds back the first ``extra`` stop signals of one generation."""
+
+    def __init__(self, extra: int) -> None:
+        self.extra = extra
+        self.held = 0
+
+    def reset(self) -> None:
+        self.held = 0
+
+    def hold(self, wants_stop: bool) -> bool:
+        """True = keep generating although the model asked to stop."""
+        if wants_stop and self.held < self.extra:
+            self.held += 1
+            return True
+        return False
+
+
+def install_tail_patch(model, extra: int | None = None):
+    """Wrap ``model.tts_model.stop_head`` so the stop is held back ``extra`` patches.
+
+    Returns the TailDelay (call ``.reset()`` before every generate), or None when
+    the patch is off or this voxcpm build has no ``stop_head`` (then nothing changes).
+    """
+    extra = TAIL_PATCHES if extra is None else extra
+    tts = getattr(model, "tts_model", model)
+    head = getattr(tts, "stop_head", None)
+    if extra <= 0 or head is None:
+        return None
+    import torch  # noqa: PLC0415
+
+    delay = TailDelay(extra)
+
+    class _DelayedStop(torch.nn.Module):
+        def __init__(self, inner) -> None:
+            super().__init__()
+            self.inner = inner
+
+        def forward(self, x):
+            out = self.inner(x)
+            if delay.hold(bool(out.argmax(dim=-1).reshape(-1)[0].item() == 1)):
+                out = torch.zeros_like(out)
+                out[..., 0] = 1.0  # argmax 0 = "not finished yet"
+            return out
+
+    tts.stop_head = _DelayedStop(head)
+    model._tail_delay = delay
+    return delay
+
 # -- wire protocol -----------------------------------------------------------
 
 #: Serializes _send across threads (the cold-load heartbeat + the main loop) so
@@ -147,6 +208,7 @@ def _load_model(stdout):
                 checkpoint, load_denoiser=False, optimize=False
             )
         )
+    install_tail_patch(_MODEL)
     _send(stdout, {"op": "progress", "stage": "loading_model", "percent": 100})
     return _MODEL
 
@@ -262,6 +324,8 @@ def _handle_synthesize(msg: dict, stdout) -> None:
 
         torch.manual_seed(int(msg["seed"]))
     options = {key: value for key, value in msg.items() if key != "text"}
+    if getattr(model, "_tail_delay", None) is not None:
+        model._tail_delay.reset()
     with _heartbeating(stdout, "generating"):
         wav = model.generate(**generation_kwargs(text, **options))
     audio_format = msg.get("audio_format", "s16le")
