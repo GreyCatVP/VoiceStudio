@@ -6,3 +6,7 @@ it('lists Settings → Account only when the build offers cloud accounts', () =>
   expect(extraSettingsFor(false).some((item) => item.to === '/settings/account')).toBe(false);
   expect(extraSettingsFor(true).some((item) => item.to === '/settings/account')).toBe(true);
 });
+
+it('lists Settings → Ray cluster', () => {
+  expect(extraSettingsFor(false).some((item) => item.to === '/settings/ray')).toBe(true);
+});

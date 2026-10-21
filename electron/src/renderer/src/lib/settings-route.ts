@@ -18,6 +18,7 @@ const settingsRoutes = new Set([
   '/settings/updates',
   '/settings/openapi',
   '/settings/diagnostics',
+  '/settings/ray',
 ]);
 const modelFamilyRoute = /^\/settings\/models\/(?:tts|asr|dictation|diarisation|translation|llm)$/;
 

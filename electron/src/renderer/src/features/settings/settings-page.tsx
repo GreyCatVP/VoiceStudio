@@ -17,6 +17,7 @@ import { UsageSettings } from './usage-settings';
 import { OpenApiSettings } from './openapi-settings';
 import { DiagnosticsSettings } from './diagnostics-settings';
 import { ModelSettings } from './model-settings';
+import { RaySettings } from './ray-settings';
 import { familyIcons, modelFamilies } from './model-family';
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import { runRendererTask } from '@/lib/global-error-recovery';
@@ -51,6 +52,7 @@ import {
   StethoscopeIcon,
   HeartHandshakeIcon,
   ClipboardCheckIcon,
+  ServerCogIcon,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -214,6 +216,18 @@ const extraSettings = [
       'settings.storage_usage',
       'settings.history_retention',
       'updates.backup_line',
+    ],
+  },
+  {
+    to: '/settings/ray',
+    label: 'settings.ray_title',
+    Icon: ServerCogIcon,
+    Component: RaySettings,
+    fields: [
+      'settings.ray_title',
+      'settings.ray_dashboard_url',
+      'settings.ray_engines',
+      'settings.ray_jobs',
     ],
   },
   {

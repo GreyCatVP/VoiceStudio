@@ -24,3 +24,8 @@ it('ignores non-settings paths rather than replacing the last page', () => {
   rememberSettingsRoute('/projects');
   expect(readLastSettingsRoute()).toBe('/settings/storage');
 });
+
+it('remembers the Ray cluster page', () => {
+  rememberSettingsRoute('/settings/ray');
+  expect(readLastSettingsRoute()).toBe('/settings/ray');
+});

@@ -264,8 +264,14 @@ export const diagnosticsRoute = createRoute({
   path: '/settings/diagnostics',
   component: SettingsPage,
 });
+export const rayRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/settings/ray',
+  component: SettingsPage,
+});
 export const routeTree = rootRoute.addChildren([
   diagnosticsRoute,
+  rayRoute,
   openApiRoute,
   updatesRoute,
   supportRoute,
