@@ -1876,6 +1876,11 @@ async def generate_speech(
         from api.routers.engines import _get_engine_instance
         _backend = _get_engine_instance(backend_cls)
 
+    # A Ray-routed engine waits on the cluster from the Ray lane, not from a
+    # local GPU-pool worker (None = the GPU pool, unchanged for local engines).
+    from services.model_manager import executor_for_backend
+    _lane = executor_for_backend(_backend) if _backend is not None else None
+
     preset_voice = (preset_voice or "").strip() or None
     if preset_voice:
         from services.tts_backend import preset_voices_of
@@ -1920,7 +1925,7 @@ async def generate_speech(
     if _backend is not None:
         from services import gpu_gateway
         try:
-            await gpu_gateway.prewarm(backend=_backend, engine=engine_id)
+            await gpu_gateway.prewarm(backend=_backend, engine=engine_id, executor=_lane)
         # Builtin TimeoutError base, not GpuJobTimeoutError — reload-proof
         # class identity (see the twin catch in openai_compat.py).
         except (TimeoutError, gpu_gateway.ModelLoadTimeout) as exc:
@@ -2291,6 +2296,7 @@ async def generate_speech(
                                     preset_voice=preset_voice,
                                 ),
                                 what="TTS generate",
+                                executor=_lane,
                                 min_vram_gb=_engine_min_vram_gb,
                                 timeout=_generate_timeout_s(
                                     text,
@@ -2362,6 +2368,7 @@ async def generate_speech(
                             lambda release: run_on_gpu_pool_guarded(
                                 functools.partial(_render_stream_chunk, i, chunk_text),
                                 what="TTS generate",
+                                executor=_lane,
                                 min_vram_gb=_engine_min_vram_gb,
                                 # Budget scaled to THIS chunk (#1190) — the flat
                                 # 300s here is what made long streamed renders fail
@@ -2546,6 +2553,7 @@ async def generate_speech(
                     min_vram_gb=_engine_min_vram_gb,
                     on_abandon=release,
                     ),
+                executor=_lane,
             )
         )
         # Read after generation: engines with lazy model loading report

@@ -320,7 +320,7 @@ async def _run_batch_pipeline_leased(job_id: str, job: dict, lease: voice_leases
     _set_progress(job, "transcribe", 0)
 
     from services.asr_backend import load_active_asr_backend
-    from services.model_manager import _gpu_pool, run_on_gpu_pool_guarded
+    from services.model_manager import _gpu_pool, executor_for_backend, run_on_gpu_pool_guarded
     from services.segmentation import (
         segment_transcript, assign_speakers_heuristic,
     )
@@ -561,6 +561,7 @@ async def _run_batch_pipeline_leased(job_id: str, job: dict, lease: voice_leases
                     rendered = await run_on_gpu_pool_guarded(
                         _render_native_batch,
                         what="Batch generate",
+                        executor=executor_for_backend(backend),
                         timeout=_batch_timeout_s(batch_texts, backend),
                     )
                     batched_audio.update(zip(batch_indices, rendered))
@@ -648,6 +649,7 @@ async def _run_batch_pipeline_leased(job_id: str, job: dict, lease: voice_leases
                         _gen,
                         what="Batch generate",
                         timeout=generate_timeout_s(seg_text, engine=backend),
+                        executor=executor_for_backend(backend),
                     )
                 # Fit to slot
                 target_samples_seg = int(seg_duration * sr)

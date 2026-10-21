@@ -921,6 +921,7 @@ async def _run_chapter(chapter, *, default_voice, language, opts, voice_map,
     except ValueError:
         timeout_engine = None
     text = "\n".join(span.text for span in chapter.spans)
+    from services.model_manager import executor_for_engine_id
     return await gpu_gateway.run(
         local=gpu_gateway.LocalCall(
             fn=lambda: _render_chapter_cached(
@@ -929,7 +930,8 @@ async def _run_chapter(chapter, *, default_voice, language, opts, voice_map,
             ),
             what="Audiobook chapter",
             timeout=generate_timeout_s(text, engine=timeout_engine),
-        )
+        ),
+        executor=executor_for_engine_id(engine_id),
     )
 
 class AudiobookPreviewRequest(ExpressiveMixin):

@@ -910,12 +910,12 @@ class SubprocessBackend(TTSBackend):
 
     def _run_ray_job(self, ray_cfg, task, *, timeout: float, idle_timeout: Optional[float] = None):
         from services.inference_cancellation import current_cancellation
-        from services.model_manager import report_model_load_activity, running_on_gpu_pool
+        from services.model_manager import report_model_load_activity, running_on_guarded_worker
         from services.ray_jobs import runtime
         from services.ray_jobs.client import RayJobsError
         from services.ray_jobs.executor import RayJobFailed
 
-        on_pool = running_on_gpu_pool()
+        on_pool = running_on_guarded_worker()  # the GPU pool or the Ray lane
 
         def on_event(event: dict) -> None:
             # Installs, downloads and model loads extend the execution budget

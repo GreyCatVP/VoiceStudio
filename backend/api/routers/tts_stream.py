@@ -261,12 +261,16 @@ async def synthesize_stream(
                 scrub_text(routing["routing_reason"]) or "engine cannot run on this host"
             )
         from services.engine_memory import evict_other_tts_engines
-        await evict_other_tts_engines(backend.id)
+        from services.model_manager import executor_for_backend
+        _lane = executor_for_backend(backend)
+        if _lane is None:  # a Ray-routed engine loads nothing locally
+            await evict_other_tts_engines(backend.id)
         for sentence in split_stream_sentences(text, language):
             wav, sr, _synth_s = await run_on_gpu_pool_guarded(
                 functools.partial(render_stream_sentence, backend, kw, sentence),
                 what="TTS generate",
                 timeout=generate_timeout_s(sentence, engine=backend),
+                executor=_lane,
             )
             yield wav, sr
 
@@ -364,7 +368,10 @@ async def ws_tts(websocket: WebSocket):
                 except ValueError as exc:
                     await websocket.send_json({"type": "error", "detail": str(exc)})
                     continue
-                await evict_other_tts_engines(backend.id)
+                from services.model_manager import executor_for_backend
+                _lane = executor_for_backend(backend)
+                if _lane is None:  # a Ray-routed engine loads nothing locally
+                    await evict_other_tts_engines(backend.id)
 
                 # Normalized exactly once on the whole text, then chunked
                 # (see split_stream_sentences). The request's `language` is all
@@ -401,6 +408,7 @@ async def ws_tts(websocket: WebSocket):
                         functools.partial(_generate, sentence),
                         what="TTS generate",
                         timeout=generate_timeout_s(sentence, engine=backend),
+                        executor=_lane,
                     )
                     synth_time += sentence_synth_s
 

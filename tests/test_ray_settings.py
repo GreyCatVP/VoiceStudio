@@ -351,3 +351,56 @@ def test_ray_routed_engines_count_as_available_without_a_local_install(rs, monke
 
     resolved = tts_backend._effective_backend_class("voxcpm2", object)
     assert resolved is voxcpm2_subprocess.VoxCPM2SubprocessBackend
+
+
+# -- Ray lane: waiting on the cluster must not occupy a local GPU-pool worker --
+
+def test_executor_for_backend_picks_the_lane_only_for_routed_sidecar_instances(ray_backend, rs):
+    from services import model_manager as mm
+
+    backend, _, _ = ray_backend
+    assert mm.executor_for_backend(backend) is mm.get_ray_lane()
+    assert mm.executor_for_engine_id("voxcpm2") is mm.get_ray_lane()
+
+    class InProcess:  # same id, not a sidecar: stays on the GPU pool
+        id = "voxcpm2"
+
+    assert mm.executor_for_backend(InProcess()) is None
+    rs.save({"enabled": False})
+    assert mm.executor_for_backend(backend) is None
+    assert mm.executor_for_engine_id("voxcpm2") is None
+
+
+def test_ray_generate_runs_on_the_lane_without_touching_the_gpu_pool(ray_backend, monkeypatch):
+    from services import model_manager as mm
+
+    backend, calls, _ = ray_backend
+    monkeypatch.setattr(mm, "_get_gpu_pool", lambda: (_ for _ in ()).throw(AssertionError("GPU pool used")))
+    heartbeats = []
+    monkeypatch.setattr(mm, "report_model_load_activity", lambda: heartbeats.append(__import__("threading").current_thread().name))
+
+    async def go():
+        return await mm.run_on_gpu_pool_guarded(lambda: backend.generate("hi"), what="TTS generate",
+                                                timeout=30, executor=mm.get_ray_lane())
+
+    audio = asyncio.run(go())
+    assert audio.shape == (1, 2) and calls
+    # the install heartbeat from the fake job was credited on the lane thread
+    assert heartbeats and heartbeats[0].startswith("ray-lane")
+
+
+def test_lane_timeouts_explain_the_cluster_not_local_vram(monkeypatch):
+    import threading as _t
+    from services import model_manager as mm
+
+    release = _t.Event()
+
+    async def go():
+        return await mm.run_on_gpu_pool_guarded(lambda: release.wait(5), what="TTS generate",
+                                                timeout=0.2, executor=mm.get_ray_lane())
+
+    monkeypatch.setattr(mm, "MODEL_LOAD_EXTRA_TIMEOUT_S", 0.1, raising=False)
+    monkeypatch.setattr(mm, "PROGRESS_EXTENSION_BUDGETS", 0, raising=False)
+    with pytest.raises(TimeoutError, match="Ray cluster"):
+        asyncio.run(go())
+    release.set()

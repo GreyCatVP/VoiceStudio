@@ -743,7 +743,10 @@ async def create_speech(req: SpeechRequest):
     # can't stack multi-GB engines/sidecars. No-op when nothing else is
     # resident; opt out with OMNIVOICE_SINGLE_ENGINE_RESIDENT=0.
     from services.engine_memory import evict_other_tts_engines
-    await evict_other_tts_engines(backend.id)
+    from services.model_manager import executor_for_backend
+    _lane = executor_for_backend(backend)  # Ray-routed: wait off the GPU pool
+    if _lane is None:  # a Ray-routed engine loads nothing locally
+        await evict_other_tts_engines(backend.id)
 
     # ── #1033/#1037/#1014: warm the engine under the LOAD budget before the
     # generate clock starts. The T4 verification (#1014) measured a fresh
@@ -758,6 +761,7 @@ async def create_speech(req: SpeechRequest):
             backend.ensure_ready,
             what=f"TTS engine '{backend.id}' model load",
             timeout=_model_load_timeout(),
+            executor=_lane,
         )
     # Catch the BUILTIN TimeoutError base, not GpuJobTimeoutError by name:
     # several tests reload services.model_manager mid-suite, so a class
@@ -809,7 +813,7 @@ async def create_speech(req: SpeechRequest):
     # wave of jobs is ALREADY queued — see check_gpu_admission).
     from services.model_manager import check_gpu_admission
     try:
-        check_gpu_admission(what="OpenAI TTS generate")
+        check_gpu_admission(what="OpenAI TTS generate", executor=_lane)
     except TimeoutError as e:
         logger.warning("OpenAI TTS refused — GPU pool saturated: %s", e)
         raise HTTPException(
@@ -826,7 +830,7 @@ async def create_speech(req: SpeechRequest):
         from services.model_manager import generate_timeout_s
         wav, sr = await run_on_gpu_pool_guarded(
             lambda: _run_tts(backend, text, kw), what="OpenAI TTS generate",
-            timeout=generate_timeout_s(text, engine=backend))
+            timeout=generate_timeout_s(text, engine=backend), executor=_lane)
     except Exception as e:
         # #1172/#1173: typed failures get their real status + actionable
         # message (400 bad input / 503 broken engine binary) instead of a

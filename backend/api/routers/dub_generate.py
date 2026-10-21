@@ -17,7 +17,7 @@ from core.config import DUB_DIR, VOICES_DIR, dub_seg_path
 from core.path_security import contained_join
 from core.tasks import task_manager
 from schemas.requests import DubRequest
-from services.model_manager import _gpu_pool, run_on_gpu_pool_guarded
+from services.model_manager import _gpu_pool, executor_for_backend, run_on_gpu_pool_guarded
 from services.srt_parser import vouch_cue_source
 from services.tts_backend import (
     TTSBackend, active_backend_id, ensure_active_engine_licence, resolve_generation_backend,
@@ -1292,6 +1292,7 @@ async def dub_generate(job_id: str, req: DubRequest):
                     outputs = await run_on_gpu_pool_guarded(
                         _render_batch,
                         what="Dub generate batch",
+                        executor=executor_for_backend(backend),
                         timeout=batch_timeout_s(
                             [prepared["text"] for _, prepared in batch], backend
                         ),
@@ -1375,7 +1376,8 @@ async def dub_generate(job_id: str, req: DubRequest):
                     audio_tensor = _batched_audio.pop(i)
                 else:
                     audio_tensor = await run_on_gpu_pool_guarded(
-                        lambda: _gen(
+                        executor=executor_for_backend(backend),
+                        fn=lambda: _gen(
                             seg.text, seg_lang, seg_instruct, _dur_for_tts,
                             _num_step, req.guidance_scale, seg_speed, seg_profile, seg_effect_preset,
                         ),
@@ -2075,6 +2077,7 @@ async def preview_segment(job_id: str, req: SegmentPreviewRequest):
     audio_tensor = await run_on_gpu_pool_guarded(
         _gen, what="Dub preview generate",
         timeout=generate_timeout_s(req.text, engine=backend),
+        executor=executor_for_backend(backend),
     )
 
     sr = backend.sample_rate

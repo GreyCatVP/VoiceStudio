@@ -220,6 +220,60 @@ def _build_gpu_pool() -> ThreadPoolExecutor:
         max_workers=workers, thread_name_prefix=_GPU_POOL_THREAD_PREFIX)
 
 
+# Ray-routed engines run on a cluster: waiting for a Ray job must not occupy a
+# local GPU-pool worker. They go through run_on_gpu_pool_guarded on this lane
+# instead, which keeps the guard's timeout/abandon/cancellation/heartbeat
+# semantics (all keyed by the thread running the job, not by the executor).
+_RAY_LANE_THREAD_PREFIX = "ray-lane"
+_ray_lane: "ThreadPoolExecutor | None" = None
+_ray_lane_lock = threading.Lock()
+
+
+def get_ray_lane() -> ThreadPoolExecutor:
+    global _ray_lane
+    with _ray_lane_lock:
+        if _ray_lane is None:
+            try:
+                workers = max(1, min(64, int(os.environ.get("OMNIVOICE_RAY_LANE_WORKERS", "4"))))
+            except ValueError:
+                workers = 4
+            _ray_lane = ThreadPoolExecutor(max_workers=workers, thread_name_prefix=_RAY_LANE_THREAD_PREFIX)
+        return _ray_lane
+
+
+def running_on_ray_lane() -> bool:
+    return threading.current_thread().name.startswith(_RAY_LANE_THREAD_PREFIX)
+
+
+def running_on_guarded_worker() -> bool:
+    """A gpu-pool worker or a Ray-lane worker: both run guarded jobs."""
+    return running_on_gpu_pool() or running_on_ray_lane()
+
+
+def executor_for_backend(backend) -> "ThreadPoolExecutor | None":
+    """The Ray lane for a Ray-routed sidecar engine; None (the GPU pool) otherwise.
+
+    Checks the instance, not just the id: a cached in-process instance of the
+    same engine id runs on the local GPU and must stay on the pool.
+    """
+    try:
+        from services.subprocess_backend import SubprocessBackend, ray_routed
+    except Exception:  # noqa: BLE001
+        return None
+    if isinstance(backend, SubprocessBackend) and ray_routed(getattr(backend, "id", "")):
+        return get_ray_lane()
+    return None
+
+
+def executor_for_engine_id(engine_id: str) -> "ThreadPoolExecutor | None":
+    """Like executor_for_backend when only the engine id is in scope."""
+    try:
+        from services.subprocess_backend import ray_routed
+    except Exception:  # noqa: BLE001
+        return None
+    return get_ray_lane() if engine_id and ray_routed(engine_id) else None
+
+
 def running_on_gpu_pool() -> bool:
     """True iff the calling thread is a gpu-pool worker (already holds a slot).
 
@@ -994,7 +1048,10 @@ async def run_on_gpu_pool_guarded(fn, *, what: str = "GPU job",
         # Capture the stacks BEFORE reset(): reset() replaces the executor, and
         # once the wedged thread is no longer a pool worker we can no longer
         # tell it apart from any other thread in the process.
-        stacks = log_gpu_pool_worker_stacks(what, timeout, executor=ex)
+        on_lane = ex is _ray_lane
+        # Lane workers only wait on a cluster; their stacks say nothing about
+        # the GPU pool (and would label every pool worker stale).
+        stacks = "" if on_lane else log_gpu_pool_worker_stacks(what, timeout, executor=ex)
         _reset = getattr(ex, "reset", None)
         if callable(_reset):
             try:
@@ -1008,6 +1065,12 @@ async def run_on_gpu_pool_guarded(fn, *, what: str = "GPU job",
             except Exception:
                 logger.exception("GPU pool reset after %s timeout failed",
                                  _log_safe(what))
+        if on_lane:
+            raise GpuJobTimeoutError(
+                f"{what} did not finish within {timeout:.0f}s on the Ray cluster. The job "
+                "was stopped. Check the cluster's free resources in Settings → Ray cluster, "
+                "then retry."
+            ) from timeout_exc
         raise GpuJobTimeoutError(
             _timeout_guidance(
                 what, timeout, min_vram_gb, wedged=_stack_shows_a_wedge(stacks),
