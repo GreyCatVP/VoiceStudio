@@ -379,7 +379,13 @@ def _heartbeat_while_resolving(engine_id: str):
 
 # A first cluster-side install (venv + CUDA torch) can take many minutes.
 _RAY_INSTALL_ALLOWANCE_S = 3600.0
-_RAY_INSTALL_IDLE_S = 600.0  # the worker heartbeats every ~10 s while installing
+_RAY_INSTALL_IDLE_S = 600.0
+# One batch job's audio must fit the result cap (50 MB compressed; s16 PCM
+# barely compresses): group by an estimated size, and cap the item count so
+# cancellation and progress stay reasonably granular.
+_RAY_BATCH_MAX_BYTES = 35 * 1024 * 1024
+_RAY_BATCH_MAX_ITEMS = 16
+_RAY_CHARS_PER_SECOND = 10.0  # conservative: slow speech means more audio per char  # the worker heartbeats every ~10 s while installing
 _RAY_INSTALLED: set = set()
 
 
@@ -402,6 +408,34 @@ def _ray_install_key(cfg, engine_id: str, recipe: dict) -> tuple:
 
 def _ray_installed(cfg, engine_id: str, recipe: dict) -> bool:
     return _ray_install_key(cfg, engine_id, recipe) in _RAY_INSTALLED
+
+
+def _item_kwargs(kw: dict, index: int) -> dict:
+    """Item ``index``'s kwargs: list values are per item; a None item value
+    means "not set" for that item (e.g. a seed only on the first span)."""
+    out = {}
+    for key, value in kw.items():
+        if isinstance(value, list):
+            value = value[index]
+            if value is None:
+                continue
+        out[key] = value
+    return out
+
+
+def _batch_groups(prepared: list, sample_rate: int) -> list:
+    """Split (text, kw) items into groups whose audio should fit one result."""
+    groups: list = [[]]
+    size = 0
+    for text, kw in prepared:
+        seconds = max(len(text) / _RAY_CHARS_PER_SECOND, float(kw.get("duration") or 0), 1.0)
+        est = int(seconds * sample_rate * 2)
+        if groups[-1] and (size + est > _RAY_BATCH_MAX_BYTES or len(groups[-1]) >= _RAY_BATCH_MAX_ITEMS):
+            groups.append([])
+            size = 0
+        groups[-1].append((text, kw))
+        size += est
+    return [g for g in groups if g]
 
 
 def _decode_audio_reply(reply: dict) -> torch.Tensor:
@@ -897,7 +931,88 @@ class SubprocessBackend(TTSBackend):
             num_cpus=ray_cfg.num_cpus,
         )
         result = self._run_ray_job(ray_cfg, task, timeout=timeout, idle_timeout=idle)
-        reply = result.result
+        return self._decode_ray_audio(result.result)
+
+    # -- Ray batch: many utterances, one job, one model load -----------------
+    @property
+    def has_native_batch(self) -> bool:
+        """True when generate_batch renders in one go (Ray-routed engines).
+
+        Only for engines whose per-utterance logic lives in the hooks; an
+        engine that overrides generate() itself keeps per-utterance calls.
+        """
+        return type(self).generate is SubprocessBackend.generate and ray_routed(self.id)
+
+    @property
+    def batches_render_chunks(self) -> bool:
+        return self.has_native_batch
+
+    @property
+    def native_batch_width_hint(self) -> Optional[int]:
+        return _RAY_BATCH_MAX_ITEMS if self.has_native_batch else None
+
+    def generate_batch(self, texts, **kw) -> list:
+        """Render ``texts``; list-valued kwargs are per item (OmniVoice's rule)."""
+        ray_cfg = _ray_route(self.id)
+        if ray_cfg is None or not self.has_native_batch:
+            return [self.generate(text, **_item_kwargs(kw, i)) for i, text in enumerate(texts)]
+        prepared = []
+        for i, text in enumerate(texts):
+            item_kw = _item_kwargs(kw, i)
+            self._check_language(item_kw.get("language"))
+            prepared.append((text, self._prepare_generate_kwargs(text, item_kw)))
+        self._validate_generate_authorization()
+        out: list = []
+        for group in _batch_groups(prepared, self.sample_rate):
+            out.extend(self._finish_generate(wav) for wav in self._generate_batch_via_ray(ray_cfg, group))
+        return out
+
+    def _generate_batch_via_ray(self, ray_cfg, group: list) -> list:
+        import hashlib
+
+        from services.ray_jobs.engines import install_recipe, ray_engine
+        from services.ray_jobs.executor import RayTask
+
+        inputs: dict[str, bytes] = {}
+        by_digest: dict[str, str] = {}
+        items = []
+        for text, kw in group:
+            item: dict = {"text": text}
+            for k, v in kw.items():
+                if k in self.ray_file_params and isinstance(v, (str, os.PathLike)) and v:
+                    data = Path(v).read_bytes()  # now: the lease may delete it
+                    digest = hashlib.sha256(data).hexdigest()
+                    if digest not in by_digest:
+                        name = f"{k}__{len(by_digest)}"
+                        by_digest[digest] = name
+                        inputs[f"{name}{Path(v).suffix.lower()[:8]}"] = data
+                    item[k] = "@" + by_digest[digest]
+                elif _is_jsonable(v):
+                    item[k] = v
+            items.append(item)
+        # s16le (no audio_format): half the bytes of f32 against the result cap.
+        engine = ray_engine(self.id)
+        idles = [self._effective_recv_timeout_s(text) for text, _ in group]
+        task = RayTask(
+            op="batch", engine=self.id, params={"call": "synthesize", "items": items}, inputs=inputs,
+            install=install_recipe(self.id), env=dict(engine.env) if engine else {},
+            num_gpus=ray_cfg.num_gpus if engine and engine.gpu else None, num_cpus=ray_cfg.num_cpus,
+        )
+        result = self._run_ray_job(ray_cfg, task, timeout=_RAY_INSTALL_ALLOWANCE_S + 2 * sum(idles),
+                                   idle_timeout=max(idles))
+        replies = result.result.get("results")
+        if result.result.get("op") != "batch" or not isinstance(replies, list) or len(replies) != len(group):
+            raise RuntimeError(f"{self.id} Ray batch returned a malformed result")
+        wavs = []
+        for reply in replies:
+            if not isinstance(reply, dict) or reply.get("op") == "error":
+                reply = reply if isinstance(reply, dict) else {}
+                raise RuntimeError(f"{self.id} sidecar {reply.get('stage', 'engine')} error: "
+                                   f"{reply.get('message', 'malformed batch item')}")
+            wavs.append(self._decode_ray_audio(reply))
+        return wavs
+
+    def _decode_ray_audio(self, reply: dict) -> torch.Tensor:
         if reply.get("op") != "audio":
             raise RuntimeError(f"{self.id} sidecar returned unexpected op: {reply.get('op')!r}")
         tensor = _decode_audio_reply(reply)
@@ -910,7 +1025,9 @@ class SubprocessBackend(TTSBackend):
 
     def _run_ray_job(self, ray_cfg, task, *, timeout: float, idle_timeout: Optional[float] = None):
         from services.inference_cancellation import current_cancellation
-        from services.model_manager import report_model_load_activity, running_on_guarded_worker
+        from services.model_manager import (
+            report_generate_progress, report_model_load_activity, running_on_guarded_worker,
+        )
         from services.ray_jobs import runtime
         from services.ray_jobs.client import RayJobsError
         from services.ray_jobs.executor import RayJobFailed
@@ -923,6 +1040,8 @@ class SubprocessBackend(TTSBackend):
             stage = str(event.get("stage", ""))
             if on_pool and (stage == "installing" or (stage.startswith("engine:") and stage != "engine:generating")):
                 report_model_load_activity()
+            elif on_pool and stage == "item_done":
+                report_generate_progress()  # a batch finished one more utterance
 
         scope = current_cancellation()
         try:
@@ -935,6 +1054,15 @@ class SubprocessBackend(TTSBackend):
         except TimeoutError as exc:
             raise RuntimeError(f"{self.id} Ray job timed out: {exc or f'no result within {timeout:.0f}s'}") from exc
 
+    # -- per-utterance hooks, shared by generate() and the Ray batch path ----
+    def _prepare_generate_kwargs(self, text: str, kw: dict) -> dict:
+        """Engine-specific kwargs mapping before an utterance is sent."""
+        return kw
+
+    def _finish_generate(self, wav: torch.Tensor) -> torch.Tensor:
+        """Engine-specific post-processing of one utterance's audio."""
+        return wav
+
     def generate(self, text: str, **kw) -> torch.Tensor:
         """Synthesize one utterance through the sidecar.
 
@@ -943,6 +1071,10 @@ class SubprocessBackend(TTSBackend):
         legacy int16 frames from existing installations.
         """
         self._check_language(kw.get("language"))
+        kw = self._prepare_generate_kwargs(text, dict(kw))
+        return self._finish_generate(self._generate_raw(text, kw))
+
+    def _generate_raw(self, text: str, kw: dict) -> torch.Tensor:
         # Opt-in Ray execution: the job holds the GPU on the cluster, so no
         # local pool slot, lock or sidecar is involved.
         ray_cfg = _ray_route(self.id)

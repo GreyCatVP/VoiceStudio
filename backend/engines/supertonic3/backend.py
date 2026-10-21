@@ -186,8 +186,8 @@ class Supertonic3Backend(SubprocessBackend):
 
     # ── generate ───────────────────────────────────────────────────────
 
-    def generate(self, text: str, **kw) -> "torch.Tensor":
-        """Synthesize one utterance.
+    def _prepare_generate_kwargs(self, text: str, kw: dict) -> dict:
+        """Map one utterance's kwargs to the sidecar's (also used per batch item).
 
         kwargs honored:
           * ``voice``        ‑‑ one of :data:`VOICE_PRESETS` (str). Default
@@ -200,10 +200,9 @@ class Supertonic3Backend(SubprocessBackend):
           * ``num_step``     ‑‑ int (SDK ``total_steps``), clamped to
                                 [5, 12].
 
-        Returns a tensor of shape ``(1, n_samples)`` at
-        :attr:`sample_rate`. Delegates to
-        :meth:`SubprocessBackend.generate` which handles the JSON
-        round-trip, GPU-slot acquire/release, and int16 PCM decode.
+        Everything else is dropped. :meth:`SubprocessBackend.generate`
+        handles the JSON round-trip, GPU-slot acquire/release, and int16 PCM
+        decode.
         """
         # Set the revision env on the parent process before the sidecar
         # spawns ‑‑ SubprocessBackend.start() captures parent env at
@@ -240,7 +239,7 @@ class Supertonic3Backend(SubprocessBackend):
             "speed": speed,
             "total_steps": total_steps,
         }
-        return super().generate(text, **forwarded)
+        return forwarded
 
 
 __all__ = ["Supertonic3Backend", "SUPERTONIC3_SIDECAR_SCRIPT"]

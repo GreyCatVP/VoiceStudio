@@ -645,6 +645,30 @@ def _build_synth(
             ref_text=v["ref_text"], instruct=v["instruct"], duration=None,
             speed=float(speed) if speed else 1.0, **call_extra,
         )
+
+    from services.tts_backend import has_native_batch
+    if has_native_batch(backend):
+        def synth_batch(requests):
+            """[(text, voice_id, speed), ...] -> tensors, in one engine call.
+
+            Seeds are drawn in request order, exactly as per-chunk calls
+            would draw them, so takes stay reproducible."""
+            per_item = {"ref_audio": [], "ref_text": [], "instruct": [], "speed": [], "seed": []}
+            texts = []
+            for text, voice_id, speed in requests:
+                v = resolve(voice_id)
+                seed = _seed_segment_rng(_base_seed(opts, v), text, next_nonce())
+                texts.append(text)
+                per_item["ref_audio"].append(v["ref_audio"])
+                per_item["ref_text"].append(v["ref_text"])
+                per_item["instruct"].append(v["instruct"])
+                per_item["speed"].append(float(speed) if speed else 1.0)
+                per_item["seed"].append(seed if native_proxy else None)
+            if not any(s is not None for s in per_item["seed"]):
+                del per_item["seed"]
+            return backend.generate_batch(texts, language=language, duration=None, **per_item, **extra)
+
+        synth.batch = synth_batch
     return {"mode": "generic", "resolve": resolve, "engine_id": engine_id,
             "synth": synth, "sample_rate": backend.sample_rate}
 

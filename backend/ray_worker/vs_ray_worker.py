@@ -361,7 +361,7 @@ def run_task(task: Dict[str, Any], workdir: Path) -> Dict[str, Any]:
     op = task.get("op")
     if op == "probe":
         return {"op": "probe", "node": probe()}
-    if op not in ENGINE_OPS and op not in ("_hold", "install"):
+    if op not in ENGINE_OPS and op not in ("_hold", "install", "batch"):
         raise TaskError("task", f"unknown op {op!r}")
 
     deadline = os.environ.get("VS_RAY_DEADLINE")
@@ -386,18 +386,65 @@ def run_task(task: Dict[str, Any], workdir: Path) -> Dict[str, Any]:
             print(f"vs_ray_worker: holding sidecar pid {sidecar.proc.pid}", flush=True)
             time.sleep(float(task.get("params", {}).get("seconds", 60)))
             return {"op": "_hold"}
+        inputs = _input_paths(task, workdir)
+        if op == "batch":
+            return _run_batch(sidecar, dict(task.get("params") or {}), inputs)
         params = dict(task.get("params") or {})
-        inputs_dir = (workdir / "inputs").resolve()  # param name -> inputs/<file>
-        for name, rel in (task.get("inputs") or {}).items():
-            path = (workdir / rel).resolve()
-            if inputs_dir not in path.parents:
-                raise TaskError("task", f"input {name!r} is outside the package inputs")
-            params[name] = str(path)
+        params.update(inputs)
         reply = sidecar.call({"op": op, **params})
         proto.emit_progress(sys.stdout, "engine_done", 0.95, engine)
         return reply
     finally:
         sidecar.close()
+
+
+def _input_paths(task: Dict[str, Any], workdir: Path) -> Dict[str, str]:
+    """Param name -> absolute path of each shipped input file."""
+    inputs_dir = (workdir / "inputs").resolve()
+    out: Dict[str, str] = {}
+    for name, rel in (task.get("inputs") or {}).items():
+        path = (workdir / rel).resolve()
+        if inputs_dir not in path.parents:
+            raise TaskError("task", f"input {name!r} is outside the package inputs")
+        out[name] = str(path)
+    return out
+
+
+def _run_batch(sidecar: "Sidecar", params: Dict[str, Any], inputs: Dict[str, str]) -> Dict[str, Any]:
+    """Many calls on ONE engine process: the model loads once for all items.
+
+    ``params``: {"call": <engine op>, "shared": {...}, "items": [{...}, ...]}.
+    A string value "@<param>" in an item names a shipped input file.
+    Per-item failures are reported per item; if the engine process dies, the
+    remaining items fail without a restart.
+    """
+    call = params.get("call")
+    if call not in ENGINE_OPS:
+        raise TaskError("task", f"unknown batch call {call!r}")
+    shared = dict(params.get("shared") or {})
+    items = params.get("items") or []
+    if not isinstance(items, list) or not all(isinstance(i, dict) for i in items):
+        raise TaskError("task", "batch items must be objects")
+
+    def resolve(value: Any) -> Any:
+        if isinstance(value, str) and value.startswith("@"):
+            if value[1:] not in inputs:
+                raise TaskError("task", f"batch item names a missing input {value!r}")
+            return inputs[value[1:]]
+        return value
+
+    results: list = []
+    for index, item in enumerate(items):
+        if sidecar.proc.poll() is not None:
+            results.append({"op": "error", "stage": "engine", "message": "engine exited earlier in the batch"})
+            continue
+        msg = {"op": call, **shared, **{k: resolve(v) for k, v in item.items()}}
+        try:
+            results.append(sidecar.call(msg))
+        except TaskError as exc:
+            results.append({"op": "error", "stage": exc.stage, "message": str(exc)})
+        proto.emit_progress(sys.stdout, "item_done", (index + 1) / max(1, len(items)), f"{index + 1}/{len(items)}")
+    return {"op": "batch", "results": results}
 
 
 def prune_old_job_logs(now: Optional[float] = None) -> int:

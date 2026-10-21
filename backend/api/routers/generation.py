@@ -1305,11 +1305,25 @@ def _run_backend_inference(
         segments = parse_pause_markers(text)
         has_pause = len(segments) > 1 or (segments and segments[0][1] > 0)
 
+        # An engine that renders a batch in one go (Ray: one job, one model
+        # load) gets every chunk/span at once; local engines keep the loop.
+        batched = bool(getattr(backend, "batches_render_chunks", False))
+
         if has_pause:
             first_span = True
+            span_texts = [t for t, _ in segments if t and t.strip()]
+            pre_rendered = None
+            if batched and len(span_texts) > 1:
+                seeds = ([used_seed] + [None] * (len(span_texts) - 1)
+                         if forwards_seed and used_seed is not None else None)
+                extra = {"seed": seeds} if seeds else {}
+                pre_rendered = iter(trace_call("synthesis", backend.generate_batch, span_texts,
+                                               duration=None, **gen_kwargs, **extra))
 
             def _gen_span(span_text):
                 nonlocal first_span
+                if pre_rendered is not None:
+                    return next(pre_rendered)
                 # Per-span duration is left to the engine; an explicit overall
                 # `duration` can't be meaningfully split across spans.
                 span_kwargs = dict(gen_kwargs)
@@ -1329,7 +1343,16 @@ def _run_backend_inference(
             _max_chars = DEFAULT_MAX_CHUNK_CHARS if max_chunk_chars is None else max_chunk_chars
             _xfade_ms = DEFAULT_CROSSFADE_MS if crossfade_ms is None else crossfade_ms
             text_chunks = split_text_into_chunks(text, _max_chars)
-            if len(text_chunks) > 1:
+            if len(text_chunks) > 1 and batched:
+                seeds = ([used_seed + i for i in range(len(text_chunks))]
+                         if forwards_seed and used_seed is not None else None)
+                extra = {"seed": seeds} if seeds else {}
+                parts = trace_call("synthesis", backend.generate_batch, text_chunks,
+                                   duration=None, **gen_kwargs, **extra)
+                audio_out = concatenate_audio_chunks(parts, sr, _xfade_ms,
+                                                     texts=text_chunks,
+                                                     sink=dropped_sink)
+            elif len(text_chunks) > 1:
                 parts = []
                 for i, chunk_text in enumerate(text_chunks):
                     if used_seed is not None:
@@ -2180,6 +2203,31 @@ async def generate_speech(
         # instead of quietly handing back a short one.
         _dropped_sink: list = []
 
+        _stream_batched = (
+            _backend is not None and len(_text_chunks) > 2
+            and bool(getattr(_backend, "batches_render_chunks", False))
+        )
+
+        def _render_stream_rest(start: int):
+            """Chunks ``start..`` in ONE batched engine call (Ray-routed engines).
+
+            Same kwargs and per-chunk seeds as _render_stream_chunk, so the
+            concatenated take matches the non-streamed one."""
+            _lang = None if (language and language.lower() == "auto") else language
+            seeded = used_seed is not None and (
+                getattr(_backend, "supports_native_omnivoice_controls", False)
+                or getattr(_backend, "supports_generation_seed", False))
+            texts = _text_chunks[start:]
+            raws = trace_call("synthesis", _backend.generate_batch, texts,
+                duration=None, language=_lang, ref_audio=ref_audio_path, ref_text=ref_text,
+                instruct=instruct, num_step=num_step, guidance_scale=guidance_scale,
+                speed=speed, denoise=denoise, postprocess_output=postprocess_output,
+                **({"seed": [used_seed + start + k for k in range(len(texts))]} if seeded else {}))
+            sr = _backend.sample_rate
+            skip = getattr(_backend, "applies_own_mastering", False)
+            return [(raw, _apply_effect_chain(raw, sr, effect_preset, skip_mastering=skip), sr)
+                    for raw in raws]
+
         def _render_stream_chunk(i: int, chunk_text: str):
             """One text chunk → (raw engine tensor, preview-DSP tensor, sr).
 
@@ -2360,30 +2408,55 @@ async def generate_speech(
                 else:
                     parts = []
                     sample_rate = None
+                    _rest = None
                     for i, chunk_text in enumerate(_text_chunks):
-                        # Bounded per chunk + pool-reset on hang (#730 class);
-                        # a timeout surfaces as an "error" event below.
-                        raw, preview, sample_rate = await _run_with_reference_lease(
-                            ref_lease,
-                            lambda release: run_on_gpu_pool_guarded(
-                                functools.partial(_render_stream_chunk, i, chunk_text),
-                                what="TTS generate",
-                                executor=_lane,
-                                min_vram_gb=_engine_min_vram_gb,
-                                # Budget scaled to THIS chunk (#1190) — the flat
-                                # 300s here is what made long streamed renders fail
-                                # even after the v0.3.22 scaled budget shipped.
-                                timeout=_generate_timeout_s(
-                                    chunk_text,
-                                    engine=_backend,
-                                    execution_device=_routing["effective_device"],
+                        if _stream_batched and i >= 1:
+                            # Batched engine (Ray): chunk 0 streamed alone for a
+                            # fast first sound, the rest in one job.
+                            if _rest is None:
+                                _rest = iter(await _run_with_reference_lease(
+                                    ref_lease,
+                                    lambda release: run_on_gpu_pool_guarded(
+                                        functools.partial(_render_stream_rest, 1),
+                                        what="TTS generate",
+                                        executor=_lane,
+                                        min_vram_gb=_engine_min_vram_gb,
+                                        timeout=_generate_timeout_s(
+                                            " ".join(_text_chunks[1:]),
+                                            engine=_backend,
+                                            execution_device=_routing["effective_device"],
+                                            min_vram_gb=_engine_min_vram_gb,
+                                            hardware_family=_routing_hardware_family,
+                                            vram_gb=_routing_vram_gb,
+                                        ),
+                                        on_abandon=release,
+                                    )
+                                ))
+                            raw, preview, sample_rate = next(_rest)
+                        else:
+                            # Bounded per chunk + pool-reset on hang (#730 class);
+                            # a timeout surfaces as an "error" event below.
+                            raw, preview, sample_rate = await _run_with_reference_lease(
+                                ref_lease,
+                                lambda release: run_on_gpu_pool_guarded(
+                                    functools.partial(_render_stream_chunk, i, chunk_text),
+                                    what="TTS generate",
+                                    executor=_lane,
                                     min_vram_gb=_engine_min_vram_gb,
-                                    hardware_family=_routing_hardware_family,
-                                    vram_gb=_routing_vram_gb,
-                                ),
-                                on_abandon=release,
+                                    # Budget scaled to THIS chunk (#1190) — the flat
+                                    # 300s here is what made long streamed renders fail
+                                    # even after the v0.3.22 scaled budget shipped.
+                                    timeout=_generate_timeout_s(
+                                        chunk_text,
+                                        engine=_backend,
+                                        execution_device=_routing["effective_device"],
+                                        min_vram_gb=_engine_min_vram_gb,
+                                        hardware_family=_routing_hardware_family,
+                                        vram_gb=_routing_vram_gb,
+                                    ),
+                                    on_abandon=release,
+                                )
                             )
-                        )
                         parts.append(raw)
                         # Provenance-mark the streamed copy off the GPU pool
                         # (#1169 mark, #1190 placement): CPU-only AudioSeal

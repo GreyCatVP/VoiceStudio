@@ -222,7 +222,7 @@ def test_the_sidecar_class_prepares_the_reference_and_trims_the_tail(monkeypatch
 
     sent = {}
 
-    def fake_generate(self, text, **kw):
+    def fake_generate_raw(self, text, kw):  # the transport, below the hooks
         sent.update(kw)
         return torch.zeros(1, 4800)
 
@@ -235,7 +235,7 @@ def test_the_sidecar_class_prepares_the_reference_and_trims_the_tail(monkeypatch
     # Patch the class the engine actually inherits from: other suites purge
     # `services` from sys.modules, so a fresh import of subprocess_backend
     # can be a different module than the one the engine subclassed.
-    monkeypatch.setattr(VoxCPM2SubprocessBackend.__bases__[0], "generate", fake_generate)
+    monkeypatch.setattr(VoxCPM2SubprocessBackend.__bases__[0], "_generate_raw", fake_generate_raw)
     monkeypatch.setattr(tts_backend, "_prepare_voxcpm_ref", lambda p: p + ".prepared.wav")
     monkeypatch.setattr(dsp, "trim_trailing_silence", fake_trim)
 

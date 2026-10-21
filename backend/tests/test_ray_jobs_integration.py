@@ -127,3 +127,39 @@ def test_supertonic3_installs_and_synthesizes_on_the_cluster():
     finally:
         ray_settings.save({"enabled": False, "auth_token": ""})
         runtime.shutdown()
+
+
+@pytest.mark.skipif("supertonic3" not in ENGINES, reason="set VS_RAY_TEST_ENGINES=supertonic3")
+def test_supertonic3_batch_renders_many_sentences_in_one_job(monkeypatch):
+    from core.db import init_db
+    from engines.supertonic3.backend import Supertonic3Backend
+    from services import subprocess_backend as sb
+    from services.ray_jobs import runtime
+    from services.ray_jobs import settings as ray_settings
+
+    init_db()
+    runtime.reopen_for_tests()
+    ray_settings.save({"enabled": True, "dashboard_url": URL, "engines": ["supertonic3"],
+                       "auth_token": os.environ.get("VS_RAY_TEST_TOKEN") or ""})
+    jobs = []
+    real = sb.SubprocessBackend._run_ray_job
+
+    def counting(self, cfg, task, **kw):
+        jobs.append(task.op)
+        return real(self, cfg, task, **kw)
+
+    monkeypatch.setattr(sb.SubprocessBackend, "_run_ray_job", counting)
+    try:
+        backend = Supertonic3Backend()
+        assert backend.has_native_batch
+        texts = ["The first sentence.", "A second one, a little longer.", "And the third."]
+        started = time.monotonic()
+        out = backend.generate_batch(texts, language="en")
+        took = time.monotonic() - started
+        assert jobs == ["batch"]  # one job for all three
+        assert len(out) == 3 and all(float(a.abs().max()) > 0.01 for a in out)
+        print(f"3 sentences in one job: {took:.1f}s")
+    finally:
+        ray_settings.save({"enabled": False, "auth_token": ""})
+        runtime.shutdown()
+        runtime.reopen_for_tests()

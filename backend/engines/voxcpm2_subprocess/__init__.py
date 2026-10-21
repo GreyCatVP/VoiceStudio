@@ -100,16 +100,19 @@ class VoxCPM2SubprocessBackend(SubprocessBackend):
 
         return VoxCPM2Backend.supported_languages.fget(self)
 
-    def generate(self, text: str, **kw) -> "torch.Tensor":
-        # The same preparation and finishing as VoxCPM2Backend.generate: the
-        # reference clip is trimmed and capped here (the model no longer does
-        # it), and the output's long silent tail is cut.
-        self._check_language(kw.get("language"))
-        from services.audio_dsp import trim_trailing_silence
+    # The same preparation and finishing as VoxCPM2Backend.generate: the
+    # reference clip is trimmed and capped here (the model no longer does it),
+    # and the output's long silent tail is cut. As hooks, so a batched render
+    # (Ray) prepares and finishes every utterance the same way.
+    def _prepare_generate_kwargs(self, text: str, kw: dict) -> dict:
         from services.tts_backend import prepare_voxcpm_reference
 
         prepare_voxcpm_reference(kw)
-        wav = super().generate(text, **kw)
+        return kw
+
+    def _finish_generate(self, wav: "torch.Tensor") -> "torch.Tensor":
+        from services.audio_dsp import trim_trailing_silence
+
         return trim_trailing_silence(wav, self.sample_rate)
 
 

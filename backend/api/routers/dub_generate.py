@@ -20,7 +20,7 @@ from schemas.requests import DubRequest
 from services.model_manager import _gpu_pool, executor_for_backend, run_on_gpu_pool_guarded
 from services.srt_parser import vouch_cue_source
 from services.tts_backend import (
-    TTSBackend, active_backend_id, ensure_active_engine_licence, resolve_generation_backend,
+    active_backend_id, ensure_active_engine_licence, resolve_generation_backend,
 )
 from services.dub_batching import batch_timeout_s, native_batch_width
 from services.audio_dsp import apply_mastering, normalize_audio, apply_effects_chain, get_effect_chain
@@ -804,10 +804,8 @@ async def dub_generate(job_id: str, req: DubRequest):
         _t_tts = 0.0
         _batched_audio: dict[int, torch.Tensor] = {}
         _profile_row_cache: dict[str, object | None] = {}
-        _has_native_batch = (
-            getattr(type(backend), "generate_batch", TTSBackend.generate_batch)
-            is not TTSBackend.generate_batch
-        )
+        from services.tts_backend import has_native_batch
+        _has_native_batch = has_native_batch(backend)
         _native_batch_width = native_batch_width(backend) if _has_native_batch else 1
 
         def _segment_generation_args(index, segment) -> dict:

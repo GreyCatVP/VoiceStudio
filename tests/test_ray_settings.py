@@ -404,3 +404,125 @@ def test_lane_timeouts_explain_the_cluster_not_local_vram(monkeypatch):
     with pytest.raises(TimeoutError, match="Ray cluster"):
         asyncio.run(go())
     release.set()
+
+
+# -- batching: one job (one model load) for many utterances -------------------
+
+def _batch_reply(n, sr=48000):
+    pcm = base64.b64encode(np.full(4, 0.25, dtype="<i2").tobytes()).decode()
+    return {"op": "batch", "results": [{"op": "audio", "audio_pcm_b64": pcm, "sample_rate": sr}] * n}
+
+
+def test_generate_batch_sends_one_job_with_deduped_inputs_and_per_item_seeds(ray_backend, tmp_path):
+    backend, calls, reply = ray_backend
+    ref = tmp_path / "ref.wav"
+    ref.write_bytes(b"RIFF-same")
+    reply["value"] = _batch_reply(3)
+    out = backend.generate_batch(["a", "b", "c"], ref_audio=str(ref), language="en", seed=[1, None, 3])
+    assert len(out) == 3 and all(t.shape == (1, 4) for t in out)
+    (call,) = calls
+    task = call["task"]
+    assert task.op == "batch" and task.params["call"] == "synthesize"
+    assert list(task.inputs) == ["ref_audio__0.wav"]  # one copy for three items
+    items = task.params["items"]
+    assert [i["text"] for i in items] == ["a", "b", "c"]
+    assert all(i["ref_audio"] == "@ref_audio__0" for i in items)
+    assert items[0]["seed"] == 1 and "seed" not in items[1] and items[2]["seed"] == 3
+    assert "audio_format" not in items[0]  # s16 for batches: half the bytes
+
+
+def test_generate_batch_surfaces_a_failed_item_like_a_sidecar_error(ray_backend):
+    backend, _, reply = ray_backend
+    reply["value"] = {"op": "batch", "results": [_batch_reply(1)["results"][0],
+                                                 {"op": "error", "stage": "engine", "message": "boom"}]}
+    with pytest.raises(RuntimeError, match="sidecar engine error: boom"):
+        backend.generate_batch(["a", "b"])
+
+
+def test_native_batch_is_only_claimed_when_routed_and_hooks_carry_the_engine_logic(ray_backend, rs):
+    from services import subprocess_backend as sb
+
+    backend, _, _ = ray_backend
+    assert backend.has_native_batch and backend.native_batch_width_hint == 16
+
+    class OwnGenerate(type(backend)):
+        def generate(self, text, **kw):
+            return super().generate(text, **kw)
+
+    assert not OwnGenerate().has_native_batch  # arbitration-style engines stay per utterance
+    rs.save({"enabled": False})
+    assert not backend.has_native_batch and backend.native_batch_width_hint is None
+
+
+def test_batch_groups_respect_the_result_size_budget(monkeypatch):
+    from services import subprocess_backend as sb
+
+    items = [("x" * 800, {})] * 40
+    groups = sb._batch_groups(items, 48000)
+    assert sum(len(g) for g in groups) == 40
+    assert all(len(g) <= sb._RAY_BATCH_MAX_ITEMS for g in groups)
+    for g in groups:
+        est = sum(max(len(t) / sb._RAY_CHARS_PER_SECOND, 1.0) * 48000 * 2 for t, _ in g)
+        assert est <= sb._RAY_BATCH_MAX_BYTES or len(g) == 1
+
+
+def test_long_text_renders_through_one_generate_batch_call(monkeypatch):
+    import torch
+    gen = importlib.import_module("api.routers.generation")
+    seen = {}
+
+    class Batched:
+        sample_rate = 24000
+        batches_render_chunks = True
+        supports_generation_seed = True
+        applies_own_mastering = True
+
+        def generate(self, *a, **k):
+            raise AssertionError("per-chunk generate on a batched engine")
+
+        def generate_batch(self, texts, **kw):
+            seen["texts"], seen["seed"] = texts, kw.get("seed")
+            return [torch.zeros(1, 2400) for _ in texts]
+
+    text = " ".join(["This is a sentence that keeps going for a while."] * 60)
+    gen._run_backend_inference(Batched(), text, "en", None, None, None, None, 8, 2.0, 1.0,
+                               False, False, 7, effect_preset="raw")
+    assert len(seen["texts"]) > 1 and seen["seed"] == [7 + i for i in range(len(seen["texts"]))]
+
+
+def test_dub_batch_width_follows_the_engine_hint_not_the_local_gpu():
+    from services.dub_batching import native_batch_width
+
+    class Hinted:
+        native_batch_width_hint = 16
+
+    assert native_batch_width(Hinted()) == 16
+
+
+def test_audiobook_batches_missing_spans_and_caches_each_one(monkeypatch):
+    import torch
+    from services import audiobook as ab
+
+    calls, stored = [], []
+
+    def synth(text, voice_id, speed=None):
+        raise AssertionError("per-chunk synth on a batched engine")
+
+    def batch(requests):
+        calls.append([t for t, _, _ in requests])
+        return [torch.ones(1, 100) for _ in requests]
+
+    synth.batch = batch
+
+    class Cache:
+        def load(self, span, nonce=None):
+            return torch.zeros(1, 50) if span.text == "cached line" else None
+
+        def store(self, span, audio, nonce=None):
+            stored.append(span.text)
+
+    spans = [ab.Span(text=t, voice_id=None) for t in ("first line", "cached line", "third line")]
+    audio, seconds = ab.synthesize_chapter(spans, synth, 1000, segment_cache=Cache())
+    assert calls == [["first line", "third line"]]  # one call, cache hit skipped
+    assert stored == ["first line", "third line"]
+    assert audio.shape[-1] == 100 + 50 + 100

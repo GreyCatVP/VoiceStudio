@@ -350,6 +350,63 @@ def _join_with_gap(parts: list, sample_rate: int, gap_ms: int):
     return concatenate_audio_chunks(out, sample_rate, crossfade_ms=0)
 
 
+#: Chunks per batch call: bounds what a cancellation discards and keeps
+#: progress moving; the engine splits further by its own size limits.
+BATCH_CHUNKS_PER_CALL = 32
+
+
+def _prerender_batched(spans, paragraphs_by_span, occs, synth_batch, sample_rate, *,
+                       crossfade_ms, paragraph_gap_ms, trim_edges, segment_cache):
+    """Render every cache-missing span through ``synth_batch``.
+
+    ``synth_batch([(text, voice_id, speed), ...])`` returns one tensor per
+    item, in order. Returns ``{span_index: audio_or_None}`` for the spans it
+    rendered (None: every chunk came back empty), storing each in the segment
+    cache as soon as it is complete, so an interrupted chapter resumes.
+    """
+    from core.render_trace import call as trace_call
+    from services.chunked_tts import join_rendered_chunks, split_text_into_chunks
+
+    plan = []  # (span_index, paragraph_chunks: [[text, ...], ...])
+    for index, (span, paragraphs) in enumerate(zip(spans, paragraphs_by_span)):
+        if not span.text:
+            continue
+        if segment_cache is not None and trace_call("cache", segment_cache.load, span, nonce=occs[index]) is not None:
+            continue  # the main loop loads it again; cheap and keeps one code path
+        plan.append((index, [split_text_into_chunks(p) for p in paragraphs]))
+    flat = [(index, p_i, c_i, text)
+            for index, para_chunks in plan
+            for p_i, chunks in enumerate(para_chunks)
+            for c_i, text in enumerate(chunks)]
+    rendered: dict = {}
+    remaining = {index: sum(len(c) for c in para_chunks) for index, para_chunks in plan}
+    out: dict = {}
+    for start in range(0, len(flat), BATCH_CHUNKS_PER_CALL):
+        _stop_if_abandoned()
+        group = flat[start:start + BATCH_CHUNKS_PER_CALL]
+        audios = trace_call("synthesis", synth_batch,
+                            [(text, spans[index].voice_id, spans[index].speed) for index, _, _, text in group])
+        for (index, p_i, c_i, _), audio in zip(group, audios):
+            rendered[(index, p_i, c_i)] = audio
+            remaining[index] -= 1
+            _note_chunk_done()
+        for index, para_chunks in plan:
+            if index in out or remaining[index] > 0:
+                continue
+            joined_paragraphs = []
+            for p_i, chunks in enumerate(para_chunks):
+                joined = join_rendered_chunks([rendered.pop((index, p_i, c_i)) for c_i in range(len(chunks))],
+                                              sample_rate, crossfade_ms=crossfade_ms, texts=chunks,
+                                              trim_edges=trim_edges)
+                if joined is not None:
+                    joined_paragraphs.append(joined)
+            audio = _join_with_gap(joined_paragraphs, sample_rate, paragraph_gap_ms)
+            if audio is not None and segment_cache is not None:
+                trace_call("cache", segment_cache.store, spans[index], audio, nonce=occs[index])
+            out[index] = audio
+    return out
+
+
 def synthesize_chapter(
     spans: list[Span],
     synth: Callable[[str, Optional[str], Optional[float]], "object"],
@@ -420,13 +477,33 @@ def synthesize_chapter(
     # gets a distinct cache slot — and therefore a distinct take — instead of
     # replaying one WAV. Always computed (cheap); inert when the cache ignores it.
     occ_counts: dict = {}
-    for span, paragraphs in zip(spans, paragraphs_by_span):
+    occs: list = []
+    for span in spans:
+        occ = None
         if span.text:
             occ_key = (span.voice_id, span.text, getattr(span, "speed", None))
             occ = occ_counts.get(occ_key, 0)
             occ_counts[occ_key] = occ + 1
-            audio = trace_call("cache", segment_cache.load, span, nonce=occ) if segment_cache is not None else None
-            if audio is None:
+        occs.append(occ)
+    # An engine that renders many utterances per call (a Ray job loads its
+    # model once) gets every missing span's chunks in a few batch calls; each
+    # span is still cached the moment its last chunk is back.
+    synth_batch = getattr(synth, "batch", None)
+    prerendered: dict = {}
+    if synth_batch is not None:
+        prerendered = _prerender_batched(
+            spans, paragraphs_by_span, occs, synth_batch, sample_rate,
+            crossfade_ms=crossfade_ms, paragraph_gap_ms=paragraph_gap_ms,
+            trim_edges=trim_edges, segment_cache=segment_cache,
+        )
+    for index, (span, paragraphs) in enumerate(zip(spans, paragraphs_by_span)):
+        if span.text:
+            occ = occs[index]
+            if index in prerendered:
+                audio = prerendered[index]
+            else:
+                audio = trace_call("cache", segment_cache.load, span, nonce=occ) if segment_cache is not None else None
+            if audio is None and index not in prerendered:
                 # A blank line inside one span is a paragraph break: render
                 # each paragraph on its own so the join can put a deliberate
                 # gap there instead of running the paragraphs together.

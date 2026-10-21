@@ -212,6 +212,19 @@ def _lease_render(method):
     return render
 
 
+def has_native_batch(backend) -> bool:
+    """Whether ``backend.generate_batch`` renders a batch in one go.
+
+    An engine may say so explicitly (``has_native_batch``: a Ray-routed
+    sidecar engine does, the same class running locally does not); otherwise
+    overriding ``generate_batch`` is the signal, as before.
+    """
+    explicit = getattr(backend, "has_native_batch", None)
+    if isinstance(explicit, bool):
+        return explicit
+    return getattr(type(backend), "generate_batch", TTSBackend.generate_batch) is not TTSBackend.generate_batch
+
+
 class TTSBackend(ABC):
     """Every TTS engine exposes the same surface, regardless of vendor."""
 

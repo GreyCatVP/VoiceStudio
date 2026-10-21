@@ -23,6 +23,11 @@ def native_batch_width(backend) -> int:
                 BATCH_WIDTH_ENV,
                 override,
             )
+    # An engine that renders elsewhere (a Ray cluster) knows its own width;
+    # this host's GPU is irrelevant to it.
+    hint = getattr(backend, "native_batch_width_hint", None)
+    if isinstance(hint, int) and not isinstance(hint, bool) and hint > 0:
+        return max(1, min(_MAX_BATCH_WIDTH, hint))
     try:
         from core.device_caps import detect_host_caps
 

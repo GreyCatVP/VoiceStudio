@@ -783,3 +783,30 @@ def test_sweep_deletes_old_finished_app_jobs_and_writebacks_but_keeps_failures()
     ex = RayJobsExecutor(RayJobsClient("https://ray.example", transport=httpx.MockTransport(handler)))
     assert asyncio.run(ex.sweep_finished()) == 2
     assert deleted == ["vs-a-1", "vs-a-3"]
+
+
+def test_worker_batch_runs_many_items_on_one_engine_process(tmp_path, monkeypatch):
+    from services.ray_jobs import engines, package
+
+    eng_dir = tmp_path / "engines" / "prog"
+    eng_dir.mkdir(parents=True)
+    (eng_dir / "main.py").write_text(PROGRESS_ENGINE)
+    monkeypatch.setattr(package, "ENGINES_DIR", tmp_path / "engines")
+    monkeypatch.setitem(engines.RAY_ENGINES, "prog", engines.RayEngine("prog", "prog", ("main.py",), "main.py", gpu=False))
+    task = {"v": 1, "op": "batch", "engine": "prog",
+            "params": {"call": "synthesize", "items": [{"text": "a", "ref_audio": "@ref_audio__0"}, {"text": "b"}]}}
+    proc, parsed = _run_worker(tmp_path / "job", task, {"ref_audio__0.wav": b"RIFF"})
+    assert proc.returncode == 0, proc.stderr
+    assert parsed.result["op"] == "batch" and len(parsed.result["results"]) == 2
+    assert all(r["op"] == "audio" for r in parsed.result["results"])
+    done = [p for p in parsed.progress if p["stage"] == "item_done"]
+    assert [d["message"] for d in done] == ["1/2", "2/2"]
+    # the engine started once for both items
+    assert sum(1 for p in parsed.progress if p["stage"] == "engine_start") == 1
+
+
+def test_worker_batch_refuses_unknown_input_references(tmp_path):
+    task = {"v": 1, "op": "batch", "engine": "_echo",
+            "params": {"call": "synthesize", "items": [{"text": "a", "ref_audio": "@nope"}]}}
+    proc, parsed = _run_worker(tmp_path, task)
+    assert proc.returncode == 1 and "missing input" in parsed.errors[-1]["message"]

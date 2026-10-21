@@ -483,12 +483,9 @@ async def _run_batch_pipeline_leased(job_id: str, job: dict, lease: voice_leases
         # batch. Keep the adapter seam optional: engines without a real batch
         # implementation inherit TTSBackend.generate_batch(), which preserves
         # the established one-segment behavior below.
-        from services.tts_backend import TTSBackend
+        from services.tts_backend import has_native_batch as _native
         batched_audio: dict[int, torch.Tensor] = {}
-        has_native_batch = (
-            backend is not None
-            and type(backend).generate_batch is not TTSBackend.generate_batch
-        )
+        has_native_batch = backend is not None and _native(backend)
         if has_native_batch:
             from services.text_normalization import normalize_for_tts
 
