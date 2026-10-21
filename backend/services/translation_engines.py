@@ -152,6 +152,9 @@ def _nllb_weights_probe() -> tuple[bool, str | None]:
     # Transformers being importable only proves the runtime exists.
     # The weights are a separate explicit model install; do not report
     # NLLB ready and let from_pretrained download 2.4 GB silently.
+    from services.subprocess_backend import ray_routed
+    if ray_routed("nllb"):  # weights live in the Ray cluster's cache
+        return True, None
     from api.routers.setup.models import cache_is_complete, is_cached
 
     model = {"repo_id": _NLLB_REPO_ID}

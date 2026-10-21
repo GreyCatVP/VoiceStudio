@@ -1070,3 +1070,33 @@ def test_placement_is_skipped_when_resources_are_unknown(payload):
     ex = RayJobsExecutor(RayJobsClient("https://ray.example", transport=httpx.MockTransport(
         lambda r: httpx.Response(200, json=payload))))
     asyncio.run(ex._check_placement(RayTask(op="x", engine="voxcpm2", num_gpus=1.0)))  # no refusal
+
+
+def test_worker_accepts_the_new_model_ops():
+    worker = _worker_module()
+    assert {"translate", "diarize", "separate"} <= worker.ENGINE_OPS
+
+
+def test_batch_budget_counts_every_field_not_only_audio(monkeypatch):
+    worker = _worker_module()
+    monkeypatch.setattr(worker, "BATCH_RESULT_BUDGET", 50)
+
+    class Engine:
+        class proc:
+            @staticmethod
+            def poll():
+                return None
+
+        def call(self, msg):
+            return {"op": "separated", "vocals_b64": "V" * 40, "bed_b64": "B" * 40}
+
+    out = worker._run_batch(Engine(), {"call": "separate", "items": [{"audio_path": "a"}, {"audio_path": "b"}]}, {})
+    assert out["truncated"] is True and len(out["results"]) == 1
+
+
+def test_install_env_prefers_uv_managed_python(monkeypatch, tmp_path):
+    worker = _worker_module()
+    monkeypatch.setenv("VS_RAY_CACHE", str(tmp_path))
+    assert worker._install_env()["UV_PYTHON_PREFERENCE"] == "only-managed"
+    monkeypatch.setenv("VS_RAY_PYTHON_PREFERENCE", "managed")  # a cluster without internet to python-build-standalone
+    assert worker._install_env()["UV_PYTHON_PREFERENCE"] == "managed"

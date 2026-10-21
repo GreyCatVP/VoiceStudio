@@ -50,6 +50,11 @@ EXPECTED_SIDECARS = {
     ENGINES / "moss_tts_nano_subprocess" / "main.py",
     ENGINES / "cosyvoice_subprocess" / "main.py",
     ENGINES / "supertonic3" / "sidecar.py",
+    # Ray-job sidecars (services/ray_jobs): same wire protocol, same rule.
+    ENGINES / "nllb" / "main.py",
+    ENGINES / "demucs" / "main.py",
+    ENGINES / "pyannote" / "main.py",
+    ENGINES / "omnivoice_ray" / "main.py",
 }
 
 

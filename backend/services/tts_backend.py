@@ -3853,6 +3853,13 @@ def _effective_backend_class(
         return getattr(module, sidecar[1]) if ray_routed(backend_id) else backend_cls
     if backend_id != "omnivoice":
         return backend_cls
+    from services.subprocess_backend import ray_routed
+    if ray_routed("omnivoice"):
+        # On the Ray cluster: the same sidecar class the MPS isolation uses,
+        # whose Ray branch sends each synthesis to the cluster.
+        from engines.omnivoice_subprocess import OmniVoiceMPSSubprocessBackend
+
+        return OmniVoiceMPSSubprocessBackend
     if host_family is None:
         from core.device_caps import detect_host_caps
 

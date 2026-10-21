@@ -28,9 +28,11 @@ own pins.
 """
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import sys
+import threading
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -65,29 +67,102 @@ class OmniVoiceSubprocessBackend(SubprocessBackend):
     max_ref_seconds = 20.0
     ref_strategy = "best_window"
 
-    def generate(self, text: str, **kw):
-        # The sidecar calls model.generate() directly, so it bypasses the
-        # in-process prompt cache where a whole-clip transcript on an over-long
-        # reference is dropped. Apply the same rule before the request leaves.
-        passage = None
-        audio = kw.get("ref_audio")
-        if isinstance(audio, str):
-            from services.tts_backend import omnivoice_inline_reference
+    def _ray_env(self) -> dict:
+        from services.model_manager import resolve_omnivoice_checkpoint
 
-            ref_text = kw.get("ref_text")
-            selected_audio, selected_text, passage = omnivoice_inline_reference(audio, ref_text)
-            if passage is not None:
-                kw["ref_audio"], kw["ref_text"] = selected_audio, selected_text
-            elif ref_text:
-                kw["ref_text"] = selected_text
+        checkpoint = resolve_omnivoice_checkpoint()
+        if os.path.isabs(checkpoint) or os.path.exists(checkpoint):
+            raise RuntimeError(
+                "OmniVoice on the Ray cluster needs a Hugging Face model id, not a local folder "
+                f"({checkpoint!r}); set OMNIVOICE_MODEL to a hub id or run OmniVoice locally."
+            )
+        if "/" not in checkpoint:  # not a hub id: the default checkpoint
+            from services.model_manager import _DEFAULT_OMNIVOICE_CHECKPOINT
+            checkpoint = _DEFAULT_OMNIVOICE_CHECKPOINT
+        return {"VS_OMNIVOICE_CHECKPOINT": checkpoint}  # already resolved: the cluster has no resolver
+
+    # -- reference handling -------------------------------------------------
+    # The sidecar calls model.generate() directly, so it bypasses the
+    # in-process prompt cache where a whole-clip transcript on an over-long
+    # reference is dropped. Apply the same rule before the request leaves.
+    # On the Ray cluster the sidecar runs no ASR either, so the transcript is
+    # resolved here too. As a hook, a Ray batch (one model load for a whole
+    # dub or chapter) prepares every utterance the same way.
+    def _prepare_generate_kwargs(self, text: str, kw: dict) -> dict:
+        audio = kw.get("ref_audio")
+        if not isinstance(audio, str):
+            return kw
+        state = self._ref_state()
+        from services.subprocess_backend import ray_routed
+        if not (kw.get("ref_text") or "").strip() and ray_routed(self.id):
+            if audio not in state["texts"]:
+                state["texts"][audio] = self._transcribe_reference(audio)
+            if state["texts"][audio]:
+                kw["ref_text"] = state["texts"][audio]
+        from services.tts_backend import omnivoice_inline_reference
+
+        ref_text = kw.get("ref_text")
+        selected_audio, selected_text, passage = omnivoice_inline_reference(audio, ref_text)
+        if passage is not None:
+            state["passages"].append(passage)
+            kw["ref_audio"], kw["ref_text"] = selected_audio, selected_text
+        elif ref_text:
+            kw["ref_text"] = selected_text
+        return kw
+
+    @staticmethod
+    def _transcribe_reference(audio: str):
+        from omnivoice.utils.audio import CLONE_REF_TEXT_MAX_SECONDS
+        from services.tts_backend import reference_duration_s
+
+        duration = reference_duration_s(audio)
+        if duration is not None and duration > CLONE_REF_TEXT_MAX_SECONDS:
+            return None
         try:
-            return super().generate(text, **kw)
+            # Default release policy: this runs in the API process, where the
+            # active ASR model may be shared with a dub or live dictation.
+            from services.asr_backend import transcribe_reference
+            return transcribe_reference(audio)
+        except Exception:  # noqa: BLE001 - the model copes without one
+            logger.warning("reference transcript resolution failed")
+            return None
+
+    def _ref_state(self) -> dict:
+        local = self.__dict__.setdefault("_ref_local", threading.local())
+        if not hasattr(local, "state"):
+            local.state = {"passages": [], "texts": {}, "depth": 0}
+        return local.state
+
+    @contextlib.contextmanager
+    def _reference_scope(self):
+        """Prepared passages live until the outermost render returns."""
+        state = self._ref_state()
+        state["depth"] += 1
+        try:
+            yield
         finally:
-            if passage is not None:
-                try:
-                    os.remove(passage)
-                except OSError:
-                    pass
+            state["depth"] -= 1
+            if state["depth"] == 0:
+                for passage in state["passages"]:
+                    try:
+                        os.remove(passage)
+                    except OSError:
+                        pass
+                state["passages"].clear()
+                state["texts"].clear()
+
+    @property
+    def has_native_batch(self) -> bool:
+        from services.subprocess_backend import ray_routed
+        return ray_routed(self.id)
+
+    def generate(self, text: str, **kw):
+        with self._reference_scope():
+            return super().generate(text, **kw)
+
+    def generate_batch(self, texts, **kw):
+        with self._reference_scope():
+            return super().generate_batch(texts, **kw)
 
     @classmethod
     def is_available(cls) -> tuple[bool, str]:
@@ -150,8 +225,10 @@ class OmniVoiceMPSSubprocessBackend(OmniVoiceSubprocessBackend):
 
     def generate(self, text: str, **kw):
         from services.model_manager import make_room_before_generate
+        from services.subprocess_backend import ray_routed
 
-        make_room_before_generate()
+        if not ray_routed(self.id):  # nothing loads here when it runs on Ray
+            make_room_before_generate()
         try:
             return super().generate(text, **kw)
         except RuntimeError as exc:

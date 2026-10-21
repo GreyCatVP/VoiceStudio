@@ -69,7 +69,7 @@ def test_save_round_trip_never_exposes_secrets(rs, ss):
     assert ss._test_secrets == {"ray_auth_token": "tok-SECRET", "ray_cf_access_client_secret": "cf-SECRET"}
     assert {e["id"] for e in state["available_engines"]} == {
         "supertonic3", "voxcpm2", "moss-tts-nano", "indextts2", "cosyvoice", "confucius4-tts", "moss-tts-v15", "dots-tts",
-        "faster-whisper-isolated"}
+        "faster-whisper-isolated", "nllb", "demucs", "pyannote", "omnivoice"}
     assert {e["id"]: e["kind"] for e in state["available_engines"]}["faster-whisper-isolated"] == "asr"
     # None leaves a secret alone, '' clears it
     rs.save({"auth_token": None})
@@ -96,7 +96,7 @@ def test_loopback_dashboard_may_use_http(rs):
 
 
 @pytest.mark.parametrize("changes", [
-    {"engines": ["omnivoice"]}, {"engines": ["_echo"]}, {"num_gpus": -1}, {"num_cpus": 1000},
+    {"engines": ["audiocpp-sortformer"]}, {"engines": ["_echo"]}, {"num_gpus": -1}, {"num_cpus": 1000},
     {"cache_dir": "relative/path"}, {"python": "python; rm -rf /"}, {"auth_token": "bad token"},
 ])
 def test_invalid_fields_are_refused(rs, ss, changes):
@@ -111,7 +111,7 @@ def test_route_for_requires_enabled_url_and_listed_engine(rs):
     rs.save({"enabled": True})
     assert rs.route_for("voxcpm2") is not None
     assert rs.route_for("supertonic3") is None  # not listed
-    assert rs.route_for("omnivoice") is None  # not portable (imports the backend)
+    assert rs.route_for("audiocpp-sortformer") is None  # a native binary: not on Ray
 
 
 def test_env_pins_url_and_token(rs, monkeypatch):
@@ -748,3 +748,304 @@ def test_asr_dispatch_uses_the_lane_and_a_cluster_budget_when_routed(ray_asr, mo
     assert d["executor"] is model_manager.get_ray_lane() and d["timeout"] >= asr_backend.RAY_ASR_TIMEOUT_S
     monkeypatch.setattr(asr_backend, "active_backend_id", lambda: "whisperx")
     assert asr_backend.ray_asr_dispatch("pool", 300) == {"executor": "pool", "timeout": 300}
+
+
+# -- phase 3: NLLB, Demucs, pyannote, OmniVoice, local alignment ---------------
+
+def test_phase3_engines_are_registered_with_locked_recipes():
+    from services.ray_jobs.engines import RAY_ENGINES, install_recipe
+
+    kinds = {e: RAY_ENGINES[e].kind for e in ("nllb", "demucs", "pyannote", "omnivoice")}
+    assert kinds == {"nllb": "translation", "demucs": "separation", "pyannote": "diarization", "omnivoice": "tts"}
+    for engine in kinds:
+        recipe = install_recipe(engine)
+        assert "torch==2.8.0+cu128" in recipe["cuda_args"] and "torch==2.8.0+cpu" in recipe["cpu_args"]
+    assert "torchaudio==2.8.0+cu128" in install_recipe("pyannote")["cuda_args"]
+
+
+def test_omnivoice_package_ships_its_inference_modules_only():
+    import io as _io
+    import zipfile as _zf
+    from services.ray_jobs.package import build_package
+
+    _, data, _ = build_package({"v": 1, "op": "synthesize", "engine": "omnivoice"}, {})
+    names = set(_zf.ZipFile(_io.BytesIO(data)).namelist())
+    assert {"engines/omnivoice_ray/main.py", "omnivoice/models/omnivoice.py", "omnivoice/utils/audio.py"} <= names
+    assert not any(n.startswith(("omnivoice/training", "omnivoice/eval", "services/")) for n in names)
+
+
+def test_extra_files_cannot_escape_their_base():
+    from services.ray_jobs.package import _extra_source
+
+    with pytest.raises(ValueError):
+        _extra_source("../omnivoice/../../etc/passwd")
+    with pytest.raises(ValueError):
+        _extra_source("../../etc/passwd")
+
+
+def _seg(i, text):
+    from types import SimpleNamespace
+    return SimpleNamespace(id=i, text=text, target_lang=None)
+
+
+def test_nllb_on_ray_keeps_order_blanks_and_per_row_errors(rs, monkeypatch):
+    from api.routers import dub_translate
+    from services.ray_jobs import jobs
+    from services.ray_jobs.executor import RayJobResult
+
+    sent = {}
+
+    def fake_run(engine_id, cfg, task, **kw):
+        sent["task"] = task
+        return RayJobResult("s", {"op": "translated", "groups": [
+            {"tgt": "tha_Thai", "texts": ["สวัสดี", "x"], "errors": [None, "too long"]},
+            {"tgt": "fra_Latn", "texts": ["Bonjour"], "errors": [None]}]}, [], 0.1)
+
+    monkeypatch.setattr(jobs, "run_engine_job", fake_run)
+    rows = [(0, _seg(0, "Hello"), "tha_Thai"), (1, _seg(1, " "), "tha_Thai"),
+            (2, _seg(2, "Long"), "tha_Thai"), (3, _seg(3, "Hi"), "fra_Latn")]
+    out = dub_translate._translate_nllb_on_ray(rs.load(), rows, "eng_Latn", {"num_beams": 5})
+    assert [r["id"] for r in out] == [0, 1, 2, 3]
+    assert out[0] == {"id": 0, "text": "สวัสดี"} and out[1] == {"id": 1, "text": " "}
+    assert out[2] == {"id": 2, "text": "Long", "error": "too long"} and out[3]["text"] == "Bonjour"
+    params = sent["task"].params
+    assert params["src"] == "eng_Latn" and params["decode_options"] == {"num_beams": 5}
+    assert [g["tgt"] for g in params["groups"]] == ["tha_Thai", "fra_Latn"]
+
+
+def test_nllb_job_failure_marks_every_row_like_a_load_error(rs, monkeypatch):
+    from api.routers import dub_translate
+    from services.ray_jobs import jobs
+
+    monkeypatch.setattr(jobs, "run_engine_job", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("cluster down")))
+    out = dub_translate._translate_nllb_on_ray(rs.load(), [(0, _seg(0, "Hello"), "tha_Thai")], "eng_Latn", {})
+    assert out[0]["text"] == "Hello" and out[0]["error"].startswith("Model load error")
+
+
+def test_nllb_readiness_does_not_need_local_weights_when_routed(rs):
+    from services import translation_engines
+
+    rs.save({"enabled": True, "dashboard_url": "https://ray.example.com", "engines": ["nllb"]})
+    assert translation_engines._nllb_weights_probe() == (True, None)
+
+
+def test_separation_windows_cover_the_track_with_context_pads():
+    from services.ray_jobs import separation as sep
+
+    sr = 1000
+    windows = sep._windows(int(300.5 * sr), sr)
+    assert windows[0][0] == 0 and windows[0][2] == 0  # no left pad at the start
+    cores = sum(b - a - pl - pr for a, b, pl, pr in windows)
+    assert cores == int(300.5 * sr)
+    assert all(pl <= sep.PAD_S * sr and pr <= sep.PAD_S * sr for _, _, pl, pr in windows)
+
+
+def test_separation_reassembles_windows_and_continues_after_truncation(rs, monkeypatch, tmp_path):
+    import base64 as _b64
+    import io as _io
+    import soundfile as sf
+    from services.ray_jobs import jobs, separation as sep
+    from services.ray_jobs.executor import RayJobResult
+
+    monkeypatch.setattr(sep, "WINDOW_S", 1.0)
+    monkeypatch.setattr(sep, "PAD_S", 0.25)
+    src = tmp_path / "in.wav"
+    sf.write(src, np.zeros((int(3.5 * 44100), 2), dtype="float32"), 44100)
+    calls = []
+
+    def fake_run(engine_id, cfg, task, **kw):
+        items = task.params["items"]
+        calls.append(len(items))
+        out = []
+        for item in items[:2]:  # the worker stops after two windows
+            frames = int(1.0 * 44100)
+            v, b = _io.BytesIO(), _io.BytesIO()
+            sf.write(v, np.full((frames, 2), 0.1, dtype="float32"), 44100, format="FLAC")
+            sf.write(b, np.full((frames, 2), 0.2, dtype="float32"), 44100, format="FLAC")
+            out.append({"op": "separated", "vocals_b64": _b64.b64encode(v.getvalue()).decode(),
+                        "bed_b64": _b64.b64encode(b.getvalue()).decode()})
+        return RayJobResult("s", {"op": "batch", "results": out, "truncated": len(items) > 2}, [], 0.1)
+
+    monkeypatch.setattr(jobs, "run_engine_job", fake_run)
+    progress = []
+    sep.separate_on_ray(rs.load(), str(src), str(tmp_path / "v.wav"), str(tmp_path / "b.wav"), on_progress=progress.append)
+    assert calls == [4, 2]
+    v, _ = sf.read(tmp_path / "v.wav", always_2d=True)
+    b, _ = sf.read(tmp_path / "b.wav", always_2d=True)
+    # Stereo stems, like the local CLI's.
+    assert v.shape == (4 * 44100, 2) and b.shape == (4 * 44100, 2) and progress[-1] == 1.0
+
+
+def test_ray_pyannote_pipeline_rebuilds_an_annotation_and_serves_phrase_embeddings(rs, monkeypatch, tmp_path):
+    import soundfile as sf
+    from services.ray_jobs import diarization, jobs
+    from services.ray_jobs.executor import RayJobResult
+
+    monkeypatch.setattr(diarization, "_local_bundle", lambda: {"config_path.yaml": b"c", "segmentation_path.bin": b"s",
+                                                               "embedding_path.bin": b"e"})
+    sent = {}
+
+    def fake_run(engine_id, cfg, task, **kw):
+        sent["task"] = task
+        return RayJobResult("s", {"op": "diarization", "turns": [
+            {"start": 0.0, "end": 1.0, "speaker": "SPEAKER_00"}, {"start": 1.2, "end": 2.0, "speaker": "SPEAKER_01"}],
+            "phrase_embeddings": [[1.0, 0.0], [0.0, 1.0]]}, [], 0.1)
+
+    monkeypatch.setattr(jobs, "run_engine_job", fake_run)
+    path = tmp_path / "a.wav"
+    sf.write(path, np.zeros(44100 * 2, dtype="float32"), 44100)
+    phrases = [{"start": 0.0, "end": 1.0, "text": "a"}, {"start": 1.2, "end": 2.0, "text": "b"},
+               {"start": 2.0, "end": 2.3, "text": "short"}]
+    pipe = diarization.RayPyannotePipeline(rs.load(), phrases=phrases)
+    ann = pipe(str(path), num_speakers=2)
+    assert sorted(ann.labels()) == ["SPEAKER_00", "SPEAKER_01"]
+    task = sent["task"]
+    assert set(task.inputs) == {"config_path.yaml", "segmentation_path.bin", "embedding_path.bin", "audio_path.ogg"}
+    assert task.params == {"num_speakers": 2, "phrases": [(0.0, 1.0), (1.2, 2.0)]}  # short phrase not embedded
+    assert list(pipe.phrase_embedding(1.2, 2.0)) == [0.0, 1.0] and pipe.phrase_embedding(2.0, 2.3) is None
+    assert not any("TOKEN" in k for k in task.env)
+
+
+def test_speaker_recovery_uses_precomputed_phrase_embeddings(monkeypatch):
+    dub_core = importlib.import_module("api.routers.dub_core")
+
+    class Pipe:
+        def phrase_embedding(self, start, end):
+            # two clearly separated voices, alternating
+            return np.array([1.0, 0.05] if int(start) % 2 == 0 else [0.05, 1.0])
+
+    phrases = [{"start": float(i), "end": float(i) + 0.9, "text": f"p{i}"} for i in range(6)]
+    segments = [{"start": float(i), "end": float(i) + 0.9, "text": f"p{i}", "speaker_id": "Speaker 1"} for i in range(6)]
+    out = dub_core._recover_from_phrase_embeddings(Pipe(), segments, phrases=phrases, requested_speakers=None,
+                                                   audio_target="unused.wav", segments=segments, words=[])
+    assert out is not None
+    recovered, separation = out
+    assert len({s["speaker_id"] for s in recovered}) == 2 and separation > 0.12
+
+
+def test_ray_asr_results_get_local_forced_alignment(monkeypatch, tmp_path):
+    from services import asr_backend, subprocess_asr as sa
+
+    monkeypatch.setattr(asr_backend, "_decode_audio_16k_mono", lambda p: "AUDIO")
+    seen = {}
+
+    def fake_align(segments, audio, lang):
+        seen["args"] = (audio, lang)
+        return [{**s, "start": s["start"] + 0.01} for s in segments]
+
+    monkeypatch.setattr(asr_backend, "forced_align", fake_align)
+    result = {"segments": [{"start": 1.0, "end": 2.0, "text": "hi"}], "language": "th", "chunks": []}
+    out = sa._align_locally(result, tmp_path / "x.wav")
+    assert seen["args"] == ("AUDIO", "th") and out["segments"][0]["start"] == 1.01
+    assert out["chunks"] == [{"text": "hi", "timestamp": (1.01, 2.0)}]
+    monkeypatch.setenv("OMNIVOICE_RAY_ASR_ALIGN", "0")
+    assert sa._align_locally(result, tmp_path / "x.wav") is result
+
+
+def test_omnivoice_routes_to_the_sidecar_class_and_sends_a_hub_checkpoint(rs, monkeypatch, tmp_path):
+    from engines.omnivoice_subprocess import OmniVoiceMPSSubprocessBackend
+    from services import model_manager, tts_backend
+
+    rs.save({"enabled": True, "dashboard_url": "https://ray.example.com", "engines": ["omnivoice"]})
+    assert tts_backend._effective_backend_class("omnivoice", object, host_family="cuda") is OmniVoiceMPSSubprocessBackend
+    monkeypatch.setattr(model_manager, "resolve_omnivoice_checkpoint", lambda: "k2-fsa/OmniVoice")
+    assert OmniVoiceMPSSubprocessBackend()._ray_env() == {"VS_OMNIVOICE_CHECKPOINT": "k2-fsa/OmniVoice"}
+    monkeypatch.setattr(model_manager, "resolve_omnivoice_checkpoint", lambda: str(tmp_path))
+    with pytest.raises(RuntimeError, match="Hugging Face model id"):
+        OmniVoiceMPSSubprocessBackend()._ray_env()
+    rs.save({"enabled": False})
+    assert tts_backend._effective_backend_class("omnivoice", object, host_family="cuda") is object
+
+
+def test_omnivoice_on_ray_resolves_the_reference_transcript_locally(rs, monkeypatch, tmp_path):
+    from engines.omnivoice_subprocess import OmniVoiceMPSSubprocessBackend
+    from services import asr_backend, subprocess_backend as sb, tts_backend
+
+    rs.save({"enabled": True, "dashboard_url": "https://ray.example.com", "engines": ["omnivoice"]})
+    ref = tmp_path / "ref.wav"
+    ref.write_bytes(b"RIFF")
+    monkeypatch.setattr(tts_backend, "reference_duration_s", lambda p: 5.0)
+    monkeypatch.setattr(tts_backend, "omnivoice_inline_reference", lambda a, t: (a, t, None))
+    calls = []
+    # Default release policy: the API process's ASR model may be shared.
+    monkeypatch.setattr(asr_backend, "transcribe_reference", lambda p, **kw: calls.append(kw) or "the words")
+    sent = {}
+    base = next(c for c in OmniVoiceMPSSubprocessBackend.__mro__ if "_generate_raw" in vars(c))
+    monkeypatch.setattr(base, "_generate_raw", lambda self, text, kw: sent.update(kw) or __import__("torch").zeros(1, 4))
+    OmniVoiceMPSSubprocessBackend().generate("hi", ref_audio=str(ref))
+    assert sent["ref_text"] == "the words"
+    assert calls == [{}]
+
+
+def test_omnivoice_on_ray_batches_with_one_transcript_and_drops_passages(rs, monkeypatch, tmp_path):
+    from engines.omnivoice_subprocess import OmniVoiceMPSSubprocessBackend
+    from services import asr_backend, tts_backend
+
+    rs.save({"enabled": True, "dashboard_url": "https://ray.example.com", "engines": ["omnivoice"]})
+    ref = tmp_path / "ref.wav"
+    ref.write_bytes(b"RIFF")
+    passage = tmp_path / "passage.wav"
+    monkeypatch.setattr(tts_backend, "reference_duration_s", lambda p: 5.0)
+
+    def inline(audio, text):
+        passage.write_bytes(b"RIFF")
+        return str(passage), text + " (passage)", str(passage)
+
+    monkeypatch.setattr(tts_backend, "omnivoice_inline_reference", inline)
+    calls = []
+    monkeypatch.setattr(asr_backend, "transcribe_reference", lambda p, **kw: calls.append(p) or "the words")
+    backend = OmniVoiceMPSSubprocessBackend.__new__(OmniVoiceMPSSubprocessBackend)
+    assert backend.has_native_batch
+    groups = []
+
+    def fake_batch(self, cfg, group):
+        assert passage.exists()  # alive while the job runs
+        groups.append(group)
+        return [__import__("torch").zeros(1, 4) for _ in group]
+
+    base = next(c for c in OmniVoiceMPSSubprocessBackend.__mro__ if "_generate_batch_via_ray" in vars(c))
+    monkeypatch.setattr(base, "_generate_batch_via_ray", fake_batch)
+    out = backend.generate_batch(["one", "two"], ref_audio=str(ref))
+    assert len(out) == 2 and calls == [str(ref)]
+    assert [kw["ref_text"] for group in groups for _text, kw in group] == ["the words (passage)"] * 2
+    assert not passage.exists()
+
+
+def test_ray_jobs_receive_the_callers_cancel_event(rs, monkeypatch, tmp_path):
+    import threading
+
+    import soundfile as sf
+    from services.ray_jobs import diarization, jobs, separation as sep
+    from services.ray_jobs.executor import RayJobResult
+
+    src = tmp_path / "in.wav"
+    sf.write(src, np.zeros((44100, 2), dtype="float32"), 44100)
+    seen = []
+
+    def fake_run(engine_id, cfg, task, **kw):
+        seen.append((engine_id, kw.get("cancelled")))
+        raise RuntimeError("stop here")
+
+    monkeypatch.setattr(jobs, "run_engine_job", fake_run)
+    monkeypatch.setattr(diarization, "_local_bundle", lambda: {"config_path.yaml": b"c", "segmentation_path.bin": b"s",
+                                                               "embedding_path.bin": b"e"})
+    cancel = threading.Event()
+    with pytest.raises(RuntimeError):
+        sep.separate_on_ray(rs.load(), str(src), str(tmp_path / "v.wav"), str(tmp_path / "b.wav"), cancelled=cancel)
+    with pytest.raises(RuntimeError):
+        diarization.RayPyannotePipeline(rs.load(), cancelled=cancel)(str(src))
+    assert seen == [("demucs", cancel), ("pyannote", cancel)]
+
+
+def test_ray_diarization_without_the_local_bundle_reports_missing(rs, monkeypatch):
+    from api.routers import dub_core
+    from services.model_manager import DIARIZATION_ERR_MISSING
+    from services.ray_jobs import diarization
+
+    rs.save({"enabled": True, "dashboard_url": "https://ray.example.com", "engines": ["pyannote"]})
+    monkeypatch.setattr(dub_core, "_ensure_diarisation_accepted", lambda: None)
+    monkeypatch.setattr(diarization, "bundle_installed", lambda: False)
+    assert dub_core._diarization_pipeline_checked() == (None, DIARIZATION_ERR_MISSING)
+    monkeypatch.setattr(diarization, "bundle_installed", lambda: True)
+    pipe, err = dub_core._diarization_pipeline_checked()
+    assert err is None and isinstance(pipe, diarization.RayPyannotePipeline)

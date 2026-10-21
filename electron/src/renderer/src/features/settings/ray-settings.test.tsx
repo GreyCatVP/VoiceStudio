@@ -17,7 +17,7 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 vi.mock('sonner', () => ({ toast: { success: mock.success, error: mock.error, info: mock.info } }));
 
-import { RaySettings, type RayConfig } from './ray-settings';
+import { RaySettings, type RayConfig, type RayEngineKind } from './ray-settings';
 
 afterEach(() => {
   cleanup();
@@ -122,6 +122,52 @@ it('groups engines into text to speech and speech recognition', async () => {
       body: JSON.stringify({ engines: ['voxcpm2'] }),
     }),
   );
+});
+
+it('puts translation, diarization and separation engines in their own groups', async () => {
+  renderSettings({
+    engines: ['pyannote'],
+    available_engines: [
+      { id: 'omnivoice', gpu: true, kind: 'tts' },
+      { id: 'faster-whisper-isolated', gpu: true, kind: 'asr' },
+      { id: 'nllb', gpu: true, kind: 'translation' },
+      { id: 'pyannote', gpu: true, kind: 'diarization' },
+      { id: 'demucs', gpu: true, kind: 'separation' },
+      // A kind this build does not know yet still counts as text to speech.
+      { id: 'future-engine', gpu: false, kind: 'something-new' as RayEngineKind },
+    ],
+  });
+  await screen.findByRole('group', { name: 'settings.ray_engines_group_tts' });
+
+  const ids = (group: HTMLElement) =>
+    within(group)
+      .getAllByRole('checkbox')
+      .map((box) => box.closest('label')?.querySelector('.font-mono')?.textContent);
+  // Settings rows are groups too; keep only the per-kind engine groups, in page order.
+  const groups = screen
+    .getAllByRole('group')
+    .filter((group) => group.getAttribute('aria-labelledby')?.startsWith('ray-engines-'));
+  expect(groups.map((group) => group.getAttribute('aria-labelledby'))).toEqual([
+    'ray-engines-tts',
+    'ray-engines-asr',
+    'ray-engines-translation',
+    'ray-engines-diarization',
+    'ray-engines-separation',
+  ]);
+  const [tts, , translation, diarization, separation] = groups;
+  expect(ids(tts)).toEqual(['omnivoice', 'future-engine']);
+  expect(tts).not.toHaveAttribute('aria-describedby');
+  for (const [group, kind, id] of [
+    [translation, 'translation', 'nllb'],
+    [diarization, 'diarization', 'pyannote'],
+    [separation, 'separation', 'demucs'],
+  ] as const) {
+    expect(group).toHaveAccessibleName(`settings.ray_engines_group_${kind}`);
+    expect(ids(group)).toEqual([id]);
+    expect(group).toHaveAccessibleDescription(`settings.ray_engines_${kind}_hint`);
+  }
+  expect(within(diarization).getByRole('checkbox')).toBeChecked();
+  expect(within(separation).getByRole('checkbox')).not.toBeChecked();
 });
 
 it('hides the text-to-speech group when only speech recognition engines exist', async () => {

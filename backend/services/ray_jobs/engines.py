@@ -21,7 +21,7 @@ class RayEngine:
     entry: str  # sidecar script, one of ``files``
     gpu: bool  # needs a GPU share on the cluster
     env: Tuple[Tuple[str, str], ...] = ()  # non-secret env the sidecar needs
-    kind: str = "tts"  # "tts" | "asr"
+    kind: str = "tts"  # "tts" | "asr" | "translation" | "diarization" | "separation"
     # (arcname, path under backend/) shipped at the package root: stdlib-only
     # backend modules a sidecar imports.
     extra_files: Tuple[Tuple[str, str], ...] = ()
@@ -29,6 +29,58 @@ class RayEngine:
     # derived by install_recipe, minus "key").
     recipe: Optional[Dict[str, Any]] = None
 
+
+# NLLB translation (dub): the app's locked versions; weights download on the
+# cluster from the pinned revision (not gated).
+_NLLB_RECIPE: Dict[str, Any] = {
+    "venv_args": ["--python", "3.11"],
+    "install_args": ["transformers==5.15.1", "tokenizers==0.22.2", "sentencepiece==0.2.2", "safetensors==0.8.0",
+                     "huggingface_hub==1.28.0", "numpy==2.2.6"],
+    "torch_pins": ["torch==2.8.0"],
+    "probe_code": "import torch, sentencepiece; from transformers import AutoModelForSeq2SeqLM, AutoTokenizer",
+    "install_revision": "ray-nllb-v1",
+}
+
+# Demucs separation (dub ingest): htdemucs via the Python API, no ffmpeg needed.
+_DEMUCS_RECIPE: Dict[str, Any] = {
+    "venv_args": ["--python", "3.11"],
+    "install_args": ["demucs==4.1.0", "soundfile==0.14.0", "numpy==2.2.6", "huggingface_hub==1.28.0",
+                     "sphn==0.2.1", "safetensors==0.8.0", "pyyaml==6.0.3"],
+    "torch_pins": ["torch==2.8.0"],
+    "probe_code": "import demucs.api, demucs.hf, soundfile, torch, yaml",
+    "install_revision": "ray-demucs-v1",
+}
+
+# pyannote 3.1 diarization (dub): the app's locked stack. The gated checkpoints
+# are NOT downloaded on the cluster: each job carries the user's local copies.
+_PYANNOTE_RECIPE: Dict[str, Any] = {
+    "venv_args": ["--python", "3.11"],
+    "install_args": ["pyannote-audio==3.4.0", "pyannote-core==5.0.0", "pyannote-pipeline==3.0.1",
+                     "pyannote-database==5.1.3", "pyannote-metrics==3.2.1", "speechbrain==1.1.0",
+                     "lightning==2.6.6", "pytorch-lightning==2.6.6", "torchmetrics==1.9.0",
+                     "pytorch-metric-learning==2.9.0", "torch-audiomentations==0.12.0",
+                     "asteroid-filterbanks==0.4.0", "omegaconf==2.3.1", "huggingface_hub==1.28.0",
+                     "soundfile==0.14.0", "numpy==2.2.6", "pyyaml==6.0.3", "scikit-learn==1.9.0"],
+    "torch_pins": ["torch==2.8.0", "torchaudio==2.8.0"],  # pyannote 3.4 needs torchaudio < 2.9
+    "probe_code": "import torch, soundfile, yaml; from pyannote.audio import Pipeline",
+    "install_revision": "ray-pyannote-v1",
+}
+
+# OmniVoice, VoiceStudio's own TTS: the repo's inference modules ship with the
+# job; the checkpoint downloads on the cluster (not gated).
+_OMNIVOICE_FILES = tuple((f"omnivoice/{n}", f"../omnivoice/{n}") for n in (
+    "__init__.py", "models/__init__.py", "models/omnivoice.py", "utils/__init__.py", "utils/audio.py",
+    "utils/dtype.py", "utils/duration.py", "utils/lang_map.py", "utils/text.py", "utils/voice_design.py"))
+_OMNIVOICE_RECIPE: Dict[str, Any] = {
+    "venv_args": ["--python", "3.11"],
+    "install_args": ["transformers==5.15.1", "accelerate==1.14.0", "tokenizers==0.22.2", "sentencepiece==0.2.2",
+                     "safetensors==0.8.0", "huggingface_hub==1.28.0", "numpy==2.2.6", "soundfile==0.14.0",
+                     "pydub==0.25.1", "zhconv==1.4.3", "zhon==2.1.1", "unidecode==1.4.0", "tqdm==4.70.0"],
+    "torch_pins": ["torch==2.8.0", "torchaudio==2.8.0"],
+    "probe_code": ("import sys; sys.path.insert(0, {workdir_repr}); "
+                   "import torch, torchaudio, transformers; from omnivoice.models.omnivoice import OmniVoice"),
+    "install_revision": "ray-omnivoice-v1",
+}
 
 # The isolated faster-whisper sidecar imports these (cudnn8/device_caps are
 # optional, execstack is not); all stdlib-only.
@@ -66,6 +118,13 @@ RAY_ENGINES: Dict[str, RayEngine] = {
     "confucius4-tts": RayEngine("confucius4-tts", "confucius4", ("main.py",), "main.py", gpu=True),
     "moss-tts-v15": RayEngine("moss-tts-v15", "moss_tts_v15", ("main.py",), "main.py", gpu=True),
     "dots-tts": RayEngine("dots-tts", "dots_tts", ("main.py",), "main.py", gpu=True),
+    "demucs": RayEngine("demucs", "demucs", ("main.py",), "main.py", gpu=True, kind="separation",
+                        recipe=_DEMUCS_RECIPE),
+    "pyannote": RayEngine("pyannote", "pyannote", ("main.py",), "main.py", gpu=True, kind="diarization",
+                          recipe=_PYANNOTE_RECIPE),
+    "omnivoice": RayEngine("omnivoice", "omnivoice_ray", ("main.py",), "main.py", gpu=True, kind="tts",
+                           extra_files=_OMNIVOICE_FILES, recipe=_OMNIVOICE_RECIPE),
+    "nllb": RayEngine("nllb", "nllb", ("main.py",), "main.py", gpu=True, kind="translation", recipe=_NLLB_RECIPE),
     # ASR used by dubbing: the crash-isolated faster-whisper sidecar.
     "faster-whisper-isolated": RayEngine(
         "faster-whisper-isolated", "_asr_sidecar", ("main.py",), "main.py", gpu=True, kind="asr",

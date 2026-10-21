@@ -1115,16 +1115,25 @@ CLONE_SKIP_HEURISTIC_MSG = (
 )
 
 
-def _diarization_pipeline_checked():
+def _diarization_pipeline_checked(phrases: Optional[list] = None, cancelled=None):
     """``get_diarization_pipeline(return_error=True)`` behind licence acceptance.
 
     An unaccepted selected model returns ``(None, detail)`` with the typed
     ``model_licence_required`` detail instead of loading it (#2689).
+    Ray-routed pyannote returns a cluster-backed pipeline (nothing loads here);
+    ``phrases`` lets its job also embed the ASR phrases for speaker recovery.
     """
     try:
         _ensure_diarisation_accepted()
     except ModelLicenceNotAccepted as exc:
         return None, exc.detail()
+    from services.ray_jobs.diarization import RayPyannotePipeline, bundle_installed, routed
+    ray_cfg = routed()
+    if ray_cfg is not None:
+        if not bundle_installed():  # the job ships these files: say so like the local path
+            from services.model_manager import DIARIZATION_ERR_MISSING
+            return None, DIARIZATION_ERR_MISSING
+        return RayPyannotePipeline(ray_cfg, phrases=phrases, cancelled=cancelled), None
     return get_diarization_pipeline(return_error=True)
 
 
@@ -1177,9 +1186,11 @@ def _recover_from_phrase_embeddings(
     requested = int(requested_speakers) if requested_speakers else 2
     if requested != 2:
         return None
+    # A cluster-backed pipeline embedded the phrases in its own job.
+    precomputed = getattr(diar_pipe, "phrase_embedding", None)
     embedding = getattr(diar_pipe, "_embedding", None)
     audio = getattr(diar_pipe, "_audio", None)
-    if embedding is None or audio is None:
+    if precomputed is None and (embedding is None or audio is None):
         return None
     try:
         import numpy as np
@@ -1191,11 +1202,16 @@ def _recover_from_phrase_embeddings(
         for phrase in usable_phrases:
             start, end = float(phrase["start"]), float(phrase["end"])
             duration = end - start
-            waveform, _ = audio.crop(
-                audio_target, _PyannoteSegment(start, end),
-                duration=duration, mode="pad",
-            )
-            vector = np.asarray(embedding(waveform[None])).reshape(-1)
+            if precomputed is not None:
+                vector = precomputed(start, end)
+                if vector is None:
+                    return None
+            else:
+                waveform, _ = audio.crop(
+                    audio_target, _PyannoteSegment(start, end),
+                    duration=duration, mode="pad",
+                )
+                vector = np.asarray(embedding(waveform[None])).reshape(-1)
             if not np.isfinite(vector).all():
                 return None
             vectors.append(vector)
@@ -1640,6 +1656,10 @@ async def dub_transcribe_stream(
         # that narrow case these phrase spans give its own WeSpeaker embedding
         # model clean candidate utterances for a conservative recovery pass.
         asr_phrase_segments: list[dict] = []
+        # Stops a Ray-routed diarization job on abort or disconnect (the lane
+        # thread has no request scope of its own).
+        import threading as _threading
+        _ray_cancel = _threading.Event()
         detected_lang = None
         next_seg_id = 0
         chunk_errors: list[str] = []
@@ -1972,7 +1992,7 @@ async def dub_transcribe_stream(
             err_sentinel = None
             if asr_speaker_turns:
                 if num_speakers:
-                    diar_pipe, err_sentinel = _diarization_pipeline_checked()
+                    diar_pipe, err_sentinel = _diarization_pipeline_checked(phrases=asr_phrase_segments, cancelled=_ray_cancel)
                 if not diar_pipe:
                     return _use_turns(err_sentinel=err_sentinel)
                 logger.info(
@@ -1981,7 +2001,7 @@ async def dub_transcribe_stream(
                     num_speakers, len(asr_speaker_turns),
                 )
             else:
-                diar_pipe, err_sentinel = _diarization_pipeline_checked()
+                diar_pipe, err_sentinel = _diarization_pipeline_checked(phrases=asr_phrase_segments, cancelled=_ray_cancel)
             if not diar_pipe and isinstance(err_sentinel, dict):
                 # The selected diarisation model's licence is not accepted
                 # (#2689): no model ran; say so with the typed payload so the
@@ -2151,9 +2171,18 @@ async def dub_transcribe_stream(
                     "heuristic",
                 )
 
-        fut_diar = loop.run_in_executor(_gpu_pool, lambda: _asr_work.run(_diarize))
-        async for _ping in _ping_while(fut_diar):
-            yield _ping
+        from services.model_manager import get_ray_lane
+        from services.ray_jobs.diarization import routed as _ray_diar_routed
+        fut_diar = loop.run_in_executor(get_ray_lane() if _ray_diar_routed() else _gpu_pool,
+                                        lambda: _asr_work.run(_diarize))
+        try:
+            async for _ping in _ping_while(fut_diar):
+                if job.get("aborted") or task_manager.is_cancelled(job_id):
+                    _ray_cancel.set()
+                yield _ping
+        except BaseException:
+            _ray_cancel.set()  # client gone / generator closed: stop the cluster job
+            raise
         final_segs, diar_warning, labels_source = fut_diar.result()
         if job.get("aborted") or task_manager.is_cancelled(job_id):
             yield _sse_event("aborted", {})
@@ -2617,7 +2646,9 @@ async def dub_transcribe(job_id: str, num_speakers: Optional[int] = None):
         except Exception as e:
             logger.warning("onset alignment skipped: %s", e)
 
-        diar_pipe = get_diarization_pipeline()
+        from services.ray_jobs.diarization import RayPyannotePipeline, routed as _ray_diar_routed
+        _ray_diar = _ray_diar_routed()
+        diar_pipe = RayPyannotePipeline(_ray_diar) if _ray_diar is not None else get_diarization_pipeline()
         if diar_pipe:
             try:
                 diar_target = job.get("vocals_path") or job.get("audio_path")

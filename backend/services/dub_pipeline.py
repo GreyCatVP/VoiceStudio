@@ -1445,6 +1445,57 @@ def parse_vtt_segments(vtt_path: str) -> list[dict]:
     return segments
 
 
+class _RayDone(Exception):
+    """Control flow: the Ray branch produced the stems; skip the local CLI."""
+
+
+async def _separate_on_ray_events(ray_cfg, src: str, vocals_out: str, bed_out: str):
+    """Run Ray separation in a thread; yield demucs_progress events as it goes.
+
+    Cancelling the consumer (job cancel / client gone) stops the cluster job."""
+    import threading
+
+    from services.ray_jobs.separation import separate_on_ray
+
+    loop = asyncio.get_running_loop()
+    queue: asyncio.Queue = asyncio.Queue()
+    cancelled = threading.Event()
+
+    def report(fraction: float) -> None:
+        loop.call_soon_threadsafe(queue.put_nowait, int(round(100 * fraction)))
+
+    def work() -> None:
+        separate_on_ray(ray_cfg, src, vocals_out, bed_out, on_progress=report, cancelled=cancelled)
+
+    from services.model_manager import get_ray_lane
+    task = loop.run_in_executor(get_ray_lane(), work)
+    last = -1
+    getter = None
+    try:
+        while True:
+            getter = asyncio.ensure_future(queue.get())
+            done, _ = await asyncio.wait({task, getter}, return_when=asyncio.FIRST_COMPLETED)
+            if getter in done:
+                pct = max(0, min(100, getter.result()))
+                if pct != last:
+                    last = pct
+                    yield prep_event("demucs_progress", percent=pct)
+            else:
+                getter.cancel()
+            if task in done:
+                task.result()  # raise the job's error into the fallback path
+                return
+    except BaseException:
+        cancelled.set()
+        raise
+    finally:
+        if getter is not None and not getter.done():
+            getter.cancel()
+        # A cancelled run still finishes stopping its job in the thread; keep
+        # its outcome retrieved so it never surfaces as an unhandled error.
+        task.add_done_callback(lambda f: f.cancelled() or f.exception())
+
+
 async def ingest_pipeline(
     job_id: str,
     job_dir: str,
@@ -1707,7 +1758,15 @@ async def ingest_pipeline(
             scene_cuts: list = []
 
             yield prep_event("demucs_start")
+            from services.ray_jobs.settings import route_for as _ray_route_for
+            _ray_demucs = _ray_route_for("demucs")
             try:
+                if _ray_demucs is not None:
+                    # On the Ray cluster: lossless windows, VRAM freed per job.
+                    async for evt in _separate_on_ray_events(_ray_demucs, audio_hq_path or audio_path,
+                                                             vocals_path, no_vocals_path):
+                        yield evt
+                    raise _RayDone()
                 demucs_cmd = [sys.executable, "-m", "demucs.separate",
                               "--two-stems", "vocals", "-n", "htdemucs", "-d", get_best_device(),
                               audio_hq_path or audio_path, "-o", job_dir]
@@ -1742,6 +1801,8 @@ async def ingest_pipeline(
                     shutil.rmtree(os.path.join(job_dir, "htdemucs"), ignore_errors=True)
             except asyncio.CancelledError:
                 raise
+            except _RayDone:
+                pass
             except Exception as e:
                 logger.warning("Demucs failed for %s, falling back to mixed audio: %s", log_safe(job_id), log_safe(e))
                 # plan-04: surface the degradation (job continues with mixed audio).

@@ -86,6 +86,26 @@ def _merge_pieces(results: list, offsets: list) -> dict:
             "text": " ".join((s.get("text") or "").strip() for s in segments).strip()}
 
 
+def _align_locally(result: dict, path) -> dict:
+    """wav2vec2 forced alignment here, as WhisperX and the MLX backend do:
+    the cluster's faster-whisper word times are +/-100-300 ms, the aligner's
+    +/-10-30 ms, and lip-sync depends on them. Never fails a transcript."""
+    if os.environ.get("OMNIVOICE_RAY_ASR_ALIGN", "1") == "0" or not result.get("segments"):
+        return result
+    try:
+        from services.asr_backend import _decode_audio_16k_mono, forced_align
+        aligned = forced_align(result["segments"], _decode_audio_16k_mono(str(path)), result.get("language") or "en")
+    except Exception as exc:  # noqa: BLE001
+        logger.info("local forced alignment skipped: %s", exc)
+        return result
+    if aligned is result["segments"]:
+        return result
+    result = dict(result, segments=aligned)
+    result["chunks"] = [{"text": seg.get("text", ""), "timestamp": (seg.get("start"), seg.get("end"))}
+                        for seg in aligned]
+    return result
+
+
 def _clip_groups(paths: list) -> list:
     groups: list = [[]]
     size = 0
@@ -240,9 +260,10 @@ class SubprocessASRBackend(SubprocessBackend):
         if result.result.get("op") != "batch" or not isinstance(replies, list) or len(replies) != len(paths):
             raise RuntimeError(f"{self.id} Ray batch returned a malformed result")
         out = []
-        for reply in replies:
+        for path, reply in zip(paths, replies):
             try:
-                out.append(self._normalise_reply(reply if isinstance(reply, dict) else {}))
+                result = self._normalise_reply(reply if isinstance(reply, dict) else {})
+                out.append(_align_locally(result, path) if word_timestamps else result)
             except RuntimeError as exc:
                 if not return_exceptions:
                     raise

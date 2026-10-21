@@ -897,6 +897,10 @@ class SubprocessBackend(TTSBackend):
             "[%s] health check failed: %s", self.id, scrub_text(str(message))[:_STDERR_TAIL_CHARS]
         )
 
+    def _ray_env(self) -> dict:
+        """Non-secret env a Ray job of this engine needs (e.g. a model id)."""
+        return {}
+
     # Parameters that carry a local file path; their bytes ship with a Ray job.
     ray_file_params: tuple[str, ...] = ("ref_audio", "emo_audio_prompt")
 
@@ -946,7 +950,7 @@ class SubprocessBackend(TTSBackend):
         timeout = _RAY_INSTALL_ALLOWANCE_S + 2 * idle
         task = RayTask(
             op="synthesize", engine=self.id, params=params, inputs=inputs, install=recipe,
-            env=dict(engine.env) if engine else {},
+            env={**(dict(engine.env) if engine else {}), **self._ray_env()},
             num_gpus=(ray_cfg.num_gpus or None) if engine and engine.gpu else None,
             num_cpus=ray_cfg.num_cpus,
         )
@@ -1015,7 +1019,7 @@ class SubprocessBackend(TTSBackend):
         idles = [self._effective_recv_timeout_s(text) for text, _ in group]
         task = RayTask(
             op="batch", engine=self.id, params={"call": "synthesize", "items": items}, inputs=inputs,
-            install=install_recipe(self.id), env=dict(engine.env) if engine else {},
+            install=install_recipe(self.id), env={**(dict(engine.env) if engine else {}), **self._ray_env()},
             num_gpus=(ray_cfg.num_gpus or None) if engine and engine.gpu else None, num_cpus=ray_cfg.num_cpus,
         )
         result = self._run_ray_job(ray_cfg, task, timeout=_RAY_INSTALL_ALLOWANCE_S + 2 * sum(idles),
@@ -1049,35 +1053,9 @@ class SubprocessBackend(TTSBackend):
         return tensor
 
     def _run_ray_job(self, ray_cfg, task, *, timeout: float, idle_timeout: Optional[float] = None):
-        from services.inference_cancellation import current_cancellation
-        from services.model_manager import (
-            report_generate_progress, report_model_load_activity, running_on_guarded_worker,
-        )
-        from services.ray_jobs import runtime
-        from services.ray_jobs.client import RayJobsError
-        from services.ray_jobs.executor import RayJobFailed
+        from services.ray_jobs.jobs import run_engine_job
 
-        on_pool = running_on_guarded_worker()  # the GPU pool or the Ray lane
-
-        def on_event(event: dict) -> None:
-            # Installs, downloads and model loads extend the execution budget
-            # like a local sidecar's cold-load frames; generation heartbeats don't.
-            stage = str(event.get("stage", ""))
-            if on_pool and (stage == "installing" or (stage.startswith("engine:") and stage != "engine:generating")):
-                report_model_load_activity()
-            elif on_pool and stage == "item_done":
-                report_generate_progress()  # a batch finished one more utterance
-
-        scope = current_cancellation()
-        try:
-            return runtime.run_sync(ray_cfg, task, timeout=timeout, idle_timeout=idle_timeout, on_event=on_event,
-                                    cancelled=scope.cancelled if scope is not None else None)
-        except RayJobFailed as exc:
-            raise RuntimeError(f"{self.id} sidecar {exc.stage} error: {exc}") from exc
-        except RayJobsError as exc:
-            raise RuntimeError(f"{self.id} Ray cluster error ({exc.kind}): {exc}") from exc
-        except TimeoutError as exc:
-            raise RuntimeError(f"{self.id} Ray job timed out: {exc or f'no result within {timeout:.0f}s'}") from exc
+        return run_engine_job(self.id, ray_cfg, task, timeout=timeout, idle_timeout=idle_timeout)
 
     # -- per-utterance hooks, shared by generate() and the Ray batch path ----
     def _prepare_generate_kwargs(self, text: str, kw: dict) -> dict:

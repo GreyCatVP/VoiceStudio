@@ -38,17 +38,29 @@ It is **off by default**. Engines you do not select keep running locally.
 
 Available engines:
 
-- **Text to speech:** Supertonic-3 (CPU), VoxCPM2, MOSS-TTS-Nano, IndexTTS2,
-  CosyVoice, Confucius4-TTS, MOSS-TTS v1.5 and dots.tts. Engines that install
-  from a source checkout fetch the pinned GitHub archive on the cluster
-  (CosyVoice and dots.tts build native code, so the node needs a C/C++
-  toolchain; dots.tts also needs OpenFst headers).
+- **Text to speech:** VoiceStudio (OmniVoice), Supertonic-3 (CPU), VoxCPM2,
+  MOSS-TTS-Nano, IndexTTS2, CosyVoice, Confucius4-TTS, MOSS-TTS v1.5 and
+  dots.tts. Engines that install from a source checkout fetch the pinned
+  GitHub archive on the cluster (CosyVoice and dots.tts build native code, so
+  the node needs a C/C++ toolchain).
 - **Speech recognition:** Faster-Whisper (crash-isolated subprocess), used by
   dubbing. Select it as the ASR engine and choose a Hugging Face model, not a
-  local folder: the cluster downloads the model on first use.
+  local folder. Word timings are refined on this machine with the same wav2vec2
+  forced alignment WhisperX uses (`OMNIVOICE_RAY_ASR_ALIGN=0` turns it off).
+- **Translation:** NLLB, when it is the dubbing translation provider. One job
+  translates the whole dub.
+- **Speaker diarization:** pyannote 3.1, in dubbing. The model is gated on
+  Hugging Face, so the cluster never downloads it: each job carries the model
+  files you installed (and accepted) on this machine, about 32 MB. Your
+  Hugging Face token never leaves this computer. The recording is sent whole
+  (speaker identity is global), as 16 kHz FLAC.
+- **Source separation:** Demucs (htdemucs), when a dub video is imported and
+  for microphone clean-up. The track is processed in lossless two-minute
+  windows with overlapping context, so the stems join without seams.
 
-The in-process VoiceStudio (OmniVoice) engine and models that live inside the
-backend (diarization, NLLB translation, source separation) still run locally.
+The audio.cpp Sortformer diarizer (a native binary), live dictation, voice
+activity detection and the AudioSeal watermark stay on this machine: they are
+small, CPU-bound or latency-critical.
 
 ## What happens on the cluster
 
@@ -71,7 +83,9 @@ backend (diarization, NLLB translation, source separation) still run locally.
   utterances per job (one model load); dubbing transcription sends pieces of
   up to 30 minutes at 16 kHz.
 - The job runs `python3` (or `python` when that is all the image has); set
-  **Cluster Python** to use a specific interpreter.
+  **Cluster Python** to use a specific interpreter. Engine environments use
+  `uv`'s own Python builds (they include the headers native packages need),
+  downloaded once into the cluster cache.
 - Results (audio) come back through the job's log, checksummed and limited to
   50 MB per job. VoiceStudio deletes finished jobs; the worker prunes its old
   job logs (which contain result audio) after 6 hours. Finished jobs that a
@@ -82,7 +96,9 @@ backend (diarization, NLLB translation, source separation) still run locally.
 ## Privacy
 
 Text, reference audio and generated audio for Ray-routed engines are sent to
-the cluster you configure. Your Hugging Face token and other secrets are never
+the cluster you configure; for Ray-routed dubbing steps that includes the
+source recording, its transcript and translations, and (for diarization) your
+installed pyannote model files. Your Hugging Face token and other secrets are never
 sent to the cluster or passed to engine code there; engines whose weights are
 gated behind a Hugging Face login are therefore not offered on Ray.
 

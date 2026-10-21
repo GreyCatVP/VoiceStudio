@@ -1406,21 +1406,44 @@ async def _do_clean_audio(audio, tmp_dir, clean_id):
         converted_path = raw_path
 
     clean_path = converted_path
-    try:
-        rc, _, _ = await run_ffmpeg(
-            [sys.executable, "-m", "demucs.separate", "--two-stems", "vocals", "-n", "htdemucs",
-             "-d", get_best_device(), converted_path, "-o", tmp_dir],
-            timeout=900.0,
-        )
-        if rc == 0:
-            demucs_out = os.path.join(tmp_dir, "htdemucs", "converted")
-            vocals_file = os.path.join(demucs_out, "vocals.wav")
-            if os.path.exists(vocals_file):
-                clean_path = vocals_file
-    except asyncio.TimeoutError:
-        logger.warning("Demucs timed out for mic audio, using raw")
-    except Exception as e:
-        logger.warning(f"Demucs failed for mic audio, using raw: {e}")
+    from services.ray_jobs.settings import route_for as _ray_route_for
+    _ray_demucs = _ray_route_for("demucs")
+    if _ray_demucs is not None:
+        # On the Ray cluster (same model and stem semantics as the CLI below).
+        from services.model_manager import get_ray_lane
+        from services.ray_jobs.separation import separate_on_ray
+        ray_vocals = os.path.join(tmp_dir, "vocals_ray.wav")
+        import functools
+        import threading
+        cancel = threading.Event()
+        try:
+            await asyncio.get_running_loop().run_in_executor(
+                get_ray_lane(), functools.partial(
+                    separate_on_ray, _ray_demucs, converted_path, ray_vocals,
+                    os.path.join(tmp_dir, "bed_ray.wav"), cancelled=cancel),
+            )
+            clean_path = ray_vocals
+        except asyncio.CancelledError:
+            cancel.set()  # the request went away: stop the cluster job
+            raise
+        except Exception as e:
+            logger.warning(f"Demucs on the Ray cluster failed for mic audio, using raw: {e}")
+    else:
+        try:
+            rc, _, _ = await run_ffmpeg(
+                [sys.executable, "-m", "demucs.separate", "--two-stems", "vocals", "-n", "htdemucs",
+                 "-d", get_best_device(), converted_path, "-o", tmp_dir],
+                timeout=900.0,
+            )
+            if rc == 0:
+                demucs_out = os.path.join(tmp_dir, "htdemucs", "converted")
+                vocals_file = os.path.join(demucs_out, "vocals.wav")
+                if os.path.exists(vocals_file):
+                    clean_path = vocals_file
+        except asyncio.TimeoutError:
+            logger.warning("Demucs timed out for mic audio, using raw")
+        except Exception as e:
+            logger.warning(f"Demucs failed for mic audio, using raw: {e}")
 
     clean_filename = f"mic_{clean_id}.wav"
     final_path = os.path.join(OUTPUTS_DIR, clean_filename)

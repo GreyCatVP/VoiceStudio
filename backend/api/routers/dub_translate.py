@@ -368,6 +368,49 @@ def _resolve_translation_context(req, client, model_name: str, timeout: float,
     return ctx
 
 
+def _translate_nllb_on_ray(ray_cfg, rows, flores_src: str, decode_options: dict, cancelled=None) -> list:
+    """Translate ``[(index, seg, flores_tgt)]`` in one Ray job; request order kept.
+
+    Mirrors the local path's contract: blank rows pass through, a failed row
+    keeps its source text with an error, and a job failure marks every row
+    instead of raising."""
+    from services.hf_revisions import revision_for
+    from services.ray_jobs.jobs import engine_task, run_engine_job
+
+    groups: dict[str, list] = {}
+    out: dict[int, dict] = {}
+    for index, seg, tgt in rows:
+        if not seg.text or not seg.text.strip():
+            out[index] = {"id": seg.id, "text": seg.text}
+        else:
+            groups.setdefault(tgt, []).append((index, seg))
+    if groups:
+        params = {"model": _NLLB_REPO_ID, "revision": revision_for(_NLLB_REPO_ID) or "", "src": flores_src,
+                  "groups": [{"tgt": tgt, "texts": [seg.text for _, seg in members]} for tgt, members in groups.items()],
+                  "decode_options": dict(decode_options or {}), "max_length": 400}
+        texts = sum(len(m) for m in groups.values())
+        try:
+            # First run downloads ~2.5 GB of weights on the cluster: the
+            # sidecar heartbeats while it loads, so the silence deadline holds.
+            reply = run_engine_job("nllb", ray_cfg, engine_task("nllb", ray_cfg, "translate", params),
+                                   timeout=3600.0 + 30.0 * texts, idle_timeout=900.0, cancelled=cancelled).result
+        except RuntimeError as exc:
+            logger.warning("NLLB on the Ray cluster failed: %s", exc)
+            return [{"id": seg.id, "text": seg.text, "error": f"Model load error: {exc}"} for _, seg, _ in rows]
+        by_tgt = {g.get("tgt"): g for g in reply.get("groups") or [] if isinstance(g, dict)}
+        for tgt, members in groups.items():
+            group = by_tgt.get(tgt) or {}
+            texts_out = group.get("texts") or []
+            errors = group.get("errors") or []
+            for k, (index, seg) in enumerate(members):
+                if k < len(texts_out) and (k >= len(errors) or not errors[k]):
+                    out[index] = {"id": seg.id, "text": str(texts_out[k])}
+                else:
+                    err = errors[k] if k < len(errors) and errors[k] else "missing translation"
+                    out[index] = {"id": seg.id, "text": seg.text, "error": str(err)}
+    return [out[index] for index, _, _ in rows]
+
+
 def _unload_nllb():
     """Release NLLB VRAM so TTS model can reload."""
     global _nllb_device, _nllb_model, _nllb_tokenizer
@@ -429,6 +472,27 @@ async def dub_translate(req: TranslateRequest):
             # applies; ModelLicenceNotAccepted → typed 403 (#2689).
             from services.model_acceptance import ensure_accepted
             ensure_accepted([_NLLB_REPO_ID])
+
+            from services.ray_jobs.settings import route_for
+            _ray_cfg = route_for("nllb")
+            if _ray_cfg is not None:
+                # On the Ray cluster: one job for the whole dub, model loaded
+                # there and gone with the job. Waits from the Ray lane.
+                from services.model_manager import get_ray_lane
+                from services.performance_profiles import translation_decode_defaults
+                rows = [(i, seg, resolved[seg.target_lang] if seg.target_lang else flores_tgt)
+                        for i, seg in enumerate(req.segments)]
+                import threading as _threading
+                _cancel = _threading.Event()
+                try:
+                    translated = await loop.run_in_executor(
+                        get_ray_lane(), _translate_nllb_on_ray, _ray_cfg, rows, flores_src,
+                        translation_decode_defaults(), _cancel,
+                    )
+                except BaseException:
+                    _cancel.set()  # the request went away: stop the cluster job
+                    raise
+                return await _maybe_cinematic(translated, req, src_lang, loop)
 
             def _translate_nllb():
                 global _nllb_model, _nllb_tokenizer, _nllb_device

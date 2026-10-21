@@ -40,11 +40,25 @@ export interface RayConfig {
 export interface RayEngine {
   id: string;
   gpu: boolean;
-  /** Older backends omit `kind`; treat those engines as text to speech. */
+  /** Older backends omit `kind`; missing or unknown kinds count as text to speech. */
   kind?: RayEngineKind;
 }
 
-export type RayEngineKind = 'tts' | 'asr';
+export type RayEngineKind = 'tts' | 'asr' | 'translation' | 'diarization' | 'separation';
+
+const RAY_ENGINE_KINDS: readonly RayEngineKind[] = [
+  'tts',
+  'asr',
+  'translation',
+  'diarization',
+  'separation',
+];
+
+/** Missing or unknown kinds (older or newer backends) count as text to speech. */
+function engineKind(engine: RayEngine): RayEngineKind {
+  const kind = engine.kind as string | undefined;
+  return RAY_ENGINE_KINDS.find((known) => known === kind) ?? 'tts';
+}
 
 type RayKind =
   | 'ok'
@@ -634,10 +648,25 @@ export function RaySettings() {
               title: t('settings.ray_engines_group_asr'),
               hint: t('settings.ray_engines_asr_hint'),
             },
+            {
+              kind: 'translation',
+              title: t('settings.ray_engines_group_translation'),
+              hint: t('settings.ray_engines_translation_hint'),
+            },
+            {
+              kind: 'diarization',
+              title: t('settings.ray_engines_group_diarization'),
+              hint: t('settings.ray_engines_diarization_hint'),
+            },
+            {
+              kind: 'separation',
+              title: t('settings.ray_engines_group_separation'),
+              hint: t('settings.ray_engines_separation_hint'),
+            },
           ] satisfies { kind: RayEngineKind; title: string; hint?: string }[]
         ).map((group) => {
           const engines = (server?.available_engines ?? []).filter(
-            (engine) => (engine.kind ?? 'tts') === group.kind,
+            (engine) => engineKind(engine) === group.kind,
           );
           if (engines.length === 0) return null;
           return (

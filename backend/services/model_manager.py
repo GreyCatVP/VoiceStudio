@@ -3467,7 +3467,11 @@ async def preload_model():
     # ever asked to synthesize.
     try:
         from core.device_caps import detect_host_caps
+        from services.subprocess_backend import ray_routed
 
+        if ray_routed("omnivoice"):
+            logger.info("Native TTS preload skipped: OmniVoice runs on the Ray cluster.")
+            return
         if detect_host_caps().family == "mps":
             logger.info(
                 "Native TTS preload skipped: OmniVoice uses crash isolation on this host."

@@ -1109,6 +1109,48 @@
       }
     },
     {
+      "id": "adefossez/HTDemucs",
+      "license": "NOASSERTION",
+      "commercial_use": false,
+      "review_status": "unreviewed",
+      "credit": "HTDemucs — Alexandre Défossez / Meta AI (Demucs)",
+      "source_url": "https://huggingface.co/adefossez/HTDemucs",
+      "evidence_url": "https://huggingface.co/adefossez/HTDemucs/blob/cbc8a9b1a87023b7fd74e7b3412e6321c0eab003/README.md",
+      "revision": "cbc8a9b1a87023b7fd74e7b3412e6321c0eab003",
+      "engines": [
+        "demucs"
+      ],
+      "configured_at": "backend/services/ray_jobs/separation.py",
+      "notes": "Hub mirror of the htdemucs weights the Ray demucs engine loads (the local CLI path is the htdemucs dynamic asset). The model card states no licence; the Demucs code repository is MIT. Weight terms and attribution text require review.",
+      "runtime_revision": "cbc8a9b1a87023b7fd74e7b3412e6321c0eab003",
+      "runtime_pin_scope": "engine",
+      "runtime_pin_source": "backend/services/ray_jobs/separation.py",
+      "component_closure": "incomplete",
+      "commercial_inference": "unknown",
+      "commercial_outputs": "unknown",
+      "documents": [],
+      "artifacts": [],
+      "required_components": [],
+      "upstream_access": "unknown",
+      "audit_observations": {
+        "commercial_inference": {
+          "status": "unreviewed",
+          "scope": "Selected weight/component only; not complete workflow clearance."
+        },
+        "output_terms": {
+          "status": "not_assessed",
+          "ownership_or_all_rights_cleared": false
+        },
+        "sources": [],
+        "open_questions": [
+          "Governing terms at installed revision and relevant required components",
+          "Attribution/NOTICE/redistribution duties",
+          "Reference voice and input rights, consent, training-provenance scope"
+        ],
+        "identified_components": []
+      }
+    },
+    {
       "id": "facebook/nllb-200-distilled-600M",
       "license": "CC-BY-NC-4.0",
       "commercial_use": false,

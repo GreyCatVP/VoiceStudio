@@ -39,7 +39,7 @@ import vs_ray_protocol as proto  # noqa: E402
 
 MAX_FRAME_BYTES = 64 * 1024 * 1024
 TASK_VERSION = 1
-ENGINE_OPS = {"synthesize", "transcribe"}
+ENGINE_OPS = {"synthesize", "transcribe", "translate", "diarize", "separate"}
 # uv builds engine venvs when the node has none on PATH (pinned + verified).
 UV_VERSION = "0.12.19"
 UV_SHA256 = {
@@ -193,6 +193,12 @@ def _install_env() -> Dict[str, str]:
         "UV_NO_CONFIG": "1",  # never pick up a stray pyproject's constraints
         "UV_CACHE_DIR": str(cache_root() / "uv-cache"),
         "UV_PYTHON_INSTALL_DIR": str(cache_root() / "python"),
+        # uv's own Python builds carry their headers (a system python3.10
+        # without python3-dev cannot build PyWorld), and are the same on
+        # every node.
+        # A cluster without GitHub access can set UV_PYTHON_INSTALL_MIRROR, or
+        # VS_RAY_PYTHON_PREFERENCE=system to use its own interpreters.
+        "UV_PYTHON_PREFERENCE": os.environ.get("VS_RAY_PYTHON_PREFERENCE") or "only-managed",
         # Weights downloads use the cluster cache, never the node's ~/.cache
         # or a token file there (anonymous by design).
         "HF_HOME": str(cache_root() / "hf"),
@@ -668,9 +674,11 @@ def _run_batch(sidecar: "Sidecar", params: Dict[str, Any], inputs: Dict[str, str
         return value
 
     results: list = []
-    size = 0
+    size = largest = 0
     for index, item in enumerate(items):
-        if results and size > BATCH_RESULT_BUDGET:
+        # Stop BEFORE an item that could push the batch past the budget (the
+        # largest reply so far predicts the next), not after it did.
+        if results and size + largest > BATCH_RESULT_BUDGET:
             # Leave room under the protocol's result cap; the backend sends
             # the remaining items as another job.
             return {"op": "batch", "results": results, "truncated": True}
@@ -680,7 +688,9 @@ def _run_batch(sidecar: "Sidecar", params: Dict[str, Any], inputs: Dict[str, str
         msg = {"op": call, **shared, **{k: resolve(v) for k, v in item.items()}}
         try:
             results.append(sidecar.call(msg))
-            size += len(str(results[-1].get("audio_pcm_b64") or "")) * 3 // 4
+            item_size = len(json.dumps(results[-1], separators=(",", ":")))  # whatever the reply carries
+            size += item_size
+            largest = max(largest, item_size)
         except TaskError as exc:
             results.append({"op": "error", "stage": exc.stage, "message": str(exc)})
         proto.emit_progress(sys.stdout, "item_done", (index + 1) / max(1, len(items)), f"{index + 1}/{len(items)}")

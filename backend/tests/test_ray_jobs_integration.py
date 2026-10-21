@@ -240,3 +240,202 @@ def test_speech_round_trip_tts_then_asr_on_the_cluster(tmp_path, monkeypatch):
         ray_settings.save({"enabled": False, "auth_token": ""})
         runtime.shutdown()
         runtime.reopen_for_tests()
+
+
+@pytest.mark.skipif("nllb" not in ENGINES, reason="set VS_RAY_TEST_ENGINES=nllb (downloads ~2.5 GB on the cluster)")
+def test_nllb_translates_a_dub_in_one_cluster_job():
+    from types import SimpleNamespace
+    from api.routers.dub_translate import _translate_nllb_on_ray
+    from core.db import init_db
+    from services.ray_jobs import runtime
+    from services.ray_jobs import settings as ray_settings
+
+    init_db()
+    runtime.reopen_for_tests()
+    ray_settings.save({"enabled": True, "dashboard_url": URL, "engines": ["nllb"],
+                       "num_gpus": float(os.environ.get("VS_RAY_TEST_NUM_GPUS", "0")),
+                       "auth_token": os.environ.get("VS_RAY_TEST_TOKEN") or ""})
+    try:
+        seg = lambda i, t: SimpleNamespace(id=i, text=t, target_lang=None)
+        rows = [(0, seg(0, "Good morning, my friend."), "tha_Thai"), (1, seg(1, "  "), "tha_Thai"),
+                (2, seg(2, "The weather is beautiful today."), "fra_Latn")]
+        out = _translate_nllb_on_ray(ray_settings.load(), rows, "eng_Latn", {})
+        print("nllb:", out)
+        assert [r["id"] for r in out] == [0, 1, 2] and out[1]["text"] == "  "
+        assert not any(r.get("error") for r in out)
+        assert any("฀" <= ch <= "๿" for ch in out[0]["text"])  # Thai script
+        assert "beau" in out[2]["text"].lower() or "temps" in out[2]["text"].lower()
+    finally:
+        ray_settings.save({"enabled": False, "auth_token": ""})
+        runtime.shutdown()
+        runtime.reopen_for_tests()
+
+
+@pytest.mark.skipif("demucs" not in ENGINES, reason="set VS_RAY_TEST_ENGINES=demucs")
+def test_demucs_separates_speech_from_music_across_windows(tmp_path, monkeypatch):
+    import numpy as np
+    import soundfile as sf
+    from core.db import init_db
+    from services.ray_jobs import runtime, separation
+    from services.ray_jobs import settings as ray_settings
+
+    speech_src = os.environ.get("VS_RAY_TEST_SPEECH")
+    if not speech_src or not os.path.exists(speech_src):
+        pytest.skip("set VS_RAY_TEST_SPEECH to a speech WAV")
+    monkeypatch.setattr(separation, "WINDOW_S", 20.0)  # several windows on a short track
+    speech, sr = sf.read(speech_src, dtype="float32", always_2d=True)
+    speech = speech.mean(1)
+    import torch, torchaudio.functional as AF
+    speech = AF.resample(torch.from_numpy(speech), sr, 44100).numpy()
+    total = 45 * 44100
+    voice = np.zeros(total, dtype=np.float32)
+    for start in range(0, total - len(speech), len(speech) + 44100):
+        voice[start:start + len(speech)] = speech
+    t = np.arange(total) / 44100
+    music = 0.15 * (np.sin(2 * np.pi * 220 * t) + np.sin(2 * np.pi * 277.2 * t) + np.sin(2 * np.pi * 329.6 * t)) / 3
+    mix = np.stack([voice + music, voice + music], axis=1).astype(np.float32)
+    src = tmp_path / "mix.wav"
+    sf.write(src, mix, 44100)
+
+    init_db()
+    runtime.reopen_for_tests()
+    ray_settings.save({"enabled": True, "dashboard_url": URL, "engines": ["demucs"],
+                       "num_gpus": float(os.environ.get("VS_RAY_TEST_NUM_GPUS", "0")),
+                       "auth_token": os.environ.get("VS_RAY_TEST_TOKEN") or ""})
+    seen = []
+    try:
+        started = time.monotonic()
+        separation.separate_on_ray(ray_settings.load(), str(src), str(tmp_path / "v.wav"), str(tmp_path / "b.wav"),
+                                   on_progress=seen.append)
+        took = time.monotonic() - started
+        vocals, _ = sf.read(tmp_path / "v.wav", dtype="float32")
+        bed, _ = sf.read(tmp_path / "b.wav", dtype="float32", always_2d=True)
+        assert vocals.shape == (total, 2) and bed.shape == (total, 2)
+        corr = lambda a, b: float(np.corrcoef(a, b)[0, 1])
+        print(f"demucs: {took:.0f}s; corr(vocals.mean(1), voice)={corr(vocals.mean(1), voice):.2f} corr(bed, music)={corr(bed.mean(1), music):.2f}")
+        assert corr(vocals.mean(1), voice) > 0.8 and corr(bed.mean(1), music) > 0.8
+        assert seen and seen[-1] == 1.0
+    finally:
+        ray_settings.save({"enabled": False, "auth_token": ""})
+        runtime.shutdown()
+        runtime.reopen_for_tests()
+
+
+@pytest.mark.skipif("pyannote" not in ENGINES or "supertonic3" not in ENGINES,
+                    reason="set VS_RAY_TEST_ENGINES=supertonic3,pyannote and VS_RAY_TEST_PYANNOTE_DIR")
+def test_pyannote_tells_two_speakers_apart_on_the_cluster(tmp_path, monkeypatch):
+    """Two Supertonic-3 voices take turns; diarization on the cluster with the
+    checkpoints shipped from this machine (never a token)."""
+    import numpy as np
+    import soundfile as sf
+    from core.db import init_db
+    from engines.supertonic3.backend import Supertonic3Backend
+    from services.ray_jobs import diarization, runtime
+    from services.ray_jobs import settings as ray_settings
+
+    bundle_dir = os.environ.get("VS_RAY_TEST_PYANNOTE_DIR")
+    if not bundle_dir:
+        pytest.skip("set VS_RAY_TEST_PYANNOTE_DIR (config.yaml, segmentation.bin, embedding.bin)")
+    read = lambda n: open(os.path.join(bundle_dir, n), "rb").read()
+    monkeypatch.setattr(diarization, "_local_bundle", lambda: {
+        "config_path.yaml": read("config.yaml"), "segmentation_path.bin": read("segmentation.bin"),
+        "embedding_path.bin": read("embedding.bin")})
+    init_db()
+    runtime.reopen_for_tests()
+    ray_settings.save({"enabled": True, "dashboard_url": URL, "engines": ["supertonic3", "pyannote"],
+                       "num_gpus": float(os.environ.get("VS_RAY_TEST_NUM_GPUS", "0")),
+                       "auth_token": os.environ.get("VS_RAY_TEST_TOKEN") or ""})
+    try:
+        tts = Supertonic3Backend()
+        lines = [("M1", "Good morning. Did you see the report I sent yesterday afternoon?"),
+                 ("F1", "Yes, I read it last night. The numbers look much better than last quarter."),
+                 ("M1", "That is what I thought too. Should we present it to the team on Friday?"),
+                 ("F1", "Friday works for me. I will prepare the slides and send you a draft tomorrow.")]
+        sr = tts.sample_rate
+        parts, truth, t = [], [], 0.0
+        for voice, text in lines:
+            audio = tts.generate(text, language="en", voice=voice)[0].numpy()
+            parts += [audio, np.zeros(int(0.6 * sr), dtype=np.float32)]
+            truth.append((t, t + len(audio) / sr, voice))
+            t += len(audio) / sr + 0.6
+        path = tmp_path / "dialogue.wav"
+        sf.write(path, np.concatenate(parts), sr)
+        phrases = [{"start": s, "end": e, "text": "x"} for s, e, _ in truth]
+        pipe = diarization.RayPyannotePipeline(ray_settings.load(), phrases=phrases)
+        started = time.monotonic()
+        # A 20 s synthetic dialogue is below pyannote's cluster-size floor
+        # (it often collapses to one speaker unprompted; the app's phrase
+        # recovery handles that): ask for two, as a user hint would.
+        annotation = pipe(str(path), num_speakers=2)
+        took = time.monotonic() - started
+        labels = annotation.labels()
+        print(f"pyannote: {took:.0f}s, speakers {labels}")
+        assert len(labels) == 2
+        # The phrase embeddings separate the voices: same-voice phrases are
+        # closer than cross-voice ones (what the recovery clusters on).
+        vecs = [pipe.phrase_embedding(s, e) for s, e, _ in truth]
+        unit = [v / np.linalg.norm(v) for v in vecs]
+        same = (float(unit[0] @ unit[2]) + float(unit[1] @ unit[3])) / 2
+        cross = (float(unit[0] @ unit[1]) + float(unit[2] @ unit[3])) / 2
+        print(f"embedding similarity: same voice {same:.2f}, cross voice {cross:.2f}")
+        # (synthetic voices vary run to run; printed for the record only)
+        # Parity: the cluster's result is the pipeline the app runs locally,
+        # same checkpoints, same audio (16 kHz mono) -> the same diarization.
+        import torch, yaml
+        from pyannote.audio import Pipeline
+        from services.asr_backend import WhisperXBackend
+        from services.model_manager import _ensure_pyannote_hf_token_compat
+        _ensure_pyannote_hf_token_compat()
+        WhisperXBackend._allow_vad_pickle_globals()
+        config = yaml.safe_load(open(os.path.join(bundle_dir, "config.yaml")))
+        config["pipeline"]["params"]["segmentation"] = os.path.join(bundle_dir, "segmentation.bin")
+        config["pipeline"]["params"]["embedding"] = os.path.join(bundle_dir, "embedding.bin")
+        local_cfg = tmp_path / "pipeline.yaml"
+        local_cfg.write_text(yaml.safe_dump(config))
+        flac, _ = diarization._flac_16k_mono(str(path))
+        import io as _io
+        wav16, sr16 = sf.read(_io.BytesIO(flac), dtype="float32", always_2d=True)
+        local = Pipeline.from_pretrained(str(local_cfg))(
+            {"waveform": torch.from_numpy(wav16.T.copy()), "sample_rate": sr16}, num_speakers=2)
+        from pyannote.metrics.diarization import DiarizationErrorRate
+        der = DiarizationErrorRate()(local, annotation)
+        print(f"DER(cluster vs local) = {der:.3f}")
+        assert der < 0.02
+        assert all(pipe.phrase_embedding(s, e) is not None for s, e, _ in truth)
+    finally:
+        ray_settings.save({"enabled": False, "auth_token": ""})
+        runtime.shutdown()
+        runtime.reopen_for_tests()
+
+
+@pytest.mark.skipif("omnivoice" not in ENGINES, reason="set VS_RAY_TEST_ENGINES=omnivoice (downloads the OmniVoice checkpoint)")
+def test_omnivoice_synthesizes_on_the_cluster(monkeypatch):
+    """VoiceStudio's own engine through the routed class (as on MPS)."""
+    monkeypatch.setenv("OMNIVOICE_MODEL", "k2-fsa/OmniVoice")
+    from core.db import init_db
+    from services.ray_jobs import runtime
+    from services.ray_jobs import settings as ray_settings
+    from services.tts_backend import get_backend_class
+
+    init_db()
+    runtime.reopen_for_tests()
+    ray_settings.save({"enabled": True, "dashboard_url": URL, "engines": ["omnivoice"],
+                       "num_gpus": float(os.environ.get("VS_RAY_TEST_NUM_GPUS", "0")),
+                       "auth_token": os.environ.get("VS_RAY_TEST_TOKEN") or ""})
+    try:
+        cls = get_backend_class("omnivoice")
+        assert cls.__name__ == "OmniVoiceMPSSubprocessBackend"
+        backend = cls()
+        started = time.monotonic()
+        backend.ensure_ready()
+        install = time.monotonic() - started
+        started = time.monotonic()
+        audio = backend.generate("Hello from VoiceStudio on the Ray cluster.", language="en")
+        took = time.monotonic() - started
+        secs = audio.shape[-1] / backend.sample_rate
+        print(f"omnivoice: install {install:.0f}s, generate {took:.0f}s, {secs:.2f}s of audio")
+        assert 0.5 < secs < 30 and float(audio.abs().max()) > 0.01
+    finally:
+        ray_settings.save({"enabled": False, "auth_token": ""})
+        runtime.shutdown()
+        runtime.reopen_for_tests()

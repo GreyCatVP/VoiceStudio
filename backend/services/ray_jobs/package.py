@@ -32,6 +32,15 @@ def _add(zf: zipfile.ZipFile, arcname: str, data: bytes) -> None:
     zf.writestr(info, data)
 
 
+def _extra_source(rel: str) -> Path:
+    """An extra file's source: under backend/, or the repo's omnivoice/ package."""
+    base, rel_path = (BACKEND_DIR.parent, rel[3:]) if rel.startswith("../omnivoice/") else (BACKEND_DIR, rel)
+    path = (base / rel_path).resolve()
+    if base.resolve() not in path.parents:
+        raise ValueError(f"extra file {rel!r} escapes its base")
+    return path
+
+
 def build_package(task: Mapping[str, Any], inputs: Mapping[str, bytes]) -> Tuple[str, bytes, Dict[str, Any]]:
     """Return ``(uri, zip_bytes, task_with_input_paths)``.
 
@@ -56,7 +65,7 @@ def build_package(task: Mapping[str, Any], inputs: Mapping[str, bytes]) -> Tuple
             for arcname, rel in engine.extra_files:
                 if arcname.startswith(("/", "engines/", "inputs/")) or ".." in arcname.split("/"):
                     raise ValueError(f"unsafe extra file {arcname!r}")
-                _add(zf, arcname, (BACKEND_DIR / rel).read_bytes())
+                _add(zf, arcname, _extra_source(rel).read_bytes())
             task["entry"] = f"engines/{engine.directory}/{engine.entry}"
         for name in sorted(inputs):
             if not _SAFE_NAME.match(name) or name.startswith("."):
