@@ -3832,7 +3832,12 @@ def _effective_backend_class(
         import importlib
 
         module = importlib.import_module(sidecar[0])
-        return getattr(module, sidecar[1]) if module.own_venv_python() is not None else backend_cls
+        if module.own_venv_python() is not None:
+            return getattr(module, sidecar[1])
+        # A Ray-routed engine needs no local venv: its sidecar runs on the cluster.
+        from services.subprocess_backend import ray_routed
+
+        return getattr(module, sidecar[1]) if ray_routed(backend_id) else backend_cls
     if backend_id != "omnivoice":
         return backend_cls
     if host_family is None:
@@ -4190,6 +4195,9 @@ def get_active_tts_backend(*, model=None) -> TTSBackend:
     switching = _active_instance is not None and (
         _active_instance_id != bid
         or (bid == "mlx-audio" and mlx_model_key != _active_mlx_model_key)
+        # Same id, different containment (e.g. Ray execution toggled for an
+        # own-venv sidecar engine): the cached instance is the wrong class.
+        or type(_active_instance) is not cls
     )
     if switching:
         try:
@@ -4207,7 +4215,7 @@ def get_active_tts_backend(*, model=None) -> TTSBackend:
         # already released any *different* previous engine.
         return OmniVoiceBackend(model=model)
 
-    if _active_instance is None or _active_instance_id != bid:
+    if _active_instance is None or _active_instance_id != bid or type(_active_instance) is not cls:
         _active_instance = OmniVoiceBackend(model=model) if cls is OmniVoiceBackend else cls()
         _active_instance_id = bid
         _active_mlx_model_key = mlx_model_key

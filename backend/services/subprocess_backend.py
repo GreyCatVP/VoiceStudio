@@ -377,6 +377,48 @@ def _heartbeat_while_resolving(engine_id: str):
         t.join()
 
 
+# A first cluster-side install (venv + CUDA torch) can take many minutes.
+_RAY_INSTALL_ALLOWANCE_S = 3600.0
+_RAY_INSTALL_IDLE_S = 600.0  # the worker heartbeats every ~10 s while installing
+_RAY_INSTALLED: set = set()
+
+
+def _ray_route(engine_id: str):
+    try:
+        from services.ray_jobs.settings import route_for
+    except Exception:  # Ray support unavailable: always local
+        return None
+    return route_for(engine_id)
+
+
+def ray_routed(engine_id: str) -> bool:
+    """True when ``engine_id`` runs on the Ray cluster (no local install needed)."""
+    return _ray_route(engine_id) is not None
+
+
+def _ray_install_key(cfg, engine_id: str, recipe: dict) -> tuple:
+    return (cfg.dashboard_url, cfg.cache_dir, engine_id, recipe.get("key"))
+
+
+def _ray_installed(cfg, engine_id: str, recipe: dict) -> bool:
+    return _ray_install_key(cfg, engine_id, recipe) in _RAY_INSTALLED
+
+
+def _decode_audio_reply(reply: dict) -> torch.Tensor:
+    """An ``{"op": "audio"}`` frame as a float32 tensor of shape (1, n)."""
+    pcm = base64.b64decode(reply.get("audio_pcm_b64", ""))
+    audio_format = reply.get("audio_format", "s16le")
+    if audio_format == "f32le":
+        arr = np.frombuffer(pcm, dtype="<f4")
+    elif audio_format == "s16le":
+        arr = np.frombuffer(pcm, dtype="<i2").astype(np.float32) / 32768.0
+    else:
+        raise RuntimeError(f"Unsupported sidecar audio format: {audio_format!r}")
+    if not np.isfinite(arr).all():
+        raise RuntimeError("Sidecar returned non-finite audio samples")
+    return torch.from_numpy(arr.copy()).unsqueeze(0)
+
+
 class SubprocessBackend(TTSBackend):
     """Long-lived sidecar-process TTS backend. Subclasses provide
     ``venv_python()`` and ``sidecar_script()``; the base class owns
@@ -761,6 +803,15 @@ class SubprocessBackend(TTSBackend):
         Never raises — health checks are called from places (engine picker,
         Compat Matrix UI) that must keep working even when an engine is sick.
         """
+        ray_cfg = _ray_route(self.id)
+        if ray_cfg is not None:
+            # The engine runs on the cluster: check that, not a local sidecar.
+            from services.ray_jobs import runtime
+
+            result = runtime.check_cluster(ray_cfg)
+            if not result[0]:
+                self._log_health_failure(result[1])
+            return result
         try:
             with self._lock:
                 self._spawn()
@@ -792,6 +843,98 @@ class SubprocessBackend(TTSBackend):
             "[%s] health check failed: %s", self.id, scrub_text(str(message))[:_STDERR_TAIL_CHARS]
         )
 
+    # Parameters that carry a local file path; their bytes ship with a Ray job.
+    ray_file_params: tuple[str, ...] = ("ref_audio", "emo_audio_prompt")
+
+    def ensure_ready(self) -> None:
+        """Under Ray, install the engine on the cluster within the model-load budget."""
+        ray_cfg = _ray_route(self.id)
+        if ray_cfg is None:
+            return super().ensure_ready()
+        from services.ray_jobs.engines import install_recipe, ray_engine
+
+        recipe = install_recipe(self.id)
+        if recipe is None or _ray_installed(ray_cfg, self.id, recipe):
+            return None
+        from services.ray_jobs.executor import RayTask
+
+        engine = ray_engine(self.id)
+        # Same placement as synthesis: venvs live per node, and a GPU node
+        # needs the CUDA build.
+        self._run_ray_job(ray_cfg, RayTask(op="install", engine=self.id, install=recipe,
+                                           num_gpus=ray_cfg.num_gpus if engine and engine.gpu else None,
+                                           num_cpus=ray_cfg.num_cpus),
+                          timeout=_RAY_INSTALL_ALLOWANCE_S, idle_timeout=_RAY_INSTALL_IDLE_S)
+        _RAY_INSTALLED.add(_ray_install_key(ray_cfg, self.id, recipe))
+        return None
+
+    def _generate_via_ray(self, ray_cfg, text: str, kw: dict) -> torch.Tensor:
+        from services.ray_jobs.engines import install_recipe, ray_engine
+        from services.ray_jobs.executor import RayTask
+
+        params: dict = {"text": text}
+        inputs: dict[str, bytes] = {}
+        for k, v in kw.items():
+            if k in self.ray_file_params and isinstance(v, (str, os.PathLike)) and v:
+                # Read now: the caller's reference lease may delete the file.
+                path = Path(v)
+                inputs[f"{k}{path.suffix.lower()[:8]}"] = path.read_bytes()
+            elif _is_jsonable(v):
+                params[k] = v
+        if getattr(self, "supports_float_transport", False):
+            params["audio_format"] = "f32le"
+        engine = ray_engine(self.id)
+        recipe = install_recipe(self.id)
+        # Silence deadline like the local receive loop (re-armed by progress),
+        # under a hard cap that always allows for an install: venvs are per
+        # node, so a job may land where the engine was never installed.
+        idle = self._effective_recv_timeout_s(text)
+        timeout = _RAY_INSTALL_ALLOWANCE_S + 2 * idle
+        task = RayTask(
+            op="synthesize", engine=self.id, params=params, inputs=inputs, install=recipe,
+            env=dict(engine.env) if engine else {},
+            num_gpus=ray_cfg.num_gpus if engine and engine.gpu else None,
+            num_cpus=ray_cfg.num_cpus,
+        )
+        result = self._run_ray_job(ray_cfg, task, timeout=timeout, idle_timeout=idle)
+        reply = result.result
+        if reply.get("op") != "audio":
+            raise RuntimeError(f"{self.id} sidecar returned unexpected op: {reply.get('op')!r}")
+        tensor = _decode_audio_reply(reply)
+        reported = reply.get("sample_rate")
+        if isinstance(reported, int) and reported > 0 and reported != self.sample_rate:
+            import torchaudio.functional as AF
+
+            tensor = AF.resample(tensor, reported, self.sample_rate)
+        return tensor
+
+    def _run_ray_job(self, ray_cfg, task, *, timeout: float, idle_timeout: Optional[float] = None):
+        from services.inference_cancellation import current_cancellation
+        from services.model_manager import report_model_load_activity, running_on_gpu_pool
+        from services.ray_jobs import runtime
+        from services.ray_jobs.client import RayJobsError
+        from services.ray_jobs.executor import RayJobFailed
+
+        on_pool = running_on_gpu_pool()
+
+        def on_event(event: dict) -> None:
+            # Installs, downloads and model loads extend the execution budget
+            # like a local sidecar's cold-load frames; generation heartbeats don't.
+            stage = str(event.get("stage", ""))
+            if on_pool and (stage == "installing" or (stage.startswith("engine:") and stage != "engine:generating")):
+                report_model_load_activity()
+
+        scope = current_cancellation()
+        try:
+            return runtime.run_sync(ray_cfg, task, timeout=timeout, idle_timeout=idle_timeout, on_event=on_event,
+                                    cancelled=scope.cancelled if scope is not None else None)
+        except RayJobFailed as exc:
+            raise RuntimeError(f"{self.id} sidecar {exc.stage} error: {exc}") from exc
+        except RayJobsError as exc:
+            raise RuntimeError(f"{self.id} Ray cluster error ({exc.kind}): {exc}") from exc
+        except TimeoutError as exc:
+            raise RuntimeError(f"{self.id} Ray job timed out: {exc or f'no result within {timeout:.0f}s'}") from exc
+
     def generate(self, text: str, **kw) -> torch.Tensor:
         """Synthesize one utterance through the sidecar.
 
@@ -800,6 +943,12 @@ class SubprocessBackend(TTSBackend):
         legacy int16 frames from existing installations.
         """
         self._check_language(kw.get("language"))
+        # Opt-in Ray execution: the job holds the GPU on the cluster, so no
+        # local pool slot, lock or sidecar is involved.
+        ray_cfg = _ray_route(self.id)
+        if ray_cfg is not None:
+            self._validate_generate_authorization()
+            return self._generate_via_ray(ray_cfg, text, kw)
         # On-pool callers (every HTTP/dub/batch generate, dispatched via
         # run_on_gpu_pool_guarded) already own a pool slot; re-acquiring would
         # self-deadlock on a 1-worker (MPS) pool, so skip it. Off-pool callers
@@ -920,19 +1069,7 @@ class SubprocessBackend(TTSBackend):
                 raise RuntimeError(
                     f"{self.id} sidecar returned unexpected op: {reply.get('op')!r}"
                 )
-            pcm_b64 = reply.get("audio_pcm_b64", "")
-            pcm = base64.b64decode(pcm_b64)
-            audio_format = reply.get("audio_format", "s16le")
-            if audio_format == "f32le":
-                arr = np.frombuffer(pcm, dtype="<f4")
-            elif audio_format == "s16le":
-                arr = np.frombuffer(pcm, dtype="<i2").astype(np.float32) / 32768.0
-            else:
-                raise RuntimeError(f"Unsupported sidecar audio format: {audio_format!r}")
-            if not np.isfinite(arr).all():
-                raise RuntimeError("Sidecar returned non-finite audio samples")
-            tensor = torch.from_numpy(arr.copy()).unsqueeze(0)
-            return tensor
+            return _decode_audio_reply(reply)
         finally:
             # Release the held GPU-pool worker (off-pool path only). _occupy
             # blocks the worker until this fires, so the slot is held for the

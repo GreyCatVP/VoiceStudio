@@ -24,9 +24,6 @@ MAX_PACKAGE_BYTES = 100 * 1024 * 1024
 _ZIP_DATE = (2020, 1, 1, 0, 0, 0)
 _SAFE_NAME = re.compile(r"^[A-Za-z0-9_.-]{1,128}$")
 
-# Engine id -> files (relative to backend/engines/<id>/) shipped with the job.
-ENGINE_FILES: Dict[str, Tuple[str, ...]] = {"_echo": ("main.py",)}
-
 
 def _add(zf: zipfile.ZipFile, arcname: str, data: bytes) -> None:
     info = zipfile.ZipInfo(arcname, date_time=_ZIP_DATE)
@@ -36,24 +33,35 @@ def _add(zf: zipfile.ZipFile, arcname: str, data: bytes) -> None:
 
 
 def build_package(task: Mapping[str, Any], inputs: Mapping[str, bytes]) -> Tuple[str, bytes, Dict[str, Any]]:
-    """Return ``(uri, zip_bytes, task_with_input_paths)``."""
-    engine = task.get("engine")
-    if engine and engine not in ENGINE_FILES:
-        raise ValueError(f"engine {engine!r} cannot run on Ray yet")
+    """Return ``(uri, zip_bytes, task_with_input_paths)``.
+
+    Input names are ``<param>[.<ext>]``: the worker passes the file's path as
+    ``params[<param>]`` and the extension stays for format sniffing.
+    """
+    from services.ray_jobs.engines import ray_engine  # noqa: PLC0415
+
+    engine_id = task.get("engine")
+    engine = ray_engine(engine_id) if engine_id else None
+    if engine_id and engine is None:
+        raise ValueError(f"engine {engine_id!r} cannot run on Ray yet")
     task = dict(task)
     input_paths: Dict[str, str] = {}
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as zf:
         for name in ("vs_ray_worker.py", "vs_ray_protocol.py"):
             _add(zf, name, (WORKER_DIR / name).read_bytes())
-        if engine:
-            for rel in ENGINE_FILES[engine]:
-                _add(zf, f"engines/{engine}/{rel}", (ENGINES_DIR / engine / rel).read_bytes())
+        if engine is not None:
+            for rel in engine.files:
+                _add(zf, f"engines/{engine.directory}/{rel}", (ENGINES_DIR / engine.directory / rel).read_bytes())
+            task["entry"] = f"engines/{engine.directory}/{engine.entry}"
         for name in sorted(inputs):
-            if not _SAFE_NAME.match(name) or name in {".", ".."}:
+            if not _SAFE_NAME.match(name) or name.startswith("."):
                 raise ValueError(f"unsafe input name {name!r}")
+            param = name.split(".", 1)[0]
+            if param in input_paths:
+                raise ValueError(f"two inputs for parameter {param!r}")
             _add(zf, f"inputs/{name}", inputs[name])
-            input_paths[name] = f"inputs/{name}"
+            input_paths[param] = f"inputs/{name}"
         task["inputs"] = input_paths
         _add(zf, "task.json", json.dumps(task, sort_keys=True, separators=(",", ":")).encode("utf-8"))
     data = buf.getvalue()

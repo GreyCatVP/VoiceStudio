@@ -1474,3 +1474,60 @@ def set_analytics(body: _AnalyticsBody):
 
     analytics.set_opted_in(body.enabled)
     return get_analytics()
+
+
+# ── Ray execution (opt-in): run engine sidecars as jobs on a Ray cluster ────
+
+class _RaySettingsBody(BaseModel):
+    enabled: bool | None = None
+    dashboard_url: str | None = Field(None, max_length=512)
+    engines: list[str] | None = None
+    num_gpus: float | None = None
+    num_cpus: float | None = None
+    cache_dir: str | None = Field(None, max_length=512)
+    python: str | None = Field(None, max_length=256)
+    keep_failed_jobs: bool | None = None
+    cf_access_client_id: str | None = Field(None, max_length=256)
+    auth_token: str | None = Field(None, max_length=4096, description="'' clears it, None leaves unchanged")
+    cf_access_client_secret: str | None = Field(None, max_length=4096, description="'' clears it, None leaves unchanged")
+
+
+@router.get("/ray")
+def get_ray_settings():
+    from services.ray_jobs import settings as ray_settings
+
+    return ray_settings.load().public()
+
+
+@router.put("/ray")
+def set_ray_settings(body: _RaySettingsBody):
+    from services.ray_jobs import settings as ray_settings
+
+    try:
+        return ray_settings.save(body.model_dump()).public()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/ray/test")
+async def test_ray_connection():
+    # Probes the PERSISTED config (the page saves first, then tests); always 200.
+    from services.ray_jobs import diagnostics, settings as ray_settings
+
+    return await diagnostics.test_connection(ray_settings.load(), ray_settings.auth())
+
+
+# Uses the stored cluster credentials: require the admin credential even for
+# this GET in server mode (require_admin_action also rejects cross-site GETs).
+@router.get("/ray/jobs", dependencies=[Depends(require_admin_action)])
+async def list_ray_jobs():
+    from services.ray_jobs import diagnostics, settings as ray_settings
+
+    return await diagnostics.list_jobs(ray_settings.load(), ray_settings.auth())
+
+
+@router.post("/ray/jobs/{submission_id}/stop")
+async def stop_ray_job(submission_id: str):
+    from services.ray_jobs import diagnostics, settings as ray_settings
+
+    return await diagnostics.stop_job(ray_settings.load(), ray_settings.auth(), submission_id)

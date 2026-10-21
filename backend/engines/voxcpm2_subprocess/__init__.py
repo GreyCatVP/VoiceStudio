@@ -55,7 +55,9 @@ class VoxCPM2SubprocessBackend(SubprocessBackend):
 
     @classmethod
     def is_available(cls) -> tuple[bool, str]:
-        if own_venv_python() is None:
+        from services.subprocess_backend import ray_routed
+
+        if own_venv_python() is None and not ray_routed(cls.id):
             return False, (
                 "voxcpm package not installed. Install it from Model Catalogue."
             )

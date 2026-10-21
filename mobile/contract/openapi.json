@@ -5437,6 +5437,144 @@
     "title": "_PreviewBody",
     "type": "object"
    },
+   "_RaySettingsBody": {
+    "properties": {
+     "auth_token": {
+      "anyOf": [
+       {
+        "maxLength": 4096,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "'' clears it, None leaves unchanged",
+      "title": "Auth Token"
+     },
+     "cache_dir": {
+      "anyOf": [
+       {
+        "maxLength": 512,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cache Dir"
+     },
+     "cf_access_client_id": {
+      "anyOf": [
+       {
+        "maxLength": 256,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cf Access Client Id"
+     },
+     "cf_access_client_secret": {
+      "anyOf": [
+       {
+        "maxLength": 4096,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "'' clears it, None leaves unchanged",
+      "title": "Cf Access Client Secret"
+     },
+     "dashboard_url": {
+      "anyOf": [
+       {
+        "maxLength": 512,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dashboard Url"
+     },
+     "enabled": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Enabled"
+     },
+     "engines": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Engines"
+     },
+     "keep_failed_jobs": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Keep Failed Jobs"
+     },
+     "num_cpus": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Num Cpus"
+     },
+     "num_gpus": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Num Gpus"
+     },
+     "python": {
+      "anyOf": [
+       {
+        "maxLength": 256,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Python"
+     }
+    },
+    "title": "_RaySettingsBody",
+    "type": "object"
+   },
    "_RefinementBody": {
     "properties": {
      "auto": {
@@ -7867,6 +8005,140 @@
      }
     },
     "summary": "Set Performance Profile",
+    "tags": [
+     "settings"
+    ]
+   }
+  },
+  "/api/settings/ray": {
+   "get": {
+    "operationId": "get_ray_settings_api_settings_ray_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Get Ray Settings",
+    "tags": [
+     "settings"
+    ]
+   },
+   "put": {
+    "operationId": "set_ray_settings_api_settings_ray_put",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/_RaySettingsBody"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Set Ray Settings",
+    "tags": [
+     "settings"
+    ]
+   }
+  },
+  "/api/settings/ray/jobs": {
+   "get": {
+    "operationId": "list_ray_jobs_api_settings_ray_jobs_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Ray Jobs",
+    "tags": [
+     "settings"
+    ]
+   }
+  },
+  "/api/settings/ray/jobs/{submission_id}/stop": {
+   "post": {
+    "operationId": "stop_ray_job_api_settings_ray_jobs__submission_id__stop_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "submission_id",
+      "required": true,
+      "schema": {
+       "title": "Submission Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Stop Ray Job",
+    "tags": [
+     "settings"
+    ]
+   }
+  },
+  "/api/settings/ray/test": {
+   "post": {
+    "operationId": "test_ray_connection_api_settings_ray_test_post",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Test Ray Connection",
     "tags": [
      "settings"
     ]

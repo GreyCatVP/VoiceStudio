@@ -1837,7 +1837,9 @@ async def generate_speech(
     # is resident, so steady-state single-engine use pays nothing. Opt out:
     # OMNIVOICE_SINGLE_ENGINE_RESIDENT=0.
     from services.engine_memory import evict_other_tts_engines
-    await evict_other_tts_engines(engine_id)
+    from services.subprocess_backend import ray_routed
+    if not ray_routed(engine_id):  # a Ray-routed engine loads nothing here
+        await evict_other_tts_engines(engine_id)
 
     # Non-blocking breadcrumb: if free memory is already low before this
     # load, log it. A later OOM kill (the 16 GB-Mac class) then has a trail

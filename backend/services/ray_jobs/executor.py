@@ -25,12 +25,18 @@ from services.ray_jobs.package import build_package
 logger = logging.getLogger(__name__)
 
 WORKER_ARGS = "vs_ray_worker.py --task task.json"
+SWEEP_INTERVAL_S = 600.0
+SWEEP_MIN_AGE_S = 120.0
 # Never forwarded to a cluster: desktop containment markers break nested
 # spawns there, device pinning belongs to Ray, and secrets would be visible
 # to anyone who can read the job's runtime_env in the dashboard.
 _DENY_ENV = re.compile(r"^(OMNIVOICE_DESKTOP_.*|CUDA_VISIBLE_DEVICES|.*(TOKEN|SECRET|PASSWORD|KEY).*)$", re.I)
 
 ProgressFn = Callable[[Dict[str, Any]], Optional[Awaitable[None]]]
+
+
+class ExecutorRetired(RuntimeError):
+    """The executor was replaced (settings changed); use the current one."""
 
 
 class RayJobFailed(RuntimeError):
@@ -51,6 +57,7 @@ class RayTask:
     num_gpus: Optional[float] = None
     num_cpus: Optional[float] = None
     memory_bytes: Optional[int] = None
+    install: Optional[Mapping[str, Any]] = None  # engines.install_recipe()
     test_mode: bool = False
 
     def payload(self) -> Dict[str, Any]:
@@ -59,6 +66,8 @@ class RayTask:
             raise ValueError(f"refusing to send env vars {bad} to the Ray cluster")
         out: Dict[str, Any] = {"v": 1, "op": self.op, "engine": self.engine,
                                "params": dict(self.params), "env": dict(self.env)}
+        if self.install:
+            out["install"] = dict(self.install)
         if self.test_mode:
             out["test_mode"] = True
         return out
@@ -86,6 +95,7 @@ class RayJobsExecutor:
         stop_grace: float = 30.0,
         pending_watch: float = 3600.0,
         max_transient_errors: int = 8,
+        delete_grace: float = 10.0,
         keep_failed_jobs: bool = True,
         cache_dir: Optional[str] = None,
         python: str = "python",
@@ -98,21 +108,48 @@ class RayJobsExecutor:
         self.stop_grace = stop_grace
         self.pending_watch = pending_watch
         self.max_transient_errors = max_transient_errors
+        self.delete_grace = delete_grace
         self.keep_failed_jobs = keep_failed_jobs
         self.cache_dir = cache_dir
         self.python = python
         # Strong references: a cleanup must outlive the run that started it.
         self._cleanups: Set[asyncio.Task] = set()
+        self._runs: Set[asyncio.Task] = set()
+        self.retired = False
+        self._last_sweep = float("-inf")
 
     async def run(
         self,
         task: RayTask,
         *,
         timeout: Optional[float] = None,
+        idle_timeout: Optional[float] = None,
         on_progress: Optional[ProgressFn] = None,
         submission_prefix: str = "vs",
     ) -> RayJobResult:
-        """Run ``task`` as one job; ``timeout`` covers upload, queueing and execution."""
+        """Run ``task`` as one job.
+
+        ``timeout`` caps the whole run (upload, queueing, execution).
+        ``idle_timeout`` is a silence deadline while the job RUNS: it is
+        re-armed by every progress event, like a local sidecar's receive
+        deadline, so a long but active install or download is not cut off.
+        """
+        if self.retired:
+            raise ExecutorRetired("Ray settings changed; retry with the current executor")
+        if time.monotonic() - self._last_sweep > SWEEP_INTERVAL_S:
+            self._last_sweep = time.monotonic()
+            self._track(asyncio.get_running_loop().create_task(self.sweep_finished()))
+        me = asyncio.current_task()
+        if me is not None:
+            self._runs.add(me)
+        try:
+            return await self._run(task, timeout=timeout, idle_timeout=idle_timeout,
+                                   on_progress=on_progress, submission_prefix=submission_prefix)
+        finally:
+            self._runs.discard(me)
+
+    async def _run(self, task: RayTask, *, timeout: Optional[float], idle_timeout: Optional[float],
+                   on_progress: Optional[ProgressFn], submission_prefix: str) -> RayJobResult:
         uri, data, _ = build_package(task.payload(), task.inputs)
         sid = f"{submission_prefix}-{task.engine or task.op}-{uuid.uuid4().hex[:12]}".replace("_", "")
         env_vars = {"PYTHONUNBUFFERED": "1", "PYTHONIOENCODING": "utf-8:backslashreplace"}
@@ -139,10 +176,10 @@ class RayJobsExecutor:
                     entrypoint_memory=task.memory_bytes,
                 )
                 logger.info("ray job %s submitted (%s/%s)", sid, task.engine, task.op)
-                status, logs = await self._wait(sid, on_progress)
+                status, logs = await self._wait(sid, on_progress, idle_timeout)
                 terminal = True
             result = await self._finish(sid, status, logs, started)
-            await self._cleanup_later(sid, stop=False, delete=True)
+            self._cleanup_detached(sid, stop=False, delete=True)
             return result
         except BaseException:
             if submitted and not terminal:
@@ -155,24 +192,35 @@ class RayJobsExecutor:
                 self._cleanup_detached(sid, stop=False, delete=True)
             raise
 
-    async def _wait(self, sid: str, on_progress: Optional[ProgressFn]):
+    async def _wait(self, sid: str, on_progress: Optional[ProgressFn], idle_timeout: Optional[float] = None):
         seen = errors = 0
-        last_progress = 0.0
+        last_fetch = 0.0
+        last_activity = time.monotonic()
+        last_status = ""
         while True:
             try:
                 status = str((await self.client.job_info(sid)).get("status"))
+                if status != last_status:
+                    last_status, last_activity = status, time.monotonic()
                 if status in TERMINAL_STATUSES:
                     logs = await self.client.job_logs(sid)
                     if on_progress is not None:
                         for event in proto.parse_events(logs).progress[seen:]:
                             await self._notify(on_progress, event)
                     return status, logs
-                if on_progress is not None and time.monotonic() - last_progress >= self.progress_interval:
-                    last_progress = time.monotonic()
+                watching = on_progress is not None or idle_timeout is not None
+                if watching and time.monotonic() - last_fetch >= self.progress_interval:
+                    last_fetch = time.monotonic()
                     events = proto.parse_events(await self.client.job_logs(sid)).progress
-                    for event in events[seen:]:
-                        await self._notify(on_progress, event)
+                    if len(events) > seen:
+                        last_activity = time.monotonic()
+                    if on_progress is not None:
+                        for event in events[seen:]:
+                            await self._notify(on_progress, event)
                     seen = len(events)
+                # Queue time (PENDING) is bounded by ``timeout`` only.
+                if idle_timeout is not None and status == "RUNNING" and time.monotonic() - last_activity > idle_timeout:
+                    raise TimeoutError(f"Ray job {sid} made no progress for {idle_timeout:.0f}s")
                 errors = 0
             except RayJobsError as exc:
                 errors += 1
@@ -221,6 +269,60 @@ class RayJobsExecutor:
         if self._cleanups:
             await asyncio.wait(list(self._cleanups), timeout=timeout)
 
+    async def wait_idle(self, timeout: Optional[float] = None) -> None:
+        """Retire, then wait until no run or cleanup is left (before closing the client).
+
+        Re-checks after every wait: a run that slipped in before ``retired``
+        was set, or a cleanup a finishing run just started, is waited for too.
+        """
+        self.retired = True
+        deadline = None if timeout is None else time.monotonic() + timeout
+        me = asyncio.current_task()
+        while True:
+            pending = [t for t in (*self._runs, *self._cleanups) if t is not me and not t.done()]
+            if not pending:
+                return
+            left = None if deadline is None else deadline - time.monotonic()
+            if left is not None and left <= 0:
+                return
+            await asyncio.wait(pending, timeout=left)
+
+    async def sweep_finished(self, min_age_s: float = SWEEP_MIN_AGE_S) -> int:
+        """Delete this app's finished jobs that nobody deleted.
+
+        Catches what an in-process delete cannot: jobs whose cleanup was cut
+        short by shutdown or a crash, and the records Ray writes back when a
+        job is deleted while its supervisor is still exiting. Failed jobs are
+        kept while ``keep_failed_jobs`` is set (for the dashboard), except
+        those write-backs, which carry no metadata.
+        """
+        try:
+            jobs = await self.client.list_jobs()
+        except Exception as exc:  # background housekeeping: never raise
+            logger.debug("ray job sweep skipped: %s", exc)
+            return 0
+        now_ms = time.time() * 1000
+        removed = 0
+        for job in jobs:
+            if not isinstance(job, dict):
+                continue
+            sid = str(job.get("submission_id") or "")
+            ended = job.get("end_time")
+            if not sid.startswith("vs-") or job.get("status") not in TERMINAL_STATUSES:
+                continue
+            if not isinstance(ended, (int, float)) or now_ms - float(ended) < min_age_s * 1000:
+                continue
+            meta = job.get("metadata")
+            ours = isinstance(meta, dict) and meta.get("app") == "voicestudio"
+            if ours and job.get("status") == "FAILED" and self.keep_failed_jobs:
+                continue
+            try:
+                await self.client.delete_job(sid)
+                removed += 1
+            except Exception:
+                continue
+        return removed
+
     async def _send_stop(self, sid: str) -> bool:
         """Ask Ray to stop ``sid``; False if Ray never accepted the job."""
         try:
@@ -232,23 +334,29 @@ class RayJobsExecutor:
             logger.info("ray job %s: stop request failed, will retry: %s", sid, exc)
         except TimeoutError:
             logger.info("ray job %s: stop request timed out, will retry", sid)
+        except RuntimeError as exc:  # e.g. the client was closed under us
+            logger.warning("ray job %s: could not send stop: %s", sid, exc)
         return True
 
     def _cleanup_detached(self, sid: str, *, stop: bool, delete: bool) -> asyncio.Task:
-        task = asyncio.get_running_loop().create_task(self._cleanup(sid, stop=stop, delete=delete))
+        return self._track(asyncio.get_running_loop().create_task(self._cleanup(sid, stop=stop, delete=delete)))
+
+    def _track(self, task: asyncio.Task) -> asyncio.Task:
         self._cleanups.add(task)
         task.add_done_callback(self._cleanups.discard)
         return task
-
-    async def _cleanup_later(self, sid: str, *, stop: bool, delete: bool) -> None:
-        # Shielded: a cancel arriving now must not drop the delete.
-        await asyncio.shield(self._cleanup_detached(sid, stop=stop, delete=delete))
 
     async def _cleanup(self, sid: str, *, stop: bool, delete: bool) -> None:
         try:
             if stop and not await self._wait_stopped(sid):
                 return
             if delete:
+                # Ray reports a terminal status before the job's supervisor
+                # actor exits; deleting the record in that window makes Ray's
+                # monitor write it back as a ghost "supervisor actor died"
+                # FAILED job. Let the supervisor finish first.
+                # (If this is cut short, sweep_finished removes it later.)
+                await asyncio.sleep(self.delete_grace)
                 await self.client.delete_job(sid)
         except RayJobsError as exc:
             if exc.kind != "not_found":

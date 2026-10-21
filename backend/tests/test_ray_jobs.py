@@ -2,6 +2,7 @@
 import asyncio
 import io
 import json
+import os
 import random
 import subprocess
 import sys
@@ -87,7 +88,7 @@ def test_package_is_content_addressed_and_deterministic():
     uri2, data2, task_out = build_package(task, {"ref.wav": b"RIFF"})
     assert uri1 == uri2 and data1 == data2
     assert uri1.startswith("gcs://_ray_pkg_") and uri1.endswith(".zip")
-    assert task_out["inputs"] == {"ref.wav": "inputs/ref.wav"}
+    assert task_out["inputs"] == {"ref": "inputs/ref.wav"}  # param name -> file (extension kept)
     names = set(zipfile.ZipFile(io.BytesIO(data1)).namelist())
     assert {"vs_ray_worker.py", "vs_ray_protocol.py", "engines/_echo/main.py",
             "inputs/ref.wav", "task.json"} <= names
@@ -137,9 +138,15 @@ def test_worker_probe_reports_node(tmp_path):
 
 def test_worker_reports_engine_errors_and_fails_the_job(tmp_path):
     proc, parsed = _run_worker(tmp_path, {"v": 1, "op": "synthesize", "engine": "_echo"},
-                               override={"engine": "nope"})
+                               override={"engine": "nope", "entry": "engines/nope/main.py"})
     assert proc.returncode == 1 and parsed.result is None
     assert parsed.errors[-1] == {"stage": "engine", "message": "engine 'nope' is not available in this package"}
+
+
+def test_worker_refuses_an_entry_outside_the_engines_dir(tmp_path):
+    proc, parsed = _run_worker(tmp_path, {"v": 1, "op": "synthesize", "engine": "_echo"},
+                               override={"entry": "vs_ray_worker.py"})
+    assert proc.returncode == 1 and "not available" in parsed.errors[-1]["message"]
 
 
 def test_worker_rejects_inputs_outside_the_package(tmp_path):
@@ -252,7 +259,7 @@ class FakeDashboard:
 
 def _executor(fake, auth=RayAuth(), **kw):
     client = RayJobsClient("https://ray.example", auth, transport=httpx.MockTransport(fake.handler))
-    opts = dict(poll_interval=0.01, progress_interval=0.0, stop_grace=1, cache_dir="/cache/vs")
+    opts = dict(poll_interval=0.01, progress_interval=0.0, stop_grace=1, delete_grace=0, cache_dir="/cache/vs")
     opts.update(kw)
     return RayJobsExecutor(client, **opts)
 
@@ -505,3 +512,274 @@ def test_executor_sends_the_stop_before_the_cancellation_returns():
         assert fake.stopped  # no drain()
 
     asyncio.run(go())
+
+
+
+# -- real engines: install recipes, cluster-side venv install, progress frames
+
+def test_install_recipes_come_from_the_sidecar_specs():
+    from services.ray_jobs.engines import install_recipe
+
+    assert install_recipe("_echo") is None
+    st = install_recipe("supertonic3")
+    assert st["install_args"] == ["supertonic==1.3.1"] and st["venv_args"] == ["--python", "3.11"]
+    assert st["cuda_args"] == st["cpu_args"] == [] and st["probe_code"] == "import supertonic"
+    vox = install_recipe("voxcpm2")
+    assert "torch==2.11.0+cu128" in vox["cuda_args"] and "torch==2.11.0+cpu" in vox["cpu_args"]
+    assert "https://download.pytorch.org/whl/cu128" in vox["cuda_args"]
+    assert len(vox["key"]) == 16 and vox["key"] != st["key"]
+
+
+def test_package_ships_the_engine_directory_and_entry():
+    _, data, task = build_package({"v": 1, "op": "synthesize", "engine": "voxcpm2"}, {"ref_audio.wav": b"RIFF"})
+    names = set(zipfile.ZipFile(io.BytesIO(data)).namelist())
+    assert "engines/voxcpm2_subprocess/main.py" in names
+    assert task["entry"] == "engines/voxcpm2_subprocess/main.py"
+    assert task["inputs"] == {"ref_audio": "inputs/ref_audio.wav"}
+    _, data, task = build_package({"v": 1, "op": "synthesize", "engine": "supertonic3"}, {})
+    assert {"engines/supertonic3/sidecar.py", "engines/supertonic3/constants.py"} <= set(zipfile.ZipFile(io.BytesIO(data)).namelist())
+
+
+FAKE_UV = """#!/bin/sh
+echo "$@" >> "$FAKE_UV_LOG"
+if [ "$1" = venv ]; then
+  for a in "$@"; do case "$a" in /*) dir="$a";; esac; done
+  mkdir -p "$dir/bin" && ln -sf "$(command -v python3)" "$dir/bin/python"
+fi
+exit 0
+"""
+
+
+def _fake_uv(tmp_path, monkeypatch):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    uv = bin_dir / "uv"
+    uv.write_text(FAKE_UV)
+    uv.chmod(0o755)
+    log = tmp_path / "uv.log"
+    monkeypatch.setenv("FAKE_UV_LOG", str(log))
+    monkeypatch.setenv("PATH", f"{bin_dir}:/usr/bin:/bin")
+    return log
+
+
+def test_worker_installs_an_engine_venv_once_per_recipe(tmp_path, monkeypatch):
+    worker = _worker_module()
+    log = _fake_uv(tmp_path, monkeypatch)
+    monkeypatch.setenv("VS_RAY_CACHE", str(tmp_path / "cache"))
+    recipe = {"key": "0123456789abcdef", "venv_args": ["--python", "3.11"], "install_args": ["pkg==1"],
+              "cuda_args": ["--cuda"], "cpu_args": ["--cpu"], "probe_code": "import json"}
+    monkeypatch.setattr(worker, "has_nvidia", lambda: True)
+    py = worker.ensure_engine_venv("eng", recipe)
+    assert py.endswith("engines/eng/0123456789abcdef-cuda/.venv/bin/python")
+    calls = log.read_text().splitlines()
+    assert calls[0].startswith("venv --clear") and "--python 3.11" in calls[0]
+    assert calls[1].startswith("pip install --python") and calls[1].endswith("pkg==1 --cuda")
+    assert worker.ensure_engine_venv("eng", recipe) == py  # cached: no second install
+    assert len(log.read_text().splitlines()) == 2
+
+
+def test_worker_install_failure_is_reported_and_not_cached(tmp_path, monkeypatch):
+    worker = _worker_module()
+    _fake_uv(tmp_path, monkeypatch)
+    monkeypatch.setenv("VS_RAY_CACHE", str(tmp_path / "cache"))
+    recipe = {"key": "0123456789abcdef", "install_args": [], "probe_code": "raise SystemExit(3)"}
+    with pytest.raises(worker.TaskError, match="exit code 3"):
+        worker.ensure_engine_venv("eng", recipe)
+    assert not list((tmp_path / "cache/engines/eng").glob("*/.installed"))
+
+
+@pytest.mark.parametrize("recipe", [{"key": "../x"}, {"key": "zz"}])
+def test_worker_rejects_malformed_recipes(tmp_path, monkeypatch, recipe):
+    worker = _worker_module()
+    monkeypatch.setenv("VS_RAY_CACHE", str(tmp_path))
+    with pytest.raises(worker.TaskError, match="invalid install recipe"):
+        worker.ensure_engine_venv("eng", recipe)
+
+
+PROGRESS_ENGINE = r"""import json, struct, sys
+out = sys.stdout.buffer
+def send(o):
+    b = json.dumps(o).encode(); out.write(struct.pack("!I", len(b)) + b); out.flush()
+def recv():
+    h = sys.stdin.buffer.read(4)
+    if len(h) < 4: return None
+    return json.loads(sys.stdin.buffer.read(struct.unpack("!I", h)[0]))
+send({"op": "ready", "engine": "prog"})
+while True:
+    m = recv()
+    if m is None or m["op"] == "shutdown": break
+    send({"op": "progress", "stage": "loading", "percent": 50})
+    send({"op": "progress", "stage": "generating"})
+    sys.stderr.buffer.write(b"weights \xff ok\n"); sys.stderr.flush()
+    send({"op": "audio", "audio_pcm_b64": "AAA=", "sample_rate": 8000})
+"""
+
+
+def test_worker_relays_engine_progress_frames_and_returns_the_audio(tmp_path, monkeypatch):
+    from services.ray_jobs import engines, package
+
+    eng_dir = tmp_path / "engines" / "prog"
+    eng_dir.mkdir(parents=True)
+    (eng_dir / "main.py").write_text(PROGRESS_ENGINE)
+    monkeypatch.setattr(package, "ENGINES_DIR", tmp_path / "engines")
+    monkeypatch.setitem(engines.RAY_ENGINES, "prog", engines.RayEngine("prog", "prog", ("main.py",), "main.py", gpu=False))
+    work = tmp_path / "job"
+    proc, parsed = _run_worker(work, {"v": 1, "op": "synthesize", "engine": "prog", "params": {"text": "x"}})
+    assert proc.returncode == 0, proc.stderr
+    assert parsed.result == {"op": "audio", "audio_pcm_b64": "AAA=", "sample_rate": 8000}
+    stages = [p["stage"] for p in parsed.progress]
+    assert "engine:loading" in stages and "engine:generating" in stages
+    assert {"stage": "engine:loading", "message": "", "fraction": 0.5} in parsed.progress
+    assert "weights \\xff ok" in proc.stderr
+
+
+def test_retiring_an_executor_waits_for_its_in_flight_runs():
+    # A settings change rebuilds the executor; runs already in flight on the
+    # old one must finish on its still-open client.
+    from services.ray_jobs import runtime
+
+    fake = FakeDashboard(hang=True, log="")
+    ex = _executor(fake)
+
+    async def go():
+        run = asyncio.create_task(ex.run(RayTask(op="probe")))
+        await asyncio.sleep(0.1)
+        retire = asyncio.create_task(runtime._retire(ex))
+        await asyncio.sleep(0.2)
+        assert not retire.done() and not ex.client._http.is_closed
+        fake.hang = False
+        fake.log = _log_for({"ok": 1})
+        assert (await run).result == {"ok": 1}
+        await asyncio.wait_for(retire, 5)
+        assert ex.client._http.is_closed
+
+    asyncio.run(go())
+
+
+
+def test_worker_keeps_cpu_and_cuda_venvs_apart(tmp_path, monkeypatch):
+    worker = _worker_module()
+    _fake_uv(tmp_path, monkeypatch)
+    monkeypatch.setenv("VS_RAY_CACHE", str(tmp_path / "cache"))
+    recipe = {"key": "0123456789abcdef", "install_args": ["pkg"], "cuda_args": ["--cuda"], "cpu_args": ["--cpu"]}
+    monkeypatch.setattr(worker, "has_nvidia", lambda: False)
+    cpu = worker.ensure_engine_venv("eng", recipe)
+    monkeypatch.setattr(worker, "has_nvidia", lambda: True)
+    assert worker.ensure_engine_venv("eng", recipe) != cpu
+
+
+def test_worker_install_does_not_hand_cluster_credentials_to_package_code(tmp_path, monkeypatch):
+    worker = _worker_module()
+    log = _fake_uv(tmp_path, monkeypatch)
+    monkeypatch.setenv("VS_RAY_CACHE", str(tmp_path / "cache"))
+    monkeypatch.setenv("RAY_AUTH_TOKEN", "sekrit")
+    probe = "import os; open(os.environ['FAKE_UV_LOG'], 'a').write('TOKEN=' + str('RAY_AUTH_TOKEN' in os.environ))"
+    worker.ensure_engine_venv("eng", {"key": "0123456789abcdef", "install_args": [], "probe_code": probe})
+    assert "TOKEN=False" in log.read_text()
+
+
+def test_worker_heartbeats_while_an_install_step_runs(tmp_path, monkeypatch, capsys):
+    worker = _worker_module()
+    monkeypatch.setattr(worker.subprocess.Popen, "wait", _slow_wait(), raising=True)
+    worker._run_logged([sys.executable, "-c", "pass"], dict(os.environ), 60, "install")
+    beats = [e for e in proto.parse_events(capsys.readouterr().out).progress if e["stage"] == "installing"]
+    assert beats  # the backend's silence deadline sees liveness
+
+
+def _slow_wait():
+    real = subprocess.Popen.wait
+    calls = {"n": 0}
+
+    def wait(self, timeout=None):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise subprocess.TimeoutExpired(self.args, timeout)
+        return real(self)
+
+    return wait
+
+
+@pytest.mark.parametrize("out,rc", [("No devices were found", 6), ("", 9)])
+def test_has_nvidia_needs_a_listed_gpu(monkeypatch, tmp_path, out, rc):
+    worker = _worker_module()
+    smi = tmp_path / "nvidia-smi"
+    smi.write_text(f"#!/bin/sh\necho '{out}'\nexit {rc}\n")
+    smi.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{tmp_path}:/usr/bin:/bin")
+    monkeypatch.setattr(worker, "_HAS_NVIDIA", None)
+    assert worker.has_nvidia() is False
+
+
+def test_probe_tolerates_unparseable_gpu_fields(monkeypatch, tmp_path):
+    worker = _worker_module()
+    smi = tmp_path / "nvidia-smi"
+    smi.write_text('#!/bin/sh\nif [ "$1" = -L ]; then echo "GPU 0: A100 (UUID: x)"; else echo "NVIDIA A100, 81920, [N/A], [N/A]"; fi\n')
+    smi.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{tmp_path}:/usr/bin:/bin")
+    monkeypatch.setenv("VS_RAY_CACHE", str(tmp_path / "cache"))
+    monkeypatch.setattr(worker, "_HAS_NVIDIA", None)
+    info = worker.probe()
+    assert info["gpus"] == [{"name": "NVIDIA A100", "total_mb": 81920, "used_mb": None, "free_mb": None}]
+
+
+def test_idle_timeout_is_rearmed_by_progress_and_stops_a_silent_job():
+    out = io.StringIO()
+    proto.emit_progress(out, "engine:loading", 0.1)
+    fake = FakeDashboard(hang=True, log=out.getvalue())
+    with pytest.raises(TimeoutError, match="no progress"):
+        _run(_executor(fake), RayTask(op="probe"), idle_timeout=0.3)
+    assert fake.stopped
+
+
+def test_pending_time_does_not_count_against_the_silence_deadline():
+    fake = FakeDashboard(pending_until_stop_polls=0)
+    with pytest.raises(TimeoutError) as info:
+        _run(_executor(fake), RayTask(op="probe"), idle_timeout=0.05, timeout=0.5)
+    assert "no progress" not in str(info.value)  # the hard cap fired, not the idle deadline
+
+
+def test_a_retired_executor_refuses_new_runs():
+    from services.ray_jobs.executor import ExecutorRetired
+
+    fake = FakeDashboard(log=_log_for({"ok": 1}))
+    ex = _executor(fake)
+    ex.retired = True
+    with pytest.raises(ExecutorRetired):
+        _run(ex, RayTask(op="probe"))
+    assert not fake.jobs
+
+
+def test_runtime_refuses_new_jobs_after_shutdown():
+    from services.ray_jobs import runtime
+
+    runtime.shutdown()
+    try:
+        with pytest.raises(runtime.RuntimeClosed):
+            runtime._ensure_loop()
+    finally:
+        runtime.reopen_for_tests()
+
+
+def test_sweep_deletes_old_finished_app_jobs_and_writebacks_but_keeps_failures():
+    from services.ray_jobs.client import RayJobsClient
+
+    now = __import__("time").time() * 1000
+    jobs = [
+        {"submission_id": "vs-a-1", "status": "SUCCEEDED", "end_time": now - 600_000, "metadata": {"app": "voicestudio"}},
+        {"submission_id": "vs-a-2", "status": "FAILED", "end_time": now - 600_000, "metadata": {"app": "voicestudio"}},
+        {"submission_id": "vs-a-3", "status": "FAILED", "end_time": now - 600_000, "metadata": None},  # Ray write-back
+        {"submission_id": "vs-a-4", "status": "SUCCEEDED", "end_time": now - 5_000, "metadata": {"app": "voicestudio"}},
+        {"submission_id": "vs-a-5", "status": "RUNNING", "end_time": None, "metadata": {"app": "voicestudio"}},
+        {"submission_id": "other-1", "status": "SUCCEEDED", "end_time": now - 600_000, "metadata": {}},
+    ]
+    deleted = []
+
+    def handler(request):
+        if request.method == "GET":
+            return httpx.Response(200, json=jobs)
+        deleted.append(request.url.path.rsplit("/", 1)[1])
+        return httpx.Response(200, json={"deleted": True})
+
+    ex = RayJobsExecutor(RayJobsClient("https://ray.example", transport=httpx.MockTransport(handler)))
+    assert asyncio.run(ex.sweep_finished()) == 2
+    assert deleted == ["vs-a-1", "vs-a-3"]

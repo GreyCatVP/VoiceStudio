@@ -1277,6 +1277,14 @@ async def lifespan(app: FastAPI):
         sentinel_cleared = run_sentinel.clear_sentinel()
     except Exception:
         sentinel_cleared = False
+    # Ray jobs still running for this process would hold cluster GPUs with
+    # nobody waiting: send their stops (bounded) before the loop thread goes.
+    # Only when the runtime was ever used — importing it costs nothing.
+    if "services.ray_jobs.runtime" in sys.modules:
+        try:
+            await asyncio.to_thread(sys.modules["services.ray_jobs.runtime"].shutdown, 10.0)
+        except Exception:
+            pass
     # May run after a startup that never finished (SIGTERM mid-Phase-A/B), so
     # every handle is read from app.state with a None default and every
     # deferred-phase name is guarded.

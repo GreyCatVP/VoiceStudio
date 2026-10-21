@@ -39,11 +39,17 @@ import vs_ray_protocol as proto  # noqa: E402
 
 MAX_FRAME_BYTES = 64 * 1024 * 1024
 TASK_VERSION = 1
-# Engines runnable in this package: engine id -> sidecar script (relative).
-ENGINES = {"_echo": "engines/_echo/main.py"}
 ENGINE_OPS = {"synthesize", "transcribe"}
+# uv builds engine venvs when the node has none on PATH (pinned + verified).
+UV_VERSION = "0.12.19"
+UV_SHA256 = {
+    "x86_64": "23bf5552d220e0842b65c862097b2ebaeba0064b74eda5e565e77fd25969d8c8",
+    "aarch64": "0804e9b164c64b6914182d5920c08551958a095986f10a3731056df701126436",
+}
+INSTALL_TIMEOUT_S = 3600
 # Job logs keep the base64 result; prune ours once nobody can still need them.
-LOG_RETENTION_S = 30 * 60
+# Longer than any run's hard cap, so a quiet job's own log is never removed.
+LOG_RETENTION_S = 6 * 3600
 # Not inherited by engine code: cluster credentials and anything secret-like.
 _ENGINE_ENV_DENY = re.compile(r"^(RAY_AUTH_TOKEN|RAY_JOB_CONFIG_JSON_ENV_VAR|.*(TOKEN|SECRET|PASSWORD).*)$", re.I)
 
@@ -73,6 +79,7 @@ def cache_lock(name: str, timeout: float = 1800.0) -> Iterator[Path]:
     locks.mkdir(parents=True, exist_ok=True)
     path = locks / f"{name}.lock"
     deadline = time.monotonic() + timeout
+    last_beat = time.monotonic()
     with open(path, "a+") as fh:
         while True:
             try:
@@ -81,11 +88,136 @@ def cache_lock(name: str, timeout: float = 1800.0) -> Iterator[Path]:
             except BlockingIOError:
                 if time.monotonic() > deadline:
                     raise TaskError("cache", f"timed out waiting for cache lock {name!r}")
+                if time.monotonic() - last_beat >= 10:
+                    last_beat = time.monotonic()
+                    proto.emit_progress(sys.stdout, "installing", None, f"waiting for another job ({name})")
                 time.sleep(0.5)
         try:
             yield path
         finally:
             fcntl.flock(fh, fcntl.LOCK_UN)
+
+
+def _run_logged(argv: list, env: Dict[str, str], timeout: float, stage: str) -> None:
+    """Run an install step, echoing its output (escaped) into the job log."""
+    proc = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
+    pump = threading.Thread(target=_pump_text, args=(proc.stdout, sys.stderr), daemon=True)
+    pump.start()
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            rc = proc.wait(timeout=10)
+            break
+        except subprocess.TimeoutExpired:
+            if time.monotonic() > deadline:
+                proc.kill()
+                proc.wait()
+                raise TaskError(stage, f"{Path(argv[0]).name} timed out after {timeout:.0f}s")
+            # Liveness for the backend's silence deadline and GPU-pool budget.
+            proto.emit_progress(sys.stdout, "installing", None, f"still running {Path(argv[0]).name}")
+    pump.join(timeout=5)
+    if rc != 0:
+        raise TaskError(stage, f"{Path(argv[0]).name} {argv[1] if len(argv) > 1 else ''} failed with exit code {rc}")
+
+
+def find_uv() -> str:
+    found = shutil.which("uv")
+    if found:
+        return found
+    target = cache_root() / "bin" / f"uv-{UV_VERSION}"
+    if target.exists():
+        return str(target)
+    import hashlib  # noqa: PLC0415
+    import tarfile  # noqa: PLC0415
+    import urllib.request  # noqa: PLC0415
+
+    arch = platform.machine()
+    if arch not in UV_SHA256:
+        raise TaskError("install", f"no uv build for {arch}; install uv on the cluster nodes")
+    name = f"uv-{arch}-unknown-linux-gnu"
+    url = f"https://github.com/astral-sh/uv/releases/download/{UV_VERSION}/{name}.tar.gz"
+    with cache_lock("uv"):
+        if target.exists():
+            return str(target)
+        proto.emit_progress(sys.stdout, "installing", None, f"downloading uv {UV_VERSION}")
+        with urllib.request.urlopen(url, timeout=120) as resp:
+            blob = resp.read()
+        if hashlib.sha256(blob).hexdigest() != UV_SHA256[arch]:
+            raise TaskError("install", "downloaded uv failed its checksum")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with tarfile.open(fileobj=__import__("io").BytesIO(blob)) as tf:
+            member = tf.extractfile(f"{name}/uv")
+            if member is None:
+                raise TaskError("install", "uv archive has no uv binary")
+            tmp = target.with_suffix(".tmp")
+            tmp.write_bytes(member.read())
+            tmp.chmod(0o755)
+            tmp.replace(target)
+    return str(target)
+
+
+_HAS_NVIDIA: Optional[bool] = None
+
+
+def has_nvidia() -> bool:
+    """Whether this node has a usable NVIDIA GPU (cached per job).
+
+    Hardware, not visibility: Ray hides GPUs from jobs that asked for none,
+    yet a venv built on a GPU node must get CUDA wheels. ``nvidia-smi -L``
+    must succeed and list a GPU (a container with the driver mounted but no
+    device prints "No devices were found").
+    """
+    global _HAS_NVIDIA
+    if _HAS_NVIDIA is None:
+        smi = shutil.which("nvidia-smi")
+        ok = False
+        if smi:
+            try:
+                env = {k: v for k, v in os.environ.items() if k != "CUDA_VISIBLE_DEVICES"}
+                out = subprocess.run([smi, "-L"], capture_output=True, text=True, timeout=20, env=env)
+                ok = out.returncode == 0 and "GPU " in out.stdout
+            except (OSError, subprocess.SubprocessError):
+                ok = False
+        _HAS_NVIDIA = ok
+    return _HAS_NVIDIA
+
+
+def ensure_engine_venv(engine: str, recipe: Dict[str, Any]) -> str:
+    """Build (once per recipe) the engine's venv in the cache; return its python."""
+    key = str(recipe.get("key") or "")
+    if not re.fullmatch(r"[0-9a-f]{8,64}", key) or not re.fullmatch(r"[A-Za-z0-9_.-]+", engine):
+        raise TaskError("install", "invalid install recipe")
+    # The wheel variant is part of the path: a venv built with CPU torch on a
+    # GPU-less node must never be reused on a GPU node (shared caches).
+    variant_name = "cuda" if has_nvidia() else "cpu"
+    root = cache_root() / "engines" / engine / f"{key}-{variant_name}"
+    python = root / ".venv" / "bin" / "python"
+    marker = root / ".installed"
+    if marker.exists() and python.exists():
+        return str(python)
+    with cache_lock(f"engine-{engine}", timeout=INSTALL_TIMEOUT_S):
+        if marker.exists() and python.exists():
+            return str(python)
+        uv = find_uv()
+        # Package builds and the import probe run third-party code: no
+        # cluster credentials, same as the engine itself.
+        env = {k: v for k, v in os.environ.items() if not _ENGINE_ENV_DENY.match(k)}
+        env.update({
+            "UV_NO_CONFIG": "1",  # never pick up a stray pyproject's constraints
+            "UV_CACHE_DIR": str(cache_root() / "uv-cache"),
+            "UV_PYTHON_INSTALL_DIR": str(cache_root() / "python"),
+        })
+        root.mkdir(parents=True, exist_ok=True)
+        proto.emit_progress(sys.stdout, "installing", 0.05, f"creating {engine} environment")
+        _run_logged([uv, "venv", "--clear", str(root / ".venv"), *recipe.get("venv_args", [])], env, 600, "install")
+        variant = recipe.get(f"{variant_name}_args") or []
+        proto.emit_progress(sys.stdout, "installing", 0.15, f"installing {engine} packages")
+        _run_logged([uv, "pip", "install", "--python", str(python), *recipe.get("install_args", []), *variant],
+                    env, INSTALL_TIMEOUT_S, "install")
+        proto.emit_progress(sys.stdout, "installing", 0.9, f"verifying {engine}")
+        _run_logged([str(python), "-c", str(recipe.get("probe_code") or "pass")], env, 300, "install")
+        marker.write_text(f"{engine}\n{key}\n{time.time():.0f}\n")
+    return str(python)
 
 
 def _die_with_parent() -> None:
@@ -108,13 +240,10 @@ def _pump_text(src, dst) -> None:
 class Sidecar:
     """One engine sidecar process speaking the length-prefixed protocol."""
 
-    def __init__(self, engine: str, workdir: Path, env: Dict[str, str]) -> None:
-        script = ENGINES.get(engine)
-        if script is None:
-            raise TaskError("engine", f"engine {engine!r} is not available in this package")
+    def __init__(self, engine: str, script: Path, workdir: Path, env: Dict[str, str]) -> None:
         python = env.get("VS_ENGINE_PYTHON") or sys.executable
         self.proc = subprocess.Popen(
-            [python, str(workdir / script)],
+            [python, str(script)],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -151,12 +280,20 @@ class Sidecar:
 
     def call(self, msg: Dict[str, Any]) -> Dict[str, Any]:
         self.send(msg)
-        reply = self.recv()
-        if reply is None:
-            raise TaskError("engine", f"engine exited (code {self.proc.poll()}) during {msg.get('op')!r}")
-        if reply.get("op") == "error":
-            raise TaskError(str(reply.get("stage", "engine")), str(reply.get("message", "engine error")))
-        return reply
+        while True:
+            reply = self.recv()
+            if reply is None:
+                raise TaskError("engine", f"engine exited (code {self.proc.poll()}) during {msg.get('op')!r}")
+            if reply.get("op") == "progress":
+                # Model downloads/loads and generation heartbeats.
+                pct = reply.get("percent")
+                frac = float(pct) / 100.0 if isinstance(pct, (int, float)) else None
+                proto.emit_progress(sys.stdout, f"engine:{reply.get('stage', 'working')}", frac,
+                                    str(reply.get("message") or ""))
+                continue
+            if reply.get("op") == "error":
+                raise TaskError(str(reply.get("stage", "engine")), str(reply.get("message", "engine error")))
+            return reply
 
     def close(self, timeout: float = 10.0) -> None:
         if self.proc.poll() is None:
@@ -181,22 +318,41 @@ def probe() -> Dict[str, Any]:
         "cache_free_gb": round(shutil.disk_usage(cache_root()).free / 1e9, 1),
         "gpus": [],
     }
-    if shutil.which("nvidia-smi"):
-        out = subprocess.run(
-            ["nvidia-smi", "--query-gpu=name,memory.total,memory.used,memory.free",
-             "--format=csv,noheader,nounits"],
-            capture_output=True, text=True, timeout=20,
-        )
-        for line in out.stdout.strip().splitlines():
-            name, total, used, free = [p.strip() for p in line.split(",")]
-            info["gpus"].append({"name": name, "total_mb": int(total), "used_mb": int(used), "free_mb": int(free)})
+    info["has_nvidia"] = has_nvidia()
+    info["uv"] = shutil.which("uv") or ""
+    if info["has_nvidia"]:
+        try:
+            out = subprocess.run(
+                ["nvidia-smi", "--query-gpu=name,memory.total,memory.used,memory.free",
+                 "--format=csv,noheader,nounits"],
+                capture_output=True, text=True, timeout=20,
+            )
+        except (OSError, subprocess.SubprocessError):
+            out = None
+        for line in (out.stdout.strip().splitlines() if out is not None and out.returncode == 0 else []):
+            parts = [p.strip() for p in line.split(",")]
+            if len(parts) != 4:
+                continue
+            nums = [int(p) if p.isdigit() else None for p in parts[1:]]  # "[N/A]" on MIG/vGPU
+            info["gpus"].append({"name": parts[0], "total_mb": nums[0], "used_mb": nums[1], "free_mb": nums[2]})
     return info
 
 
 def _engine_env(task: Dict[str, Any]) -> Dict[str, str]:
     env = {k: v for k, v in os.environ.items() if not _ENGINE_ENV_DENY.match(k)}
+    # Weights persist across jobs in the cluster cache (until the pod goes).
+    env.setdefault("HF_HOME", str(cache_root() / "hf"))
     env.update({str(k): str(v) for k, v in (task.get("env") or {}).items()})
     return env
+
+
+def _engine_script(task: Dict[str, Any], workdir: Path) -> Path:
+    entry = str(task.get("entry") or "")
+    engines_dir = (workdir / "engines").resolve()
+    script = (workdir / entry).resolve()
+    if not entry or engines_dir not in script.parents or not script.is_file():
+        raise TaskError("engine", f"engine {task.get('engine')!r} is not available in this package")
+    return script
 
 
 def run_task(task: Dict[str, Any], workdir: Path) -> Dict[str, Any]:
@@ -205,15 +361,22 @@ def run_task(task: Dict[str, Any], workdir: Path) -> Dict[str, Any]:
     op = task.get("op")
     if op == "probe":
         return {"op": "probe", "node": probe()}
-    if op not in ENGINE_OPS and op != "_hold":
+    if op not in ENGINE_OPS and op not in ("_hold", "install"):
         raise TaskError("task", f"unknown op {op!r}")
 
     deadline = os.environ.get("VS_RAY_DEADLINE")
     if deadline and time.time() > float(deadline):
         raise TaskError("deadline", "the run's deadline passed while the job was queued")
     engine = str(task.get("engine") or "")
+    env = _engine_env(task)
+    recipe = task.get("install")
+    if recipe:
+        env["VS_ENGINE_PYTHON"] = ensure_engine_venv(engine, recipe)
+    if op == "install":
+        return {"op": "installed", "engine": engine, "key": (recipe or {}).get("key")}
+    script = _engine_script(task, workdir)
     proto.emit_progress(sys.stdout, "engine_start", 0.05, engine)
-    sidecar = Sidecar(engine, workdir, _engine_env(task))
+    sidecar = Sidecar(engine, script, workdir, env)
     try:
         proto.emit_progress(sys.stdout, "engine_ready", 0.3, engine)
         if op == "_hold":
@@ -224,7 +387,7 @@ def run_task(task: Dict[str, Any], workdir: Path) -> Dict[str, Any]:
             time.sleep(float(task.get("params", {}).get("seconds", 60)))
             return {"op": "_hold"}
         params = dict(task.get("params") or {})
-        inputs_dir = (workdir / "inputs").resolve()
+        inputs_dir = (workdir / "inputs").resolve()  # param name -> inputs/<file>
         for name, rel in (task.get("inputs") or {}).items():
             path = (workdir / rel).resolve()
             if inputs_dir not in path.parents:

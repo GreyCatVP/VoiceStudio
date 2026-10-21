@@ -125,7 +125,9 @@ class Supertonic3Backend(SubprocessBackend):
         #    installed when the user opted in via ``--extra supertonic``.
         #    Its own venv (made by the one-click installer, which verified the
         #    import there) or the app's environment (`uv sync --extra`).
-        if _own_venv_python() is None:
+        from services.subprocess_backend import ray_routed
+
+        if _own_venv_python() is None and not ray_routed(cls.id):
             try:
                 import supertonic  # type: ignore[import-not-found]  # noqa: F401
             except ImportError:
