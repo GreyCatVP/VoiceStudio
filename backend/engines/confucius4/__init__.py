@@ -70,6 +70,10 @@ class Confucius4Backend(SubprocessBackend):
 
     @classmethod
     def is_available(cls) -> tuple[bool, str]:
+        from services.subprocess_backend import ray_routed
+
+        if ray_routed(cls.id):  # installed and run on the Ray cluster
+            return True, "runs on the Ray cluster"
         # Verify the venv on disk only — do NOT import the engine here (separate
         # interpreter). A real health-check runs on the user's "Test engine"
         # action in Settings.

@@ -368,11 +368,19 @@ def _prerender_batched(spans, paragraphs_by_span, occs, synth_batch, sample_rate
     from services.chunked_tts import join_rendered_chunks, split_text_into_chunks
 
     plan = []  # (span_index, paragraph_chunks: [[text, ...], ...])
+    planned = set()
     for index, (span, paragraphs) in enumerate(zip(spans, paragraphs_by_span)):
         if not span.text:
             continue
         if segment_cache is not None and trace_call("cache", segment_cache.load, span, nonce=occs[index]) is not None:
             continue  # the main loop loads it again; cheap and keeps one code path
+        identity = (span.voice_id, span.text, getattr(span, "speed", None))
+        if identity in planned:
+            # A repeat of a line rendered in this pass: the main loop finds
+            # it in the segment cache (or renders it itself when repeats are
+            # meant to vary), exactly as the per-chunk path behaves.
+            continue
+        planned.add(identity)
         plan.append((index, [split_text_into_chunks(p) for p in paragraphs]))
     flat = [(index, p_i, c_i, text)
             for index, para_chunks in plan

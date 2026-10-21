@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import re
 import time
 import uuid
@@ -117,6 +118,8 @@ class RayJobsExecutor:
         self._runs: Set[asyncio.Task] = set()
         self.retired = False
         self._last_sweep = float("-inf")
+        self._nodes: Optional[list] = None
+        self._nodes_at = float("-inf")
 
     async def run(
         self,
@@ -150,6 +153,7 @@ class RayJobsExecutor:
 
     async def _run(self, task: RayTask, *, timeout: Optional[float], idle_timeout: Optional[float],
                    on_progress: Optional[ProgressFn], submission_prefix: str) -> RayJobResult:
+        await self._check_placement(task)
         uri, data, _ = build_package(task.payload(), task.inputs)
         sid = f"{submission_prefix}-{task.engine or task.op}-{uuid.uuid4().hex[:12]}".replace("_", "")
         env_vars = {"PYTHONUNBUFFERED": "1", "PYTHONIOENCODING": "utf-8:backslashreplace"}
@@ -167,7 +171,7 @@ class RayJobsExecutor:
                     await self.client.upload_package(uri, data)
                 submitted = True  # before the POST: a cancel mid-request must still stop it
                 await self.client.submit_job(
-                    entrypoint=f"{self.python} {WORKER_ARGS}",
+                    entrypoint=f"{self._python_cmd()} {WORKER_ARGS}",
                     submission_id=sid,
                     runtime_env={"working_dir": uri, "env_vars": env_vars},
                     metadata={"app": "voicestudio", "op": task.op, "engine": task.engine},
@@ -191,6 +195,46 @@ class RayJobsExecutor:
             elif terminal and not self.keep_failed_jobs:
                 self._cleanup_detached(sid, stop=False, delete=True)
             raise
+
+    def _python_cmd(self) -> str:
+        """The cluster interpreter. The default picks python3, else python:
+        images differ (a KServe pod has no ``python``), and the stdlib-only
+        worker runs on any Python >= 3.9. Ray runs the entrypoint via sh."""
+        if self.python in ("python", "auto"):
+            return '"$(command -v python3 || command -v python)"'
+        return self.python
+
+    async def _check_placement(self, task: RayTask) -> None:
+        """Refuse a job the cluster can never schedule.
+
+        Ray keeps such a job PENDING (and ignores a stop) until its start
+        timeout, so a GPU engine on a CPU-only cluster would just hang.
+        """
+        if (not task.num_gpus and not task.num_cpus) or os.environ.get("OMNIVOICE_RAY_SKIP_PLACEMENT_CHECK") == "1":
+            return  # (skip on autoscaling clusters whose GPU nodes start on demand)
+        if self._nodes is None or time.monotonic() - self._nodes_at > 60:
+            try:
+                self._nodes = await self.client.node_resources()
+                self._nodes_at = time.monotonic()
+            except (RayJobsError, RuntimeError):
+                return  # cannot tell; let Ray decide
+        if not self._nodes:
+            return  # unknown, not "no resources"
+        need_gpu, need_cpu = float(task.num_gpus or 0), float(task.num_cpus or 0)
+        # One job runs on one node: some single node must hold the request.
+        if any(n.get("GPU", 0.0) >= need_gpu and n.get("CPU", 0.0) >= need_cpu for n in self._nodes):
+            return
+        best_gpu = max(n.get("GPU", 0.0) for n in self._nodes)
+        best_cpu = max(n.get("CPU", 0.0) for n in self._nodes)
+        if need_gpu and best_gpu < need_gpu:
+            raise RayJobFailed(
+                f"No Ray node has {need_gpu:g} GPU(s) for {task.engine or task.op} (the largest has {best_gpu:g}). "
+                "Add a GPU node, or set the GPU share to 0 in Settings → Ray cluster to run on CPU.",
+                submission_id="", status="REFUSED", stage="placement")
+        raise RayJobFailed(
+            f"No Ray node has {need_cpu:g} CPU(s) together with {need_gpu:g} GPU(s) for one job "
+            f"(largest: {best_cpu:g} CPU, {best_gpu:g} GPU); lower the CPUs per job in Settings → Ray cluster.",
+            submission_id="", status="REFUSED", stage="placement")
 
     async def _wait(self, sid: str, on_progress: Optional[ProgressFn], idle_timeout: Optional[float] = None):
         seen = errors = 0

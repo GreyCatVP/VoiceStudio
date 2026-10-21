@@ -67,7 +67,10 @@ def test_save_round_trip_never_exposes_secrets(rs, ss):
     assert state["num_gpus"] == 0.2 and state["cache_dir"] == "/models/vs" and state["python"] == "python3"
     assert "SECRET" not in json.dumps(state)
     assert ss._test_secrets == {"ray_auth_token": "tok-SECRET", "ray_cf_access_client_secret": "cf-SECRET"}
-    assert {e["id"] for e in state["available_engines"]} == {"supertonic3", "voxcpm2"}
+    assert {e["id"] for e in state["available_engines"]} == {
+        "supertonic3", "voxcpm2", "moss-tts-nano", "indextts2", "cosyvoice", "confucius4-tts", "moss-tts-v15", "dots-tts",
+        "faster-whisper-isolated"}
+    assert {e["id"]: e["kind"] for e in state["available_engines"]}["faster-whisper-isolated"] == "asr"
     # None leaves a secret alone, '' clears it
     rs.save({"auth_token": None})
     assert rs.load().has_token
@@ -93,7 +96,7 @@ def test_loopback_dashboard_may_use_http(rs):
 
 
 @pytest.mark.parametrize("changes", [
-    {"engines": ["indextts2"]}, {"engines": ["_echo"]}, {"num_gpus": 0}, {"num_cpus": 1000},
+    {"engines": ["omnivoice"]}, {"engines": ["_echo"]}, {"num_gpus": -1}, {"num_cpus": 1000},
     {"cache_dir": "relative/path"}, {"python": "python; rm -rf /"}, {"auth_token": "bad token"},
 ])
 def test_invalid_fields_are_refused(rs, ss, changes):
@@ -108,7 +111,7 @@ def test_route_for_requires_enabled_url_and_listed_engine(rs):
     rs.save({"enabled": True})
     assert rs.route_for("voxcpm2") is not None
     assert rs.route_for("supertonic3") is None  # not listed
-    assert rs.route_for("indextts2") is None  # not portable
+    assert rs.route_for("omnivoice") is None  # not portable (imports the backend)
 
 
 def test_env_pins_url_and_token(rs, monkeypatch):
@@ -526,3 +529,222 @@ def test_audiobook_batches_missing_spans_and_caches_each_one(monkeypatch):
     assert calls == [["first line", "third line"]]  # one call, cache hit skipped
     assert stored == ["first line", "third line"]
     assert audio.shape[-1] == 100 + 50 + 100
+
+
+# -- ASR on Ray (faster-whisper-isolated) ------------------------------------
+
+@pytest.fixture
+def ray_asr(rs, monkeypatch, tmp_path):
+    from services import subprocess_asr as sa
+    from services.ray_jobs import runtime
+    from services.ray_jobs.executor import RayJobResult
+
+    calls = []
+
+    def fake_run_sync(cfg, task, *, timeout, idle_timeout=None, on_event=None, cancelled=None):
+        calls.append({"task": task, "idle": idle_timeout, "timeout": timeout})
+        n = len(task.params["items"])
+        seg = {"op": "segments", "result": {"segments": [{"start": 0.0, "end": 1.0, "text": "hello"}], "language": "en"}}
+        return RayJobResult("vs-asr", {"op": "batch", "results": [seg] * n}, [], 0.1)
+
+    monkeypatch.setattr(runtime, "run_sync", fake_run_sync)
+    monkeypatch.setattr(sa, "_RAY_WARM", set())
+    monkeypatch.setattr(sa.IsolatedFasterWhisperBackend, "_ray_env", lambda self: {"ASR_MODEL_FW": "Systran/faster-whisper-tiny"})
+    # Warm-up has its own tests; elsewhere count only the real jobs.
+    real_warm = sa.SubprocessASRBackend._ray_warm_up
+    monkeypatch.setattr(sa.SubprocessASRBackend, "_ray_warm_up", lambda self, cfg: None)
+    monkeypatch.setattr(sa, "_real_warm_up_for_tests", real_warm, raising=False)
+    rs.save({"enabled": True, "dashboard_url": "https://ray.example.com", "engines": ["faster-whisper-isolated"]})
+    clips = []
+    for i in range(3):
+        p = tmp_path / f"c{i}.wav"
+        p.write_bytes(b"RIFF" + bytes([i]) * 100)
+        clips.append(str(p))
+    return sa.IsolatedFasterWhisperBackend(), calls, clips
+
+
+def test_ray_transcribe_ships_the_clip_and_normalises_chunks(ray_asr):
+    backend, calls, clips = ray_asr
+    out = backend.transcribe(clips[0], word_timestamps=True, language="th")
+    assert out["chunks"] == [{"text": "hello", "timestamp": (0.0, 1.0)}]
+    task = calls[0]["task"]
+    assert task.op == "batch" and task.params["call"] == "transcribe" and task.engine == "faster-whisper-isolated"
+    assert task.params["shared"]["word_timestamps"] is True
+    assert task.params["shared"]["request_options"]["language"] == "th"
+    assert list(task.inputs) == ["audio_path__0.wav"] and task.params["items"] == [{"audio_path": "@audio_path__0"}]
+    assert task.env == {"ASR_MODEL_FW": "Systran/faster-whisper-tiny"} and task.num_gpus is not None
+
+
+def test_ray_transcribe_many_is_one_job(ray_asr):
+    backend, calls, clips = ray_asr
+    out = backend.transcribe_many(clips, word_timestamps=False)
+    assert len(out) == 3 and len(calls) == 1 and len(calls[0]["task"].inputs) == 3
+
+
+def test_ray_warm_up_runs_once_with_a_long_silence_deadline(ray_asr, monkeypatch):
+    from services import subprocess_asr as sa
+
+    monkeypatch.setattr(sa.SubprocessASRBackend, "_ray_warm_up", sa._real_warm_up_for_tests)
+    backend, calls, _ = ray_asr
+    backend.ensure_loaded()
+    backend.ensure_loaded()
+    assert len(calls) == 1 and calls[0]["idle"] == sa._RAY_ASR_WARM_IDLE_S
+
+
+def test_ray_asr_refuses_a_local_model_folder(rs, monkeypatch, tmp_path):
+    from services import asr_backend, subprocess_asr as sa
+
+    monkeypatch.setattr(asr_backend, "_offline_asr_repo", lambda bid: str(tmp_path))
+    with pytest.raises(RuntimeError, match="Hugging Face model id"):
+        sa.IsolatedFasterWhisperBackend()._ray_env()
+
+
+def test_ray_asr_is_available_and_skips_the_local_model_check(ray_asr):
+    from services import asr_backend
+
+    backend, _, _ = ray_asr
+    assert type(backend).is_available() == (True, "runs on the Ray cluster")
+    assert asr_backend.asr_model_missing_error(backend_id="faster-whisper-isolated", require_installed=True) is None
+
+
+def test_reference_refine_batches_every_clip_into_one_job(ray_asr):
+    from services.speaker_clone import refine_ref_texts
+
+    backend, calls, clips = ray_asr
+    clones = {f"s{i}": {"ref_audio": c, "ref_text": "old"} for i, c in enumerate(clips)}
+    refine_ref_texts(clones, backend)
+    assert len(calls) == 1 and all(e["ref_text"] == "hello" for e in clones.values())
+
+
+def test_asr_package_ships_the_stdlib_core_modules_it_imports():
+    import io as _io
+    import zipfile as _zf
+    from services.ray_jobs.package import build_package
+
+    _, data, task = build_package({"v": 1, "op": "transcribe", "engine": "faster-whisper-isolated"}, {})
+    names = set(_zf.ZipFile(_io.BytesIO(data)).namelist())
+    assert {"engines/_asr_sidecar/main.py", "core/__init__.py", "core/execstack.py", "core/cudnn8.py",
+            "core/device_caps.py", "core/gpu_inventory.py"} <= names
+    assert not any(n.startswith(("services/", "api/")) for n in names)
+
+
+# -- phase-2 review fixes -------------------------------------------------------
+
+def test_non_per_item_lists_such_as_emo_vector_pass_through_whole():
+    from services import subprocess_backend as sb
+
+    emo = [0.1, 0, 0, 0, 0, 0, 0, 0.9]
+    kw = {"ref_audio": ["a"] * 9, "emo_vector": emo, "seed": [1] + [None] * 8}
+    for i in range(9):
+        item = sb._item_kwargs(kw, i, 9)
+        assert item["emo_vector"] == emo and item["ref_audio"] == "a"
+    assert sb._item_kwargs(kw, 0, 9)["seed"] == 1 and "seed" not in sb._item_kwargs(kw, 1, 9)
+
+
+def test_batch_sizing_is_conservative_for_cjk_and_slow_speech():
+    from services import subprocess_backend as sb
+
+    zh = "这是一个用于测试语音合成的中文句子。" * 17  # ~306 chars, like a real chunk
+    assert sb._speech_seconds(zh) > 70
+    assert sb._speech_seconds("x" * 100, speed=0.5) == 2 * sb._speech_seconds("x" * 100)
+    groups = sb._batch_groups([(zh, {})] * 12, 48000)
+    for g in groups:
+        assert sum(sb._speech_seconds(t) for t, _ in g) * 48000 * 2 <= sb._RAY_BATCH_MAX_BYTES or len(g) == 1
+
+
+def test_a_truncated_worker_batch_continues_with_the_remaining_items(ray_backend):
+    backend, calls, reply = ray_backend
+    one = _batch_reply(1)["results"][0]
+    replies = [{"op": "batch", "results": [one, one], "truncated": True}, {"op": "batch", "results": [one]}]
+    from services.ray_jobs import runtime
+    from services.ray_jobs.executor import RayJobResult
+
+    def run_sync(cfg, task, **kw):
+        calls.append({"task": task})
+        return RayJobResult("s", replies.pop(0), [], 0.1)
+
+    runtime.run_sync = run_sync
+    out = backend.generate_batch(["a", "b", "c"])
+    assert len(out) == 3 and [len(c["task"].params["items"]) for c in calls] == [3, 1]
+
+
+def test_audiobook_batch_renders_a_repeated_line_once(monkeypatch):
+    import torch
+    from services import audiobook as ab
+
+    renders, stored = [], {}
+
+    def synth(text, voice_id, speed=None):
+        return torch.ones(1, 10)
+
+    def batch(requests):
+        renders.extend(t for t, _, _ in requests)
+        return [torch.ones(1, 10) for _ in requests]
+
+    synth.batch = batch
+
+    class Cache:  # nonce-ignoring, like vary_repeats off
+        def load(self, span, nonce=None):
+            return stored.get(span.text)
+
+        def store(self, span, audio, nonce=None):
+            stored[span.text] = audio
+
+    spans = [ab.Span(text=t, voice_id=None) for t in ("Hello there.", "Something else.", "Hello there.")]
+    ab.synthesize_chapter(spans, synth, 1000, segment_cache=Cache())
+    assert renders == ["Hello there.", "Something else."]
+
+
+def test_ray_asr_idle_deadline_scales_with_clip_length(ray_asr, monkeypatch):
+    from services import subprocess_asr as sa
+
+    backend, calls, clips = ray_asr
+    monkeypatch.setattr(sa, "_clip_seconds", lambda p: 1800.0)
+    from services.ray_jobs import settings as _rs
+    backend._transcribe_via_ray(_rs.load(), clips[:1], True, {})
+    assert calls[-1]["idle"] >= backend.recv_timeout_s + 3 * 1800
+
+
+def test_ray_asr_warm_up_follows_the_selected_model(ray_asr, monkeypatch):
+    from services import subprocess_asr as sa
+
+    monkeypatch.setattr(sa.SubprocessASRBackend, "_ray_warm_up", sa._real_warm_up_for_tests)
+    backend, calls, _ = ray_asr
+    backend.ensure_loaded()
+    monkeypatch.setattr(sa.IsolatedFasterWhisperBackend, "_ray_env", lambda self: {"ASR_MODEL_FW": "Systran/faster-whisper-large-v3"})
+    backend.ensure_loaded()
+    assert len(calls) == 2  # a new model warms up again
+
+
+def test_long_files_are_split_into_pieces_and_merged_on_the_timeline(ray_asr, tmp_path, monkeypatch):
+    import soundfile as sf
+    from services import subprocess_asr as sa
+
+    backend, _, _ = ray_asr
+    monkeypatch.setattr(sa, "_RAY_ASR_PIECE_S", 1.0)
+    path = tmp_path / "long.wav"
+    sf.write(path, np.zeros(16000 * 3, dtype="float32"), 16000)
+    out = backend.transcribe(str(path))
+    starts = [s["start"] for s in out["segments"]]
+    assert starts == [0.0, 1.0, 2.0] and [c["timestamp"][0] for c in out["chunks"]] == starts
+
+
+def test_refine_keeps_the_original_text_only_for_the_clip_that_failed(ray_asr, monkeypatch):
+    from services.speaker_clone import refine_ref_texts
+
+    backend, _, clips = ray_asr
+    monkeypatch.setattr(type(backend), "transcribe_many",
+                        lambda self, paths, **kw: [RuntimeError("bad clip"), {"chunks": [{"text": "new"}]}, {"chunks": [{"text": "new"}]}])
+    clones = {f"s{i}": {"ref_audio": c, "ref_text": "old"} for i, c in enumerate(clips)}
+    refine_ref_texts(clones, backend)
+    assert [e["ref_text"] for e in clones.values()] == ["old", "new", "new"]
+
+
+def test_asr_dispatch_uses_the_lane_and_a_cluster_budget_when_routed(ray_asr, monkeypatch):
+    from services import asr_backend, model_manager
+
+    monkeypatch.setattr(asr_backend, "active_backend_id", lambda: "faster-whisper-isolated")
+    d = asr_backend.ray_asr_dispatch("pool", 300)
+    assert d["executor"] is model_manager.get_ray_lane() and d["timeout"] >= asr_backend.RAY_ASR_TIMEOUT_S
+    monkeypatch.setattr(asr_backend, "active_backend_id", lambda: "whisperx")
+    assert asr_backend.ray_asr_dispatch("pool", 300) == {"executor": "pool", "timeout": 300}

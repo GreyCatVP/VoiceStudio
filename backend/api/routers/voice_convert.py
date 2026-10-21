@@ -145,11 +145,14 @@ async def _transcribe_source(tmp_path: str, *, source_lease=None) -> dict:
     release = source_lease.acquire() if source_lease is not None else None
     abandoned = False
     try:
+        from services.asr_backend import ray_asr_dispatch
+        _d = ray_asr_dispatch(_gpu_pool)
         return await run_transcribe_guarded(
-            _gpu_pool,
+            _d.pop("executor"),
             _run,
             what="Voice convert",
             on_abandon=release,
+            **_d,
         )
     except asyncio.CancelledError:
         # The guard now owns the lease token until the native worker drains.

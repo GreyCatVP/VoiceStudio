@@ -36,8 +36,19 @@ It is **off by default**. Engines you do not select keep running locally.
    Python versions, the node's GPUs with free memory, and the cache disk.
 4. Tick the engines to run on Ray, enable Ray execution, and save.
 
-Available engines: **Supertonic-3** (CPU) and **VoxCPM2** (GPU). Engines that
-need a source checkout or import backend code are not available on Ray yet.
+Available engines:
+
+- **Text to speech:** Supertonic-3 (CPU), VoxCPM2, MOSS-TTS-Nano, IndexTTS2,
+  CosyVoice, Confucius4-TTS, MOSS-TTS v1.5 and dots.tts. Engines that install
+  from a source checkout fetch the pinned GitHub archive on the cluster
+  (CosyVoice and dots.tts build native code, so the node needs a C/C++
+  toolchain; dots.tts also needs OpenFst headers).
+- **Speech recognition:** Faster-Whisper (crash-isolated subprocess), used by
+  dubbing. Select it as the ASR engine and choose a Hugging Face model, not a
+  local folder: the cluster downloads the model on first use.
+
+The in-process VoiceStudio (OmniVoice) engine and models that live inside the
+backend (diarization, NLLB translation, source separation) still run locally.
 
 ## What happens on the cluster
 
@@ -50,10 +61,21 @@ need a source checkout or import backend code are not available on Ray yet.
 - If the node restarts with an ephemeral disk, the next run installs again.
 - GPU engines request a fraction of a GPU (**GPU share per job**, default
   0.1). Ray treats this as bookkeeping, not a memory limit: if other software
-  already uses the GPU, lower concurrency accordingly.
+  already uses the GPU, lower concurrency accordingly. A share of **0** runs
+  GPU engines on CPU (for CPU-only clusters).
+- Before submitting, VoiceStudio checks that some node can hold the job's
+  GPU/CPU request and explains when none can (Ray would otherwise leave the
+  job queued). On an autoscaling cluster whose GPU nodes start on demand, set
+  `OMNIVOICE_RAY_SKIP_PLACEMENT_CHECK=1`.
+- Long texts, audiobook chapters and dub segments are rendered many
+  utterances per job (one model load); dubbing transcription sends pieces of
+  up to 30 minutes at 16 kHz.
+- The job runs `python3` (or `python` when that is all the image has); set
+  **Cluster Python** to use a specific interpreter.
 - Results (audio) come back through the job's log, checksummed and limited to
   50 MB per job. VoiceStudio deletes finished jobs; the worker prunes its old
-  job logs (which contain result audio) after 6 hours.
+  job logs (which contain result audio) after 6 hours. Finished jobs that a
+  shutdown left behind are deleted by a later run.
 - Cancelling a generation, or a deadline expiring, stops the job — including
   a job still waiting in the cluster's queue.
 

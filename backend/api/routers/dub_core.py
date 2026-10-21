@@ -1006,6 +1006,25 @@ async def dub_ingest_url(req: DubIngestUrlRequest, request: Request):
 
 TRANSCRIBE_CHUNK_S = float(os.environ.get("OMNIVOICE_TRANSCRIBE_CHUNK_S", "30.0"))
 TRANSCRIBE_CHUNK_TIMEOUT_S = float(os.environ.get("OMNIVOICE_TRANSCRIBE_CHUNK_TIMEOUT_S", "120.0"))
+# Ray-routed ASR: every transcribe is a cluster job (model load included), so
+# send long pieces instead of 30 s chunks — 16 kHz mono keeps 30 minutes at
+# ~58 MB, under the job package cap.
+RAY_TRANSCRIBE_CHUNK_S = 1800.0
+RAY_TRANSCRIBE_SR = 16000
+
+
+def _refine_timeout(asr_backend, clips: int) -> dict:
+    """Ray: one batched cluster job for all clips (a load plus ~1 s per clip)."""
+    if _ray_asr_lane(asr_backend) is None:
+        return {}
+    return {"timeout": max(ASR_TRANSCRIBE_TIMEOUT_S, 600.0 + 10.0 * clips)}
+
+
+def _ray_asr_lane(asr_backend):
+    """The Ray lane when ``asr_backend`` runs on the cluster, else None."""
+    from services.model_manager import get_ray_lane
+    from services.subprocess_backend import ray_routed
+    return get_ray_lane() if ray_routed(getattr(asr_backend, "id", "") or "") else None
 #: How many times to attempt each transcribe chunk before giving up on it. A
 #: transient wedge (esp. the first chunk, where whisperx cold-loads its model)
 #: shouldn't silently drop that whole window — retry once on a fresh pool so the
@@ -1461,11 +1480,14 @@ async def dub_transcribe_stream(
                             # Free recoverable TTS VRAM before ASR chooses its
                             # device. Probing first falsely routed Whisper to
                             # CPU even when this offload made CUDA viable.
+                            from services.subprocess_backend import ray_routed as _ray_routed
                             try:
-                                await asyncio.get_running_loop().run_in_executor(
-                                    _cpu_pool, offload_tts_for_asr
-                                )
-                                _tts_offloaded["v"] = True
+                                # Ray-routed ASR uses no local memory: keep TTS resident.
+                                if not _ray_routed(active_backend_id()):
+                                    await asyncio.get_running_loop().run_in_executor(
+                                        _cpu_pool, offload_tts_for_asr
+                                    )
+                                    _tts_offloaded["v"] = True
                             except Exception as e:
                                 logger.warning("offload_tts_for_asr failed (continuing): %s", e)
                             # The PyTorch-Whisper backend lazily builds its own pipeline
@@ -1485,8 +1507,11 @@ async def dub_transcribe_stream(
                             # wholesale. Run in a thread so the (blocking) load
                             # doesn't stall the event loop.
                             import functools
+                            from services.asr_backend import ray_asr_dispatch
+                            # Ray-routed: the load is a cluster install + warm-up;
+                            # wait for it from the Ray lane, not a GPU worker.
                             _load_fut = asyncio.get_running_loop().run_in_executor(
-                                _gpu_pool,
+                                ray_asr_dispatch(_gpu_pool)["executor"],
                                 functools.partial(
                                     load_active_asr_backend,
                                     asr_pipe=getattr(_model, "_asr_pipe", None),
@@ -1575,14 +1600,18 @@ async def dub_transcribe_stream(
                 False,
             )
         )
+        _asr_lane = _ray_asr_lane(_asr_backend)
         transcribe_chunk_s = (
             total
             if global_speaker_clustering and total > 0
+            else min(total, RAY_TRANSCRIBE_CHUNK_S) if _asr_lane is not None and total > 0
             else TRANSCRIBE_CHUNK_S
         )
         transcribe_timeout_s = (
             ASR_TRANSCRIBE_TIMEOUT_S
             if global_speaker_clustering
+            # A cluster job: queueing, a model load and a long piece.
+            else max(ASR_TRANSCRIBE_TIMEOUT_S, transcribe_chunk_s + 600.0) if _asr_lane is not None
             else TRANSCRIBE_CHUNK_TIMEOUT_S
         )
         transcribe_timeout_env = (
@@ -1638,6 +1667,12 @@ async def dub_transcribe_stream(
                     tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
                     tmp.close()
                     try:
+                        if _asr_lane is not None and local_sr != RAY_TRANSCRIBE_SR:
+                            # The clip travels to the cluster: whisper's own rate.
+                            import torchaudio.functional as _AF
+                            arr = _AF.resample(torch.as_tensor(arr, dtype=torch.float32),
+                                               local_sr, RAY_TRANSCRIBE_SR).numpy()
+                            local_sr = RAY_TRANSCRIBE_SR
                         _safe_soundfile_write(tmp.name, arr, local_sr)
                         r = _asr_backend.transcribe(tmp.name, word_timestamps=True)
                     finally:
@@ -1689,7 +1724,7 @@ async def dub_transcribe_stream(
             for _attempt in range(1, _CHUNK_TRANSCRIBE_ATTEMPTS + 1):
                 # Run as a task and poll so pings keep the EventSource alive.
                 task = asyncio.ensure_future(run_transcribe_guarded(
-                    _gpu_pool, lambda: _asr_work.run(_transcribe_chunk),
+                    _asr_lane or _gpu_pool, lambda: _asr_work.run(_transcribe_chunk),
                     what=f"Dub chunk {i + 1}/{chunks_n}",
                     timeout=transcribe_timeout_s,
                     timeout_env=transcribe_timeout_env,
@@ -2213,9 +2248,10 @@ async def dub_transcribe_stream(
                     # refine_ref_text's own "failure is a strict no-op" fallback.
                     try:
                         fut_refine = asyncio.ensure_future(run_transcribe_guarded(
-                            _gpu_pool,
+                            _ray_asr_lane(_asr_backend) or _gpu_pool,
                             lambda: _asr_work.run(lambda: refine_ref_texts(clones, _asr_backend)),
                             what="Dub clone ref-text refine",
+                            **_refine_timeout(_asr_backend, len(clones)),
                         ))
                         async for _ping in _ping_while(fut_refine):
                             yield _ping
@@ -2257,9 +2293,10 @@ async def dub_transcribe_stream(
                         # keep the original seg_clones on a wedge/timeout.
                         try:
                             fut_refine = asyncio.ensure_future(run_transcribe_guarded(
-                                _gpu_pool,
+                                _ray_asr_lane(_asr_backend) or _gpu_pool,
                                 lambda: _asr_work.run(lambda: refine_ref_texts(seg_clones, _asr_backend)),
                                 what="Dub segment ref-text refine",
+                                **_refine_timeout(_asr_backend, len(seg_clones)),
                             ))
                             async for _ping in _ping_while(fut_refine):
                                 yield _ping
@@ -2624,7 +2661,9 @@ async def dub_transcribe(job_id: str, num_speakers: Optional[int] = None):
             # every other request into a "can't reach backend". run_transcribe_guarded
             # leaves an unkillable native worker accounted for on timeout so a
             # retry cannot overlap it (#1669).
-            segments_result = await run_transcribe_guarded(_gpu_pool, _transcribe, what="Dub")
+            from services.asr_backend import ray_asr_dispatch
+            _d = ray_asr_dispatch(_gpu_pool)
+            segments_result = await run_transcribe_guarded(_d.pop("executor"), _transcribe, what="Dub", **_d)
         except asyncio.CancelledError:
             job["aborted"] = True
             raise

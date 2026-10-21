@@ -147,6 +147,26 @@ def _isolated_engine_hint(streak: int) -> str:
     )
 
 
+#: A Ray-routed ASR call may include the cluster install and model warm-up.
+RAY_ASR_TIMEOUT_S = 2 * 3600.0
+
+
+def ray_asr_dispatch(executor, timeout=None) -> dict:
+    """Executor/timeout for dispatching ASR work: the Ray lane and a cluster
+    budget when the active ASR engine runs on Ray, else the given ones."""
+    try:
+        from services.model_manager import get_ray_lane
+        from services.subprocess_backend import ray_routed
+        if ray_routed(active_backend_id()):
+            return {"executor": get_ray_lane(), "timeout": max(timeout or 0.0, RAY_ASR_TIMEOUT_S)}
+    except Exception:  # noqa: BLE001 - never block local ASR on a Ray lookup
+        pass
+    out = {"executor": executor}
+    if timeout is not None:
+        out["timeout"] = timeout
+    return out
+
+
 async def run_transcribe_guarded(executor, fn, *, what: str = "ASR",
                                  timeout: float = ASR_TRANSCRIBE_TIMEOUT_S,
                                  timeout_env: str = "OMNIVOICE_ASR_TRANSCRIBE_TIMEOUT_S",
@@ -4170,6 +4190,11 @@ def asr_model_missing_error(*, purpose: str = "transcribe",
                             }
             repo = _capture_whisper_repo()
         else:
+            # The model lives in the Ray cluster's cache, not this machine's:
+            # the cluster downloads it on first use (warm-up in ensure_loaded).
+            from services.subprocess_backend import ray_routed
+            if backend_id and ray_routed(backend_id):
+                return None
             repo = _offline_asr_repo(backend_id)
         if repo is None:
             if require_installed:

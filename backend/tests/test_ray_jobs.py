@@ -286,7 +286,8 @@ def test_executor_success_uploads_once_submits_and_cleans_up():
     assert res.result == {"op": "audio", "n_samples": 1}
     assert res.progress and res.progress[0]["stage"] == "load"
     (job,) = fake.jobs.values()
-    assert job["entrypoint"] == "python vs_ray_worker.py --task task.json"
+    # default: python3 if the image has it, else python (a KServe pod has no `python`)
+    assert job["entrypoint"] == '"$(command -v python3 || command -v python)" vs_ray_worker.py --task task.json'
     assert job["entrypoint_num_gpus"] == 0.25
     assert job["runtime_env"]["working_dir"].startswith("gcs://_ray_pkg_")
     assert job["runtime_env"]["env_vars"]["VS_RAY_CACHE"] == "/cache/vs"
@@ -810,3 +811,262 @@ def test_worker_batch_refuses_unknown_input_references(tmp_path):
             "params": {"call": "synthesize", "items": [{"text": "a", "ref_audio": "@nope"}]}}
     proc, parsed = _run_worker(tmp_path, task)
     assert proc.returncode == 1 and "missing input" in parsed.errors[-1]["message"]
+
+
+# -- source-checkout engines: archive fetch, extras, pins, weights ------------
+
+def _tarball(path, top, files, extra_members=()):
+    import tarfile as _tf
+    with _tf.open(path, "w:gz") as tf:
+        for name, data in files.items():
+            info = _tf.TarInfo(f"{top}/{name}")
+            info.size = len(data)
+            tf.addfile(info, io.BytesIO(data))
+        for member in extra_members:
+            tf.addfile(member)
+    return path
+
+
+def _local_sources(worker, monkeypatch):
+    monkeypatch.setattr(worker, "_SOURCE_HOSTS", ("file://",))
+
+
+def test_archive_extraction_drops_links_and_strips_the_top_dir(tmp_path, monkeypatch):
+    import tarfile as _tf
+    worker = _worker_module()
+    _local_sources(worker, monkeypatch)
+    link = _tf.TarInfo("top/data")
+    link.type, link.linkname = _tf.SYMTYPE, "/etc"
+    arc = _tarball(tmp_path / "a.tgz", "top", {"pkg/__init__.py": b"x=1"}, [link])
+    dest = tmp_path / "dest"
+    worker._download_and_extract(arc.as_uri(), dest, tmp_path / "scratch")
+    assert (dest / "pkg/__init__.py").read_bytes() == b"x=1"
+    assert not (dest / "data").exists()  # the absolute symlink was not extracted
+
+
+def test_archive_members_cannot_escape(tmp_path, monkeypatch):
+    worker = _worker_module()
+    _local_sources(worker, monkeypatch)
+    arc = _tarball(tmp_path / "evil.tgz", "top", {"../../escape.txt": b"no"})
+    with pytest.raises(worker.TaskError, match="escapes"):
+        worker._download_and_extract(arc.as_uri(), tmp_path / "dest", tmp_path / "scratch")
+    assert not (tmp_path / "escape.txt").exists()
+
+
+def test_sources_only_come_from_github(tmp_path):
+    worker = _worker_module()
+    with pytest.raises(worker.TaskError, match="refusing"):
+        worker._download_and_extract("https://evil.example/x.tgz", tmp_path / "d", tmp_path)
+
+
+def test_sources_and_nested_extras_are_fetched_in_order_once(tmp_path, monkeypatch):
+    worker = _worker_module()
+    _local_sources(worker, monkeypatch)
+    main = _tarball(tmp_path / "m.tgz", "m", {"setup.py": b"", "third_party/.keep": b""})
+    pyworld = _tarball(tmp_path / "p.tgz", "p", {"pyworld/__init__.py": b""})
+    world = _tarball(tmp_path / "w.tgz", "w", {"src/dio.cpp": b""})
+    extras = [{"path": "third_party/PyWorld", "tarball_url": pyworld.as_uri(), "revision": "r2", "required_path": "pyworld/__init__.py"},
+              {"path": "third_party/PyWorld/lib/World", "tarball_url": world.as_uri(), "revision": "r3", "required_path": "src/dio.cpp"}]
+    source = {"tarball_url": main.as_uri(), "revision": "r1", "required_path": "setup.py", "dirname": "M"}
+    checkout = tmp_path / "src" / "M"
+    worker._fetch_sources(tmp_path / "src", checkout, source, extras)
+    assert (checkout / "third_party/PyWorld/pyworld/__init__.py").exists()
+    assert (checkout / "third_party/PyWorld/lib/World/src/dio.cpp").exists()
+    fetched = []
+    monkeypatch.setattr(worker, "_download_and_extract", lambda *a: fetched.append(a))
+    worker._fetch_sources(tmp_path / "src", checkout, source, extras)
+    assert fetched == []  # revision markers make it a no-op
+
+
+def test_dots_pin_rewrite_matches_the_local_installer(tmp_path):
+    from engines.dots_tts.install import compatible_constraints
+    from services.ray_jobs.engines import install_recipe
+
+    worker = _worker_module()
+    (tmp_path / "constraints").mkdir()
+    (tmp_path / "constraints/recommended.txt").write_text("gradio==6.17.0\ntransformers==4.57.0  # pin\ntorch==2.7.0\n")
+    recipe = install_recipe("dots-tts")
+    worker._apply_pin_rewrites(tmp_path, recipe["pin_rewrites"])
+    local = compatible_constraints(tmp_path / "constraints/recommended.txt").read_text()
+    assert (tmp_path / "constraints/.voicestudio-compatible.txt").read_text() == local
+    assert recipe["install_args"][-1].endswith("constraints/.voicestudio-compatible.txt")
+
+
+def test_cosyvoice_recipe_inlines_the_app_shipped_requirements():
+    from services.ray_jobs.engines import install_recipe
+
+    recipe = install_recipe("cosyvoice")
+    assert recipe["install_args"][:2] == ["-r", "{files}/cosyvoice_subprocess-requirements.txt"]
+    assert "transformers" in recipe["files"]["cosyvoice_subprocess-requirements.txt"]
+    assert [e["path"] for e in recipe["extra_sources"]] == [
+        "third_party/Matcha-TTS", "third_party/PyWorld", "third_party/PyWorld/lib/World"]
+    assert recipe["weights"]["repo_id"] == "FunAudioLLM/Fun-CosyVoice3-0.5B-2512"
+    assert recipe["env_var"] == "OMNIVOICE_COSYVOICE_DIR"
+
+
+def test_source_engine_installs_editable_from_the_node_checkout(tmp_path, monkeypatch):
+    worker = _worker_module()
+    log = _fake_uv(tmp_path, monkeypatch)
+    _local_sources(worker, monkeypatch)
+    monkeypatch.setenv("VS_RAY_CACHE", str(tmp_path / "cache"))
+    monkeypatch.setattr(worker, "has_nvidia", lambda: False)
+    arc = _tarball(tmp_path / "s.tgz", "repo-abc", {"pyproject.toml": b"[project]\nname='x'\n"})
+    recipe = {"key": "0123456789abcdef", "install_args": ["-e", "{checkout}", "-c", "{checkout_uri}/c.txt"],
+              "probe_code": "import sys; sys.path.insert(0, {checkout_repr})",
+              "source": {"tarball_url": arc.as_uri(), "revision": "abc", "required_path": "pyproject.toml", "dirname": "Repo"},
+              "env_var": "OMNIVOICE_X_DIR"}
+    python, checkout = worker.ensure_engine("eng", recipe)
+    assert checkout.endswith("engines/eng/0123456789abcdef/src/Repo")
+    pip = [l for l in log.read_text().splitlines() if l.startswith("pip install")][0]
+    assert f"-e {checkout}" in pip and f"file://{checkout}/c.txt" in pip
+
+
+def test_weights_floor_and_marker(tmp_path):
+    worker = _worker_module()
+    wdir = tmp_path / "checkpoints"
+    wdir.mkdir()
+    weights = {"repo_id": "o/r", "revision": "rev", "subdir": "checkpoints", "config_names": ["config.yaml"]}
+    assert not worker._weights_ok(tmp_path, weights)
+    (wdir / "config.yaml").write_text("x")
+    (wdir / "model.bin").write_bytes(b"\0" * (5 * 1024 * 1024))
+    (wdir / worker._WEIGHTS_MARKER).write_text("o/r\nrev\n1\n")
+    assert worker._weights_ok(tmp_path, weights)
+    (wdir / worker._WEIGHTS_MARKER).write_text("o/r\nother\n1\n")
+    assert not worker._weights_ok(tmp_path, weights)
+
+
+@pytest.mark.parametrize("name", ["PATH", "LD_PRELOAD", "OMNIVOICE_X; rm"])
+def test_recipe_env_var_must_be_an_omnivoice_dir_name(name):
+    worker = _worker_module()
+    with pytest.raises(worker.TaskError):
+        worker._safe_env_name(name)
+
+
+def test_target_installs_go_into_site_packages_for_the_matching_variant(tmp_path, monkeypatch):
+    worker = _worker_module()
+    log = _fake_uv(tmp_path, monkeypatch)
+    monkeypatch.setenv("VS_RAY_CACHE", str(tmp_path / "cache"))
+    monkeypatch.setattr(worker, "has_nvidia", lambda: True)
+    recipe = {"key": "0123456789abcdef", "install_args": ["fw"],
+              "target_installs": [{"site_rel": "cudnn8_compat", "args": ["nvidia-cudnn-cu12==8.9.7.29"], "variants": ["cuda"]}]}
+    worker.ensure_engine("asr", recipe)
+    lines = log.read_text().splitlines()
+    target = [l for l in lines if "--target" in l]
+    assert target and target[0].endswith("cudnn8_compat nvidia-cudnn-cu12==8.9.7.29")
+    # not on a CPU node
+    log.write_text("")
+    monkeypatch.setattr(worker, "has_nvidia", lambda: False)
+    worker.ensure_engine("asr", recipe)
+    assert not [l for l in log.read_text().splitlines() if "--target" in l]
+
+
+def test_jobs_the_cluster_can_never_schedule_are_refused_up_front():
+    from services.ray_jobs.client import RayJobsClient
+
+    def handler(request):
+        if request.url.path == "/nodes":
+            return httpx.Response(200, json={"data": {"summary": [{"raylet": {"state": "ALIVE", "resourcesTotal": {"CPU": 4.0, "node:x": 1.0}}}]}})
+        return httpx.Response(500)
+
+    ex = RayJobsExecutor(RayJobsClient("https://ray.example", transport=httpx.MockTransport(handler)))
+    with pytest.raises(RayJobFailed, match="No Ray node has 0.1 GPU") as info:
+        asyncio.run(ex.run(RayTask(op="synthesize", engine="_echo", num_gpus=0.1)))
+    assert info.value.stage == "placement"
+
+
+def test_a_configured_cluster_python_is_used_verbatim():
+    fake = FakeDashboard(log=_log_for({"ok": 1}))
+    _run(_executor(fake, python="/opt/conda/bin/python3"), RayTask(op="probe"))
+    (job,) = fake.jobs.values()
+    assert job["entrypoint"] == "/opt/conda/bin/python3 vs_ray_worker.py --task task.json"
+
+
+def test_run_sync_reraises_a_job_timeout_instead_of_spinning():
+    # concurrent.futures.TimeoutError IS TimeoutError on 3.11+: a job's own
+    # timeout used to look like "not done yet" and loop forever.
+    from services.ray_jobs import runtime
+
+    class TimingOut:
+        retired = False
+
+        async def run(self, task, **kw):
+            raise TimeoutError("Ray job vs-x made no progress for 600s")
+
+    import threading as _t
+    result = {}
+
+    def call():
+        try:
+            runtime._run_sync_once(TimingOut(), RayTask(op="probe"), timeout=1, idle_timeout=None,
+                                   on_event=None, cancelled=None)
+        except TimeoutError as exc:
+            result["exc"] = exc
+
+    th = _t.Thread(target=call, daemon=True)
+    th.start()
+    th.join(10)
+    assert not th.is_alive() and "no progress" in str(result["exc"])
+
+
+def test_worker_batch_stops_before_the_result_cap_and_says_so(tmp_path, monkeypatch):
+    worker = _worker_module()
+    monkeypatch.setattr(worker, "BATCH_RESULT_BUDGET", 10)
+
+    class Engine:
+        class proc:
+            @staticmethod
+            def poll():
+                return None
+
+        def call(self, msg):
+            return {"op": "audio", "audio_pcm_b64": "A" * 40}
+
+    out = worker._run_batch(Engine(), {"call": "synthesize", "items": [{"text": "a"}, {"text": "b"}, {"text": "c"}]}, {})
+    assert out["truncated"] is True and len(out["results"]) == 1
+
+
+def test_a_failed_rebuild_never_keeps_an_old_installed_marker(tmp_path, monkeypatch):
+    worker = _worker_module()
+    _fake_uv(tmp_path, monkeypatch)
+    monkeypatch.setenv("VS_RAY_CACHE", str(tmp_path / "cache"))
+    monkeypatch.setattr(worker, "has_nvidia", lambda: False)
+    root = tmp_path / "cache/engines/eng/0123456789abcdef-cpu"
+    root.mkdir(parents=True)
+    (root / ".installed").write_text("old")  # python missing -> rebuild
+    with pytest.raises(worker.TaskError):
+        worker.ensure_engine("eng", {"key": "0123456789abcdef", "install_args": [], "probe_code": "raise SystemExit(2)"})
+    assert not (root / ".installed").exists()
+
+
+def test_install_env_points_hugging_face_at_the_cluster_cache(monkeypatch, tmp_path):
+    worker = _worker_module()
+    monkeypatch.setenv("VS_RAY_CACHE", str(tmp_path))
+    monkeypatch.setenv("RAY_AUTH_TOKEN", "x")
+    env = worker._install_env()
+    assert env["HF_HOME"] == str(tmp_path / "hf") and env["HF_HUB_DISABLE_IMPLICIT_TOKEN"] == "1"
+    assert "RAY_AUTH_TOKEN" not in env
+
+
+def test_placement_checks_single_nodes_not_cluster_totals():
+    from services.ray_jobs.client import RayJobsClient
+
+    nodes = [{"raylet": {"state": "ALIVE", "resourcesTotal": {"CPU": 4.0, "GPU": 1.0}}}] * 2
+
+    def handler(request):
+        if request.url.path == "/nodes":
+            return httpx.Response(200, json={"data": {"summary": nodes}})
+        return httpx.Response(500)
+
+    ex = RayJobsExecutor(RayJobsClient("https://ray.example", transport=httpx.MockTransport(handler)))
+    with pytest.raises(RayJobFailed, match="No Ray node"):
+        asyncio.run(ex._check_placement(RayTask(op="x", engine="voxcpm2", num_cpus=6.0, num_gpus=2.0)))
+    asyncio.run(ex._check_placement(RayTask(op="x", engine="voxcpm2", num_cpus=4.0, num_gpus=1.0)))  # fits one node
+
+
+@pytest.mark.parametrize("payload", [{"data": {"summary": []}}, {"data": None}, {"weird": 1}])
+def test_placement_is_skipped_when_resources_are_unknown(payload):
+    from services.ray_jobs.client import RayJobsClient
+
+    ex = RayJobsExecutor(RayJobsClient("https://ray.example", transport=httpx.MockTransport(
+        lambda r: httpx.Response(200, json=payload))))
+    asyncio.run(ex._check_placement(RayTask(op="x", engine="voxcpm2", num_gpus=1.0)))  # no refusal

@@ -163,3 +163,80 @@ def test_supertonic3_batch_renders_many_sentences_in_one_job(monkeypatch):
         ray_settings.save({"enabled": False, "auth_token": ""})
         runtime.shutdown()
         runtime.reopen_for_tests()
+
+
+@pytest.mark.skipif("moss-tts-nano" not in ENGINES,
+                    reason="set VS_RAY_TEST_ENGINES=moss-tts-nano (source install, several GB)")
+def test_moss_tts_nano_installs_from_source_and_synthesizes_on_the_cluster():
+    """A source-checkout engine end to end: GitHub archive, editable install
+    into a node venv, env var pointing at the node checkout, speech out."""
+    from core.db import init_db
+    from engines.moss_tts_nano_subprocess import MossTTSNanoSubprocessBackend
+    from services.ray_jobs import runtime
+    from services.ray_jobs import settings as ray_settings
+
+    init_db()
+    runtime.reopen_for_tests()
+    ray_settings.save({"enabled": True, "dashboard_url": URL, "engines": ["moss-tts-nano"],
+                       # A CPU-only test head: GPU share 0 runs the engine on CPU.
+                       "num_gpus": float(os.environ.get("VS_RAY_TEST_NUM_GPUS", "0")),
+                       "auth_token": os.environ.get("VS_RAY_TEST_TOKEN") or ""})
+    try:
+        ok, why = MossTTSNanoSubprocessBackend.is_available()
+        assert ok, why
+        backend = MossTTSNanoSubprocessBackend()
+        started = time.monotonic()
+        backend.ensure_ready()
+        install_s = time.monotonic() - started
+        audio = backend.generate("Hello from a source checkout on the Ray cluster.", language="en")
+        assert audio.ndim == 2 and float(audio.abs().max()) > 0.01
+        print(f"moss-tts-nano: install {install_s:.0f}s, {audio.shape[1] / backend.sample_rate:.2f}s of audio")
+    finally:
+        ray_settings.save({"enabled": False, "auth_token": ""})
+        runtime.shutdown()
+        runtime.reopen_for_tests()
+
+
+@pytest.mark.skipif("faster-whisper-isolated" not in ENGINES or "supertonic3" not in ENGINES,
+                    reason="set VS_RAY_TEST_ENGINES=supertonic3,faster-whisper-isolated")
+def test_speech_round_trip_tts_then_asr_on_the_cluster(tmp_path, monkeypatch):
+    """Supertonic-3 speaks on the cluster, faster-whisper (tiny, CPU) transcribes
+    it on the cluster: both directions, one warm-up, batched transcription."""
+    import soundfile as sf
+    import torchaudio.functional as AF
+    from core.db import init_db
+    from engines.supertonic3.backend import Supertonic3Backend
+    from services.ray_jobs import runtime
+    from services.ray_jobs import settings as ray_settings
+    from services.subprocess_asr import IsolatedFasterWhisperBackend
+
+    monkeypatch.setenv("ASR_MODEL_FW", "tiny")
+    init_db()
+    runtime.reopen_for_tests()
+    ray_settings.save({"enabled": True, "dashboard_url": URL,
+                       "engines": ["supertonic3", "faster-whisper-isolated"],
+                       "num_gpus": float(os.environ.get("VS_RAY_TEST_NUM_GPUS", "0")),
+                       "auth_token": os.environ.get("VS_RAY_TEST_TOKEN") or ""})
+    try:
+        tts = Supertonic3Backend()
+        clips = []
+        for i, text in enumerate(["Hello world, this is a test.", "Good morning everyone."]):
+            audio = tts.generate(text, language="en")
+            wav = AF.resample(audio, tts.sample_rate, 16000)[0].numpy()
+            path = tmp_path / f"clip{i}.wav"
+            sf.write(path, wav, 16000)
+            clips.append(str(path))
+        asr = IsolatedFasterWhisperBackend()
+        assert type(asr).is_available()[0]
+        started = time.monotonic()
+        asr.ensure_loaded()  # install + weights warm-up
+        warm_s = time.monotonic() - started
+        results = asr.transcribe_many(clips, word_timestamps=True)
+        texts = [" ".join(c["text"] for c in r["chunks"]).lower() for r in results]
+        print(f"asr warm-up {warm_s:.0f}s; transcripts: {texts}")
+        assert "hello" in texts[0] and "world" in texts[0]
+        assert "morning" in texts[1]
+    finally:
+        ray_settings.save({"enabled": False, "auth_token": ""})
+        runtime.shutdown()
+        runtime.reopen_for_tests()

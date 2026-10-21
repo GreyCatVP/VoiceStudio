@@ -2077,16 +2077,20 @@ async def generate_speech(
         # best-effort (transcribe_reference returns None on failure → the model's
         # built-in ASR fallback), so a timeout degrades to None rather than
         # failing the whole generate.
+        from services.asr_backend import ray_asr_dispatch
+        _ref_asr = ray_asr_dispatch(None)
         try:
             ref_text = await _run_with_reference_lease(
                 ref_lease,
                 lambda release: run_on_gpu_pool_guarded(
                     functools.partial(transcribe_reference, ref_audio_path),
                     what="Reference transcribe",
+                    executor=_ref_asr["executor"],
                     # Floor budget (#1190): a reference clip is seconds of audio,
                     # so the length-scaled bonus never applies — but the timeout is
                     # explicit here too, so no dispatch relies on a hidden default.
-                    timeout=_generate_timeout_s(
+                    # (Ray-routed ASR: a cluster budget, the first call may warm up.)
+                    timeout=_ref_asr.get("timeout") or _generate_timeout_s(
                         "", execution_device=_routing["effective_device"]
                     ),
                     on_abandon=release,
@@ -2479,6 +2483,7 @@ async def generate_speech(
                     audio_tensor = await run_on_gpu_pool_guarded(
                         functools.partial(_assemble_stream_chunks, parts, sample_rate),
                         what="TTS assemble",
+                        executor=_lane,  # CPU work; a Ray-routed render never waits on the GPU pool
                         timeout=_generate_timeout_s(text, execution_device=_routing["effective_device"]),
                     )
 

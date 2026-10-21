@@ -47,6 +47,9 @@ UV_SHA256 = {
     "aarch64": "0804e9b164c64b6914182d5920c08551958a095986f10a3731056df701126436",
 }
 INSTALL_TIMEOUT_S = 3600
+# Audio bytes one batch result may carry (the protocol caps compressed
+# results at 50 MB; PCM barely compresses).
+BATCH_RESULT_BUDGET = 40 * 1024 * 1024
 # Job logs keep the base64 result; prune ours once nobody can still need them.
 # Longer than any run's hard cap, so a quiet job's own log is never removed.
 LOG_RETENTION_S = 6 * 3600
@@ -182,8 +185,35 @@ def has_nvidia() -> bool:
     return _HAS_NVIDIA
 
 
+def _install_env() -> Dict[str, str]:
+    # Package builds, downloads and the import probe run third-party code:
+    # no cluster credentials, same as the engine itself.
+    env = {k: v for k, v in os.environ.items() if not _ENGINE_ENV_DENY.match(k)}
+    env.update({
+        "UV_NO_CONFIG": "1",  # never pick up a stray pyproject's constraints
+        "UV_CACHE_DIR": str(cache_root() / "uv-cache"),
+        "UV_PYTHON_INSTALL_DIR": str(cache_root() / "python"),
+        # Weights downloads use the cluster cache, never the node's ~/.cache
+        # or a token file there (anonymous by design).
+        "HF_HOME": str(cache_root() / "hf"),
+        "HF_HUB_DISABLE_IMPLICIT_TOKEN": "1",
+    })
+    return env
+
+
 def ensure_engine_venv(engine: str, recipe: Dict[str, Any]) -> str:
     """Build (once per recipe) the engine's venv in the cache; return its python."""
+    return ensure_engine(engine, recipe)[0]
+
+
+def ensure_engine(engine: str, recipe: Dict[str, Any]) -> "tuple[str, Optional[str]]":
+    """Install the engine on this node once per recipe.
+
+    Returns ``(venv python, source checkout or None)``. Source and weights
+    live under ``engines/<engine>/<key>/src`` (shared by the CPU and CUDA
+    venvs, and stable, as editable installs point into it); the venv lives
+    under ``engines/<engine>/<key>-<variant>``.
+    """
     key = str(recipe.get("key") or "")
     if not re.fullmatch(r"[0-9a-f]{8,64}", key) or not re.fullmatch(r"[A-Za-z0-9_.-]+", engine):
         raise TaskError("install", "invalid install recipe")
@@ -191,33 +221,227 @@ def ensure_engine_venv(engine: str, recipe: Dict[str, Any]) -> str:
     # GPU-less node must never be reused on a GPU node (shared caches).
     variant_name = "cuda" if has_nvidia() else "cpu"
     root = cache_root() / "engines" / engine / f"{key}-{variant_name}"
+    src = cache_root() / "engines" / engine / key / "src"
+    source = recipe.get("source")
+    checkout = src / _safe_name(source["dirname"]) if source else None
     python = root / ".venv" / "bin" / "python"
     marker = root / ".installed"
-    if marker.exists() and python.exists():
-        return str(python)
+    if marker.exists() and python.exists() and _weights_ok(checkout, recipe.get("weights")):
+        return str(python), str(checkout) if checkout else None
     with cache_lock(f"engine-{engine}", timeout=INSTALL_TIMEOUT_S):
-        if marker.exists() and python.exists():
-            return str(python)
-        uv = find_uv()
-        # Package builds and the import probe run third-party code: no
-        # cluster credentials, same as the engine itself.
-        env = {k: v for k, v in os.environ.items() if not _ENGINE_ENV_DENY.match(k)}
-        env.update({
-            "UV_NO_CONFIG": "1",  # never pick up a stray pyproject's constraints
-            "UV_CACHE_DIR": str(cache_root() / "uv-cache"),
-            "UV_PYTHON_INSTALL_DIR": str(cache_root() / "python"),
-        })
-        root.mkdir(parents=True, exist_ok=True)
-        proto.emit_progress(sys.stdout, "installing", 0.05, f"creating {engine} environment")
-        _run_logged([uv, "venv", "--clear", str(root / ".venv"), *recipe.get("venv_args", [])], env, 600, "install")
-        variant = recipe.get(f"{variant_name}_args") or []
-        proto.emit_progress(sys.stdout, "installing", 0.15, f"installing {engine} packages")
-        _run_logged([uv, "pip", "install", "--python", str(python), *recipe.get("install_args", []), *variant],
-                    env, INSTALL_TIMEOUT_S, "install")
-        proto.emit_progress(sys.stdout, "installing", 0.9, f"verifying {engine}")
-        _run_logged([str(python), "-c", str(recipe.get("probe_code") or "pass")], env, 300, "install")
-        marker.write_text(f"{engine}\n{key}\n{time.time():.0f}\n")
-    return str(python)
+        env = _install_env()
+        if checkout is not None:
+            _fetch_sources(src, checkout, source, recipe.get("extra_sources") or [])
+            _apply_pin_rewrites(checkout, recipe.get("pin_rewrites") or [])
+        files_dir = src / "files"
+        for name, content in (recipe.get("files") or {}).items():
+            files_dir.mkdir(parents=True, exist_ok=True)
+            (files_dir / _safe_name(name)).write_text(str(content), encoding="utf-8")
+        if not (marker.exists() and python.exists()):
+            uv = find_uv()
+            root.mkdir(parents=True, exist_ok=True)
+            # The marker proves THIS build finished; a stale one must not
+            # bless a rebuild that fails halfway.
+            marker.unlink(missing_ok=True)
+            proto.emit_progress(sys.stdout, "installing", 0.05, f"creating {engine} environment")
+            _run_logged([uv, "venv", "--clear", str(root / ".venv"), *recipe.get("venv_args", [])], env, 600, "install")
+            variant = recipe.get(f"{variant_name}_args") or []
+            install_args = [_expand(a, checkout, files_dir) for a in recipe.get("install_args", [])]
+            proto.emit_progress(sys.stdout, "installing", 0.15, f"installing {engine} packages")
+            _run_logged([uv, "pip", "install", "--python", str(python), *install_args, *variant],
+                        env, INSTALL_TIMEOUT_S, "install")
+            for extra in recipe.get("target_installs") or []:
+                # e.g. cuDNN 8 into <site-packages>/cudnn8_compat, where
+                # core/cudnn8.py looks for it (CTranslate2 4.4 needs it).
+                if variant_name not in (extra.get("variants") or ["cuda", "cpu"]):
+                    continue
+                purelib = subprocess.run(
+                    [str(python), "-c", "import sysconfig; print(sysconfig.get_paths()['purelib'])"],
+                    capture_output=True, text=True, timeout=60, env=env, check=True).stdout.strip()
+                target = Path(purelib) / _safe_rel(str(extra["site_rel"]))
+                _run_logged([uv, "pip", "install", "--python", str(python), "--target", str(target),
+                             *[str(a) for a in extra.get("args") or []]], env, INSTALL_TIMEOUT_S, "install")
+            proto.emit_progress(sys.stdout, "installing", 0.85, f"verifying {engine}")
+            probe = _expand(str(recipe.get("probe_code") or "pass"), checkout, files_dir)
+            _run_logged([str(python), "-c", probe], env, 300, "install")
+            marker.write_text(f"{engine}\n{key}\n{time.time():.0f}\n")
+        if recipe.get("weights") and not _weights_ok(checkout, recipe["weights"]):
+            _fetch_weights(checkout, recipe["weights"], env)
+    return str(python), str(checkout) if checkout else None
+
+
+def _safe_name(name: str) -> str:
+    if not re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", str(name)) or str(name).startswith("."):
+        raise TaskError("install", f"unsafe name in recipe: {name!r}")
+    return str(name)
+
+
+def _safe_rel(rel: str) -> Path:
+    path = Path(str(rel))
+    if not rel or path.is_absolute() or ".." in path.parts:
+        raise TaskError("install", f"unsafe path in recipe: {rel!r}")
+    return path
+
+
+def _expand(value: str, checkout: Optional[Path], files_dir: Path) -> str:
+    """The local installer's placeholders, pointed at this node's paths."""
+    if checkout is not None:
+        value = (value.replace("{checkout_uri}", checkout.resolve().as_uri())
+                 .replace("{checkout_repr}", repr(str(checkout)))
+                 .replace("{checkout}", str(checkout)))
+    # The job package (ships stdlib helpers such as core/execstack.py).
+    value = value.replace("{workdir_repr}", repr(str(Path(__file__).resolve().parent)))
+    return value.replace("{files}", str(files_dir))
+
+
+_SOURCE_HOSTS = ("https://github.com/", "https://codeload.github.com/")
+_REVISION_MARKER = ".voicestudio_source_revision"
+
+
+def _source_present(dest: Path, revision: str, required: str) -> bool:
+    marker = dest / _REVISION_MARKER
+    return (marker.is_file() and marker.read_text().strip() == revision
+            and (not required or (dest / _safe_rel(required)).exists()))
+
+
+def _fetch_sources(src: Path, checkout: Path, source: Dict[str, Any], extras: list) -> None:
+    """The pinned source archive plus nested extra sources, in order."""
+    if not _source_present(checkout, str(source.get("revision", "")), str(source.get("required_path", ""))):
+        _download_and_extract(str(source["tarball_url"]), checkout, src)
+        _check_and_mark(checkout, str(source.get("revision", "")), str(source.get("required_path", "")))
+        for extra in extras:  # a fresh parent invalidates its nested sources
+            dest = checkout / _safe_rel(str(extra["path"]))
+            if dest.exists():
+                shutil.rmtree(dest)
+    for extra in extras:
+        dest = checkout / _safe_rel(str(extra["path"]))
+        if _source_present(dest, str(extra.get("revision", "")), str(extra.get("required_path", ""))):
+            continue
+        if dest.exists():
+            shutil.rmtree(dest)
+        _download_and_extract(str(extra["tarball_url"]), dest, src)
+        _check_and_mark(dest, str(extra.get("revision", "")), str(extra.get("required_path", "")))
+
+
+def _check_and_mark(dest: Path, revision: str, required: str) -> None:
+    if required and not (dest / _safe_rel(required)).exists():
+        raise TaskError("install", f"source archive for {dest.name} lacks {required}")
+    (dest / _REVISION_MARKER).write_text(revision + "\n")
+
+
+def _download_and_extract(url: str, dest: Path, scratch_parent: Path) -> None:
+    """Fetch a GitHub archive and extract its single top directory to ``dest``.
+
+    Only regular files and directories are extracted (archives may carry
+    absolute symlinks), and nothing may land outside the extraction root.
+    """
+    import tarfile  # noqa: PLC0415
+    import tempfile  # noqa: PLC0415
+    import urllib.request  # noqa: PLC0415
+
+    if not url.startswith(_SOURCE_HOSTS):
+        raise TaskError("install", f"refusing to fetch source from {url!r}")
+    scratch_parent.mkdir(parents=True, exist_ok=True)
+    proto.emit_progress(sys.stdout, "installing", None, f"downloading {url.rsplit('/', 1)[-1]}")
+    with tempfile.TemporaryDirectory(dir=scratch_parent) as tmp:
+        archive = Path(tmp) / "src.tar.gz"
+        with urllib.request.urlopen(url, timeout=600) as resp, open(archive, "wb") as out:
+            last = time.monotonic()
+            while True:
+                block = resp.read(1 << 20)
+                if not block:
+                    break
+                out.write(block)
+                if time.monotonic() - last > 10:
+                    last = time.monotonic()
+                    proto.emit_progress(sys.stdout, "installing", None, "downloading source")
+        root = Path(tmp) / "x"
+        root.mkdir()
+        root_abs = os.path.abspath(root)
+        with tarfile.open(archive, "r:gz") as tf:
+            members = []
+            for m in tf.getmembers():
+                if not (m.isreg() or m.isdir()):
+                    continue  # no symlinks, hardlinks or devices
+                target = os.path.abspath(os.path.join(root_abs, m.name))
+                if m.name.startswith("/") or os.path.commonpath([root_abs, target]) != root_abs:
+                    raise TaskError("install", f"archive member escapes the extraction root: {m.name!r}")
+                members.append(m)
+            try:
+                tf.extractall(root, members=members, filter="data")
+            except TypeError:  # Python without extraction filters
+                tf.extractall(root, members=members)
+        tops = [p for p in root.iterdir()]
+        if len(tops) != 1 or not tops[0].is_dir():
+            raise TaskError("install", "source archive must hold exactly one top-level directory")
+        if dest.exists():
+            shutil.rmtree(dest)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(tops[0]), str(dest))
+
+
+def _apply_pin_rewrites(checkout: Path, rewrites: list) -> None:
+    for rule in rewrites:
+        source = checkout / _safe_rel(str(rule["file"]))
+        out = checkout / _safe_rel(str(rule["out"]))
+        text = source.read_text(encoding="utf-8")
+        for package, old, new in rule.get("pins") or []:
+            text = re.sub(rf"(?m)^({re.escape(str(package))}\s*==\s*){re.escape(str(old))}(?=\s*(?:#.*)?$)",
+                          lambda m, new=str(new): m[1] + new, text)
+        out.write_text(text, encoding="utf-8")
+
+
+_WEIGHTS_MARKER = ".omnivoice_weights_complete"
+
+
+def _weights_ok(checkout: Optional[Path], weights: Optional[Dict[str, Any]]) -> bool:
+    if not weights:
+        return True
+    if checkout is None:
+        return False
+    wdir = checkout / _safe_rel(str(weights.get("subdir") or "checkpoints"))
+    marker = wdir / _WEIGHTS_MARKER
+    if not marker.is_file():
+        return False
+    lines = marker.read_text().splitlines()
+    return lines[:2] == [str(weights.get("repo_id")), str(weights.get("revision") or "")] and _weights_floor(wdir, weights)
+
+
+def _weights_floor(wdir: Path, weights: Dict[str, Any]) -> bool:
+    """A config file is present and some file is at least 5 MiB (the local
+    installer's floor against a half-finished download)."""
+    if not any((wdir / _safe_name(n)).is_file() for n in weights.get("config_names") or []):
+        return False
+    return any(p.is_file() and p.stat().st_size >= 5 * 1024 * 1024 for p in wdir.rglob("*"))
+
+
+_SNAPSHOT_CODE = (
+    "import json, sys\n"
+    "from huggingface_hub import snapshot_download\n"
+    "a = json.loads(sys.argv[1])\n"
+    "snapshot_download(a['repo_id'], revision=a['revision'] or None, local_dir=a['local_dir'],"
+    " allow_patterns=a['allow_patterns'])\n"
+)
+
+
+def _fetch_weights(checkout: Optional[Path], weights: Dict[str, Any], env: Dict[str, str]) -> None:
+    """Pinned weights into the checkout, via a throwaway huggingface_hub env."""
+    if checkout is None:
+        raise TaskError("install", "weights need a source checkout")
+    wdir = checkout / _safe_rel(str(weights.get("subdir") or "checkpoints"))
+    wdir.mkdir(parents=True, exist_ok=True)
+    hub = str(weights.get("hf_hub") or "huggingface_hub")
+    if not re.fullmatch(r"huggingface_hub(==[0-9][0-9A-Za-z.]*)?", hub):
+        raise TaskError("install", "invalid huggingface_hub pin")
+    args = json.dumps({"repo_id": str(weights["repo_id"]), "revision": str(weights.get("revision") or ""),
+                       "local_dir": str(wdir), "allow_patterns": weights.get("allow_patterns")})
+    with cache_lock(f"weights-{_safe_name(str(weights['repo_id']).replace('/', '--'))}", timeout=INSTALL_TIMEOUT_S):
+        proto.emit_progress(sys.stdout, "installing", 0.9, f"downloading weights {weights['repo_id']}")
+        _run_logged([find_uv(), "run", "--no-project", "--python", "3.11", "--with", hub,
+                     "python", "-I", "-c", _SNAPSHOT_CODE, args], env, INSTALL_TIMEOUT_S, "weights")
+        if not _weights_floor(wdir, weights):
+            raise TaskError("weights", f"weights for {weights['repo_id']} look incomplete")
+        (wdir / _WEIGHTS_MARKER).write_text(f"{weights['repo_id']}\n{weights.get('revision') or ''}\n{time.time():.0f}\n")
 
 
 def _die_with_parent() -> None:
@@ -346,6 +570,12 @@ def _engine_env(task: Dict[str, Any]) -> Dict[str, str]:
     return env
 
 
+def _safe_env_name(name: str) -> str:
+    if not re.fullmatch(r"OMNIVOICE_[A-Z0-9_]{1,64}", name):
+        raise TaskError("install", f"unsafe env var name in recipe: {name!r}")
+    return name
+
+
 def _engine_script(task: Dict[str, Any], workdir: Path) -> Path:
     entry = str(task.get("entry") or "")
     engines_dir = (workdir / "engines").resolve()
@@ -371,7 +601,11 @@ def run_task(task: Dict[str, Any], workdir: Path) -> Dict[str, Any]:
     env = _engine_env(task)
     recipe = task.get("install")
     if recipe:
-        env["VS_ENGINE_PYTHON"] = ensure_engine_venv(engine, recipe)
+        python, checkout = ensure_engine(engine, recipe)
+        env["VS_ENGINE_PYTHON"] = python
+        if checkout and recipe.get("env_var"):
+            # The node-local checkout: the backend's own path means nothing here.
+            env[_safe_env_name(str(recipe["env_var"]))] = checkout
     if op == "install":
         return {"op": "installed", "engine": engine, "key": (recipe or {}).get("key")}
     script = _engine_script(task, workdir)
@@ -434,13 +668,19 @@ def _run_batch(sidecar: "Sidecar", params: Dict[str, Any], inputs: Dict[str, str
         return value
 
     results: list = []
+    size = 0
     for index, item in enumerate(items):
+        if results and size > BATCH_RESULT_BUDGET:
+            # Leave room under the protocol's result cap; the backend sends
+            # the remaining items as another job.
+            return {"op": "batch", "results": results, "truncated": True}
         if sidecar.proc.poll() is not None:
             results.append({"op": "error", "stage": "engine", "message": "engine exited earlier in the batch"})
             continue
         msg = {"op": call, **shared, **{k: resolve(v) for k, v in item.items()}}
         try:
             results.append(sidecar.call(msg))
+            size += len(str(results[-1].get("audio_pcm_b64") or "")) * 3 // 4
         except TaskError as exc:
             results.append({"op": "error", "stage": exc.stage, "message": str(exc)})
         proto.emit_progress(sys.stdout, "item_done", (index + 1) / max(1, len(items)), f"{index + 1}/{len(items)}")
@@ -470,6 +710,10 @@ def main(argv: Optional[list] = None) -> int:
     # Ray stops a job with SIGTERM; turn it into a normal exit so the sidecar
     # is closed by the finally blocks (PDEATHSIG covers SIGKILL).
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
+    # Children can read an ancestor's environ from /proc: drop cluster
+    # credentials from our own environment, not just from theirs.
+    for name in [k for k in os.environ if _ENGINE_ENV_DENY.match(k)]:
+        os.environ.pop(name, None)
     for stream in (sys.stdout, sys.stderr):
         with contextlib.suppress(AttributeError, ValueError):
             stream.reconfigure(errors="backslashreplace")

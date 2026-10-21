@@ -385,7 +385,8 @@ _RAY_INSTALL_IDLE_S = 600.0
 # cancellation and progress stay reasonably granular.
 _RAY_BATCH_MAX_BYTES = 35 * 1024 * 1024
 _RAY_BATCH_MAX_ITEMS = 16
-_RAY_CHARS_PER_SECOND = 10.0  # conservative: slow speech means more audio per char  # the worker heartbeats every ~10 s while installing
+_RAY_CHARS_PER_SECOND = 10.0  # conservative: slow speech means more audio per char
+_RAY_CJK_CHARS_PER_SECOND = 4.0  # the worker heartbeats every ~10 s while installing
 _RAY_INSTALLED: set = set()
 
 
@@ -410,12 +411,18 @@ def _ray_installed(cfg, engine_id: str, recipe: dict) -> bool:
     return _ray_install_key(cfg, engine_id, recipe) in _RAY_INSTALLED
 
 
-def _item_kwargs(kw: dict, index: int) -> dict:
-    """Item ``index``'s kwargs: list values are per item; a None item value
-    means "not set" for that item (e.g. a seed only on the first span)."""
+#: Kwargs a batch call may give per item (TTSBackend.generate_batch's set,
+#: plus seed). Any other list (e.g. an 8-float emo_vector) is one value.
+_PER_ITEM_KEYS = frozenset({"ref_audio", "ref_text", "instruct", "language", "duration", "speed", "seed"})
+
+
+def _item_kwargs(kw: dict, index: int, count: int) -> dict:
+    """Item ``index``'s kwargs: a per-item list (known key, one entry per
+    text) is indexed; a None entry means "not set" for that item (e.g. a seed
+    only on the first span)."""
     out = {}
     for key, value in kw.items():
-        if isinstance(value, list):
+        if key in _PER_ITEM_KEYS and isinstance(value, list) and len(value) == count:
             value = value[index]
             if value is None:
                 continue
@@ -423,12 +430,25 @@ def _item_kwargs(kw: dict, index: int) -> dict:
     return out
 
 
+def _speech_seconds(text: str, speed=None) -> float:
+    """A conservative spoken-length estimate: CJK speech runs ~4 chars/s,
+    other scripts ~10; a speed below 1 stretches it."""
+    cjk = sum(1 for ch in text if "\u3040" <= ch <= "\u30ff" or "\u3400" <= ch <= "\u9fff"
+              or "\uac00" <= ch <= "\ud7af" or "\uf900" <= ch <= "\ufaff")
+    seconds = cjk / _RAY_CJK_CHARS_PER_SECOND + (len(text) - cjk) / _RAY_CHARS_PER_SECOND
+    try:
+        factor = float(speed) if speed else 1.0
+    except (TypeError, ValueError):
+        factor = 1.0
+    return seconds / max(0.25, min(factor, 1.0))
+
+
 def _batch_groups(prepared: list, sample_rate: int) -> list:
     """Split (text, kw) items into groups whose audio should fit one result."""
     groups: list = [[]]
     size = 0
     for text, kw in prepared:
-        seconds = max(len(text) / _RAY_CHARS_PER_SECOND, float(kw.get("duration") or 0), 1.0)
+        seconds = max(_speech_seconds(text, kw.get("speed")), float(kw.get("duration") or 0), 1.0)
         est = int(seconds * sample_rate * 2)
         if groups[-1] and (size + est > _RAY_BATCH_MAX_BYTES or len(groups[-1]) >= _RAY_BATCH_MAX_ITEMS):
             groups.append([])
@@ -896,7 +916,7 @@ class SubprocessBackend(TTSBackend):
         # Same placement as synthesis: venvs live per node, and a GPU node
         # needs the CUDA build.
         self._run_ray_job(ray_cfg, RayTask(op="install", engine=self.id, install=recipe,
-                                           num_gpus=ray_cfg.num_gpus if engine and engine.gpu else None,
+                                           num_gpus=(ray_cfg.num_gpus or None) if engine and engine.gpu else None,
                                            num_cpus=ray_cfg.num_cpus),
                           timeout=_RAY_INSTALL_ALLOWANCE_S, idle_timeout=_RAY_INSTALL_IDLE_S)
         _RAY_INSTALLED.add(_ray_install_key(ray_cfg, self.id, recipe))
@@ -927,7 +947,7 @@ class SubprocessBackend(TTSBackend):
         task = RayTask(
             op="synthesize", engine=self.id, params=params, inputs=inputs, install=recipe,
             env=dict(engine.env) if engine else {},
-            num_gpus=ray_cfg.num_gpus if engine and engine.gpu else None,
+            num_gpus=(ray_cfg.num_gpus or None) if engine and engine.gpu else None,
             num_cpus=ray_cfg.num_cpus,
         )
         result = self._run_ray_job(ray_cfg, task, timeout=timeout, idle_timeout=idle)
@@ -955,10 +975,10 @@ class SubprocessBackend(TTSBackend):
         """Render ``texts``; list-valued kwargs are per item (OmniVoice's rule)."""
         ray_cfg = _ray_route(self.id)
         if ray_cfg is None or not self.has_native_batch:
-            return [self.generate(text, **_item_kwargs(kw, i)) for i, text in enumerate(texts)]
+            return [self.generate(text, **_item_kwargs(kw, i, len(texts))) for i, text in enumerate(texts)]
         prepared = []
         for i, text in enumerate(texts):
-            item_kw = _item_kwargs(kw, i)
+            item_kw = _item_kwargs(kw, i, len(texts))
             self._check_language(item_kw.get("language"))
             prepared.append((text, self._prepare_generate_kwargs(text, item_kw)))
         self._validate_generate_authorization()
@@ -996,12 +1016,14 @@ class SubprocessBackend(TTSBackend):
         task = RayTask(
             op="batch", engine=self.id, params={"call": "synthesize", "items": items}, inputs=inputs,
             install=install_recipe(self.id), env=dict(engine.env) if engine else {},
-            num_gpus=ray_cfg.num_gpus if engine and engine.gpu else None, num_cpus=ray_cfg.num_cpus,
+            num_gpus=(ray_cfg.num_gpus or None) if engine and engine.gpu else None, num_cpus=ray_cfg.num_cpus,
         )
         result = self._run_ray_job(ray_cfg, task, timeout=_RAY_INSTALL_ALLOWANCE_S + 2 * sum(idles),
                                    idle_timeout=max(idles))
         replies = result.result.get("results")
-        if result.result.get("op") != "batch" or not isinstance(replies, list) or len(replies) != len(group):
+        truncated = bool(result.result.get("truncated"))
+        if (result.result.get("op") != "batch" or not isinstance(replies, list) or not replies
+                or len(replies) > len(group) or (len(replies) < len(group) and not truncated)):
             raise RuntimeError(f"{self.id} Ray batch returned a malformed result")
         wavs = []
         for reply in replies:
@@ -1010,6 +1032,9 @@ class SubprocessBackend(TTSBackend):
                 raise RuntimeError(f"{self.id} sidecar {reply.get('stage', 'engine')} error: "
                                    f"{reply.get('message', 'malformed batch item')}")
             wavs.append(self._decode_ray_audio(reply))
+        if len(replies) < len(group):
+            # The worker stopped before the result cap; render the rest next.
+            wavs.extend(self._generate_batch_via_ray(ray_cfg, group[len(replies):]))
         return wavs
 
     def _decode_ray_audio(self, reply: dict) -> torch.Tensor:

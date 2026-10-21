@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -38,8 +38,8 @@ const BASE: RayConfig = {
   has_cf_secret: false,
   env_pinned: [],
   available_engines: [
-    { id: 'voxcpm2', gpu: true },
-    { id: 'supertonic3', gpu: false },
+    { id: 'voxcpm2', gpu: true, kind: 'tts' },
+    { id: 'supertonic3', gpu: false, kind: 'tts' },
   ],
 };
 
@@ -82,7 +82,65 @@ it('loads and renders the saved state', async () => {
   expect(boxes[1]).not.toBeChecked();
   expect(screen.getByText('supertonic3')).toBeInTheDocument();
   expect(screen.getByText('settings.ray_badge_cpu')).toBeInTheDocument();
-  expect(mock.api).toHaveBeenCalledWith('/api/settings/ray/jobs', expect.anything());
+  // The jobs query starts once the settings have loaded: wait for it.
+  await waitFor(() =>
+    expect(mock.api).toHaveBeenCalledWith('/api/settings/ray/jobs', expect.anything()),
+  );
+});
+
+it('groups engines into text to speech and speech recognition', async () => {
+  renderSettings({
+    engines: ['voxcpm2', 'faster-whisper-isolated'],
+    available_engines: [
+      { id: 'voxcpm2', gpu: true, kind: 'tts' },
+      { id: 'supertonic3', gpu: false, kind: 'tts' },
+      { id: 'faster-whisper-isolated', gpu: true, kind: 'asr' },
+      // Older backends omit `kind`; those engines count as text to speech.
+      { id: 'cosyvoice', gpu: true },
+    ],
+  });
+  const tts = await screen.findByRole('group', { name: 'settings.ray_engines_group_tts' });
+  const asr = screen.getByRole('group', { name: 'settings.ray_engines_group_asr' });
+
+  const ids = (group: HTMLElement) =>
+    within(group)
+      .getAllByRole('checkbox')
+      .map((box) => box.closest('label')?.querySelector('.font-mono')?.textContent);
+  expect(ids(tts)).toEqual(['voxcpm2', 'supertonic3', 'cosyvoice']);
+  expect(ids(asr)).toEqual(['faster-whisper-isolated']);
+  expect(within(asr).getByRole('checkbox')).toBeChecked();
+  expect(within(asr).getByText('settings.ray_badge_gpu')).toBeInTheDocument();
+  expect(within(asr).getByText('settings.ray_engines_asr_hint')).toBeInTheDocument();
+  expect(asr).toHaveAccessibleDescription('settings.ray_engines_asr_hint');
+  expect(within(tts).queryByText('settings.ray_engines_asr_hint')).toBeNull();
+
+  fireEvent.click(within(asr).getByRole('checkbox'));
+  fireEvent.click(screen.getAllByRole('button', { name: 'common.save' })[0]);
+  await waitFor(() =>
+    expect(mock.api).toHaveBeenCalledWith('/api/settings/ray', {
+      method: 'PUT',
+      body: JSON.stringify({ engines: ['voxcpm2'] }),
+    }),
+  );
+});
+
+it('hides the text-to-speech group when only speech recognition engines exist', async () => {
+  renderSettings({
+    engines: [],
+    available_engines: [{ id: 'faster-whisper-isolated', gpu: true, kind: 'asr' }],
+  });
+  const asr = await screen.findByRole('group', { name: 'settings.ray_engines_group_asr' });
+  expect(within(asr).getAllByRole('checkbox')).toHaveLength(1);
+  expect(screen.queryByRole('group', { name: 'settings.ray_engines_group_tts' })).toBeNull();
+  expect(screen.queryByText('settings.ray_engines_group_tts')).toBeNull();
+  expect(screen.queryByText('settings.ray_engines_none')).toBeNull();
+});
+
+it('hides the speech recognition group when no such engine is available', async () => {
+  renderSettings();
+  await screen.findByRole('group', { name: 'settings.ray_engines_group_tts' });
+  expect(screen.queryByRole('group', { name: 'settings.ray_engines_group_asr' })).toBeNull();
+  expect(screen.queryByText('settings.ray_engines_asr_hint')).toBeNull();
 });
 
 it('saves only the changed fields and never sends empty secrets', async () => {

@@ -34,8 +34,17 @@ export interface RayConfig {
   has_token: boolean;
   has_cf_secret: boolean;
   env_pinned: string[];
-  available_engines: { id: string; gpu: boolean }[];
+  available_engines: RayEngine[];
 }
+
+export interface RayEngine {
+  id: string;
+  gpu: boolean;
+  /** Older backends omit `kind`; treat those engines as text to speech. */
+  kind?: RayEngineKind;
+}
+
+export type RayEngineKind = 'tts' | 'asr';
 
 type RayKind =
   | 'ok'
@@ -617,32 +626,71 @@ export function RaySettings() {
             <span className="text-xs text-muted-foreground">{t('settings.ray_engines_none')}</span>
           )}
         </SettingsRow>
-        {server?.available_engines.map((engine) => (
-          <label
-            key={engine.id}
-            className="flex cursor-pointer items-center gap-3 px-4 py-2.5 text-sm"
-          >
-            <input
-              type="checkbox"
-              className="size-4 shrink-0 accent-primary"
-              checked={draft?.engines.includes(engine.id) ?? false}
-              disabled={busy}
-              onChange={(event) => {
-                const checked = event.target.checked;
-                const current = draft?.engines ?? [];
-                update({
-                  engines: checked
-                    ? [...current, engine.id]
-                    : current.filter((id) => id !== engine.id),
-                });
-              }}
-            />
-            <span className="font-mono">{engine.id}</span>
-            <Badge variant={engine.gpu ? 'default' : 'secondary'}>
-              {engine.gpu ? t('settings.ray_badge_gpu') : t('settings.ray_badge_cpu')}
-            </Badge>
-          </label>
-        ))}
+        {(
+          [
+            { kind: 'tts', title: t('settings.ray_engines_group_tts') },
+            {
+              kind: 'asr',
+              title: t('settings.ray_engines_group_asr'),
+              hint: t('settings.ray_engines_asr_hint'),
+            },
+          ] satisfies { kind: RayEngineKind; title: string; hint?: string }[]
+        ).map((group) => {
+          const engines = (server?.available_engines ?? []).filter(
+            (engine) => (engine.kind ?? 'tts') === group.kind,
+          );
+          if (engines.length === 0) return null;
+          return (
+            <div
+              key={group.kind}
+              role="group"
+              aria-labelledby={`ray-engines-${group.kind}`}
+              aria-describedby={group.hint ? `ray-engines-${group.kind}-hint` : undefined}
+              className="py-1"
+            >
+              <h3
+                id={`ray-engines-${group.kind}`}
+                className="px-4 pt-2 pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase"
+              >
+                {group.title}
+              </h3>
+              {engines.map((engine) => (
+                <label
+                  key={engine.id}
+                  className="flex cursor-pointer items-center gap-3 px-4 py-2.5 text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    className="size-4 shrink-0 accent-primary"
+                    checked={draft?.engines.includes(engine.id) ?? false}
+                    disabled={busy}
+                    onChange={(event) => {
+                      const checked = event.target.checked;
+                      const current = draft?.engines ?? [];
+                      update({
+                        engines: checked
+                          ? [...current, engine.id]
+                          : current.filter((id) => id !== engine.id),
+                      });
+                    }}
+                  />
+                  <span className="font-mono">{engine.id}</span>
+                  <Badge variant={engine.gpu ? 'default' : 'secondary'}>
+                    {engine.gpu ? t('settings.ray_badge_gpu') : t('settings.ray_badge_cpu')}
+                  </Badge>
+                </label>
+              ))}
+              {group.hint && (
+                <p
+                  id={`ray-engines-${group.kind}-hint`}
+                  className="px-4 pt-1 pb-2 text-xs text-muted-foreground"
+                >
+                  {group.hint}
+                </p>
+              )}
+            </div>
+          );
+        })}
       </SettingsSection>
 
       <SettingsSection icon={ServerCogIcon} title={t('settings.ray_resources')}>
@@ -654,7 +702,7 @@ export function RaySettings() {
           <Input
             aria-label={t('settings.ray_num_gpus')}
             type="number"
-            min={0.01}
+            min={0}
             max={8}
             step={0.05}
             value={draft?.numGpus ?? ''}

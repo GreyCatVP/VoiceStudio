@@ -139,6 +139,10 @@ class IndexTTS2Backend(SubprocessBackend):
 
     @classmethod
     def is_available(cls) -> tuple[bool, str]:
+        from services.subprocess_backend import ray_routed
+
+        if ray_routed(cls.id):  # installed and run on the Ray cluster
+            return True, "runs on the Ray cluster"
         # IMPORTANT: do NOT attempt ``import indextts`` here. The parent's
         # transformers>=5.3 cannot coexist with IndexTTS's transformers<5
         # in one interpreter — that's the entire reason this backend

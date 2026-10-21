@@ -1677,8 +1677,10 @@ async def dub_qc_pass(job_id: str, lang: str = Query(None), drift_threshold: flo
             run_transcribe_guarded,
         )
         from services.model_manager import _get_gpu_pool
+        from services.asr_backend import ray_asr_dispatch
+        _d = ray_asr_dispatch(_get_gpu_pool())
         recognized, engine_id = await run_transcribe_guarded(
-            _get_gpu_pool(), _recognize, what="QC",
+            _d.pop("executor"), _recognize, what="QC", **_d,
         )
     except ASRTimeoutError as e:
         # Backend is alive; ASR just couldn't finish in time. 504, not 500/connection.

@@ -270,6 +270,24 @@ def refine_ref_texts(clones: dict[str, dict], asr_backend) -> dict[str, dict]:
     dispatch per reference. Mutates and returns `clones` for a convenient
     call-and-reassign at the call site.
     """
+    many = getattr(asr_backend, "transcribe_many", None)
+    from services.subprocess_backend import ray_routed
+    if many is not None and ray_routed(getattr(asr_backend, "id", "")) and len(clones) > 1:
+        # One cluster job for every clip (one model load), not one per clip.
+        entries = list(clones.values())
+        try:
+            results = many([e["ref_audio"] for e in entries], word_timestamps=False, return_exceptions=True)
+        except Exception as e:
+            logger.warning("Batched reference re-transcribe failed (%s); keeping the original texts", e)
+            return clones
+        for entry, result in zip(entries, results):
+            if isinstance(result, Exception):  # per clip: keep its original text
+                logger.warning("speaker_clone: re-transcribe of %s failed, keeping original ref_text: %s",
+                               entry["ref_audio"], result)
+                continue
+            text = " ".join((c.get("text") or "").strip() for c in (result.get("chunks") or [])).strip()
+            entry["ref_text"] = text or entry.get("ref_text", "")
+        return clones
     for entry in clones.values():
         entry["ref_text"] = refine_ref_text(
             entry["ref_audio"], asr_backend, entry.get("ref_text", "")

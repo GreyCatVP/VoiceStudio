@@ -138,6 +138,22 @@ class RayJobsClient:
         data = self._json(await self._request("GET", "/api/cluster_status", params={"format": "1"}))
         return str(data.get("data", {}).get("clusterStatus", ""))
 
+    async def node_resources(self) -> list:
+        """Each alive node's total logical resources ({"CPU": .., "GPU": ..}).
+
+        Malformed entries are skipped; an empty list means "unknown"."""
+        data = self._json(await self._request("GET", "/nodes", params={"view": "summary"}))
+        nodes = (data.get("data") or {}).get("summary") if isinstance(data, dict) and isinstance(data.get("data"), dict) else None
+        out = []
+        for node in nodes if isinstance(nodes, list) else []:
+            raylet = node.get("raylet") if isinstance(node, dict) else None
+            totals = raylet.get("resourcesTotal") if isinstance(raylet, dict) else None
+            if not isinstance(totals, dict) or raylet.get("state") not in (None, "ALIVE"):
+                continue
+            out.append({str(k): float(v) for k, v in totals.items()
+                        if isinstance(v, (int, float)) and not str(k).startswith("node:")})
+        return out
+
     # -- packages ----------------------------------------------------------
     @staticmethod
     def _package_path(uri: str) -> str:

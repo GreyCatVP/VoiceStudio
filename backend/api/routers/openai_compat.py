@@ -1065,7 +1065,9 @@ async def _transcribe_request(
                 raise _TaskUnsupported(backend.id)
             return backend.transcribe(tmp_path, word_timestamps=word_ts, **extra)
 
-        result = await run_transcribe_guarded(_gpu_pool, _run, what="OpenAI")
+        from services.asr_backend import ray_asr_dispatch
+        _d = ray_asr_dispatch(_gpu_pool)
+        result = await run_transcribe_guarded(_d.pop("executor"), _run, what="OpenAI", **_d)
 
         segments = _result_segments(result)
         full_text = (result.get("text") or "").strip() if not segments else " ".join(

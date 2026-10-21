@@ -53,6 +53,10 @@ def build_package(task: Mapping[str, Any], inputs: Mapping[str, bytes]) -> Tuple
         if engine is not None:
             for rel in engine.files:
                 _add(zf, f"engines/{engine.directory}/{rel}", (ENGINES_DIR / engine.directory / rel).read_bytes())
+            for arcname, rel in engine.extra_files:
+                if arcname.startswith(("/", "engines/", "inputs/")) or ".." in arcname.split("/"):
+                    raise ValueError(f"unsafe extra file {arcname!r}")
+                _add(zf, arcname, (BACKEND_DIR / rel).read_bytes())
             task["entry"] = f"engines/{engine.directory}/{engine.entry}"
         for name in sorted(inputs):
             if not _SAFE_NAME.match(name) or name.startswith("."):

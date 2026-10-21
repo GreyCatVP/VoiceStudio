@@ -29,8 +29,11 @@ import threading
 from pathlib import Path
 
 from services.subprocess_backend import (
+    _RAY_INSTALL_ALLOWANCE_S,
     RECV_TIMEOUT_S,
     SubprocessBackend,
+    _ray_route,
+    ray_routed,
 )
 
 logger = logging.getLogger("omnivoice.asr.subprocess")
@@ -39,6 +42,61 @@ logger = logging.getLogger("omnivoice.asr.subprocess")
 # the transcribe round-trip more headroom than the TTS default. Configurable via
 # OMNIVOICE_ASR_RECV_TIMEOUT_S (#2103).
 ASR_RECV_TIMEOUT_S = 600.0
+
+
+# Silent weight download in the warm-up job (large-v3 is ~3 GB).
+_RAY_ASR_WARM_IDLE_S = 1800.0
+_RAY_WARM: set = set()
+# Package cap is 100 MB: clips per job are bounded by size and count.
+_RAY_ASR_MAX_BYTES = 80 * 1024 * 1024
+_RAY_ASR_MAX_CLIPS = 64
+
+
+_RAY_ASR_PIECE_S = 1800.0
+_RAY_ASR_SR = 16000
+
+
+def _clip_seconds(path) -> float:
+    try:
+        import soundfile as sf
+        return float(sf.info(str(path)).duration)
+    except Exception:
+        return os.path.getsize(path) / (_RAY_ASR_SR * 2.0)  # 16 kHz s16 guess
+
+
+def _merge_pieces(results: list, offsets: list) -> dict:
+    segments, chunks = [], []
+    language = None
+    for result, offset in zip(results, offsets):
+        language = language or result.get("language")
+        for seg in result.get("segments") or []:
+            seg = dict(seg)
+            for key in ("start", "end"):
+                if isinstance(seg.get(key), (int, float)):
+                    seg[key] = seg[key] + offset
+            if isinstance(seg.get("words"), list):
+                seg["words"] = [{**w, **{k: w[k] + offset for k in ("start", "end") if isinstance(w.get(k), (int, float))}}
+                                for w in seg["words"] if isinstance(w, dict)]
+            segments.append(seg)
+        for chunk in result.get("chunks") or []:
+            ts = chunk.get("timestamp") or (None, None)
+            chunks.append({"text": chunk.get("text", ""),
+                           "timestamp": tuple(t + offset if isinstance(t, (int, float)) else t for t in ts)})
+    return {"segments": segments, "chunks": chunks, "language": language or "unknown",
+            "text": " ".join((s.get("text") or "").strip() for s in segments).strip()}
+
+
+def _clip_groups(paths: list) -> list:
+    groups: list = [[]]
+    size = 0
+    for path in paths:
+        n = os.path.getsize(path)
+        if groups[-1] and (size + n > _RAY_ASR_MAX_BYTES or len(groups[-1]) >= _RAY_ASR_MAX_CLIPS):
+            groups.append([])
+            size = 0
+        groups[-1].append(path)
+        size += n
+    return [g for g in groups if g]
 
 
 class SubprocessASRBackend(SubprocessBackend):
@@ -64,7 +122,15 @@ class SubprocessASRBackend(SubprocessBackend):
         raise NotImplementedError("ASR sidecar does not synthesize speech")
 
     def ensure_loaded(self) -> None:
-        """Prove the lazy ASR sidecar is ready for the shared loader."""
+        """Prove the lazy ASR sidecar is ready for the shared loader.
+
+        Ray-routed: install the engine on the cluster and warm its weights
+        there (a 1 s silent clip), under the loader's keep-alive rather than a
+        short per-chunk transcribe budget."""
+        ray_cfg = _ray_route(self.id)
+        if ray_cfg is not None:
+            self._ray_warm_up(ray_cfg)
+            return
         with self._lock:
             self._spawn()
 
@@ -99,6 +165,154 @@ class SubprocessASRBackend(SubprocessBackend):
             os.environ.get("ASR_MODEL_FW") or faster_whisper_model_id()
         )
 
+    # ── Ray: one job per call or per batch of clips ────────────────────────
+    def transcribe_many(self, audio_paths: list, *, word_timestamps: bool = True,
+                        language: str | None = None, initial_prompt: str | None = None,
+                        temperature: float | None = None, task: str = "transcribe",
+                        return_exceptions: bool = False) -> list:
+        """Transcribe several clips; on Ray, in as few jobs as fit (one model load each).
+
+        ``return_exceptions``: a failed clip (or a failed group of clips)
+        yields its exception in place of a result instead of failing all."""
+        kwargs = dict(word_timestamps=word_timestamps, language=language,
+                      initial_prompt=initial_prompt, temperature=temperature, task=task)
+        ray_cfg = _ray_route(self.id)
+        if ray_cfg is None:
+            out = []
+            for p in audio_paths:
+                try:
+                    out.append(self.transcribe(p, **kwargs))
+                except Exception as exc:
+                    if not return_exceptions:
+                        raise
+                    out.append(exc)
+            return out
+        self._ray_warm_up(ray_cfg)
+        from services.asr_backend import whisper_request_options
+        request = whisper_request_options(language, initial_prompt, temperature, task)
+        out = []
+        for group in _clip_groups(list(audio_paths)):
+            try:
+                out.extend(self._transcribe_via_ray(ray_cfg, group, word_timestamps, request,
+                                                    return_exceptions=return_exceptions))
+            except Exception as exc:
+                if not return_exceptions:
+                    raise
+                out.extend([exc] * len(group))
+        return out
+
+    def _ray_env(self) -> dict:
+        from services.asr_backend import _offline_asr_repo
+        repo = _offline_asr_repo(self.id)
+        if not repo or os.path.isabs(repo) or os.path.exists(repo):
+            raise RuntimeError(
+                f"{self.id} on the Ray cluster needs a Hugging Face model id, not a local "
+                f"folder ({repo!r}); choose a hub model in Settings → Speech recognition."
+            )
+        return {"ASR_MODEL_FW": repo}
+
+    def _transcribe_via_ray(self, ray_cfg, paths: list, word_timestamps: bool, request: dict,
+                            idle_timeout: float | None = None, return_exceptions: bool = False) -> list:
+        from services.performance_profiles import asr_decode_defaults
+        from services.ray_jobs.engines import install_recipe, ray_engine
+        from services.ray_jobs.executor import RayTask
+
+        inputs: dict = {}
+        items = []
+        for i, path in enumerate(paths):
+            suffix = Path(path).suffix.lower()[:8] or ".wav"
+            inputs[f"audio_path__{i}{suffix}"] = Path(path).read_bytes()  # now: callers delete temp clips
+            items.append({"audio_path": f"@audio_path__{i}"})
+        shared = {"word_timestamps": bool(word_timestamps), "decode_options": asr_decode_defaults(),
+                  **({"request_options": request} if request else {})}
+        engine = ray_engine(self.id)
+        # The sidecar is silent while it transcribes: the deadline must cover
+        # the longest clip (3x real time, generous for CPU nodes).
+        idle = idle_timeout or (self.recv_timeout_s + 3.0 * max(_clip_seconds(p) for p in paths))
+        task = RayTask(
+            op="batch", engine=self.id, params={"call": "transcribe", "shared": shared, "items": items},
+            inputs=inputs, install=install_recipe(self.id), env=self._ray_env(),
+            num_gpus=(ray_cfg.num_gpus or None) if engine and engine.gpu else None, num_cpus=ray_cfg.num_cpus,
+        )
+        result = self._run_ray_job(ray_cfg, task, timeout=_RAY_INSTALL_ALLOWANCE_S + 2 * idle * len(paths),
+                                   idle_timeout=idle)
+        replies = result.result.get("results")
+        if result.result.get("op") != "batch" or not isinstance(replies, list) or len(replies) != len(paths):
+            raise RuntimeError(f"{self.id} Ray batch returned a malformed result")
+        out = []
+        for reply in replies:
+            try:
+                out.append(self._normalise_reply(reply if isinstance(reply, dict) else {}))
+            except RuntimeError as exc:
+                if not return_exceptions:
+                    raise
+                out.append(exc)
+        return out
+
+    def _transcribe_long_via_ray(self, audio_path: str, **kwargs) -> dict:
+        """A long file: 16 kHz mono pieces (each under the job package cap),
+        transcribed in one batch, merged back onto the file's timeline."""
+        import tempfile
+
+        import soundfile as sf
+        import torch
+        import torchaudio.functional as AF
+
+        data, sr = sf.read(audio_path, dtype="float32", always_2d=True)
+        mono = torch.from_numpy(data.mean(axis=1).copy())
+        if sr != _RAY_ASR_SR:
+            mono = AF.resample(mono, sr, _RAY_ASR_SR)
+        piece = int(_RAY_ASR_PIECE_S * _RAY_ASR_SR)
+        with tempfile.TemporaryDirectory() as tmp:
+            paths, offsets = [], []
+            for i, start in enumerate(range(0, mono.shape[0], piece)):
+                path = os.path.join(tmp, f"piece{i}.wav")
+                sf.write(path, mono[start:start + piece].numpy(), _RAY_ASR_SR, subtype="PCM_16")
+                paths.append(path)
+                offsets.append(start / _RAY_ASR_SR)
+            results = self.transcribe_many(paths, **kwargs)
+        return _merge_pieces(results, offsets)
+
+    def _ray_warm_up(self, ray_cfg) -> None:
+        from services.ray_jobs.engines import install_recipe
+        recipe = install_recipe(self.id) or {}
+        # Keyed on the model actually sent (the selected hub id) and the build.
+        key = (ray_cfg.dashboard_url, ray_cfg.cache_dir, self.id, self._ray_env()["ASR_MODEL_FW"], recipe.get("key"))
+        if key in _RAY_WARM:
+            return
+        import tempfile
+        import wave
+        with tempfile.TemporaryDirectory() as tmp:
+            clip = Path(tmp) / "silence.wav"
+            with wave.open(str(clip), "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(16000)
+                w.writeframes(b"\0\0" * 16000)
+            # The model download is silent in the sidecar: a generous deadline.
+            self._transcribe_via_ray(ray_cfg, [str(clip)], False, {}, idle_timeout=_RAY_ASR_WARM_IDLE_S)
+        _RAY_WARM.add(key)
+
+    def _normalise_reply(self, reply: dict, device: str | None = None) -> dict:
+        if reply.get("op") == "error":
+            raise RuntimeError(
+                f"{self.id} ASR sidecar error (device={device or 'ray'}): {reply.get('message')!r}"
+            )
+        if reply.get("op") != "segments":
+            raise RuntimeError(
+                f"{self.id} ASR sidecar returned unexpected op: {reply.get('op')!r}"
+            )
+        result = reply.get("result") or {"segments": [], "language": "unknown"}
+        # The sidecar returns only `segments`; callers such as Dub read
+        # `chunks`, so normalise like the in-process backends do (#2786).
+        if "chunks" not in result:
+            result["chunks"] = [
+                {"text": seg.get("text", ""),
+                 "timestamp": (seg.get("start"), seg.get("end"))}
+                for seg in result.get("segments") or []
+            ]
+        return result
+
     def transcribe(self, audio_path: str, *, word_timestamps: bool = True,
                    language: str | None = None, initial_prompt: str | None = None,
                    temperature: float | None = None,
@@ -110,7 +324,14 @@ class SubprocessASRBackend(SubprocessBackend):
         the engine id + device (so the failure is attributable, not a bare
         broken-pipe) — and the *next* call respawns a fresh sidecar via
         ``_spawn``'s dead-process check. Acquires a GPU-pool slot for the
-        duration, released even if the child dies (the base's try/finally)."""
+        duration, released even if the child dies (the base's try/finally).
+        Ray-routed: one cluster job, no local slot or sidecar."""
+        if _ray_route(self.id) is not None:
+            kwargs = dict(word_timestamps=word_timestamps, language=language,
+                          initial_prompt=initial_prompt, temperature=temperature, task=task)
+            if _clip_seconds(audio_path) > _RAY_ASR_PIECE_S or os.path.getsize(audio_path) > _RAY_ASR_MAX_BYTES:
+                return self._transcribe_long_via_ray(audio_path, **kwargs)
+            return self.transcribe_many([audio_path], **kwargs)[0]
         # On-pool callers (run_transcribe_guarded dispatches via run_in_executor
         # on the GPU pool) already own a pool slot; re-acquiring would
         # self-deadlock on a 1-worker (MPS) pool, so skip it. Off-pool callers
@@ -171,25 +392,7 @@ class SubprocessASRBackend(SubprocessBackend):
                         f"(device={self._device()}); the job failed but the backend "
                         f"stayed up — retry to respawn a fresh sidecar."
                     )
-            if reply.get("op") == "error":
-                raise RuntimeError(
-                    f"{self.id} ASR sidecar error (device={self._device()}): "
-                    f"{reply.get('message')!r}"
-                )
-            if reply.get("op") != "segments":
-                raise RuntimeError(
-                    f"{self.id} ASR sidecar returned unexpected op: {reply.get('op')!r}"
-                )
-            result = reply.get("result") or {"segments": [], "language": "unknown"}
-            # The sidecar returns only `segments`; callers such as Dub read
-            # `chunks`, so normalise like the in-process backends do (#2786).
-            if "chunks" not in result:
-                result["chunks"] = [
-                    {"text": seg.get("text", ""),
-                     "timestamp": (seg.get("start"), seg.get("end"))}
-                    for seg in result.get("segments") or []
-                ]
-            return result
+            return self._normalise_reply(reply, device=self._device())
         finally:
             if _held is not None:
                 _held.set()
@@ -213,6 +416,8 @@ class IsolatedFasterWhisperBackend(SubprocessASRBackend):
 
     @classmethod
     def is_available(cls) -> tuple[bool, str]:
+        if ray_routed(cls.id):  # installed and run on the Ray cluster
+            return True, "runs on the Ray cluster"
         from core.execstack import ensure_ctranslate2_loadable
 
         ok, detail = ensure_ctranslate2_loadable()

@@ -42,6 +42,10 @@ class MossTTSNanoSubprocessBackend(SubprocessBackend):
 
     @classmethod
     def is_available(cls) -> tuple[bool, str]:
+        from services.subprocess_backend import ray_routed
+
+        if ray_routed(cls.id):  # installed and run on the Ray cluster
+            return True, "runs on the Ray cluster"
         if own_venv_python() is None:
             return False, (
                 "moss_tts_nano package not installed. Install it from "

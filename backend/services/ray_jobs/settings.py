@@ -31,7 +31,7 @@ SECRET_CF = "ray_cf_access_client_secret"
 ENV_URL = "OMNIVOICE_RAY_DASHBOARD_URL"
 ENV_TOKEN = "OMNIVOICE_RAY_AUTH_TOKEN"
 
-DEFAULT_NUM_GPUS = 0.1  # a share of one GPU for GPU engines (Ray bookkeeping)
+DEFAULT_NUM_GPUS = 0.1  # a share of one GPU for GPU engines (Ray bookkeeping); 0 = run on CPU
 DEFAULT_NUM_CPUS = 2.0
 _SAFE_PATH = re.compile(r"^/[A-Za-z0-9_./-]*$")
 _SAFE_PYTHON = re.compile(r"^[A-Za-z0-9_./-]+$")
@@ -63,7 +63,7 @@ class RaySettings:
         out["engines"] = list(self.engines)
         out["env_pinned"] = list(self.env_pinned)
         out["available_engines"] = [
-            {"id": e, "gpu": RAY_ENGINES[e].gpu} for e in SELECTABLE_ENGINES
+            {"id": e, "gpu": RAY_ENGINES[e].gpu, "kind": RAY_ENGINES[e].kind} for e in SELECTABLE_ENGINES
         ]
         return out
 
@@ -131,7 +131,7 @@ def load() -> RaySettings:
         dashboard_url=url,
         cf_access_client_id=settings_store.get_text(KEY_CF_ID) or "",
         engines=engines,
-        num_gpus=_float(settings_store.get_text(KEY_NUM_GPUS), DEFAULT_NUM_GPUS, 0.01, 8.0),
+        num_gpus=_float(settings_store.get_text(KEY_NUM_GPUS), DEFAULT_NUM_GPUS, 0.0, 8.0),
         num_cpus=_float(settings_store.get_text(KEY_NUM_CPUS), DEFAULT_NUM_CPUS, 0.1, 64.0),
         cache_dir=cache_dir if _SAFE_PATH.match(cache_dir) else "",
         python=python if _SAFE_PYTHON.match(python) else "python",
@@ -161,7 +161,7 @@ def save(changes: Dict[str, Any]) -> RaySettings:
         if unknown:
             raise ValueError(f"Engines not available on Ray: {', '.join(unknown)}")
         text[KEY_ENGINES] = ",".join(e for e in SELECTABLE_ENGINES if e in set(changes["engines"]))
-    for key, name, lo, hi in ((KEY_NUM_GPUS, "num_gpus", 0.01, 8.0), (KEY_NUM_CPUS, "num_cpus", 0.1, 64.0)):
+    for key, name, lo, hi in ((KEY_NUM_GPUS, "num_gpus", 0.0, 8.0), (KEY_NUM_CPUS, "num_cpus", 0.1, 64.0)):
         if changes.get(name) is not None:
             value = float(changes[name])
             if not lo <= value <= hi:

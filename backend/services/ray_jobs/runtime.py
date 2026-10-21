@@ -159,14 +159,16 @@ def _run_sync_once(executor, task, *, timeout, idle_timeout, on_event, cancelled
                 logger.debug("ray progress handler failed", exc_info=True)
 
     while True:
-        try:
-            result = future.result(timeout=0.5)
-            deliver()
-            return result
-        except concurrent.futures.TimeoutError:
-            deliver()
-        except concurrent.futures.CancelledError as exc:  # runtime shut down under us
-            raise RuntimeClosed("the backend is shutting down") from exc
+        # Wait, then read the result only once it is done: on Python 3.11+
+        # concurrent.futures.TimeoutError IS TimeoutError, so a job's own
+        # timeout must never be mistaken for "not done yet".
+        done, _ = concurrent.futures.wait([future], timeout=0.5)
+        deliver()
+        if done:
+            try:
+                return future.result()
+            except concurrent.futures.CancelledError as exc:  # runtime shut down under us
+                raise RuntimeClosed("the backend is shutting down") from exc
         if cancelled is not None and cancelled.is_set():
             # Cancel the asyncio task (not the concurrent future, which would
             # report "cancelled" at once): the executor then sends the job's
