@@ -295,3 +295,20 @@ __all__ = [
     "runtime_compute_profile", "runtime_compute_profile_async",
     "under_provisioned_vram",
 ]
+
+
+def remote_routing(engine_id: str) -> "dict | None":
+    """Routing keys for an engine the user sent to a remote GPU (Ray cluster or
+    Modal), else None. Local host probing says nothing about where it runs."""
+    try:
+        from services.ray_jobs.engines import RAY_ENGINES
+        from services.ray_jobs.settings import route_for
+
+        cfg = route_for(engine_id)
+    except Exception:  # remote settings unreadable: report the local routing
+        return None
+    if cfg is None:
+        return None
+    gpu = cfg.gpu_request(RAY_ENGINES[engine_id].gpu) is not None
+    return {"effective_device": "network", "routing_status": "accelerated" if gpu else "cpu_only",
+            "routing_reason": None}

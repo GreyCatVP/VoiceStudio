@@ -950,7 +950,11 @@ def select_engine(req: SelectEngineRequest):
         )
         if model is None or str(model.get("role", "")).lower() != "asr" or not compatible:
             raise HTTPException(400, "This model is not compatible with Faster-Whisper")
-        if not is_cached(req.model_id):
+        from services.subprocess_backend import ray_routed
+
+        # Routed to a remote GPU, the cluster downloads the model; a local copy would go unused.
+        remote = req.backend_id == "faster-whisper-isolated" and ray_routed(req.backend_id)
+        if not remote and not is_cached(req.model_id):
             raise HTTPException(409, "Install this ASR model before selecting it")
         try:
             asr_backend.select_faster_whisper_model(req.model_id)

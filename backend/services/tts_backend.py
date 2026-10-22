@@ -3736,6 +3736,8 @@ def list_backends(*, include_hidden: bool = False) -> list[dict]:
             "routing_reason": scrub_text(profile["routing_reason"])
             if profile["routing_reason"] else None,
         }
+        from services.engine_routing import remote_routing
+        routing = remote_routing(bid) or routing
         loaded_instance = None
         if _active_instance_id == bid:
             loaded_instance = _active_instance

@@ -2837,7 +2837,7 @@ def list_backends() -> list[dict]:
     from core.device_caps import detect_host_caps
     from core.scrub import scrub_text
     from services.engine_evidence import snapshot as execution_snapshot
-    from services.engine_routing import routing_fields
+    from services.engine_routing import remote_routing, routing_fields
     caps = detect_host_caps()
 
     out: list[dict] = []
@@ -2861,7 +2861,7 @@ def list_backends() -> list[dict]:
             _LAST_ERRORS[bid] = scrub_text(msg)
         isolation = "subprocess" if getattr(cls, "_is_subprocess_isolated", False) else "in-process"
         gpu_compat = getattr(cls, "gpu_compat", ("cpu",))
-        routing = routing_fields(gpu_compat, caps)
+        routing = remote_routing(bid) or routing_fields(gpu_compat, caps)
         # Cached load-time facts are valid only while their exact backend still
         # owns live model state. Recompute from that instance so unload/reaping
         # cannot leave ghost GPU/provider evidence in diagnostics.

@@ -1070,3 +1070,42 @@ def test_ray_pyannote_falls_back_to_opus_only_when_flac_does_not_fit(rs, monkeyp
     monkeypatch.setattr(diarization, "MAX_PACKAGE_BYTES", 2 * 1024 * 1024 + 1 + (len(flac) + len(opus)) // 2)
     diarization.RayPyannotePipeline(rs.load())(str(path))
     assert "audio_path.ogg" in sent["task"].inputs and "audio_path.flac" not in sent["task"].inputs
+
+
+@pytest.mark.parametrize("routed", [True, False])
+def test_ray_routed_asr_model_selection_needs_no_local_download(rs, monkeypatch, tmp_path, routed):
+    from fastapi import HTTPException
+    from api.routers import engines
+    from api.routers.setup import models as setup_models
+    from core import prefs
+    from services import asr_backend
+
+    monkeypatch.setattr(prefs, "_PREFS_PATH", str(tmp_path / "prefs.json"))
+    monkeypatch.setattr(asr_backend, "list_backends", lambda **kw: [
+        {"id": "faster-whisper-isolated", "available": True, "routing_status": "cpu_only"}])
+    monkeypatch.setattr(setup_models, "is_cached", lambda repo: False)
+    picked = []
+    monkeypatch.setattr(asr_backend, "select_faster_whisper_model", picked.append)
+    if routed:
+        rs.save({"enabled": True, "dashboard_url": "https://ray.example.com", "engines": ["faster-whisper-isolated"]})
+    req = engines.SelectEngineRequest(family="asr", backend_id="faster-whisper-isolated",
+                                      model_id="Systran/faster-whisper-small")
+    if routed:  # the cluster downloads the model; a local copy would go unused
+        engines.select_engine(req)
+        assert picked == ["Systran/faster-whisper-small"]
+    else:
+        with pytest.raises(HTTPException) as info:
+            engines.select_engine(req)
+        assert info.value.status_code == 409 and not picked
+
+
+def test_engines_routed_remotely_report_network_routing(rs):
+    from services.engine_routing import remote_routing
+
+    assert remote_routing("voxcpm2") is None  # not routed: local probing applies
+    rs.save({"enabled": True, "dashboard_url": "https://ray.example.com", "engines": ["voxcpm2", "supertonic3"]})
+    assert remote_routing("voxcpm2") == {"effective_device": "network", "routing_status": "accelerated",
+                                         "routing_reason": None}
+    assert remote_routing("supertonic3")["routing_status"] == "cpu_only"  # a CPU engine stays CPU remotely
+    rs.save({"num_gpus": 0.0})  # Ray share 0 = GPU engines on CPU
+    assert remote_routing("voxcpm2")["routing_status"] == "cpu_only"
