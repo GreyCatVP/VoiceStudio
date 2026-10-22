@@ -1459,8 +1459,12 @@ async def dub_generate(job_id: str, req: DubRequest):
                 # no double-mark. Cached-reuse audio is already marked;
                 # silence/zero slots carry no speech to mark, so neither is
                 # re-watermarked.
-                audio_tensor = mark_synthetic(audio_tensor, backend.sample_rate,
-                                              context="dub_generate.segment")
+                # Off the event loop: AudioSeal takes seconds per line on a CPU host.
+                audio_tensor = await loop.run_in_executor(
+                    _gpu_pool,
+                    lambda wav=audio_tensor: mark_synthetic(wav, backend.sample_rate,
+                                                            context="dub_generate.segment"),
+                )
 
                 seg_wav_path = _staged_seg_path(seg_id)
                 try:

@@ -247,3 +247,42 @@ def test_will_mark_requires_pref_and_availability(monkeypatch):
     monkeypatch.setattr(watermark, "_audioseal_available", True)
     monkeypatch.setattr(watermark, "is_enabled", lambda: False)
     assert watermark.will_mark() is False
+
+
+def _blocking_mark_calls(tree):
+    """``mark_synthetic(...)`` calls that run directly in an ``async def``.
+
+    A nested sync ``def``/``lambda`` is the executor job, so it is skipped."""
+    import ast
+
+    hits = []
+
+    def visit(node, in_async):
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, ast.AsyncFunctionDef):
+                visit(child, True)
+            elif isinstance(child, (ast.FunctionDef, ast.Lambda)):
+                visit(child, False)
+            else:
+                if (in_async and isinstance(child, ast.Call)
+                        and getattr(child.func, "id", getattr(child.func, "attr", None)) == "mark_synthetic"):
+                    hits.append(child.lineno)
+                visit(child, in_async)
+
+    visit(tree, False)
+    return hits
+
+
+def test_mark_synthetic_never_runs_on_the_event_loop():
+    """AudioSeal embedding is CPU-heavy (seconds per dub line on a CPU host):
+    called straight from an ``async def`` it froze the event loop, so /health
+    stopped answering mid-dub. Every call must run in an executor job."""
+    import ast
+
+    offenders = [
+        f"{path.relative_to(_BACKEND)}:{line}"
+        for path in _BACKEND.rglob("*.py")
+        if "tests" not in path.parts
+        for line in _blocking_mark_calls(ast.parse(path.read_text(encoding="utf-8")))
+    ]
+    assert offenders == []
