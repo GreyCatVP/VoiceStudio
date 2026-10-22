@@ -15,6 +15,7 @@ import {
   UsersRoundIcon,
   ChevronRightIcon,
   BlocksIcon,
+  BookMarkedIcon,
   WorkflowIcon,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -37,7 +38,8 @@ type Destination = readonly [
     | '/transcriptions'
     | '/personas'
     | '/calls'
-    | '/integrations',
+    | '/integrations'
+    | '/guide',
   label: string,
   icon: typeof AudioLinesIcon,
   activate?: () => void,
@@ -65,6 +67,7 @@ const laterDestinations: Destination[] = [
   ['/projects', 'projects.title', FolderIcon],
   ['/tools', 'tools.title', WrenchIcon],
   ['/integrations', 'integrationCatalog.title', BlocksIcon],
+  ['/guide', 'guide.title', BookMarkedIcon],
 ];
 
 const itemClass =
@@ -86,6 +89,7 @@ const iconMotion: Record<Destination[0], string> = {
   '/projects': 'lift',
   '/tools': 'tilt',
   '/integrations': 'turn',
+  '/guide': 'lift',
 };
 
 function NavigationLink({

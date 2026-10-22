@@ -7,6 +7,7 @@ const HomePage = lazyRouteComponent(() => import('@/features/home/home-page'), '
 const ClonePage = lazyRouteComponent(() => import('@/features/clone/clone-page'), 'ClonePage');
 const DesignPage = lazyRouteComponent(() => import('@/features/design/design-page'), 'DesignPage');
 const DubPage = lazyRouteComponent(() => import('@/features/dub/dub-page'), 'DubPage');
+const GuidePage = lazyRouteComponent(() => import('@/features/guide/guide-page'), 'GuidePage');
 const BatchPage = lazyRouteComponent(() => import('@/features/batch/batch-page'), 'BatchPage');
 const GalleryPage = lazyRouteComponent(
   () => import('@/features/gallery/gallery-page'),
@@ -173,6 +174,16 @@ export const pronunciationRoute = createRoute({
   path: '/settings/pronunciation',
   component: SettingsPage,
 });
+export const guideRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/guide',
+  component: GuidePage,
+});
+export const guideChapterRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/guide/$chapterId',
+  component: GuidePage,
+});
 export const projectsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/projects',
@@ -270,6 +281,8 @@ export const rayRoute = createRoute({
   component: SettingsPage,
 });
 export const routeTree = rootRoute.addChildren([
+  guideRoute,
+  guideChapterRoute,
   diagnosticsRoute,
   rayRoute,
   openApiRoute,
