@@ -900,7 +900,8 @@ def test_ray_pyannote_pipeline_rebuilds_an_annotation_and_serves_phrase_embeddin
     ann = pipe(str(path), num_speakers=2)
     assert sorted(ann.labels()) == ["SPEAKER_00", "SPEAKER_01"]
     task = sent["task"]
-    assert set(task.inputs) == {"config_path.yaml", "segmentation_path.bin", "embedding_path.bin", "audio_path.ogg"}
+    # Lossless whenever it fits (Opus shifted turns measurably).
+    assert set(task.inputs) == {"config_path.yaml", "segmentation_path.bin", "embedding_path.bin", "audio_path.flac"}
     assert task.params == {"num_speakers": 2, "phrases": [(0.0, 1.0), (1.2, 2.0)]}  # short phrase not embedded
     assert list(pipe.phrase_embedding(1.2, 2.0)) == [0.0, 1.0] and pipe.phrase_embedding(2.0, 2.3) is None
     assert not any("TOKEN" in k for k in task.env)
@@ -1049,3 +1050,23 @@ def test_ray_diarization_without_the_local_bundle_reports_missing(rs, monkeypatc
     monkeypatch.setattr(diarization, "bundle_installed", lambda: True)
     pipe, err = dub_core._diarization_pipeline_checked()
     assert err is None and isinstance(pipe, diarization.RayPyannotePipeline)
+
+
+def test_ray_pyannote_falls_back_to_opus_only_when_flac_does_not_fit(rs, monkeypatch, tmp_path):
+    import soundfile as sf
+    from services.ray_jobs import diarization, jobs
+    from services.ray_jobs.executor import RayJobResult
+
+    monkeypatch.setattr(diarization, "_local_bundle", lambda: {"config_path.yaml": b"c"})
+    sent = {}
+    monkeypatch.setattr(jobs, "run_engine_job", lambda engine_id, cfg, task, **kw: sent.setdefault("task", task) and
+                        RayJobResult("s", {"op": "diarization", "turns": []}, [], 0.1))
+    path = tmp_path / "a.wav"
+    sf.write(path, np.random.default_rng(0).normal(0, 0.1, 16000 * 20).astype("float32"), 16000)
+    flac, _ = diarization._encode_16k_mono(str(path), "FLAC")
+    opus, _ = diarization._encode_16k_mono(str(path), "OPUS")
+    assert len(opus) < len(flac)
+    # A budget between the two sizes: FLAC no longer fits, Opus does.
+    monkeypatch.setattr(diarization, "MAX_PACKAGE_BYTES", 2 * 1024 * 1024 + 1 + (len(flac) + len(opus)) // 2)
+    diarization.RayPyannotePipeline(rs.load())(str(path))
+    assert "audio_path.ogg" in sent["task"].inputs and "audio_path.flac" not in sent["task"].inputs

@@ -298,6 +298,27 @@ def test_executor_success_uploads_once_submits_and_cleans_up():
     assert sum(1 for m, _ in fake.calls if m == "PUT") == puts == 1
 
 
+def test_executor_retries_a_transient_package_upload_failure(monkeypatch):
+    monkeypatch.setattr(asyncio, "sleep", _no_sleep(asyncio.sleep))
+    fake = FakeDashboard(log=_log_for({"ok": 1}))
+    real, failures = fake.handler, [524]
+
+    async def flaky(request):
+        if request.method == "PUT" and failures:  # a proxy timing out on a large upload
+            return httpx.Response(failures.pop(), text="origin timeout")
+        return await real(request)
+
+    fake.handler = flaky
+    assert _run(_executor(fake), RayTask(op="probe")).result == {"ok": 1}
+    assert not failures and len(fake.jobs) == 1
+
+
+def _no_sleep(real_sleep):
+    async def sleep(delay, *a, **kw):
+        return await real_sleep(0)
+    return sleep
+
+
 def test_executor_timeout_is_forwarded_to_the_worker_as_a_deadline():
     fake = FakeDashboard(log=_log_for({"ok": 1}))
     _run(_executor(fake), RayTask(op="probe"), timeout=60)

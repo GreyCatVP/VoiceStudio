@@ -66,7 +66,8 @@ Available engines:
   Hugging Face, so the cluster never downloads it: each job carries the model
   files you installed (and accepted) on this machine, about 32 MB. Your
   Hugging Face token never leaves this computer. The recording is sent whole
-  (speaker identity is global), as 16 kHz FLAC.
+  (speaker identity is global), as 16 kHz FLAC; only a recording too long for
+  one job package (well over an hour) is sent as Opus instead.
 - **Source separation:** Demucs (htdemucs), when a dub video is imported and
   for microphone clean-up. The track is processed in lossless two-minute
   windows with overlapping context, so the stems join without seams.

@@ -167,8 +167,7 @@ class RayJobsExecutor:
         submitted = terminal = False
         try:
             async with asyncio.timeout(timeout):
-                if not await self.client.package_exists(uri):
-                    await self.client.upload_package(uri, data)
+                await self._ensure_package(uri, data)
                 submitted = True  # before the POST: a cancel mid-request must still stop it
                 await self.client.submit_job(
                     entrypoint=f"{self._python_cmd()} {WORKER_ARGS}",
@@ -195,6 +194,20 @@ class RayJobsExecutor:
             elif terminal and not self.keep_failed_jobs:
                 self._cleanup_detached(sid, stop=False, delete=True)
             raise
+
+    async def _ensure_package(self, uri: str, data: bytes) -> None:
+        """Upload the package unless the cluster has it. Retried on transient
+        errors (a proxy's 524 on a large upload): content-addressed, so safe."""
+        for attempt in range(1, 4):
+            try:
+                if not await self.client.package_exists(uri):
+                    await self.client.upload_package(uri, data)
+                return
+            except RayJobsError as exc:
+                if not _transient(exc) or attempt == 3:
+                    raise
+                logger.info("ray package upload: transient error (%d/3): %s", attempt, exc)
+                await asyncio.sleep(2.0 * attempt)
 
     def _python_cmd(self) -> str:
         """The cluster interpreter. The default picks python3, else python:

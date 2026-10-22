@@ -76,8 +76,8 @@ def _flac_16k_mono(path: str) -> tuple[bytes, float]:
 
 
 def _encode_16k_mono(path: str, fmt: str = "OPUS") -> tuple[bytes, float]:
-    """The recording at 16 kHz mono. Opus (~2-4 KB/s) keeps hours of audio
-    under the job package cap; pyannote is robust to it. FLAC if Opus fails."""
+    """The recording at 16 kHz mono, as Opus (~2-4 KB/s: hours fit in one job
+    package) or FLAC (lossless). FLAC if Opus fails."""
     import soundfile as sf
     import torch
 
@@ -111,14 +111,21 @@ class RayPyannotePipeline:
 
         from services.ray_jobs.jobs import engine_task, run_engine_job
 
-        audio, seconds = _encode_16k_mono(str(audio_path))
+        bundle = _local_bundle()
+        budget = MAX_PACKAGE_BYTES - 2 * 1024 * 1024 - sum(map(len, bundle.values()))
+        # Lossless whenever it fits: Opus shifted speaker turns measurably
+        # (DER 0.12 vs the local run on an H200); only very long recordings need it.
+        audio, seconds = _encode_16k_mono(str(audio_path), "FLAC")
+        name = "audio_path.flac"
+        if len(audio) > budget:
+            audio, seconds = _encode_16k_mono(str(audio_path), "OPUS")
+            name = "audio_path.ogg"
         spans = [(float(p["start"]), float(p["end"])) for p in self.phrases
                  if p.get("text") and float(p.get("end", 0)) - float(p.get("start", 0)) >= MIN_PHRASE_S]
         params = {"num_speakers": int(num_speakers) if num_speakers else None, "phrases": spans or None}
-        bundle = _local_bundle()
-        if sum(map(len, bundle.values())) + len(audio) > MAX_PACKAGE_BYTES - 2 * 1024 * 1024:
+        if len(audio) > budget:
             raise RuntimeError(f"this recording ({seconds / 60:.0f} min) is too long for one Ray diarization job")
-        inputs = {**bundle, "audio_path.ogg": audio}
+        inputs = {**bundle, name: audio}
         task = engine_task(ENGINE_ID, self.ray_cfg, "diarize", params, inputs=inputs)
         reply = run_engine_job(ENGINE_ID, self.ray_cfg, task, timeout=3600.0 + 2.0 * seconds,
                                idle_timeout=600.0 + seconds, cancelled=self.cancelled).result
