@@ -84,7 +84,7 @@ dependencies = [
     # Qwen3-TTS, Chatterbox, MeloTTS, OuteTTS, Spark, Higgs-Audio, Voxtral,
     # …). Gives mac-ARM users a broad engine picker in Settings. Also gated
     # by platform markers because it depends on mlx (Apple Silicon only).
-    "mlx-audio>=0.3.0 ; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "mlx-audio>=0.4.4 ; sys_platform == 'darwin' and platform_machine == 'arm64'",
     # Apple Silicon-only Parakeet TDT v3 ASR (mlx-community/parakeet-tdt-0.6b-v3
     # via MLX). Gives mac-ARM the Parakeet tier CUDA/CPU users get from
     # sherpa/NeMo: 25 European languages, TDT token/word timestamps, ~2 GB

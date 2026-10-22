@@ -10,6 +10,7 @@ import {
   stageRuntimeSources,
   type RuntimeRegion,
 } from './runtime-project';
+import { collectHostSnapshot, type HostSnapshot } from './host-snapshot';
 import { runtimeSetupSupported } from './distribution';
 import { asciiSafePthFiles } from './pth-ascii';
 import { devProbeStamped, writeDevProbeStamp } from './dev-probe-stamp';
@@ -556,13 +557,27 @@ function childEnv(
   return env;
 }
 
+/**
+ * Capabilities only the managed backend may hold (loopback bridges into main).
+ * Kept out of process.env so no other child (agent CLIs, browsers, xdg-open,
+ * setup tools) can inherit them.
+ */
+const backendOnlyEnv: Record<string, string> = {};
+
+export function setBackendOnlyEnv(vars: Record<string, string | undefined>): void {
+  for (const [key, value] of Object.entries(vars)) {
+    if (value === undefined) delete backendOnlyEnv[key];
+    else backendOnlyEnv[key] = value;
+  }
+}
+
 export function managedBackendSpawnOptions(
   port: number,
   region: RuntimeRegion = 'auto',
   platform = process.platform,
 ): { env: NodeJS.ProcessEnv; stdio: StdioOptions; drainFd: number | null } {
   const drainFd = platform === 'win32' ? null : 3;
-  const env = childEnv(port, region, platform);
+  const env = { ...childEnv(port, region, platform), ...backendOnlyEnv };
   if (drainFd !== null) env.OMNIVOICE_DESKTOP_DRAIN_FD = String(drainFd);
   return {
     env,
@@ -679,6 +694,30 @@ export class BackendSupervisor extends EventEmitter<{
       url: this.baseUrl,
       authenticated: Boolean(this.activeSession()),
     };
+  }
+
+  /** Machine and runtime facts for bug reports; works while the backend is down. */
+  async hostSnapshot(): Promise<HostSnapshot> {
+    // Same location resolveSpawnPlan() launches from.
+    const project = app.isPackaged
+      ? (this.runtimeProject ?? join(storedRuntimeRoot() ?? defaultRuntimeRoot(), 'project'))
+      : backendRoot();
+    return collectHostSnapshot({
+      runtimeProject: project,
+      runtimePython: runtimePython(project),
+      uv: findUv(),
+      uvSearched: true,
+      gpu: async () => {
+        const info = (await app.getGPUInfo('basic')) as {
+          gpuDevice?: { vendorId?: number; deviceId?: number; active?: boolean; driverVersion?: string }[];
+        };
+        const devices = info.gpuDevice ?? [];
+        const active = devices.find((device) => device.active) ?? devices[0];
+        return active
+          ? `vendor 0x${(active.vendorId ?? 0).toString(16)} device 0x${(active.deviceId ?? 0).toString(16)}${active.driverVersion ? ` driver ${active.driverVersion}` : ''}`
+          : null;
+      },
+    });
   }
 
   requestHeaders(): Record<string, string> {

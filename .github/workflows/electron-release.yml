@@ -1,6 +1,9 @@
 name: Electron desktop release
 
 # Builds are safe by default. Only an explicit publish dispatch exposes a release.
+# Two channels, both cut from main: `vX.Y.Z` is Stable (GitHub's `latest`),
+# `vX.Y.Z-beta.N` is Beta (a prerelease that never becomes `latest`). No other
+# prerelease shape (-rc, -alpha, ...) is accepted.
 on:
   push:
     tags: ['v*']
@@ -34,6 +37,8 @@ jobs:
     # The archived sunset tag was assembled separately; future tags are Electron-only.
     if: github.event_name == 'workflow_dispatch' || github.ref_name != vars.TAURI_SUNSET_TAG
     runs-on: ubuntu-latest
+    outputs:
+      channel: ${{ steps.channel.outputs.channel }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -59,6 +64,11 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           test "$REF" = "refs/tags/v$VERSION" || { echo "Select the exact version tag"; exit 1; }
           test "$(git rev-parse HEAD)" = "$(git rev-parse "$REF^{commit}")" || { echo "Checkout does not match the release tag"; exit 1; }
+      - name: Resolve the release channel
+        id: channel
+        run: |
+          # stable (X.Y.Z) or beta (X.Y.Z-beta.N); any other shape fails here.
+          echo "channel=$(python3 scripts/prepare_electron_release.py --print-channel)" >> "$GITHUB_OUTPUT"
   package:
     needs: validate
     runs-on: ${{ matrix.runner }}
@@ -102,7 +112,7 @@ jobs:
         shell: bash
     env:
       VOICESTUDIO_RUST_TARGET: ${{ matrix.target }}
-      VOICESTUDIO_UPDATE_CHANNEL: electron-stable-${{ matrix.platform }}-${{ matrix.arch }}
+      VOICESTUDIO_UPDATE_CHANNEL: electron-${{ needs.validate.outputs.channel }}-${{ matrix.platform }}-${{ matrix.arch }}
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       VITE_POSTHOG_KEY: ${{ secrets.POSTHOG_PROJECT_TOKEN }}
       VITE_POSTHOG_HOST: ${{ vars.POSTHOG_HOST }}
@@ -220,7 +230,7 @@ jobs:
             electron/release/store-artifact-manifest-*.json
 
   release:
-    needs: package
+    needs: [validate, package]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -231,6 +241,7 @@ jobs:
       TAG: ${{ inputs.release_tag || github.ref_name }}
       SUNSET_TAG: ${{ vars.TAURI_SUNSET_TAG }}
       PUBLISH: ${{ inputs.publish }}
+      CHANNEL: ${{ needs.validate.outputs.channel }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -244,6 +255,9 @@ jobs:
         run: |
           python3 scripts/prepare_electron_release.py --assets release-assets --tag "$TAG"
       - name: Preserve the final Tauri updater feeds
+        # Archived Tauri clients read `latest/download`, which never serves a
+        # prerelease, so only Stable releases carry the sunset feeds.
+        if: env.CHANNEL == 'stable'
         run: |
           test "$SUNSET_TAG" = "v0.5.3" || { echo "TAURI_SUNSET_TAG must be v0.5.3 before releasing"; exit 1; }
           # Every release carries copies pointing to immutable v0.5.3 payloads
@@ -263,19 +277,30 @@ jobs:
           EOF
       - name: Create or update draft
         run: |
+          # A beta is always a prerelease so GitHub never makes it `latest`.
+          PRERELEASE=false
+          if [ "$CHANNEL" = beta ]; then PRERELEASE=true; fi
           if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --verify-tag --draft --title "$TAG — VoiceStudio" --notes-file release-assets/RELEASE_NOTES.md
+            gh release create "$TAG" --verify-tag --draft --prerelease="$PRERELEASE" --title "$TAG — VoiceStudio" --notes-file release-assets/RELEASE_NOTES.md
           fi
           test "$(gh release view "$TAG" --json isDraft --jq .isDraft)" = true || { echo "Refusing to replace a published release"; exit 1; }
-          gh release edit "$TAG" --notes-file release-assets/RELEASE_NOTES.md
+          gh release edit "$TAG" --prerelease="$PRERELEASE" --notes-file release-assets/RELEASE_NOTES.md
           find release-assets -maxdepth 1 -type f ! -name RELEASE_NOTES.md -print0 | xargs -0 gh release upload "$TAG" --clobber
       - name: Publish only when explicitly requested
         if: github.event_name == 'workflow_dispatch' && inputs.publish == true
-        run: gh release edit "$TAG" --draft=false --latest
+        run: |
+          if [ "$CHANNEL" = beta ]; then
+            gh release edit "$TAG" --draft=false --prerelease=true --latest=false
+          else
+            gh release edit "$TAG" --draft=false --prerelease=false --latest
+          fi
       # docker.yml publishes release images on `release: published`, which a
       # GITHUB_TOKEN publish cannot trigger; dispatch its release backfill path.
+      # Only Stable moves `:stable`; a beta gets `:beta` and its exact tag.
       - name: Publish release container images
         if: github.event_name == 'workflow_dispatch' && inputs.publish == true
         run: |
+          PROMOTE=false
+          if [ "$CHANNEL" = stable ]; then PROMOTE=true; fi
           gh workflow run docker.yml --ref main \
-            -f backfill_release=true -f release_ref="$TAG" -f promote_stable=true
+            -f backfill_release=true -f release_ref="$TAG" -f promote_stable="$PROMOTE"

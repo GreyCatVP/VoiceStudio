@@ -8,9 +8,11 @@ Shared store inputs and platform handoffs are defined in
 Mac App Store are not maintained release channels until each has completed its
 first verified production publication.
 
-Snap Store packaging is rehearsed separately through
-`.github/workflows/snap-store.yml`; it is build-only until the owner reserves
-the package name and supplies scoped credentials. Follow the
+Snap Store packaging runs through `.github/workflows/snap-store.yml`. Each
+`v*` tag builds the strict Snap and uploads it to the Store's `candidate`
+channel using `SNAPCRAFT_STORE_CREDENTIALS` from the `snap-store` environment.
+Stable is never automatic: after the runbook checks, the repository owner
+dispatches the workflow with `promote_revision`. Follow the
 [`Snap Store runbook`](store-publishing/snap-store.md) for confinement checks,
 candidate verification, evidence and rollback. Do not add a Snap to the
 maintained-channel table below until its stable listing is independently
@@ -122,7 +124,8 @@ updates a draft, and uploads:
 - authored CHANGELOG release notes
 - immutable copies of the final Tauri updater feeds for old clients
 
-Tag pushes never publish, and they do not build Docker images. Inspect the
+Tag pushes never publish the Electron GitHub Release, and they do not build
+Docker images (the Snap workflow above uploads tags to `candidate` only). Inspect the
 draft and downloaded installers first.
 
 If the workflow itself needs a fix after tagging, keep the tag immutable. Merge
@@ -152,9 +155,40 @@ After publication, verify each maintained channel:
 | Docker Hub overview | `docker.yml`                       | Read the `Update Docker Hub description` step log; the step may continue after a 403                                                                         |
 | Rolling containers  | `docker.yml` on `main` pushes only | `:latest`, `:main`, and `:rocm` timestamps move; a release never moves them                                                                                  |
 
-A missing channel is a release bug. There are no RC tags and no preview update
-channel; previews are builds from `main` (the `electron-build.yml` artifacts or
-Docker `:latest`), never a side branch. No Tauri build is maintained.
+A missing channel is a release bug. There are no RC tags; the one prerelease is
+the opt-in **Beta** channel (below). Previews between betas are builds from
+`main` (the `electron-build.yml` artifacts or Docker `:latest`), never a side
+branch. No Tauri build is maintained.
+
+## Beta channel
+
+Beta is a second release channel cut from `main`, for testers who opt in under
+**Settings → Updates → Update channel** ([user guide](update-channels.md)). It
+has no soak period, no side branch and no cherry-picks.
+
+| | Stable | Beta |
+|---|---|---|
+| Tag and `package.json` version | `vX.Y.Z` | `vX.Y.Z-beta.N` |
+| GitHub Release | full release, becomes `latest` | **prerelease**, never `latest` |
+| Update feed | `electron-stable-<os>-<arch>` | `electron-beta-<os>-<arch>` |
+| Docker | `:X.Y.Z`, `:X.Y`, `:stable` | `:beta`, `:X.Y.Z-beta.N` (and `-rocm`) |
+| Snap / Microsoft Store / Mac App Store | yes | no (Stable-only) |
+| Tauri sunset feeds | copied into the release | not copied |
+
+Cutting a beta: with owner approval of the version, bump `package.json`,
+`pyproject.toml` and `_FALLBACK_VERSION` to `X.Y.Z-beta.N` together, add a
+`## [X.Y.Z-beta.N]` section to `CHANGELOG.md`, tag from `main`, then run
+`electron-release.yml` with `publish`. The workflow derives the channel from
+the version (`prepare_electron_release.py --print-channel`), stamps it into every
+platform feed, publishes with `--prerelease --latest=false`, and dispatches
+Docker with `promote_stable=false`. Any other prerelease shape (`-rc`, `-alpha`)
+is rejected.
+
+Promoting to Stable is a normal `vX.Y.Z` release from `main`. Beta users roll
+onto it automatically because the updater compares semver (`X.Y.Z-beta.N` sorts
+below `X.Y.Z`). The verification table above applies to Stable; for a beta also
+confirm the GitHub Release is flagged *Pre-release*, `releases/latest` still
+points at the last stable, and `:stable` and `:X.Y` did not move.
 
 ## Package requirements
 
