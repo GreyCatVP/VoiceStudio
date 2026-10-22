@@ -162,7 +162,9 @@ def _remote_choice_kept(family: str) -> bool:
         return ray_routed(tts_backend.active_backend_id())
     if family == "translation":
         from core import prefs
-        return prefs.get("translation_backend") == "nllb" and ray_routed("nllb")
+        # Translation provider → its Ray engine.
+        engine = {"nllb": "nllb", "typhoon": "typhoon-translate"}.get(str(prefs.get("translation_backend")))
+        return engine is not None and ray_routed(engine)
     return False
 
 

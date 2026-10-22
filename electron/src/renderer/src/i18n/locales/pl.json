@@ -1487,7 +1487,7 @@
     "ray_engines_group_asr": "Rozpoznawanie mowy",
     "ray_engines_asr_hint": "Uruchamia transkrypcję dubbingu na zdalnym GPU. W ustawieniach rozpoznawania mowy wybierz model z Hugging Face (nie folder lokalny) i jako silnik ASR wybierz „Faster-Whisper (crash-isolated subprocess)”.",
     "ray_engines_group_translation": "Tłumaczenie",
-    "ray_engines_translation_hint": "Uruchamia tłumaczenie NLLB dubbingu na zdalnym GPU (gdy NLLB jest dostawcą tłumaczenia).",
+    "ray_engines_translation_hint": "Uruchamia tłumaczenie dubbingu na zdalnym GPU, gdy dostawcą tłumaczenia jest NLLB lub Typhoon Translate. Typhoon Translate (tajski↔angielski) działa tylko tutaj.",
     "ray_engines_group_diarization": "Diaryzacja mówców",
     "ray_engines_diarization_hint": "Uruchamia diaryzację mówców dubbingu na zdalnym GPU. Zainstalowane pliki modelu pyannote są wysyłane z każdym zadaniem; Twój token Hugging Face nigdy nie opuszcza tego komputera.",
     "ray_engines_group_separation": "Separacja źródeł",

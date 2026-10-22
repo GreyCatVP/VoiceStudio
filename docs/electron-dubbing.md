@@ -244,6 +244,8 @@ Global speed/quality changes preserve explicit Dubbing production steps, includi
 
 NLLB resolves explicit FLORES language/script codes, unambiguous ISO-639-3 codes and common short aliases, including Traditional Chinese. Unsupported or script-ambiguous source, target or per-segment languages are rejected before model loading instead of silently translating to English.
 
+Typhoon Translate (Thai↔English) runs only on a remote GPU: choose it after ticking `typhoon-translate` in **Settings → Remote GPU** (see [Ray cluster](electron-ray-cluster.md)). It translates English to Thai or Thai to English; any other source, target or per-segment language is rejected with a prompt to use NLLB. Each glossary entry becomes a rule (`Translate "X" as "Y".`) the model follows. Its licence must be accepted first: the model card's metadata says Apache-2.0 while its text names the Gemma licence, and use also means agreeing to the OpenTyphoon terms.
+
 ### Speech integrity and timing
 
 A failed, empty or unreadable speech segment stops generation before a new track

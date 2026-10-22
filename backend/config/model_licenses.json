@@ -1202,6 +1202,49 @@
       }
     },
     {
+      "id": "typhoon-ai/typhoon-translate1.5-4b",
+      "license": "NOASSERTION",
+      "commercial_use": false,
+      "review_status": "unreviewed",
+      "credit": "Typhoon Translate 1.5 — Typhoon (SCB 10X)",
+      "source_url": "https://huggingface.co/typhoon-ai/typhoon-translate1.5-4b",
+      "evidence_url": "https://huggingface.co/typhoon-ai/typhoon-translate1.5-4b/blob/c6cc4d3955392634c67158043d947097aa5d8c09/README.md",
+      "revision": "c6cc4d3955392634c67158043d947097aa5d8c09",
+      "engines": [
+        "typhoon-translate"
+      ],
+      "configured_at": "backend/api/routers/dub_translate.py",
+      "notes": "English<->Thai translator the Ray/Modal typhoon-translate engine loads (remote GPU only; no local path yet). Conflicting terms at the pinned revision: the card metadata says apache-2.0 while its prose names the Gemma License, and the model is a Qwen3-4B fine-tune (Qwen3 base terms apply too). The card also says that using the model means agreeing to the OpenTyphoon Terms and Conditions (https://opentyphoon.ai/tac) and Privacy Notice. Weight terms, output terms and attribution require review.",
+      "runtime_revision": "c6cc4d3955392634c67158043d947097aa5d8c09",
+      "runtime_pin_scope": "engine",
+      "runtime_pin_source": "backend/api/routers/dub_translate.py",
+      "component_closure": "incomplete",
+      "commercial_inference": "unknown",
+      "commercial_outputs": "unknown",
+      "documents": [],
+      "artifacts": [],
+      "required_components": [],
+      "upstream_access": "unknown",
+      "audit_observations": {
+        "commercial_inference": {
+          "status": "unreviewed",
+          "scope": "Selected weight/component only; not complete workflow clearance."
+        },
+        "output_terms": {
+          "status": "not_assessed",
+          "ownership_or_all_rights_cleared": false
+        },
+        "sources": [],
+        "open_questions": [
+          "Governing terms at installed revision (apache-2.0 metadata vs Gemma License prose vs Qwen3 base terms)",
+          "OpenTyphoon Terms and Conditions (https://opentyphoon.ai/tac) obligations",
+          "Attribution/NOTICE/redistribution duties",
+          "Reference voice and input rights, consent, training-provenance scope"
+        ],
+        "identified_components": []
+      }
+    },
+    {
       "id": "pyannote/speaker-diarization-3.1",
       "license": "mit",
       "commercial_use": false,

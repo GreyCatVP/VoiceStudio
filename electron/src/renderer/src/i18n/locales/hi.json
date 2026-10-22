@@ -1483,7 +1483,7 @@
     "ray_engines_group_asr": "वाक् पहचान",
     "ray_engines_asr_hint": "डबिंग का ट्रांसक्रिप्शन रिमोट GPU पर चलाता है। वाक् पहचान सेटिंग्स में Hugging Face मॉडल चुनें (स्थानीय फ़ोल्डर नहीं) और ASR इंजन के रूप में \"Faster-Whisper (crash-isolated subprocess)\" चुनें।",
     "ray_engines_group_translation": "अनुवाद",
-    "ray_engines_translation_hint": "डबिंग के लिए NLLB अनुवाद रिमोट GPU पर चलाता है (जब NLLB अनुवाद प्रदाता हो)।",
+    "ray_engines_translation_hint": "जब NLLB या Typhoon Translate अनुवाद प्रदाता हो, तो डबिंग का अनुवाद रिमोट GPU पर चलाता है। Typhoon Translate (थाई↔अंग्रेज़ी) केवल यहीं चलता है।",
     "ray_engines_group_diarization": "वक्ता पृथक्करण",
     "ray_engines_diarization_hint": "डबिंग के लिए वक्ता पृथक्करण (डायराइज़ेशन) रिमोट GPU पर चलाता है। आपकी इंस्टॉल की गई pyannote मॉडल फ़ाइलें हर जॉब के साथ भेजी जाती हैं; आपका Hugging Face टोकन कभी इस कंप्यूटर से बाहर नहीं जाता।",
     "ray_engines_group_separation": "स्रोत पृथक्करण",

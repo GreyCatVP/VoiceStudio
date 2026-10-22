@@ -69,7 +69,7 @@ def test_save_round_trip_never_exposes_secrets(rs, ss):
     assert ss._test_secrets == {"ray_auth_token": "tok-SECRET", "ray_cf_access_client_secret": "cf-SECRET"}
     assert {e["id"] for e in state["available_engines"]} == {
         "supertonic3", "voxcpm2", "moss-tts-nano", "indextts2", "cosyvoice", "confucius4-tts", "moss-tts-v15", "dots-tts",
-        "faster-whisper-isolated", "nllb", "demucs", "pyannote", "omnivoice"}
+        "faster-whisper-isolated", "nllb", "typhoon-translate", "demucs", "pyannote", "omnivoice"}
     assert {e["id"]: e["kind"] for e in state["available_engines"]}["faster-whisper-isolated"] == "asr"
     # None leaves a secret alone, '' clears it
     rs.save({"auth_token": None})
@@ -827,6 +827,74 @@ def test_nllb_readiness_does_not_need_local_weights_when_routed(rs):
 
     rs.save({"enabled": True, "dashboard_url": "https://ray.example.com", "engines": ["nllb"]})
     assert translation_engines._nllb_weights_probe() == (True, None)
+
+
+def test_typhoon_translate_engine_is_registered_with_a_locked_recipe():
+    from services.ray_jobs.engines import RAY_ENGINES, install_recipe
+
+    engine = RAY_ENGINES["typhoon-translate"]
+    assert (engine.kind, engine.gpu, engine.directory) == ("translation", True, "typhoon_translate")
+    recipe = install_recipe("typhoon-translate")
+    assert "torch==2.8.0+cu128" in recipe["cuda_args"] and "torch==2.8.0+cpu" in recipe["cpu_args"]
+    pins = dict(arg.split("==") for arg in recipe["install_args"])
+    assert tuple(int(p) for p in pins["transformers"].split(".")[:2]) >= (4, 51)  # Qwen3
+    assert "accelerate" in pins and "AutoModelForCausalLM" in recipe["probe_code"]
+
+
+def test_typhoon_translate_package_ships_its_sidecar():
+    import io as _io
+    import zipfile as _zf
+    from services.ray_jobs.package import build_package
+
+    _, data, _ = build_package({"v": 1, "op": "translate", "engine": "typhoon-translate"}, {})
+    assert "engines/typhoon_translate/main.py" in set(_zf.ZipFile(_io.BytesIO(data)).namelist())
+
+
+def test_typhoon_on_ray_sends_rules_and_keeps_order_blanks_and_errors(rs, monkeypatch):
+    from api.routers import dub_translate
+    from services.ray_jobs import jobs
+    from services.ray_jobs.executor import RayJobResult
+
+    sent = {}
+
+    def fake_run(engine_id, cfg, task, **kw):
+        sent["engine"], sent["task"] = engine_id, task
+        return RayJobResult("s", {"op": "translated", "groups": [
+            {"tgt": "Thai", "texts": ["สวัสดี", "x"], "errors": [None, "empty translation"]}]}, [], 0.1)
+
+    monkeypatch.setattr(jobs, "run_engine_job", fake_run)
+    rows = [(0, _seg(0, "Hello"), "Thai"), (1, _seg(1, " "), "Thai"), (2, _seg(2, "Long"), "Thai")]
+    out = dub_translate._translate_typhoon_on_ray(rs.load(), rows, "English", ['Translate "a" as "b".'])
+    assert out == [{"id": 0, "text": "สวัสดี"}, {"id": 1, "text": " "},
+                   {"id": 2, "text": "Long", "error": "empty translation"}]
+    params = sent["task"].params
+    assert sent["engine"] == "typhoon-translate" and params["src"] == "English"
+    assert params["model"] == "typhoon-ai/typhoon-translate1.5-4b"
+    assert params["revision"] == dub_translate.TYPHOON_TRANSLATE_REVISION
+    assert params["rules"] == ['Translate "a" as "b".'] and params["groups"] == [{"tgt": "Thai", "texts": ["Hello", "Long"]}]
+
+
+def test_typhoon_provider_is_ready_only_when_routed(rs):
+    from services import translation_engines
+
+    entry = next(e for e in translation_engines.list_engines() if e["id"] == "typhoon")
+    assert entry["ready"] is False and "remote GPU" in entry["availability_reason"]
+    assert translation_engines.is_ready("typhoon", import_check=False) is False
+    rs.save({"enabled": True, "dashboard_url": "https://ray.example.com", "engines": ["typhoon-translate"]})
+    assert translation_engines._typhoon_probe() == (True, None)
+    assert translation_engines.is_ready("typhoon") is True
+
+
+def test_profile_keeps_a_routed_typhoon_choice(rs, monkeypatch, tmp_path):
+    from core import prefs
+    from services import performance_profiles as pp
+
+    monkeypatch.setattr(prefs, "_PREFS_PATH", str(tmp_path / "prefs.json"))
+    prefs.set_("translation_backend", "typhoon")
+    assert pp._remote_choice_kept("translation") is False
+    rs.save({"enabled": True, "dashboard_url": "https://ray.example.com", "engines": ["typhoon-translate"]})
+    assert pp._remote_choice_kept("translation") is True
+    assert pp._activate_translation_model("balanced") is None and prefs.get("translation_backend") == "typhoon"
 
 
 def test_separation_windows_cover_the_track_with_context_pads():

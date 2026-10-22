@@ -18,11 +18,13 @@ metadata and the backend fallback mirror it.
 - Smart Fit speed limits: set the fastest and slowest speed dubbing may apply to a line, from the Timing section (#3026) — thanks @MoonDragon-MD!
 - Remote GPU (opt-in): run selected engines on your own Ray cluster or Modal account, freeing the GPU after every run; offered when this computer has no GPU ([guide](docs/electron-ray-cluster.md)) (#1)
 - User guide in the app (English and Thai): how every workspace works, with diagrams and step-by-step annotated screenshots (#1)
+- Typhoon Translate (Thai↔English) as a dubbing translator on your remote GPU, with glossary terms as translation rules ([guide](docs/electron-dubbing.md)) (#1)
 
 ### Fixed
 
 - Thai interface rewritten: hundreds of mistranslations fixed, and story/audiobook script tags work in Thai again (#1)
 - Stories offer Resume after a stopped render again (#1)
+- Remote NLLB translation progress reaches 100% when the dub has blank lines (#1)
 - Older synthesized takes play again with accurate play/pause controls after a newer generation (#3102)
 - Generation-complete notifications appear above the workspace instead of covering synthesis controls (#3102)
 - Generated speech no longer starts and ends with silence, and `[pause]` markers give exactly the pause you asked for (Raw preset and explicit durations untouched) (#3080)

@@ -60,8 +60,12 @@ Available engines:
   dubbing. Select it as the ASR engine and choose a Hugging Face model, not a
   local folder. Word timings are refined on this machine with the same wav2vec2
   forced alignment WhisperX uses (`OMNIVOICE_RAY_ASR_ALIGN=0` turns it off).
-- **Translation:** NLLB, when it is the dubbing translation provider. One job
-  translates the whole dub.
+- **Translation:** NLLB or Typhoon Translate, when it is the dubbing
+  translation provider. One job translates the whole dub. Typhoon Translate
+  1.5 (`typhoon-translate`, about 8 GB of weights) translates English to Thai
+  and Thai to English only, and turns the dub glossary into its translation
+  rules; it has no local path, so the **Typhoon Translate** provider is
+  available only while this engine is ticked.
 - **Speaker diarization:** pyannote 3.1, in dubbing. The model is gated on
   Hugging Face, so the cluster never downloads it: each job carries the model
   files you installed (and accepted) on this machine, about 32 MB. Your

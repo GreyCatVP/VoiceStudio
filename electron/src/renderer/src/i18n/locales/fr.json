@@ -1485,7 +1485,7 @@
     "ray_engines_group_asr": "Reconnaissance vocale",
     "ray_engines_asr_hint": "Exécute la transcription du doublage sur le GPU distant. Dans les paramètres de reconnaissance vocale, choisissez un modèle Hugging Face (pas un dossier local) et sélectionnez « Faster-Whisper (crash-isolated subprocess) » comme moteur ASR.",
     "ray_engines_group_translation": "Traduction",
-    "ray_engines_translation_hint": "Exécute la traduction NLLB du doublage sur le GPU distant (lorsque NLLB est le fournisseur de traduction).",
+    "ray_engines_translation_hint": "Exécute la traduction du doublage sur le GPU distant lorsque NLLB ou Typhoon Translate est le fournisseur de traduction. Typhoon Translate (thaï↔anglais) ne s’exécute qu’ici.",
     "ray_engines_group_diarization": "Diarisation des locuteurs",
     "ray_engines_diarization_hint": "Exécute la diarisation des locuteurs du doublage sur le GPU distant. Les fichiers du modèle pyannote installés sont envoyés avec chaque tâche ; votre jeton Hugging Face ne quitte jamais cet ordinateur.",
     "ray_engines_group_separation": "Séparation de sources",

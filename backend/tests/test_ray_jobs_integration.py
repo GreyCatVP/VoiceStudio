@@ -468,3 +468,38 @@ def test_omnivoice_synthesizes_on_the_cluster(monkeypatch):
         ray_settings.save({"enabled": False, "auth_token": ""})
         runtime.shutdown()
         runtime.reopen_for_tests()
+
+
+@pytest.mark.skipif("typhoon-translate" not in ENGINES,
+                    reason="set VS_RAY_TEST_ENGINES=typhoon-translate (downloads ~8 GB on the cluster)")
+def test_typhoon_translates_english_to_thai_following_a_glossary_rule():
+    from types import SimpleNamespace
+    from api.routers.dub_translate import _translate_typhoon_on_ray, _typhoon_rules
+    from core.db import init_db
+    from services.ray_jobs import runtime
+    from services.ray_jobs import settings as ray_settings
+
+    init_db()
+    runtime.reopen_for_tests()
+    ray_settings.save({"enabled": True, "dashboard_url": URL, "engines": ["typhoon-translate"],
+                       "num_gpus": float(os.environ.get("VS_RAY_TEST_NUM_GPUS", "0")),
+                       "auth_token": os.environ.get("VS_RAY_TEST_TOKEN") or ""})
+    try:
+        seg = lambda i, t: SimpleNamespace(id=i, text=t, target_lang=None)
+        rows = [(0, seg(0, "Good morning. Did you finish the quarterly report yesterday?"), "Thai"),
+                (1, seg(1, "  "), "Thai"),
+                (2, seg(2, "Our new campaign starts on Monday."), "Thai"),
+                (3, seg(3, "Break a leg tonight!"), "Thai")]
+        rules = _typhoon_rules([{"source": "campaign", "target": "แคมเปญ"}])
+        out = _translate_typhoon_on_ray(ray_settings.load(), rows, "English", rules)
+        print("typhoon:", out)
+        assert [r["id"] for r in out] == [0, 1, 2, 3] and out[1]["text"] == "  "
+        assert not any(r.get("error") for r in out)
+        assert all(any("฀" <= ch <= "๿" for ch in out[i]["text"]) for i in (0, 2, 3))  # Thai script
+        assert "แคมเปญ" in out[2]["text"]  # the glossary rule was applied
+        assert "แคมเปญ" not in out[3]["text"]  # and only to the line that has the term
+        assert "Source Text" not in " ".join(r["text"] for r in out)
+    finally:
+        ray_settings.save({"enabled": False, "auth_token": ""})
+        runtime.shutdown()
+        runtime.reopen_for_tests()

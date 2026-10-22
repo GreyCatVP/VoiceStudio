@@ -980,3 +980,94 @@ def test_nllb_script_variants_and_aliases():
     assert _nllb_language("no") == _nllb_language("nb") == "nob_Latn"
     assert _nllb_language("jw") == "jav_Latn"
     assert _nllb_language("ne") == "npi_Deva"
+
+
+# ── Typhoon Translate (remote GPU only) ─────────────────────────────────────
+
+@pytest.fixture
+def typhoon(monkeypatch):
+    """Licence accepted and typhoon-translate routed; the job itself is faked."""
+    from api.routers import dub_translate
+    from services import model_acceptance
+    from services.ray_jobs import settings as ray_settings
+
+    calls = []
+    monkeypatch.setattr(model_acceptance, "ensure_accepted", lambda repos: None)
+    monkeypatch.setattr(ray_settings, "route_for", lambda engine: "cfg" if engine == "typhoon-translate" else None)
+
+    def fake(cfg, rows, src, rules, cancelled=None):
+        calls.append({"cfg": cfg, "rows": rows, "src": src, "rules": rules, "cancelled": cancelled})
+        return [{"id": seg.id, "text": f"{tgt}:{seg.text}"} for _, seg, tgt in rows]
+
+    monkeypatch.setattr(dub_translate, "_translate_typhoon_on_ray", fake)
+    return dub_translate, calls
+
+
+def _typhoon_request(**kw):
+    from schemas.requests import TranslateRequest
+    base = {"provider": "typhoon", "source_lang": "en", "target_lang": "th", "quality": "fast",
+            "segments": [{"id": "1", "text": "Break a leg"}, {"id": "2", "text": "The campaign"}]}
+    return TranslateRequest(**{**base, **kw})
+
+
+@pytest.mark.asyncio
+async def test_typhoon_runs_on_the_ray_lane_with_glossary_rules(typhoon):
+    dub_translate, calls = typhoon
+    glossary = [{"source": "campaign", "target": "แคมเปญ", "note": ""},
+                {"source": " charts ", "target": "แผนภูมิ"}, {"source": "", "target": "x"}]
+    response = await dub_translate.dub_translate(_typhoon_request(glossary=glossary))
+    assert [r["text"] for r in response["translated"]] == ["Thai:Break a leg", "Thai:The campaign"]
+    call = calls[0]
+    assert call["cfg"] == "cfg" and call["src"] == "English"
+    assert call["rules"] == ['Translate "campaign" as "แคมเปญ".', 'Translate "charts" as "แผนภูมิ".']
+
+
+@pytest.mark.asyncio
+async def test_typhoon_translates_thai_to_english(typhoon):
+    dub_translate, calls = typhoon
+    response = await dub_translate.dub_translate(_typhoon_request(source_lang="th", target_lang="en-US"))
+    assert calls[0]["src"] == "Thai" and response["translated"][0]["text"] == "English:Break a leg"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kw", [
+    {"target_lang": "fr"},
+    {"source_lang": "de"},
+    {"source_lang": "th", "target_lang": "th"},
+    {"segments": [{"id": "1", "text": "Hi", "target_lang": "ja"}]},
+])
+async def test_typhoon_rejects_unsupported_pairs_and_points_to_nllb(typhoon, kw):
+    dub_translate, calls = typhoon
+    response = await dub_translate.dub_translate(_typhoon_request(**kw))
+    assert response.status_code == 400 and calls == []
+    assert b"unsupported_translation_language" in response.body and b"NLLB" in response.body
+
+
+@pytest.mark.asyncio
+async def test_typhoon_without_a_remote_route_says_where_to_turn_it_on(typhoon, monkeypatch):
+    from services.ray_jobs import settings as ray_settings
+    dub_translate, calls = typhoon
+    monkeypatch.setattr(ray_settings, "route_for", lambda engine: None)
+    response = await dub_translate.dub_translate(_typhoon_request())
+    assert response.status_code == 400 and calls == [] and b"Remote GPU" in response.body
+
+
+@pytest.mark.asyncio
+async def test_typhoon_cancelled_request_stops_the_cluster_job(typhoon, monkeypatch):
+    import threading
+    dub_translate, _ = typhoon
+    started, seen = threading.Event(), {}
+
+    def blocking(cfg, rows, src, rules, cancelled=None):
+        seen["cancelled"] = cancelled
+        started.set()
+        cancelled.wait(5)
+        return []
+
+    monkeypatch.setattr(dub_translate, "_translate_typhoon_on_ray", blocking)
+    task = asyncio.ensure_future(dub_translate.dub_translate(_typhoon_request()))
+    await asyncio.get_running_loop().run_in_executor(None, started.wait, 5)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert seen["cancelled"].is_set()

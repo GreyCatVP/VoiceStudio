@@ -1485,7 +1485,7 @@
     "ray_engines_group_asr": "Reconhecimento de fala",
     "ray_engines_asr_hint": "Executa a transcrição da dublagem na GPU remota. Nas configurações de reconhecimento de fala, escolha um modelo do Hugging Face (não uma pasta local) e selecione \"Faster-Whisper (crash-isolated subprocess)\" como mecanismo de ASR.",
     "ray_engines_group_translation": "Tradução",
-    "ray_engines_translation_hint": "Executa a tradução NLLB da dublagem na GPU remota (quando o NLLB é o provedor de tradução).",
+    "ray_engines_translation_hint": "Executa a tradução da dublagem na GPU remota quando o NLLB ou o Typhoon Translate é o provedor de tradução. O Typhoon Translate (tailandês↔inglês) só funciona aqui.",
     "ray_engines_group_diarization": "Diarização de locutores",
     "ray_engines_diarization_hint": "Executa a diarização de locutores da dublagem na GPU remota. Os arquivos do modelo pyannote instalados são enviados com cada tarefa; seu token do Hugging Face nunca sai deste computador.",
     "ray_engines_group_separation": "Separação de fontes",

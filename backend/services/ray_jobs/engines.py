@@ -41,6 +41,18 @@ _NLLB_RECIPE: Dict[str, Any] = {
     "install_revision": "ray-nllb-v1",
 }
 
+# Typhoon Translate 1.5 (Thai<->English dub translation; Qwen3-4B, needs
+# transformers >= 4.51): the app's locked versions; weights download on the
+# cluster from the pinned revision (not gated).
+_TYPHOON_TRANSLATE_RECIPE: Dict[str, Any] = {
+    "venv_args": ["--python", "3.11"],
+    "install_args": ["transformers==5.15.1", "accelerate==1.14.0", "tokenizers==0.22.2", "safetensors==0.8.0",
+                     "huggingface_hub==1.28.0", "numpy==2.2.6", "jinja2==3.1.6"],
+    "torch_pins": ["torch==2.8.0"],
+    "probe_code": "import torch, accelerate, jinja2; from transformers import AutoModelForCausalLM, AutoTokenizer",
+    "install_revision": "ray-typhoon-translate-v1",
+}
+
 # Demucs separation (dub ingest): htdemucs via the Python API, no ffmpeg needed.
 _DEMUCS_RECIPE: Dict[str, Any] = {
     "venv_args": ["--python", "3.11"],
@@ -125,6 +137,8 @@ RAY_ENGINES: Dict[str, RayEngine] = {
     "omnivoice": RayEngine("omnivoice", "omnivoice_ray", ("main.py",), "main.py", gpu=True, kind="tts",
                            extra_files=_OMNIVOICE_FILES, recipe=_OMNIVOICE_RECIPE),
     "nllb": RayEngine("nllb", "nllb", ("main.py",), "main.py", gpu=True, kind="translation", recipe=_NLLB_RECIPE),
+    "typhoon-translate": RayEngine("typhoon-translate", "typhoon_translate", ("main.py",), "main.py", gpu=True,
+                                   kind="translation", recipe=_TYPHOON_TRANSLATE_RECIPE),
     # ASR used by dubbing: the crash-isolated faster-whisper sidecar.
     "faster-whisper-isolated": RayEngine(
         "faster-whisper-isolated", "_asr_sidecar", ("main.py",), "main.py", gpu=True, kind="asr",

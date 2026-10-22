@@ -52,6 +52,7 @@ EXPECTED_SIDECARS = {
     ENGINES / "supertonic3" / "sidecar.py",
     # Ray-job sidecars (services/ray_jobs): same wire protocol, same rule.
     ENGINES / "nllb" / "main.py",
+    ENGINES / "typhoon_translate" / "main.py",
     ENGINES / "demucs" / "main.py",
     ENGINES / "pyannote" / "main.py",
     ENGINES / "omnivoice_ray" / "main.py",

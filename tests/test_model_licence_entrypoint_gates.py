@@ -389,6 +389,33 @@ def test_nllb_accepted_reaches_the_weights_load(store, nllb, ma):
     assert loads == []
 
 
+# ── Typhoon Translate (remote GPU only) ─────────────────────────────────────
+
+TYPHOON_REPO = "typhoon-ai/typhoon-translate1.5-4b"
+
+
+def _typhoon_request():
+    schemas = _mod("schemas.requests")
+    return schemas.TranslateRequest(
+        segments=[schemas.TranslateSegment(id="1", text="hello")],
+        target_lang="th", source_lang="en", provider="typhoon",
+    )
+
+
+def test_typhoon_refused_before_the_cluster_job_and_typed_error_escapes(store, ma, monkeypatch):
+    dt = _mod("api.routers.dub_translate")
+    ray_settings = _mod("services.ray_jobs.settings")
+    routes = []
+    monkeypatch.setattr(ray_settings, "route_for", lambda engine: routes.append(engine))
+    with pytest.raises(ma.ModelLicenceNotAccepted) as err:
+        asyncio.run(dt.dub_translate(_typhoon_request()))
+    assert [m["repo_id"] for m in err.value.detail()["models"]] == [TYPHOON_REPO]
+    assert routes == []  # refused before any route lookup or job
+    _accept(ma, TYPHOON_REPO)
+    response = asyncio.run(dt.dub_translate(_typhoon_request()))
+    assert routes == ["typhoon-translate"] and response.status_code == 400  # past the gate; not routed here
+
+
 # ── OpenAI-compatible speech and dub diarisation (typed error propagation) ───
 
 def test_openai_speech_returns_403_with_the_typed_licence_code(store, engine, tb, ma, monkeypatch):

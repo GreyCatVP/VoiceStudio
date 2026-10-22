@@ -1483,7 +1483,7 @@
     "ray_engines_group_asr": "音声認識",
     "ray_engines_asr_hint": "吹き替えの文字起こしをリモート GPU で実行します。音声認識の設定で Hugging Face のモデル（ローカルフォルダーではなく）を選び、ASR エンジンに「Faster-Whisper (crash-isolated subprocess)」を選択してください。",
     "ray_engines_group_translation": "翻訳",
-    "ray_engines_translation_hint": "吹き替えの NLLB 翻訳をリモート GPU で実行します（翻訳プロバイダーが NLLB の場合）。",
+    "ray_engines_translation_hint": "翻訳プロバイダーが NLLB または Typhoon Translate の場合、吹き替えの翻訳をリモート GPU で実行します。Typhoon Translate（タイ語↔英語）はここでのみ動作します。",
     "ray_engines_group_diarization": "話者ダイアライゼーション",
     "ray_engines_diarization_hint": "吹き替えの話者ダイアライゼーションをリモート GPU で実行します。インストール済みの pyannote モデルファイルが各ジョブとともに送信されます。Hugging Face トークンがこのコンピューターの外に出ることはありません。",
     "ray_engines_group_separation": "音源分離",

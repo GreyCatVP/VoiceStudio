@@ -73,6 +73,20 @@ REGISTRY: dict[str, dict] = {
         "builtin": True,
         "notes": "Meta's 200-language NMT model. Large download (~2.4GB), best offline quality.",
     },
+    "typhoon": {
+        "id": "typhoon",
+        "display_name": "Typhoon Translate (Thai↔English, remote GPU)",
+        "pip_package": None,          # runs only as the typhoon-translate Ray engine
+        "probe_module": None,
+        "category": "offline",
+        "needs_key": False,
+        "builtin": True,
+        "notes": (
+            "Typhoon Translate 1.5 (4B), English↔Thai only, with the dub glossary as translation rules. "
+            "Runs only on your remote GPU (Ray cluster or Modal) when typhoon-translate is turned on in "
+            "Settings → Remote GPU; there is no local path yet."
+        ),
+    },
     "google": {
         "id": "google",
         "display_name": "Google Translate (Online, Free)",
@@ -163,7 +177,16 @@ def _nllb_weights_probe() -> tuple[bool, str | None]:
     return True, None
 
 
+def _typhoon_probe() -> tuple[bool, str | None]:
+    from services.subprocess_backend import ray_routed
+    if ray_routed("typhoon-translate"):  # no local path: the remote GPU is the runtime
+        return True, None
+    return False, "Typhoon Translate runs only on a remote GPU: turn on typhoon-translate in Settings → Remote GPU"
+
+
 def _probe(entry: dict, *, import_check: bool = True) -> tuple[bool, str | None]:
+    if entry.get("id") == "typhoon":
+        return _typhoon_probe()
     mod = entry.get("probe_module")
     if not mod:
         return True, None

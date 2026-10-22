@@ -1483,7 +1483,7 @@
     "ray_engines_group_asr": "Spraakherkenning",
     "ray_engines_asr_hint": "Voert de transcriptie voor nasynchronisatie uit op de externe GPU. Kies in de instellingen voor spraakherkenning een Hugging Face-model (geen lokale map) en selecteer \"Faster-Whisper (crash-isolated subprocess)\" als ASR-engine.",
     "ray_engines_group_translation": "Vertaling",
-    "ray_engines_translation_hint": "Voert NLLB-vertaling voor nasynchronisatie uit op de externe GPU (als NLLB de vertaalprovider is).",
+    "ray_engines_translation_hint": "Voert de vertaling voor nasynchronisatie uit op de externe GPU als NLLB of Typhoon Translate de vertaalprovider is. Typhoon Translate (Thai↔Engels) draait alleen hier.",
     "ray_engines_group_diarization": "Sprekerdiarisatie",
     "ray_engines_diarization_hint": "Voert sprekerdiarisatie voor nasynchronisatie uit op de externe GPU. Je geïnstalleerde pyannote-modelbestanden worden met elke taak meegestuurd; je Hugging Face-token verlaat deze computer nooit.",
     "ray_engines_group_separation": "Bronscheiding",

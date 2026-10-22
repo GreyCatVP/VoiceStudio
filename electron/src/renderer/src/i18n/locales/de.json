@@ -1483,7 +1483,7 @@
     "ray_engines_group_asr": "Spracherkennung",
     "ray_engines_asr_hint": "Führt die Transkription für Synchronisationen auf der Remote-GPU aus. Wähle in den Spracherkennungs-Einstellungen ein Modell von Hugging Face (keinen lokalen Ordner) und als ASR-Engine „Faster-Whisper (crash-isolated subprocess)“.",
     "ray_engines_group_translation": "Übersetzung",
-    "ray_engines_translation_hint": "Führt die NLLB-Übersetzung für Synchronisationen auf der Remote-GPU aus (wenn NLLB der Übersetzungsanbieter ist).",
+    "ray_engines_translation_hint": "Führt die Übersetzung für Synchronisationen auf der Remote-GPU aus, wenn NLLB oder Typhoon Translate der Übersetzungsanbieter ist. Typhoon Translate (Thai↔Englisch) läuft nur hier.",
     "ray_engines_group_diarization": "Sprechererkennung",
     "ray_engines_diarization_hint": "Führt die Sprechererkennung für Synchronisationen auf der Remote-GPU aus. Deine installierten pyannote-Modelldateien werden mit jedem Auftrag gesendet; dein Hugging Face-Token verlässt diesen Computer nie.",
     "ray_engines_group_separation": "Quellentrennung",

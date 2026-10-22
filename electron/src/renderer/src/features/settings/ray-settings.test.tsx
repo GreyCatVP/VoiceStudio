@@ -132,6 +132,7 @@ it('puts translation, diarization and separation engines in their own groups', a
       { id: 'omnivoice', gpu: true, kind: 'tts' },
       { id: 'faster-whisper-isolated', gpu: true, kind: 'asr' },
       { id: 'nllb', gpu: true, kind: 'translation' },
+      { id: 'typhoon-translate', gpu: true, kind: 'translation' },
       { id: 'pyannote', gpu: true, kind: 'diarization' },
       { id: 'demucs', gpu: true, kind: 'separation' },
       // A kind this build does not know yet still counts as text to speech.
@@ -158,13 +159,13 @@ it('puts translation, diarization and separation engines in their own groups', a
   const [tts, , translation, diarization, separation] = groups;
   expect(ids(tts)).toEqual(['omnivoice', 'future-engine']);
   expect(tts).not.toHaveAttribute('aria-describedby');
-  for (const [group, kind, id] of [
-    [translation, 'translation', 'nllb'],
-    [diarization, 'diarization', 'pyannote'],
-    [separation, 'separation', 'demucs'],
+  for (const [group, kind, expected] of [
+    [translation, 'translation', ['nllb', 'typhoon-translate']],
+    [diarization, 'diarization', ['pyannote']],
+    [separation, 'separation', ['demucs']],
   ] as const) {
     expect(group).toHaveAccessibleName(`settings.ray_engines_group_${kind}`);
-    expect(ids(group)).toEqual([id]);
+    expect(ids(group)).toEqual(expected);
     expect(group).toHaveAccessibleDescription(`settings.ray_engines_${kind}_hint`);
   }
   expect(within(diarization).getByRole('checkbox')).toBeChecked();

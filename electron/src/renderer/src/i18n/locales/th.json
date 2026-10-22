@@ -1483,7 +1483,7 @@
     "ray_engines_group_asr": "การรู้จำเสียงพูด",
     "ray_engines_asr_hint": "ใช้ถอดเสียงสำหรับการพากย์บน GPU ระยะไกล ในการตั้งค่าการรู้จำเสียงพูด ให้เลือกโมเดลจาก Hugging Face (ไม่ใช่โฟลเดอร์ในเครื่อง) และเลือก \"Faster-Whisper (crash-isolated subprocess)\" เป็นเอนจิน ASR",
     "ray_engines_group_translation": "แปลภาษา",
-    "ray_engines_translation_hint": "ใช้แปลด้วย NLLB สำหรับการพากย์บน GPU ระยะไกล (เมื่อ NLLB เป็นผู้ให้บริการแปล)",
+    "ray_engines_translation_hint": "ใช้แปลสำหรับการพากย์บน GPU ระยะไกล เมื่อ NLLB หรือ Typhoon Translate เป็นผู้ให้บริการแปล Typhoon Translate (ไทย↔อังกฤษ) ทำงานได้ที่นี่เท่านั้น",
     "ray_engines_group_diarization": "การแยกผู้พูด",
     "ray_engines_diarization_hint": "ใช้แยกผู้พูดสำหรับการพากย์บน GPU ระยะไกล ไฟล์โมเดล pyannote ที่ติดตั้งไว้จะถูกส่งไปกับทุกงาน ส่วนโทเค็น Hugging Face ของคุณจะไม่ออกจากคอมพิวเตอร์เครื่องนี้",
     "ray_engines_group_separation": "การแยกแหล่งเสียง",

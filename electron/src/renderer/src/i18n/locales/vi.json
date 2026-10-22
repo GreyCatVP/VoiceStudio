@@ -1483,7 +1483,7 @@
     "ray_engines_group_asr": "Nhận dạng giọng nói",
     "ray_engines_asr_hint": "Chạy phiên âm cho lồng tiếng trên GPU từ xa. Trong cài đặt nhận dạng giọng nói, hãy chọn một mô hình Hugging Face (không phải thư mục cục bộ) và chọn \"Faster-Whisper (crash-isolated subprocess)\" làm công cụ ASR.",
     "ray_engines_group_translation": "Dịch",
-    "ray_engines_translation_hint": "Chạy dịch NLLB cho lồng tiếng trên GPU từ xa (khi NLLB là nhà cung cấp dịch).",
+    "ray_engines_translation_hint": "Chạy dịch lồng tiếng trên GPU từ xa khi NLLB hoặc Typhoon Translate là nhà cung cấp dịch. Typhoon Translate (Thái↔Anh) chỉ chạy tại đây.",
     "ray_engines_group_diarization": "Phân tách người nói",
     "ray_engines_diarization_hint": "Chạy phân tách người nói cho lồng tiếng trên GPU từ xa. Các tệp mô hình pyannote bạn đã cài được gửi kèm mỗi tác vụ; token Hugging Face của bạn không bao giờ rời khỏi máy tính này.",
     "ray_engines_group_separation": "Tách nguồn âm",

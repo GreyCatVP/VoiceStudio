@@ -1487,7 +1487,7 @@
     "ray_engines_group_asr": "Распознавание речи",
     "ray_engines_asr_hint": "Выполняет транскрипцию для дубляжа на удалённом GPU. В настройках распознавания речи выберите модель с Hugging Face (не локальную папку) и укажите «Faster-Whisper (crash-isolated subprocess)» в качестве движка ASR.",
     "ray_engines_group_translation": "Перевод",
-    "ray_engines_translation_hint": "Выполняет перевод NLLB для дубляжа на удалённом GPU (если NLLB выбран поставщиком перевода).",
+    "ray_engines_translation_hint": "Выполняет перевод для дубляжа на удалённом GPU, если поставщиком перевода выбран NLLB или Typhoon Translate. Typhoon Translate (тайский↔английский) работает только здесь.",
     "ray_engines_group_diarization": "Диаризация дикторов",
     "ray_engines_diarization_hint": "Выполняет диаризацию дикторов для дубляжа на удалённом GPU. Установленные у вас файлы модели pyannote отправляются с каждым заданием; ваш токен Hugging Face никогда не покидает этот компьютер.",
     "ray_engines_group_separation": "Разделение источников",

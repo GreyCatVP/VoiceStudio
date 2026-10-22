@@ -1483,7 +1483,7 @@
     "ray_engines_group_asr": "음성 인식",
     "ray_engines_asr_hint": "더빙 전사를 원격 GPU에서 실행합니다. 음성 인식 설정에서 Hugging Face 모델(로컬 폴더가 아님)을 선택하고 ASR 엔진으로 \"Faster-Whisper (crash-isolated subprocess)\"을(를) 선택하세요.",
     "ray_engines_group_translation": "번역",
-    "ray_engines_translation_hint": "더빙용 NLLB 번역을 원격 GPU에서 실행합니다(번역 제공자가 NLLB인 경우).",
+    "ray_engines_translation_hint": "번역 제공자가 NLLB 또는 Typhoon Translate인 경우 더빙 번역을 원격 GPU에서 실행합니다. Typhoon Translate(태국어↔영어)는 여기서만 실행됩니다.",
     "ray_engines_group_diarization": "화자 분리",
     "ray_engines_diarization_hint": "더빙용 화자 분리를 원격 GPU에서 실행합니다. 설치된 pyannote 모델 파일이 작업마다 함께 전송되며, Hugging Face 토큰은 이 컴퓨터 밖으로 나가지 않습니다.",
     "ray_engines_group_separation": "음원 분리",

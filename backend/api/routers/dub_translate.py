@@ -24,6 +24,8 @@ router = APIRouter()
 logger = logging.getLogger("omnivoice.api")
 
 _NLLB_REPO_ID = "facebook/nllb-200-distilled-600M"
+_TYPHOON_REPO_ID = "typhoon-ai/typhoon-translate1.5-4b"
+TYPHOON_TRANSLATE_REVISION = "c6cc4d3955392634c67158043d947097aa5d8c09"  # reviewed 2026-10-23
 
 
 def _load_nllb_component(factory):
@@ -368,13 +370,12 @@ def _resolve_translation_context(req, client, model_name: str, timeout: float,
     return ctx
 
 
-def _translate_nllb_on_ray(ray_cfg, rows, flores_src: str, decode_options: dict, cancelled=None) -> list:
-    """Translate ``[(index, seg, flores_tgt)]`` in one Ray job; request order kept.
+def _translate_rows_on_ray(engine_id: str, label: str, ray_cfg, rows, params: dict, cancelled=None) -> list:
+    """Translate ``[(index, seg, tgt)]`` in one Ray job; request order kept.
 
     Mirrors the local path's contract: blank rows pass through, a failed row
     keeps its source text with an error, and a job failure marks every row
     instead of raising."""
-    from services.hf_revisions import revision_for
     from services.ray_jobs.jobs import engine_task, run_engine_job
 
     groups: dict[str, list] = {}
@@ -385,17 +386,16 @@ def _translate_nllb_on_ray(ray_cfg, rows, flores_src: str, decode_options: dict,
         else:
             groups.setdefault(tgt, []).append((index, seg))
     if groups:
-        params = {"model": _NLLB_REPO_ID, "revision": revision_for(_NLLB_REPO_ID) or "", "src": flores_src,
-                  "groups": [{"tgt": tgt, "texts": [seg.text for _, seg in members]} for tgt, members in groups.items()],
-                  "decode_options": dict(decode_options or {}), "max_length": 400}
+        params = {**params, "groups": [{"tgt": tgt, "texts": [seg.text for _, seg in members]}
+                                       for tgt, members in groups.items()]}
         texts = sum(len(m) for m in groups.values())
         try:
-            # First run downloads ~2.5 GB of weights on the cluster: the
+            # First run downloads the weights on the cluster (GBs): the
             # sidecar heartbeats while it loads, so the silence deadline holds.
-            reply = run_engine_job("nllb", ray_cfg, engine_task("nllb", ray_cfg, "translate", params),
+            reply = run_engine_job(engine_id, ray_cfg, engine_task(engine_id, ray_cfg, "translate", params),
                                    timeout=3600.0 + 30.0 * texts, idle_timeout=900.0, cancelled=cancelled).result
         except RuntimeError as exc:
-            logger.warning("NLLB on the Ray cluster failed: %s", exc)
+            logger.warning("%s on the Ray cluster failed: %s", label, exc)
             return [{"id": seg.id, "text": seg.text, "error": f"Model load error: {exc}"} for _, seg, _ in rows]
         by_tgt = {g.get("tgt"): g for g in reply.get("groups") or [] if isinstance(g, dict)}
         for tgt, members in groups.items():
@@ -409,6 +409,44 @@ def _translate_nllb_on_ray(ray_cfg, rows, flores_src: str, decode_options: dict,
                     err = errors[k] if k < len(errors) and errors[k] else "missing translation"
                     out[index] = {"id": seg.id, "text": seg.text, "error": str(err)}
     return [out[index] for index, _, _ in rows]
+
+
+def _translate_nllb_on_ray(ray_cfg, rows, flores_src: str, decode_options: dict, cancelled=None) -> list:
+    """NLLB rows (FLORES targets) in one Ray job."""
+    from services.hf_revisions import revision_for
+
+    params = {"model": _NLLB_REPO_ID, "revision": revision_for(_NLLB_REPO_ID) or "", "src": flores_src,
+              "decode_options": dict(decode_options or {}), "max_length": 400}
+    return _translate_rows_on_ray("nllb", "NLLB", ray_cfg, rows, params, cancelled)
+
+
+# Typhoon Translate is English<->Thai only; its prompt names the languages.
+_TYPHOON_LANGUAGES = {"en": "English", "eng": "English", "english": "English",
+                      "th": "Thai", "tha": "Thai", "thai": "Thai"}
+
+
+def _typhoon_language(code: str | None) -> str | None:
+    """Map en, en-US, eng_Latn or English to "English" (th the same to "Thai"); else None."""
+    normalized = str(code or "").strip().replace("_", "-").lower()
+    return _TYPHOON_LANGUAGES.get(normalized) or _TYPHOON_LANGUAGES.get(normalized.split("-")[0])
+
+
+def _typhoon_rules(glossary) -> list[str]:
+    """Dub glossary entries as the model's rules: Translate "X" as "Y"."""
+    rules = []
+    for term in glossary or []:
+        source = " ".join(str(term.get("source") or "").split())
+        target = " ".join(str(term.get("target") or "").split())
+        if source and target:
+            rules.append(f'Translate "{source}" as "{target}".')
+    return list(dict.fromkeys(rules))
+
+
+def _translate_typhoon_on_ray(ray_cfg, rows, src: str, rules: list, cancelled=None) -> list:
+    """Typhoon rows (targets "English"/"Thai") in one Ray job."""
+    params = {"model": _TYPHOON_REPO_ID, "revision": TYPHOON_TRANSLATE_REVISION, "src": src,
+              "rules": list(rules or [])}
+    return _translate_rows_on_ray("typhoon-translate", "Typhoon Translate", ray_cfg, rows, params, cancelled)
 
 
 def _unload_nllb():
@@ -455,6 +493,45 @@ async def dub_translate(req: TranslateRequest):
         api_key = os.environ.get("TRANSLATE_API_KEY", "")
         loop = asyncio.get_running_loop()
         src_lang = _resolve_source_lang(req)
+
+        # Typhoon Translate (English<->Thai): remote GPU only, one Ray job.
+        if provider == "typhoon":
+            targets = [req.target_lang, *(seg.target_lang for seg in req.segments if seg.target_lang)]
+            src_name = _typhoon_language(src_lang)
+            names = {code: _typhoon_language(code) for code in targets}
+            unsupported = sorted({code for code, name in names.items() if name is None or name == src_name}
+                                 | ({src_lang} if src_name is None else set()))
+            if unsupported:
+                return JSONResponse(status_code=400, content={
+                    "error": ("Typhoon Translate only translates English to Thai or Thai to English. "
+                              "Choose NLLB for other languages."),
+                    "code": "unsupported_translation_language", "languages": unsupported,
+                })
+            from services.model_acceptance import ensure_accepted
+            ensure_accepted([_TYPHOON_REPO_ID])
+
+            from services.ray_jobs.settings import route_for
+            _ray_cfg = route_for("typhoon-translate")
+            if _ray_cfg is None:
+                return JSONResponse(status_code=400, content={
+                    "error": ("Typhoon Translate runs only on a remote GPU. Turn on typhoon-translate in "
+                              "Settings → Remote GPU, or choose another translation engine."),
+                    "code": "translation_engine_unavailable",
+                })
+            from services.model_manager import get_ray_lane
+            rows = [(i, seg, names[seg.target_lang] if seg.target_lang else names[req.target_lang])
+                    for i, seg in enumerate(req.segments)]
+            import threading as _threading
+            _cancel = _threading.Event()
+            try:
+                translated = await loop.run_in_executor(
+                    get_ray_lane(), _translate_typhoon_on_ray, _ray_cfg, rows, src_name,
+                    _typhoon_rules(req.glossary), _cancel,
+                )
+            except BaseException:
+                _cancel.set()  # the request went away: stop the cluster job
+                raise
+            return await _maybe_cinematic(translated, req, src_lang, loop)
 
         # Offline NLLB Transformer Translation
         if provider == "nllb":

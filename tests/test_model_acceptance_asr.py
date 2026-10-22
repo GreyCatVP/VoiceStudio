@@ -293,6 +293,11 @@ def test_nllb_is_gated_in_the_registry(store):
     assert ma.status("facebook/nllb-200-distilled-600M")["required"] is True
 
 
+def test_typhoon_translate_is_gated_in_the_registry(store):
+    state = ma.status("typhoon-ai/typhoon-translate1.5-4b")
+    assert state["required"] is True and state["accepted"] is False
+
+
 @pytest.mark.parametrize("rel", [
     "api/routers/dub_export.py",
     "api/routers/capture.py",

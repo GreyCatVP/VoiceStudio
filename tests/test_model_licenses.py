@@ -110,3 +110,12 @@ def test_dynamic_assets_cannot_inherit_blanket_clearance():
     data = registry()
     data["dynamic_assets"][0]["commercial_use"] = True
     assert any("commercial_use" in error for error in checker().validate(data, catalog()))
+
+
+def test_typhoon_translate_record_states_its_conflicting_terms_and_pin():
+    row = next(r for r in registry()["models"] if r["id"] == "typhoon-ai/typhoon-translate1.5-4b")
+    assert row["review_status"] == "unreviewed" and row["commercial_use"] is False
+    for fact in ("apache-2.0", "Gemma License", "Qwen3", "https://opentyphoon.ai/tac"):
+        assert fact in row["notes"]
+    source = (ROOT / row["runtime_pin_source"]).read_text(encoding="utf-8")
+    assert f'TYPHOON_TRANSLATE_REVISION = "{row["runtime_revision"]}"' in source

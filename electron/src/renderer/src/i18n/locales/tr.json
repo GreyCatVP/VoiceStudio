@@ -1483,7 +1483,7 @@
     "ray_engines_group_asr": "Konuşma tanıma",
     "ray_engines_asr_hint": "Seslendirme transkripsiyonunu uzak GPU'da çalıştırır. Konuşma tanıma ayarlarında bir Hugging Face modeli seçin (yerel klasör değil) ve ASR motoru olarak \"Faster-Whisper (crash-isolated subprocess)\" seçeneğini belirleyin.",
     "ray_engines_group_translation": "Çeviri",
-    "ray_engines_translation_hint": "Seslendirme için NLLB çevirisini uzak GPU'da çalıştırır (çeviri sağlayıcısı NLLB olduğunda).",
+    "ray_engines_translation_hint": "Çeviri sağlayıcısı NLLB veya Typhoon Translate olduğunda seslendirme çevirisini uzak GPU'da çalıştırır. Typhoon Translate (Tayca↔İngilizce) yalnızca burada çalışır.",
     "ray_engines_group_diarization": "Konuşmacı ayrıştırma",
     "ray_engines_diarization_hint": "Seslendirme için konuşmacı ayrıştırmayı uzak GPU'da çalıştırır. Yüklü pyannote model dosyalarınız her işle birlikte gönderilir; Hugging Face belirteciniz bu bilgisayardan asla çıkmaz.",
     "ray_engines_group_separation": "Kaynak ayırma",

@@ -104,7 +104,7 @@ const chapter: GuideChapter = {
             ['Prepare', 'ffmpeg, then Demucs (htdemucs)', 'ffmpeg here; Demucs on the remote GPU when `demucs` is routed there'],
             ['Transcribe', 'The ASR engine in **Settings → Models → ASR**', 'Remote when that engine is routed (for example **Faster-Whisper (crash-isolated subprocess)**), otherwise here'],
             ['Speakers', 'pyannote 3.1 (**Settings → Models → Diarisation**)', 'Remote when `pyannote` is routed; needs the model installed and its licence accepted'],
-            ['Translate', 'The engine in **Settings → Models → Translation**', 'NLLB remote when routed; Argos here; online services and LLMs at their provider'],
+            ['Translate', 'The engine in **Settings → Models → Translation**', 'NLLB remote when routed; Typhoon Translate (Thai↔English) remote only; Argos here; online services and LLMs at their provider'],
             ['Generate', 'The active TTS engine (must support cloning)', 'Remote when routed, otherwise on this computer’s GPU or CPU'],
             ['Fit, watermark, mix, export, QC scoring', 'Backend + ffmpeg', 'Always here (QC re-uses the ASR engine, so its recognition may run remotely)'],
           ],

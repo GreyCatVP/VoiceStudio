@@ -102,13 +102,14 @@ def _load(out, model_id: str, revision: str):
 
 
 def _translate(out, msg: dict) -> dict:
-    import torch
-
     _load(out, str(msg.get("model")), str(msg.get("revision") or ""))
+    import torch  # after _load: its heartbeat covers the cold import
+
     decode = {k: int(v) for k, v in (msg.get("decode_options") or {}).items() if k in ("num_beams",)}
     max_length = int(msg.get("max_length") or 400)
     width = _widths(_device, decode.get("num_beams", 1), msg.get("batch_size"))
-    total = sum(len(g.get("texts") or []) for g in msg.get("groups") or [])
+    # Blank rows pass through untranslated, so they are not part of the work.
+    total = sum(1 for g in msg.get("groups") or [] for t in g.get("texts") or [] if str(t).strip())
     done = 0
     _tokenizer.src_lang = str(msg.get("src"))
 

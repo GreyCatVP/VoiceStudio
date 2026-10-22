@@ -1483,7 +1483,7 @@
     "ray_engines_group_asr": "语音识别",
     "ray_engines_asr_hint": "在远程 GPU 上运行配音转写。请在语音识别设置中选择 Hugging Face 模型（而不是本地文件夹），并将 ASR 引擎设为「Faster-Whisper (crash-isolated subprocess)」。",
     "ray_engines_group_translation": "翻译",
-    "ray_engines_translation_hint": "在远程 GPU 上运行配音的 NLLB 翻译（当翻译服务为 NLLB 时）。",
+    "ray_engines_translation_hint": "当翻译服务为 NLLB 或 Typhoon Translate 时，在远程 GPU 上运行配音翻译。Typhoon Translate（泰语↔英语）只在这里运行。",
     "ray_engines_group_diarization": "说话人分离",
     "ray_engines_diarization_hint": "在远程 GPU 上运行配音的说话人分离。你已安装的 pyannote 模型文件会随每个任务发送；你的 Hugging Face 令牌绝不会离开这台电脑。",
     "ray_engines_group_separation": "音源分离",

@@ -1483,7 +1483,7 @@
     "ray_engines_group_asr": "Taligenkänning",
     "ray_engines_asr_hint": "Kör transkriberingen för dubbning på den fjärranslutna GPU:n. Välj en Hugging Face-modell (inte en lokal mapp) i inställningarna för taligenkänning och välj \"Faster-Whisper (crash-isolated subprocess)\" som ASR-motor.",
     "ray_engines_group_translation": "Översättning",
-    "ray_engines_translation_hint": "Kör NLLB-översättning för dubbning på den fjärranslutna GPU:n (när NLLB är översättningsleverantör).",
+    "ray_engines_translation_hint": "Kör översättningen för dubbning på den fjärranslutna GPU:n när NLLB eller Typhoon Translate är översättningsleverantör. Typhoon Translate (thai↔engelska) körs bara här.",
     "ray_engines_group_diarization": "Talaridentifiering",
     "ray_engines_diarization_hint": "Kör talaridentifiering (diarisering) för dubbning på den fjärranslutna GPU:n. Dina installerade pyannote-modellfiler skickas med varje jobb; din Hugging Face-token lämnar aldrig den här datorn.",
     "ray_engines_group_separation": "Källseparering",
