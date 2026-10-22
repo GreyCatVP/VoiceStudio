@@ -245,6 +245,96 @@ def test_previously_cached_tokenizer_stays_available_offline(monkeypatch, tmp_pa
     assert _frames(out)[-1]["op"] == "audio"
 
 
+def _cache_auto_tokenizer(cache, layout, contents="complete"):
+    """Write a tiny Hub snapshot that real AutoTokenizer can load offline."""
+    from tokenizers import Tokenizer, models, pre_tokenizers
+
+    storage = cache / "models--OpenMOSS-Team--MOSS-TTS-Nano"
+    revision = "b" * 40
+    snapshot = storage / "snapshots" / revision
+    snapshot.mkdir(parents=True)
+    (storage / "refs").mkdir()
+    (storage / "refs" / "main").write_text(revision, encoding="utf-8")
+    config = {"tokenizer_class": "PreTrainedTokenizerFast", "unk_token": "[UNK]"}
+    if layout == "bpe":
+        config = {"tokenizer_class": "GPT2Tokenizer", "unk_token": "<|endoftext|>"}
+    (snapshot / "tokenizer_config.json").write_text(json.dumps(config), encoding="utf-8")
+    model_config = {"model_type": "gpt2"} if layout == "bpe" else {"tokenizer_class": "PreTrainedTokenizerFast"}
+    (snapshot / "config.json").write_text(json.dumps(model_config), encoding="utf-8")
+    (snapshot / "special_tokens_map.json").write_text("{}", encoding="utf-8")
+    if contents == "metadata":
+        return snapshot
+    if layout == "bpe" or contents == "incomplete":
+        (snapshot / "vocab.json").write_text(
+            json.dumps({"h": 0, "i": 1, "<|endoftext|>": 2}), encoding="utf-8",
+        )
+        if contents == "complete":
+            (snapshot / "merges.txt").write_text("#version: 0.2\n", encoding="utf-8")
+    else:
+        tokenizer = Tokenizer(models.WordLevel({"[UNK]": 0, "hi": 1}, unk_token="[UNK]"))
+        tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()
+        tokenizer.save(str(snapshot / "tokenizer.json"))
+    return snapshot
+
+
+@pytest.mark.parametrize("layout", ["json", "bpe"])
+@pytest.mark.parametrize("shared_contents", ["empty", "metadata", "incomplete", "complete"])
+def test_auto_tokenizer_cache_layouts_remain_usable_offline(
+    monkeypatch, tmp_path, layout, shared_contents,
+):
+    """Usable JSON/BPE legacy caches beat incomplete shared-cache metadata."""
+    from huggingface_hub import constants
+    from transformers import AutoTokenizer, dynamic_module_utils
+
+    hub_cache = tmp_path / "hub"
+    model_code = tmp_path / "modules" / "modeling_moss_tts_nano.py"
+    legacy_cache = model_code.parent / ".cache" / "huggingface"
+    snapshot = _cache_auto_tokenizer(legacy_cache, layout)
+    assert not (snapshot / "tokenizer.model").exists()
+    if shared_contents != "empty":
+        _cache_auto_tokenizer(hub_cache, layout, shared_contents)
+    repo = "OpenMOSS-Team/MOSS-TTS-Nano"
+    expected_tokens = [1] if layout == "json" else [0, 1]
+    tokenizer = AutoTokenizer.from_pretrained(
+        repo, cache_dir=legacy_cache, use_fast=False,
+        trust_remote_code=True, local_files_only=True,
+    )
+    assert tokenizer.encode("hi", add_special_tokens=False) == expected_tokens
+
+    monkeypatch.setattr(constants, "HF_HUB_CACHE", str(hub_cache))
+    modules_cache = str(model_code.parent)
+    monkeypatch.setattr(dynamic_module_utils, "HF_MODULES_CACHE", modules_cache)
+    monkeypatch.setenv("HF_MODULES_CACHE", modules_cache)
+    module = types.ModuleType("_auto_tokenizer_nano_model")
+    module.__file__ = str(model_code)
+    monkeypatch.setitem(sys.modules, module.__name__, module)
+    used_caches = []
+
+    class NanoModel:
+        def load_text_tokenizer(self):
+            cache_dir = self._resolve_hf_cache_dir()
+            self._patch_hf_dynamic_module_cache_dir(cache_dir)
+            tokenizer = AutoTokenizer.from_pretrained(
+                repo, cache_dir=cache_dir, use_fast=False,
+                trust_remote_code=True, local_files_only=True,
+            )
+            assert tokenizer.encode("hi", add_special_tokens=False) == expected_tokens
+            used_caches.append(Path(cache_dir))
+
+    NanoModel.__module__ = module.__name__
+    sidecar = _load_sidecar(monkeypatch, [], model_factory=NanoModel, fail_first_synthesis=True)
+    monkeypatch.setattr(sidecar.time, "sleep", lambda seconds: None)
+    out = io.BytesIO()
+
+    sidecar._handle_synthesize({"text": "hi"}, out)
+
+    expected_cache = hub_cache if shared_contents == "complete" else legacy_cache
+    assert used_caches == [expected_cache] * 2
+    assert dynamic_module_utils.HF_MODULES_CACHE == modules_cache
+    assert sidecar.os.environ["HF_MODULES_CACHE"] == modules_cache
+    assert _frames(out)[-1]["op"] == "audio"
+
+
 def test_the_sidecar_imports_nothing_from_the_app():
     src = _MAIN.read_text(encoding="utf-8")
     for name in ("services", "core", "engines", "api", "backend", "utils"):
