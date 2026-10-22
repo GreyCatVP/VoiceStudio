@@ -92,3 +92,13 @@ describe('transcription identities', () => {
     expect(loadTranscriptions().map((entry) => entry.text)).toEqual(['b', 'c']);
   });
 });
+
+describe('transcription language', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('stores an engine echo of "auto" as an unknown language', () => {
+    expect(addTranscription({ text: 'a', language: 'auto' }).language).toBe('unknown');
+    expect(addTranscription({ text: 'b', language: 'en' }).language).toBe('en');
+    expect(addTranscription({ text: 'c' }).language).toBe('unknown');
+  });
+});

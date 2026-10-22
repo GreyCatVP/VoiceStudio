@@ -691,7 +691,8 @@ export function SettingsPage() {
                   >
                     <Select
                       items={APP_LANGUAGE_ITEMS}
-                      value={i18n.resolvedLanguage || i18n.language}
+                      // `language`: a lazily loaded locale resolves to English until it arrives.
+                      value={i18n.language}
                       onValueChange={(value) => void setAppLanguage(value as AppLocale)}
                     >
                       <SelectTrigger aria-labelledby="language-label" className="min-w-44">

@@ -17,8 +17,19 @@ export function stripLogAnsi(line: string): string {
   return clean;
 }
 
+// "2026-10-21 14:06:46,769 INFO [omnivoice.api] …" — the logger's own level
+// wins over words in the message ("'failures': 0" is not an error).
+const LEVEL = /^\S+\s+\S+\s+(DEBUG|INFO|WARNING|WARN|ERROR|CRITICAL|FATAL)\b/;
+
 export function logSeverity(line: string): LogSeverity {
   const value = stripLogAnsi(line);
+  const level = LEVEL.exec(value)?.[1];
+  if (level === 'ERROR' || level === 'CRITICAL' || level === 'FATAL') return 'error';
+  if (level === 'WARNING' || level === 'WARN') return 'warning';
+  if (level === 'DEBUG') return 'debug';
+  if (level === 'INFO') {
+    return /(?:ready|complete|completed|succeeded|healthy|loaded)\b/i.test(value) ? 'success' : 'info';
+  }
   if (
     /(?:^|[\s[.:_-])(?:critical|fatal|error|exception|traceback|panic)(?:$|[\s\].:_-])/i.test(
       value,

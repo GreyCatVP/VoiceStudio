@@ -25,8 +25,9 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('@/components/app-shell/workspace-header', () => ({
   WorkspaceHeader: ({ children }: { children: ReactNode }) => <header>{children}</header>,
 }));
+const backendStatus = vi.hoisted(() => ({ baseUrl: 'http://127.0.0.1:3912' }));
 vi.mock('@/hooks/use-backend-status', () => ({
-  useBackendStatus: () => ({ baseUrl: 'http://127.0.0.1:3912' }),
+  useBackendStatus: () => backendStatus,
 }));
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock('sonner', () => ({ toast }));
@@ -104,6 +105,18 @@ it('offers copyable API snippets for the current backend', () => {
   expect(
     screen.getByText(/curl http:\/\/127\.0\.0\.1:3912\/v1\/audio\/speech/),
   ).toBeInTheDocument();
+});
+
+it('uses the page origin in a browser tab without the desktop bridge', () => {
+  backendStatus.baseUrl = '';
+  try {
+    route.slug = 'voicestudio-api';
+    render(<IntegrationDetailPage />);
+    expect(screen.queryByText(/Setup is unavailable/)).toBeNull();
+    expect(screen.getByText(new RegExp(`curl ${window.location.origin}/api/v1/audio/speech`))).toBeInTheDocument();
+  } finally {
+    backendStatus.baseUrl = 'http://127.0.0.1:3912';
+  }
 });
 
 it('shows the OpenAI Agents snippet for the live backend', async () => {

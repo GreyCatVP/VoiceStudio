@@ -6,7 +6,7 @@ import { integrationSetup, type IntegrationSetup, type SetupBlock } from './setu
 import { integrationCategoryKey } from './integration-categories';
 import { IntegrationDetailColumns } from './integration-detail-layout';
 import { saveLocalFile } from '@/lib/local-export';
-import { describeError } from '@/lib/api/client';
+import { apiPath, describeError } from '@/lib/api/client';
 import {
   ArrowLeftIcon,
   BlocksIcon,
@@ -146,7 +146,10 @@ export function IntegrationDetailPage() {
   const { slug } = useParams({ strict: false });
   const backend = useBackendStatus();
   const setup = integrationSetup(slug ?? '');
-  const blocks = useMemo(() => setup?.blocks(backend.baseUrl) ?? null, [setup, backend.baseUrl]);
+  // A browser tab has no bridge (no baseUrl): the API is this page's own
+  // origin, as the OpenAPI page already assumes.
+  const baseUrl = backend.baseUrl || `${window.location.origin}${apiPath('')}`;
+  const blocks = useMemo(() => setup?.blocks(baseUrl) ?? null, [setup, baseUrl]);
   const entry = getIntegrationBySlug(slug ?? '');
   if (!entry || !setup) {
     return (

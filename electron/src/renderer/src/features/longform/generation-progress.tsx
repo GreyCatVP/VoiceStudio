@@ -53,7 +53,7 @@ export function GenerationProgress({
         <span className="font-medium">
           {assembling
             ? t('audiobook.assembling')
-            : t('audiobook.progress_summary', { current: completed, total })}
+            : t('audiobook.progress_summary', { current: Math.min(completed + 1, total), total })}
         </span>
         <span className="shrink-0 font-mono tabular-nums text-muted-foreground">
           {formatElapsed(elapsed)}

@@ -28,6 +28,9 @@ export function useTtsReadiness(operation = 'tts'): TtsReadinessBlocker {
     tts?.backends.find((item) => item.id === activeEngine)?.supports_cloning === false
   )
     return 'cloning';
+  // Routed to a remote GPU (Ray cluster or Modal): the weights live there, so
+  // the local catalogue's "installed" says nothing about readiness.
+  if (tts?.backends.find((item) => item.id === activeEngine)?.effective_device === 'network') return null;
   const activeModelId = tts?.active_model;
   if (activeModelId && catalogue.isLoading) return 'loading';
   const activeModel = catalogue.data?.models.find((model) => model.repo_id === activeModelId);

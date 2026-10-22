@@ -6,6 +6,8 @@ const state = vi.hoisted(() => ({
   backendStage: 'ready',
   localReady: false,
   supportsCloning: true,
+  device: 'cpu',
+  installed: null as boolean | null, // catalogue row; null = same as localReady
 }));
 
 vi.mock('./use-backend-status', async (importOriginal) => {
@@ -25,6 +27,7 @@ vi.mock('./use-engines', () => ({
             id: 'omnivoice',
             available: state.localReady,
             supports_cloning: state.supportsCloning,
+            effective_device: state.device,
           },
         ],
       },
@@ -41,7 +44,7 @@ vi.mock('@/features/settings/model-catalogue-query', () => ({
       models: [
         {
           repo_id: 'k2-fsa/OmniVoice',
-          installed: state.localReady,
+          installed: state.installed ?? state.localReady,
           incomplete: false,
         },
       ],
@@ -56,11 +59,21 @@ describe('local TTS readiness', () => {
       backendStage: 'ready',
       localReady: false,
       supportsCloning: true,
+      device: 'cpu',
+      installed: null,
     });
   });
 
   it('blocks an unavailable local engine', () => {
     expect(renderHook(() => useTtsReadiness()).result.current).toBe('engine');
+  });
+
+  it('allows an engine routed to a remote GPU without local weights', () => {
+    state.localReady = true; // the backend reports the routed engine available
+    state.installed = false; // but its weights are on the cluster, not here
+    expect(renderHook(() => useTtsReadiness()).result.current).toBe('engine');
+    state.device = 'network';
+    expect(renderHook(() => useTtsReadiness()).result.current).toBeNull();
   });
 
   it('allows an installed local engine', () => {

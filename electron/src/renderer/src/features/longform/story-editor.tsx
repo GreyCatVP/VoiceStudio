@@ -556,7 +556,7 @@ export function StoryEditor({
           </details>
           <details>
             <summary className="cursor-pointer text-xs text-muted-foreground">
-              {t('stories.voice')} ?{' '}
+              {t('stories.voice')}:{' '}
               {profiles.find((p) => p.id === line.profileId)?.name || t('stories.defaultVoice')}
             </summary>
             <div className="mt-2 flex flex-wrap gap-1">

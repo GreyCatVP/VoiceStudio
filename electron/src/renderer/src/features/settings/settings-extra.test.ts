@@ -7,6 +7,6 @@ it('lists Settings → Account only when the build offers cloud accounts', () =>
   expect(extraSettingsFor(true).some((item) => item.to === '/settings/account')).toBe(true);
 });
 
-it('lists Settings → Ray cluster', () => {
+it('lists Settings → Remote GPU', () => {
   expect(extraSettingsFor(false).some((item) => item.to === '/settings/ray')).toBe(true);
 });

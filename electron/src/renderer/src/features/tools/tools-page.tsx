@@ -257,8 +257,8 @@ function ToolForm({ tool }: { tool: Tool }) {
                       ['rate_bias', 'rate_bias'],
                     ]
                   : [
-                      ['method', 'method'],
-                      ['ratio', 'ratio'],
+                      // services/speech_rate.adjust_for_slot: {text, rate_ratio, attempts, error?}
+                      ['rate_ratio', 'ratio'],
                       ['attempts', 'attempts'],
                       ['text', 'result'],
                     ]

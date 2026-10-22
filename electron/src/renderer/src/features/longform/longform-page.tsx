@@ -337,7 +337,8 @@ export function LongformPage({ mode }: { mode: Mode }) {
             onBusy={setImporting}
           />
           {(query.data?.jobs || [])
-            .filter((job) => job.type === (mode === 'stories' ? 'longform' : 'audiobook'))
+            // The backend's resumable job types: "story" and "audiobook" (longform_resume.RESUMABLE_TYPES).
+            .filter((job) => job.type === (mode === 'stories' ? 'story' : 'audiobook'))
             .map((job) => (
               <div key={job.job_id} className="space-y-2 border-t border-border/50 pt-4 text-xs">
                 <h2 className="font-medium">{t('audiobook.recovery_title')}</h2>

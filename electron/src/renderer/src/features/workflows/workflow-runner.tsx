@@ -67,8 +67,8 @@ export function WorkflowRunner({ document, onClose, onBusy, storageReady = true 
   const needsSpeech = document.steps.some((step) => ['speak', 'convert'].includes(step.kind));
   const matches = plan?.signature === run?.signature;
   const done = run?.items.filter((item) => item.state === 'done').length ?? 0;
-  return <section className="workflow-runner studio-scrollbar" aria-label={t('dub.export')}>
-    <div className="workflow-panel-heading"><span>{t('dub.export')}</span>
+  return <section className="workflow-runner studio-scrollbar" aria-label={t('workflowRun.run')}>
+    <div className="workflow-panel-heading"><span>{t('workflowRun.run')}</span>
       <Button size="icon-xs" variant="ghost" disabled={busy} onClick={onClose} aria-label={t('common.close')}><XIcon /></Button>
     </div>
     <div className="workflow-runner__body">

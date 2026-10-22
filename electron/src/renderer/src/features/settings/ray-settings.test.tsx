@@ -210,6 +210,7 @@ it('saves only the changed fields and never sends empty secrets', async () => {
 it('sends a typed secret once, and an explicit clear as an empty string', async () => {
   renderSettings();
   await waitFor(() => expect(input('settings.ray_dashboard_url')).toHaveValue(BASE.dashboard_url));
+  fireEvent.click(screen.getByRole('switch', { name: 'settings.ray_use_cf' }));
   fireEvent.change(input('settings.ray_cf_client_secret'), { target: { value: 'cf-secret' } });
   fireEvent.click(screen.getByRole('button', { name: 'settings.ray_clear_token' }));
   fireEvent.click(screen.getAllByRole('button', { name: 'common.save' })[0]);
@@ -220,7 +221,8 @@ it('sends a typed secret once, and an explicit clear as an empty string', async 
       body: JSON.stringify({ auth_token: '', cf_access_client_secret: 'cf-secret' }),
     }),
   );
-  await waitFor(() => expect(input('settings.ray_cf_client_secret')).toHaveValue(''));
+  // The typed secret is not kept (the field is empty, or hidden with its method off).
+  await waitFor(() => expect(input('settings.ray_cf_client_secret')?.value ?? '').toBe(''));
 });
 
 it('shows the auth-disabled warning and node details from a test result', async () => {
@@ -253,6 +255,45 @@ it('shows the auth-disabled warning and node details from a test result', async 
   expect(mock.api).not.toHaveBeenCalledWith(
     '/api/settings/ray',
     expect.objectContaining({ method: 'PUT' }),
+  );
+});
+
+it('reports a failed test request as a test result, not a save failure', async () => {
+  renderSettings({}, { 'POST /api/settings/ray/test': () => Promise.reject(new Error('HTTP 403')) });
+  await waitFor(() => expect(input('settings.ray_dashboard_url')).toHaveValue(BASE.dashboard_url));
+  fireEvent.click(screen.getByRole('button', { name: 'settings.ray_test' }));
+
+  expect(await screen.findByText(/HTTP 403/)).toBeInTheDocument();
+  expect(screen.queryByText('settings.ray_save_failed')).not.toBeInTheDocument();
+});
+
+it('shows each auth method\'s fields only when it is switched on', async () => {
+  renderSettings({ has_token: false });
+  await waitFor(() => expect(input('settings.ray_dashboard_url')).toHaveValue(BASE.dashboard_url));
+  // A cluster without auth needs no credentials, so none are asked for.
+  expect(input('settings.ray_token')).toBeNull();
+  expect(input('settings.ray_cf_client_id')).toBeNull();
+  fireEvent.click(screen.getByRole('switch', { name: 'settings.ray_use_token' }));
+  expect(input('settings.ray_token')).not.toBeNull();
+  fireEvent.click(screen.getByRole('switch', { name: 'settings.ray_use_cf' }));
+  expect(input('settings.ray_cf_client_id')).not.toBeNull();
+  expect(input('settings.ray_cf_client_secret')).not.toBeNull();
+});
+
+it('turning an auth method off clears its stored credentials on save', async () => {
+  renderSettings({ cf_access_client_id: 'cf-id', has_cf_secret: true });
+  // Stored credentials switch their method on.
+  await waitFor(() => expect(input('settings.ray_token')).not.toBeNull());
+  expect(input('settings.ray_cf_client_id')).toHaveValue('cf-id');
+  fireEvent.click(screen.getByRole('switch', { name: 'settings.ray_use_token' }));
+  fireEvent.click(screen.getByRole('switch', { name: 'settings.ray_use_cf' }));
+  fireEvent.click(screen.getAllByRole('button', { name: 'common.save' })[0]);
+
+  await waitFor(() =>
+    expect(mock.api).toHaveBeenCalledWith('/api/settings/ray', {
+      method: 'PUT',
+      body: JSON.stringify({ cf_access_client_id: '', auth_token: '', cf_access_client_secret: '' }),
+    }),
   );
 });
 
@@ -440,6 +481,8 @@ it('computes Modal changes, including the CPU-only GPU and a token clear', () =>
     cfSecret: '',
     clearToken: false,
     clearCfSecret: false,
+    useToken: true,
+    useCfAccess: false,
     provider: 'modal' as const,
     modalGpu: '',
     modalApp: 'voicestudio',

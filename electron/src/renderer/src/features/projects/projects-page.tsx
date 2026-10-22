@@ -315,7 +315,7 @@ export function ProjectsPage() {
         name: project.name,
         kind: 'dub',
         projectKind: 'dub',
-        subtitle: t('projects.dub_projects'),
+        subtitle: '', // the row's type label already says it
         updatedAt: timestamp(project.updated_at),
       });
     }
@@ -326,7 +326,7 @@ export function ProjectsPage() {
         name: project.name,
         kind: project.mode === 'stories' ? 'stories' : 'audiobooks',
         projectKind: project.mode,
-        subtitle: t(project.mode === 'stories' ? 'nav.stories' : 'audiobook.title'),
+        subtitle: '',
         updatedAt: timestamp(project.updatedAt),
       });
     }

@@ -42,7 +42,8 @@ export function addTranscription(entry) {
   const newEntry = {
     id: nextTranscriptionId(existing),
     text: entry.text || '',
-    language: entry.language || 'unknown',
+    // "auto" is a request setting some engines echo back, not a detected language.
+    language: entry.language && entry.language !== 'auto' ? entry.language : 'unknown',
     duration_s: entry.duration_s || 0,
     segments: entry.segments || [],
     timestamp: new Date().toISOString(),

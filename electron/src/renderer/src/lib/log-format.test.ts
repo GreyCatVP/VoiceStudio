@@ -17,3 +17,16 @@ describe('log formatting', () => {
     expect(stripLogAnsi('\u001B[31mERROR\u001B[0m failed')).toBe('ERROR failed');
   });
 });
+
+describe('logger levels', () => {
+  it('trusts the logged level over words in the message', () => {
+    expect(logSeverity("2026-10-21 14:06:46,769 INFO [omnivoice.render] render trace {'failures': 0}")).toBe('info');
+    expect(logSeverity('2026-10-21 14:06:46,769 INFO [omnivoice.api] model loaded')).toBe('success');
+    expect(logSeverity('2026-10-21 14:06:46,769 WARNING [omnivoice.api] retrying in 2s')).toBe('warning');
+    expect(logSeverity('2026-10-21 14:06:46,769 ERROR [omnivoice.api] boom')).toBe('error');
+  });
+
+  it('still classifies lines without a level by their words', () => {
+    expect(logSeverity('Traceback (most recent call last):')).toBe('error');
+  });
+});
