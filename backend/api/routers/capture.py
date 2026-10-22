@@ -106,11 +106,17 @@ async def transcribe_audio(
         # TTS-only install: no ASR model on disk → typed 409 with a download
         # CTA, BEFORE any backend is constructed (the whisper backends
         # auto-download multi-GB weights from HF on first load).
-        from services.asr_backend import asr_model_missing_detail, asr_model_missing_error
+        from services.asr_backend import active_backend_id, asr_model_missing_detail, asr_model_missing_error
+        from services.subprocess_backend import ray_routed
+
+        # A reference transcript needs local weights, unless the active ASR runs
+        # on a remote GPU (its weights live there; a local fallback would load
+        # a large model on this CPU instead).
+        reference_local = requested_mode == "reference" and not ray_routed(active_backend_id())
         missing = await asyncio.to_thread(
             asr_model_missing_error,
             purpose="transcribe" if use_active_asr else "dictation",
-            require_installed=requested_mode == "reference",
+            require_installed=reference_local,
         )
         if missing is not None and not use_active_asr:
             transcribe_missing = await asyncio.to_thread(
@@ -157,7 +163,7 @@ async def transcribe_audio(
                 # chain is broken, which then 500s at `.transcribe()`. The
                 # loader degrades to the next healthy engine (#1185).
                 from services.asr_backend import load_active_asr_backend
-                backend = load_active_asr_backend(require_installed=True) if requested_mode == "reference" else load_active_asr_backend()
+                backend = load_active_asr_backend(require_installed=True) if reference_local else load_active_asr_backend()
                 result = backend.transcribe(
                     tmp.name, word_timestamps=use_accurate, **_prompt_kwargs(backend),
                 )

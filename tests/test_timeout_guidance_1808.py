@@ -1,6 +1,6 @@
 """#1808 — timeout guidance must name the control the user actually has.
 
-#1797 moved the compute-time budget into Settings → Performance & Device, but
+#1797 moved the compute-time budget into Settings → Compute device, but
 three branches of `_timeout_guidance` still told the user to raise
 OMNIVOICE_GENERATE_TIMEOUT_S. That sends someone to set an environment variable
 for a value the app now exposes as a slider — and on Windows in particular,
@@ -16,7 +16,7 @@ import pytest
 from services.model_manager import _timeout_guidance
 
 _ENV_VAR = "OMNIVOICE_GENERATE_TIMEOUT_S"
-_SETTINGS = "Settings → Performance & Device"
+_SETTINGS = "Settings → Compute device"
 
 
 @pytest.mark.parametrize("wedged", [False, True])

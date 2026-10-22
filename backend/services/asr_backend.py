@@ -3464,7 +3464,12 @@ def transcribe_reference(audio_path: str, *, release_after: bool = False) -> str
     candidates: list[ASRBackend] = []
     # This provider is only reachable through an explicit settings/env choice;
     # it has no local weights to verify and must keep the user's opt-in working.
-    selected_remote = active_backend_id() == "openai-compat-asr"
+    # An engine routed to a remote GPU (Ray/Modal) is the same: its weights live
+    # on the cluster. Requiring a local copy there made reference transcription
+    # skip it and load an installed large local model on CPU instead.
+    from services.subprocess_backend import ray_routed
+
+    selected_remote = active_backend_id() == "openai-compat-asr" or ray_routed(active_backend_id())
     offline_missing = asr_model_missing_error(require_installed=not selected_remote)
     if offline_missing is None:
         try:

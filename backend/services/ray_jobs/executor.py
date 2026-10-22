@@ -242,11 +242,11 @@ class RayJobsExecutor:
         if need_gpu and best_gpu < need_gpu:
             raise RayJobFailed(
                 f"No Ray node has {need_gpu:g} GPU(s) for {task.engine or task.op} (the largest has {best_gpu:g}). "
-                "Add a GPU node, or set the GPU share to 0 in Settings → Ray cluster to run on CPU.",
+                "Add a GPU node, or set the GPU share to 0 in Settings → Remote GPU to run on CPU.",
                 submission_id="", status="REFUSED", stage="placement")
         raise RayJobFailed(
             f"No Ray node has {need_cpu:g} CPU(s) together with {need_gpu:g} GPU(s) for one job "
-            f"(largest: {best_cpu:g} CPU, {best_gpu:g} GPU); lower the CPUs per job in Settings → Ray cluster.",
+            f"(largest: {best_cpu:g} CPU, {best_gpu:g} GPU); lower the CPUs per job in Settings → Remote GPU.",
             submission_id="", status="REFUSED", stage="placement")
 
     async def _wait(self, sid: str, on_progress: Optional[ProgressFn], idle_timeout: Optional[float] = None):

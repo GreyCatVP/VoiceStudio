@@ -148,13 +148,31 @@ def _installed_dictation_models() -> list:
     return compatible
 
 
+def _remote_choice_kept(family: str) -> bool:
+    """The user's engine runs on a remote GPU: a profile, which only knows
+    local models, must not swap it for one this machine has to run (on a
+    small host a local large-v3 then runs out of memory)."""
+    from services.subprocess_backend import ray_routed
+
+    if family == "asr":
+        from services import asr_backend
+        return ray_routed(asr_backend.active_backend_id())
+    if family == "tts":
+        from services import tts_backend
+        return ray_routed(tts_backend.active_backend_id())
+    if family == "translation":
+        from core import prefs
+        return prefs.get("translation_backend") == "nllb" and ray_routed("nllb")
+    return False
+
+
 def _activate_asr_model(tier: str) -> dict | None:
     from core import prefs
     from services import asr_backend
 
     if os.environ.get("OMNIVOICE_ASR_BACKEND") or prefs.is_env_shadowed(
         "ASR_MODEL_FASTER"
-    ):
+    ) or _remote_choice_kept("asr"):
         return None
     model = _tier_choice(
         _installed_ct2_models(), tier, size=lambda item: item.get("size_gb")
@@ -196,6 +214,8 @@ def _activate_translation_model(tier: str) -> dict | None:
     from services import translation_engines
 
     current = str(prefs.get("translation_backend", "argos"))
+    if _remote_choice_kept("translation"):
+        return None
     # Keep a usable explicitly chosen network provider. A stale provider whose
     # package/key disappeared must not strand Dubbing while an installed local
     # translator is ready.
@@ -430,7 +450,7 @@ def _activate_budgeted_profile(tier: str) -> dict:
     activated = {}
     for family, entry in state["plan"]["families"].items():
         selected = entry["selection"]
-        if selected is None or entry["reason"] == "kept":
+        if selected is None or entry["reason"] == "kept" or _remote_choice_kept(family):
             continue
         engine, model = selected["engine"], selected["model"]
         if family == "tts":

@@ -1109,3 +1109,82 @@ def test_engines_routed_remotely_report_network_routing(rs):
     assert remote_routing("supertonic3")["routing_status"] == "cpu_only"  # a CPU engine stays CPU remotely
     rs.save({"num_gpus": 0.0})  # Ray share 0 = GPU engines on CPU
     assert remote_routing("voxcpm2")["routing_status"] == "cpu_only"
+
+
+def test_reference_transcription_uses_the_routed_asr_without_a_local_copy(rs, monkeypatch):
+    from services import asr_backend
+
+    rs.save({"enabled": True, "dashboard_url": "https://ray.example.com", "engines": ["faster-whisper-isolated"]})
+    monkeypatch.setattr(asr_backend, "active_backend_id", lambda: "faster-whisper-isolated")
+    asked = []
+
+    def missing(**kw):
+        asked.append(kw)
+        return None if not kw.get("require_installed") else "not installed"
+
+    routed = object()
+    seen = {}
+    monkeypatch.setattr(asr_backend, "asr_model_missing_error", missing)
+    monkeypatch.setattr(asr_backend, "load_active_asr_backend", lambda **kw: routed)
+    monkeypatch.setattr(asr_backend, "_transcribe_reference_candidates",
+                        lambda candidates, path, release_after=False: seen.setdefault("c", list(candidates)) and "hi")
+    assert asr_backend.transcribe_reference("ref.wav") == "hi"
+    # The routed engine is the first candidate; no local install demanded of it.
+    assert seen["c"][0] is routed and asked[0] == {"require_installed": False}
+
+
+def test_reference_transcribe_route_uses_the_routed_asr(rs, monkeypatch, tmp_path):
+    """/transcribe?mode=reference must not demand (or fall back to) local weights when ASR is remote."""
+    from fastapi.testclient import TestClient
+    from main import app
+    from services import asr_backend
+
+    rs.save({"enabled": True, "dashboard_url": "https://ray.example.com", "engines": ["faster-whisper-isolated"]})
+    monkeypatch.setattr(asr_backend, "active_backend_id", lambda: "faster-whisper-isolated")
+    asked = []
+    monkeypatch.setattr(asr_backend, "asr_model_missing_error",
+                        lambda **kw: asked.append(kw) or (None if not kw.get("require_installed") else {"code": "x"}))
+
+    class Routed:
+        id = "faster-whisper-isolated"
+        display_name = "Faster-Whisper"
+
+        def transcribe(self, path, **kw):
+            return {"text": "the words", "chunks": []}
+
+    loads = []
+    monkeypatch.setattr(asr_backend, "load_active_asr_backend", lambda **kw: loads.append(kw) or Routed())
+    clip = tmp_path / "ref.wav"
+    clip.write_bytes(b"RIFF")
+    with TestClient(app) as client:
+        r = client.post("/transcribe", data={"mode": "reference"}, files={"audio": ("ref.wav", clip.read_bytes(), "audio/wav")})
+    assert r.status_code == 200, r.text
+    assert asked[0]["require_installed"] is False and loads == [{}]
+
+
+def test_performance_profile_keeps_a_remotely_routed_engine(rs, monkeypatch, tmp_path):
+    """A profile picks among local models; it must not swap a Ray-routed ASR for a local one."""
+    from core import prefs
+    from services import asr_backend, performance_profiles as pp
+
+    monkeypatch.setattr(prefs, "_PREFS_PATH", str(tmp_path / "prefs.json"))
+    monkeypatch.setattr(asr_backend, "active_backend_id", lambda: "faster-whisper-isolated")
+    monkeypatch.setattr(pp, "profile_state", lambda tier: {"effective": {}, "plan": {"families": {
+        "asr": {"reason": "fits", "selection": {"engine": "faster-whisper", "model": "Systran/faster-whisper-large-v3"}},
+    }}})
+    switched = []
+    monkeypatch.setattr(asr_backend, "select_faster_whisper_model", switched.append)
+    monkeypatch.setattr(asr_backend, "faster_whisper_model_id", lambda: "Systran/faster-whisper-small")
+
+    pp._activate_budgeted_profile("balanced")
+    assert switched  # not routed yet: the profile applies its local pick
+    switched.clear()
+    rs.save({"enabled": True, "dashboard_url": "https://ray.example.com", "engines": ["faster-whisper-isolated"]})
+    assert pp._activate_budgeted_profile("balanced") == {} and not switched
+    assert pp._activate_asr_model("balanced") is None
+    # The same for a translator routed remotely: NLLB stays the choice.
+    prefs.set_("translation_backend", "nllb")
+    assert pp._activate_translation_model("balanced") is not None  # local NLLB: the profile may switch it
+    rs.save({"engines": ["faster-whisper-isolated", "nllb"]})
+    prefs.set_("translation_backend", "nllb")
+    assert pp._activate_translation_model("balanced") is None and prefs.get("translation_backend") == "nllb"

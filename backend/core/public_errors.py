@@ -59,7 +59,7 @@ _CPU_GENERATION_TIMEOUT_DETAIL = (
     "Generation ran out of time on this computer's CPU, which renders much "
     "more slowly than a GPU. The backend is still running. To get it through: "
     "try a shorter passage, pick a CPU-tuned engine (OmniVoice GGUF or "
-    "Supertonic-3), or raise \"CPU budget\" in Settings → Performance & Device "
+    "Supertonic-3), or raise \"CPU budget\" in Settings → Compute device "
     "and restart the backend."
 )
 
@@ -83,7 +83,7 @@ def stream_failure(code: str, *, device: str | None = None) -> dict[str, object]
             "detail": (
                 "Generation exceeded the compute-time limit. The backend is "
                 "still running; try a shorter passage, or raise the "
-                "compute-time budget in Settings → Performance & Device."
+                "compute-time budget in Settings → Compute device."
             ),
             "retryable": True,
         },

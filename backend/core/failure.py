@@ -123,8 +123,8 @@ def invalid_media_file_detail() -> dict[str, str]:
 # One-line "what to do" per docs-taxonomy key. Keys mirror error_docs_map's
 # taxonomy; the docs URL itself stays owned by error_docs_map.
 _HINTS: dict[str, str] = {
-    "GPU_OOM": "Close other GPU-heavy apps or unload models, then retry. If another program is holding most of the GPU, or this computer has a second GPU, pick a different one in Settings → Performance & Device. You can also choose CPU there or select a smaller TTS engine.",
-    "GPU_ARCH_UNSUPPORTED": "This PyTorch build does not support your GPU. Choose CPU in Settings → Performance & Device, or install a compatible PyTorch build.",
+    "GPU_OOM": "Close other GPU-heavy apps or unload models, then retry. If another program is holding most of the GPU, or this computer has a second GPU, pick a different one in Settings → Compute device. You can also choose CPU there or select a smaller TTS engine.",
+    "GPU_ARCH_UNSUPPORTED": "This PyTorch build does not support your GPU. Choose CPU in Settings → Compute device, or install a compatible PyTorch build.",
     # #2462: the HOST ran out of RAM, not a GPU. On a CPU-only machine there is
     # no device to spill to, so *every* out-of-memory failure there is this
     # class — and GPU_OOM's "close other GPU-heavy apps … or choose CPU" is
@@ -135,14 +135,14 @@ _HINTS: dict[str, str] = {
     "PKG_RESOURCES_MISSING": "Run `uv pip install --reinstall 'setuptools>=75,<80'` in the backend venv (a plain install is skipped when setuptools' metadata is present but its pkg_resources files were removed by antivirus). Restart after.",
     "GATEKEEPER_QUARANTINE": "Clear the macOS quarantine flag (xattr -cr the app), then reopen.",
     "APPIMAGE_WEBKIT_WHITESCREEN": "Launch with WEBKIT_DISABLE_DMABUF_RENDERER=1 set.",
-    "HF_AUTH_FAILED": "Set a valid HF_TOKEN in Settings → Hugging Face and retry. If the model is gated, open its Hugging Face page and accept its access terms first.",
+    "HF_AUTH_FAILED": "Set a valid HF_TOKEN in Settings → Credentials and retry. If the model is gated, open its Hugging Face page and accept its access terms first.",
     "DIARIZATION_MODEL_MISSING": "Install or repair the selected diarisation model in Settings > Models > Diarisation, then retry transcription.",
     "DIARIZATION_LOAD_FAILED": "Open Settings > Logs > Backend for the model load error, then retry transcription after correcting it.",
     "PYANNOTE_LICENSE_REQUIRED": "Accept the pyannote model licenses on Hugging Face, then retry.",
     # Set by the model install when a gated model fails on a mirror the user
     # chose: mirrors never receive the token, so no token change can help.
     "HF_MIRROR_GATED": "This model is gated, and mirrors never receive your Hugging Face token. Switch to Hugging Face (official) in Settings → Models → Hugging Face mirror, then retry.",
-    "POCKETTTS_GATED_WEIGHTS": "PocketTTS weights are gated on HuggingFace. Accept the access agreement at huggingface.co/kyutai/pocket-tts, then set HF_TOKEN in Settings → Hugging Face and retry.",
+    "POCKETTTS_GATED_WEIGHTS": "PocketTTS weights are gated on HuggingFace. Accept the access agreement at huggingface.co/kyutai/pocket-tts, then set HF_TOKEN in Settings → Credentials and retry.",
     "COMPUTE_TYPE_UNSUPPORTED": "Your GPU doesn't support float16 — VoiceStudio retried on int8. If transcription still fails, set OMNIVOICE/ASR_COMPUTE_TYPE=int8 or use CPU.",
     # Literal versions, not `--constraint deploy/torch-constraints.txt`:
     # desktop installs don't ship deploy/ (tauri.conf.json bundles only

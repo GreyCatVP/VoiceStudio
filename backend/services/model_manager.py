@@ -1068,7 +1068,7 @@ async def run_on_gpu_pool_guarded(fn, *, what: str = "GPU job",
         if on_lane:
             raise GpuJobTimeoutError(
                 f"{what} did not finish within {timeout:.0f}s on the Ray cluster. The job "
-                "was stopped. Check the cluster's free resources in Settings → Ray cluster, "
+                "was stopped. Check the cluster's free resources in Settings → Remote GPU, "
                 "then retry."
             ) from timeout_exc
         raise GpuJobTimeoutError(
@@ -1304,7 +1304,7 @@ def _timeout_guidance(
             "compute-bound. For a durable fix try shorter text or a lighter "
             "engine (OmniVoice GGUF and Supertonic-3 are CPU-tuned). If you "
             "expect very long single generations, raise \"CPU budget\" "
-            "(the compute-time budget) in Settings → Performance & Device "
+            "(the compute-time budget) in Settings → Compute device "
             "and restart the backend."
         )
     # #1226/#1222: two users on 4 GB cards were told, generically, that the GPU
@@ -1328,7 +1328,7 @@ def _timeout_guidance(
             f"Supertonic-3 are tuned for small/no GPU) or shorter text; "
             f"Flush caches / Unload the resident model (top toolbar or "
             f"Model Catalogue) frees what little headroom there is. (Raise "
-            f"the compute-time budget in Settings → Performance & Device if "
+            f"the compute-time budget in Settings → Compute device if "
             f"you'd rather let long "
             f"generations run.)"
         )
@@ -1338,7 +1338,7 @@ def _timeout_guidance(
         "resident model (top toolbar or Model Catalogue) before retrying, "
         "try shorter text, a lighter engine, or set the engine to CPU in "
         "Model Catalogue. (Raise the compute-time budget in "
-        "Settings → Performance & Device for very "
+        "Settings → Compute device for very "
         "long single generations.)"
     )
 
