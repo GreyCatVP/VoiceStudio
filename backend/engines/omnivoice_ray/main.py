@@ -56,20 +56,20 @@ def _load(out):
     global _model
     if _model is not None:
         return _model
-    import torch
-    from omnivoice.models.omnivoice import OmniVoice
-    from omnivoice.utils.dtype import tts_dtype_name
-
     checkpoint = os.environ.get("VS_OMNIVOICE_CHECKPOINT") or DEFAULT_CHECKPOINT  # resolved by the backend
-    device = "cuda" if torch.cuda.is_available() else "cpu"
     stop = threading.Event()
 
-    def beat():  # downloads and the load are silent: keep the deadline informed
+    def beat():  # imports (from a cold network volume), downloads and the load are silent
         while not stop.wait(10):
             _send(out, {"op": "progress", "stage": "loading_model", "message": checkpoint})
 
     threading.Thread(target=beat, daemon=True).start()
     try:
+        import torch
+        from omnivoice.models.omnivoice import OmniVoice
+        from omnivoice.utils.dtype import tts_dtype_name
+
+        device = "cuda" if torch.cuda.is_available() else "cpu"
         _model = OmniVoice.from_pretrained(checkpoint, device_map=device,
                                            dtype=getattr(torch, tts_dtype_name(device)), load_asr=False)
     finally:

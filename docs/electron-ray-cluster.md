@@ -133,12 +133,14 @@ Details:
   pinned `modal` package and Python 3.12 into its cache, and a small driver
   (`backend/modal_driver/vs_modal_driver.py`) talks to Modal. The token is
   passed only to that driver process; it never enters the sandbox.
-- The sandbox image is Debian with Python 3.12, build tools and ffmpeg; Modal
-  builds it once and caches it.
-- Engine environments, `uv`'s cache and model downloads persist on a Modal
-  Volume (default `voicestudio-cache`, in an app named `voicestudio`), so only
-  the first run of each engine installs it. Changing the volume name starts
-  from an empty cache.
+- Each engine runs in its own image: Debian with Python 3.12, build tools,
+  ffmpeg, and that engine's environment, installed at image build time. Modal
+  builds it on the engine's first run (a few minutes) and caches it; it is
+  rebuilt only when the engine's install recipe or VoiceStudio's worker
+  changes. An image build failure is detailed in the Modal dashboard's logs.
+- Model weights downloaded at run time persist on a Modal Volume (default
+  `voicestudio-cache`, a v2 volume, in an app named `voicestudio`). Changing
+  the volume name starts from an empty cache.
 - The same engines as on Ray are available, with the same 50 MB result limit
   per job. There is no job list in VoiceStudio for Modal; see the app's
   sandboxes in the Modal dashboard.

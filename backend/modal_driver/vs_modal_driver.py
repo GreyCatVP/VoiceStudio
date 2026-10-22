@@ -27,6 +27,11 @@ import traceback
 
 CACHE_MOUNT = "/vs-cache"
 JOB_DIR = "/job"
+# Engine environments live in the image, not on the volume: a venv is tens of
+# thousands of small files, and every file lookup on a Modal Volume is a
+# network round trip (a cold `import torch` from it took minutes). The volume
+# keeps what is read as a few large files: model weights.
+ENGINE_CACHE = "/opt/vs-cache"
 PYTHON_VERSION = "3.12"
 # Build tools for engines that compile wheels; ffmpeg/libsndfile for audio I/O.
 APT_PACKAGES = ("build-essential", "git", "curl", "ca-certificates", "ffmpeg", "libsndfile1")
@@ -60,7 +65,8 @@ def _app_and_volume(req: dict):
     import modal
 
     app = modal.App.lookup(str(req.get("app") or "voicestudio"), create_if_missing=True)
-    volume = modal.Volume.from_name(str(req.get("volume") or "voicestudio-cache"), create_if_missing=True)
+    # v2: uv hard-links its cache into engine envs; v1 volumes refuse hard links.
+    volume = modal.Volume.from_name(str(req.get("volume") or "voicestudio-cache"), create_if_missing=True, version=2)
     return app, volume
 
 
@@ -76,6 +82,14 @@ def run(req: dict, cancel: threading.Event) -> None:
     emit({"t": "status", "s": "creating"})
     app, volume = _app_and_volume(req)
     image = modal.Image.debian_slim(python_version=PYTHON_VERSION).apt_install(*APT_PACKAGES)
+    if req.get("install_package_path"):
+        # One image per install recipe (Modal caches it by content): the
+        # worker's own install op, run at build time.
+        cuda = "VS_RAY_ASSUME_NVIDIA=1 " if req.get("gpu") else ""
+        image = image.add_local_file(str(req["install_package_path"]), "/opt/vs/install.zip", copy=True).run_commands(
+            "cd /opt/vs && python3 -c \"import zipfile; zipfile.ZipFile('install.zip').extractall('install')\"",
+            f"cd /opt/vs/install && {cuda}VS_RAY_CACHE={ENGINE_CACHE} PYTHONUNBUFFERED=1 "
+            "python3 vs_ray_worker.py --task task.json")
     kwargs = {}
     if req.get("gpu"):
         kwargs["gpu"] = str(req["gpu"])
@@ -109,21 +123,29 @@ def run(req: dict, cancel: threading.Event) -> None:
             return
         emit({"t": "status", "s": "running"})
         env = {str(k): str(v) for k, v in (req.get("env") or {}).items()}
-        env["VS_RAY_CACHE"] = CACHE_MOUNT
+        env["VS_RAY_CACHE"] = ENGINE_CACHE
+        env.setdefault("HF_HOME", f"{CACHE_MOUNT}/hf")  # runtime weight downloads persist
         proc = sandbox.exec("python3", "-c", UNPACK_AND_RUN, workdir=JOB_DIR, env=env)
         tail: "collections.deque[str]" = collections.deque(maxlen=60)
 
         def drain_stderr() -> None:
             try:
-                for line in proc.stderr:
-                    tail.append(line.rstrip("\n"))
+                for chunk in proc.stderr:
+                    tail.extend(chunk.splitlines())
             except Exception:
                 pass
 
         err_thread = threading.Thread(target=drain_stderr, daemon=True)
         err_thread.start()
-        for line in proc.stdout:
-            emit({"t": "out", "l": line.rstrip("\n")})
+        # The stream yields chunks, not lines: re-split so no frame is cut in two.
+        pending = ""
+        for chunk in proc.stdout:
+            pending += chunk
+            *lines, pending = pending.split("\n")
+            for line in lines:
+                emit({"t": "out", "l": line})
+        if pending:
+            emit({"t": "out", "l": pending})
         code = proc.wait()
         err_thread.join(timeout=5)
         if not terminated.is_set():

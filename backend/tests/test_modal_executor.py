@@ -73,6 +73,8 @@ def test_modal_probe_checks_app_and_volume(fake_modal):
     out = asyncio.run(_executor().probe())
     assert out["ok"] is True
     assert {c["event"] for c in fake_modal()} == {"app", "volume"}
+    # v2: uv hard-links its cache into engine envs, which v1 volumes refuse.
+    assert next(c for c in fake_modal() if c["event"] == "volume")["version"] == 2
 
 
 def test_modal_cancel_terminates_the_sandbox(fake_modal):
@@ -141,3 +143,31 @@ def test_gpu_request_follows_the_provider():
     assert RaySettings(provider="modal", num_gpus=0.0, modal_gpu="L4").gpu_request(True) == 1.0
     assert RaySettings(provider="modal", modal_gpu="").gpu_request(True) is None
     assert RaySettings(provider="modal").gpu_request(False) is None
+
+
+def test_modal_bakes_each_install_recipe_into_its_own_image(monkeypatch):
+    """Engine envs live in the image (volume file lookups are network round trips)."""
+    seen = []
+
+    class Stop(Exception):
+        pass
+
+    class FakeDriver:
+        def __init__(self, request, env):
+            seen.append(dict(request))
+            raise Stop
+
+    monkeypatch.setattr(me, "_Driver", FakeDriver)
+    recipe = {"key": "abc123", "packages": ["x==1"]}
+    for params in ({"text": "one"}, {"text": "two"}):
+        with pytest.raises(Stop):
+            asyncio.run(_executor().run(RayTask(op="synthesize", engine="_echo", params=params, install=recipe,
+                                                num_gpus=1.0), timeout=60))
+    first, second = seen
+    # Same recipe, different requests: one install package (so one cached image).
+    assert first["install_package_path"] == second["install_package_path"]
+    assert first["package_path"] != second["package_path"] and first["gpu"] == "L4"
+    assert Path(first["install_package_path"]).name.startswith("_ray_pkg_")
+    with pytest.raises(Stop):
+        asyncio.run(_executor().run(RayTask(op="probe"), timeout=60))
+    assert seen[-1]["install_package_path"] is None  # nothing to install: the base image

@@ -1,8 +1,12 @@
-"""Ray Jobs executor against a real Ray head (opt-in).
+"""Remote execution against a real Ray head or a real Modal account (opt-in).
 
 Runs only when VS_RAY_TEST_URL points at a dashboard, e.g.
 
     VS_RAY_TEST_URL=http://127.0.0.1:8265 VS_RAY_TEST_TOKEN=... pytest backend/tests/test_ray_jobs_integration.py
+
+or, for Modal (bills the account; the engine tests then run in Modal sandboxes):
+
+    VS_MODAL_TEST=1 VS_MODAL_TOKEN_ID=ak-... VS_MODAL_TOKEN_SECRET=as-... VS_MODAL_GPU=L4 pytest ...
 
 The process-teardown check additionally needs the head on this machine.
 """
@@ -17,13 +21,35 @@ import pytest
 from services.ray_jobs import RayAuth, RayJobsClient, RayJobsExecutor, RayTask
 
 URL = os.environ.get("VS_RAY_TEST_URL")
-pytestmark = pytest.mark.skipif(not URL, reason="VS_RAY_TEST_URL not set")
+MODAL = os.environ.get("VS_MODAL_TEST") == "1"
+pytestmark = pytest.mark.skipif(not (URL or MODAL), reason="VS_RAY_TEST_URL / VS_MODAL_TEST not set")
+ray_only = pytest.mark.skipif(MODAL, reason="talks to the Ray dashboard directly")
+
+
+@pytest.fixture(autouse=True)
+def _modal_provider(monkeypatch):
+    """With VS_MODAL_TEST=1 the engine tests' Ray settings become Modal ones."""
+    if not MODAL:
+        return
+    from services.ray_jobs import settings as ray_settings
+
+    real = ray_settings.save
+
+    def save(changes):
+        changes = {k: v for k, v in changes.items() if k not in ("dashboard_url", "auth_token")}
+        changes.update(provider="modal", modal_gpu=os.environ.get("VS_MODAL_GPU", "L4"),
+                       modal_token_id=os.environ["VS_MODAL_TOKEN_ID"],
+                       modal_token_secret=os.environ["VS_MODAL_TOKEN_SECRET"])
+        return real(changes)
+
+    monkeypatch.setattr(ray_settings, "save", save)
 
 
 def _client():
     return RayJobsClient(URL, RayAuth(ray_token=os.environ.get("VS_RAY_TEST_TOKEN") or None))
 
 
+@ray_only
 def test_cluster_is_reachable_and_authenticated():
     async def go():
         async with _client() as c:
@@ -33,6 +59,7 @@ def test_cluster_is_reachable_and_authenticated():
     assert version["ray_version"] and meta["pythonVersion"]
 
 
+@ray_only
 def test_probe_job_describes_the_node():
     async def go():
         async with _client() as c:
@@ -45,6 +72,7 @@ def test_probe_job_describes_the_node():
     assert res.result["node"]["python"]
 
 
+@ray_only
 def test_echo_synthesis_round_trip_through_a_real_job():
     async def go():
         async with _client() as c:
@@ -64,6 +92,7 @@ def test_echo_synthesis_round_trip_through_a_real_job():
     assert not any(sid.startswith("vs-echo-") and st == "FAILED" for sid, st in jobs.items() if sid == res.submission_id)
 
 
+@ray_only
 @pytest.mark.skipif(not URL or urlparse(URL or "").hostname not in {"127.0.0.1", "localhost"},
                     reason="needs the Ray head on this machine to inspect processes")
 def test_cancel_stops_the_job_and_kills_the_engine_process():

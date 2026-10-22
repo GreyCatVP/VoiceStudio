@@ -1121,3 +1121,11 @@ def test_install_env_prefers_uv_managed_python(monkeypatch, tmp_path):
     assert worker._install_env()["UV_PYTHON_PREFERENCE"] == "only-managed"
     monkeypatch.setenv("VS_RAY_PYTHON_PREFERENCE", "managed")  # a cluster without internet to python-build-standalone
     assert worker._install_env()["UV_PYTHON_PREFERENCE"] == "managed"
+
+
+def test_worker_can_be_told_to_install_cuda_wheels_without_a_gpu(monkeypatch):
+    worker = _worker_module()
+    monkeypatch.setattr(worker, "_HAS_NVIDIA", False)
+    assert worker.has_nvidia() is False
+    monkeypatch.setenv("VS_RAY_ASSUME_NVIDIA", "1")  # a Modal image built ahead of a GPU run
+    assert worker.has_nvidia() is True

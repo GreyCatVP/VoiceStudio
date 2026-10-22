@@ -90,10 +90,10 @@ def _load(out, model_id: str, revision: str):
     global _model, _tokenizer, _device, _loaded_key
     if _loaded_key == (model_id, revision):
         return
-    import torch
-    from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+    with _Heartbeat(out, "loading", f"loading {model_id}"):  # imports too: slow from a cold volume
+        import torch
+        from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
-    with _Heartbeat(out, "loading", f"loading {model_id}"):
         _tokenizer = AutoTokenizer.from_pretrained(model_id, revision=revision or None)
         model = AutoModelForSeq2SeqLM.from_pretrained(model_id, revision=revision or None)
         _device = "cuda" if torch.cuda.is_available() else "cpu"

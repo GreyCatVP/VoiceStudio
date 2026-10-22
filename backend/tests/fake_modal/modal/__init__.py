@@ -40,8 +40,8 @@ class App:
 
 class Volume:
     @staticmethod
-    def from_name(name, create_if_missing=False):
-        _record("volume", name=name)
+    def from_name(name, create_if_missing=False, version=None):
+        _record("volume", name=name, version=version)
         return Volume()
 
     def hydrate(self):
@@ -56,12 +56,30 @@ class Image:
     def apt_install(self, *packages):
         return self
 
+    def add_local_file(self, local_path, remote_path, copy=False):
+        _record("image_file", remote=remote_path, copy=copy)
+        return self
+
+    def run_commands(self, *commands):
+        _record("image_build", commands=list(commands))
+        return self
+
+
+def _chunks(stream, size=37):
+    while True:
+        data = stream.read(size)
+        if not data:
+            return
+        yield data
+
 
 class _Proc:
+    """Streams come back in arbitrary chunks, not lines, as with Modal."""
+
     def __init__(self, popen):
         self._p = popen
-        self.stdout = popen.stdout
-        self.stderr = popen.stderr
+        self.stdout = _chunks(popen.stdout)
+        self.stderr = _chunks(popen.stderr)
 
     def wait(self):
         return self._p.wait()

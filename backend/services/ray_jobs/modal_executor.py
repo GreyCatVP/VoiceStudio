@@ -177,11 +177,23 @@ class ModalExecutor:
         lifetime = min(_MAX_LIFETIME_S, int((timeout or 6 * 3600) + _LIFETIME_MARGIN_S))
         started = time.monotonic()
         fd, package_path = tempfile.mkstemp(prefix="vs-modal-", suffix=".zip")
+        install_path = None
+        if task.install:
+            # The install alone, content-addressed at a stable path: Modal
+            # builds (and caches) one image per recipe from it.
+            install_uri, install_data, _ = build_package(
+                RayTask(op="install", engine=task.engine, install=task.install).payload(), {})
+            install_path = os.path.join(tempfile.gettempdir(), install_uri.rsplit("/", 1)[-1])
+            if not os.path.exists(install_path):
+                with open(install_path + ".part", "wb") as fh:
+                    fh.write(install_data)
+                os.replace(install_path + ".part", install_path)
         try:
             with os.fdopen(fd, "wb") as fh:
                 fh.write(data)
             request = {
                 "op": "run", "app": self.app, "volume": self.volume, "package_path": package_path,
+                "install_package_path": install_path,
                 "gpu": self.gpu if task.num_gpus else "", "cpu": task.num_cpus,
                 "memory_mb": int(task.memory_bytes / 2 ** 20) if task.memory_bytes else None,
                 "timeout": lifetime, "env": env, "engine": task.engine, "op_name": task.op,
@@ -246,6 +258,8 @@ class ModalExecutor:
     @staticmethod
     def _finish(sid: str, code: int, stderr: str, logs: str, started: float) -> RayJobResult:
         if code != 0:
+            # Modal keeps no job log VoiceStudio can show; the tail is the only trace.
+            logger.warning("modal job %s failed (exit %s); stderr tail:\n%s", sid, code, stderr[-4000:])
             events = proto.parse_events(logs)
             err = events.errors[-1] if events.errors else {}
             detail = err.get("message") or (stderr.strip().splitlines() or [f"exit code {code}"])[-1]

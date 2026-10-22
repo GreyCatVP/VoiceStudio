@@ -171,6 +171,8 @@ def has_nvidia() -> bool:
     device prints "No devices were found").
     """
     global _HAS_NVIDIA
+    if os.environ.get("VS_RAY_ASSUME_NVIDIA") == "1":  # an image built ahead of a GPU run (Modal)
+        return True
     if _HAS_NVIDIA is None:
         smi = shutil.which("nvidia-smi")
         ok = False
