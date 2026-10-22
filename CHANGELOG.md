@@ -16,6 +16,7 @@ metadata and the backend fallback mirror it.
 
 - Preview iOS and Android companion apps: drive your own VoiceStudio from your phone (speak, voices and cloning, dubbing, dictation) after pairing by QR code; build from source for now ([guide](docs/mobile.md)) (#2965)
 - Smart Fit speed limits: set the fastest and slowest speed dubbing may apply to a line, from the Timing section (#3026) — thanks @MoonDragon-MD!
+- Remote GPU (opt-in): run selected engines on your own Ray cluster or Modal account, freeing the GPU after every run; offered when this computer has no GPU ([guide](docs/electron-ray-cluster.md)) (#1)
 
 ### Fixed
 
