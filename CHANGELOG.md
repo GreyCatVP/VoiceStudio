@@ -111,6 +111,7 @@ metadata and the backend fallback mirror it.
 - `SPONSORS.md` now states what each sponsorship tier gives, when recognition starts, and what sponsorship does not buy, and the README and inquiry form point to it (#3172)
 - OmniVoice GGUF docs state that the installers do not ship its native binary yet (#3026) — thanks @DestinyQJY!
 - Contributor guides and the pull request template explain how to sign the CLA before opening a first pull request (#2676)
+- New community-tested guide for running on a Radeon GPU from Windows in a WSL2 distro without Docker (ROCm 7.2.4 + librocdxg, reusable disk images, full build log) ([guide](docs/install/wsl-amd-rocm.md))
 
 ### Fixed
 
