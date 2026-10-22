@@ -310,6 +310,43 @@ def _resolve_snapshot_dir(checkpoint) -> str:
 
 _DEFAULT_ASR_MODEL = "openai/whisper-large-v3-turbo"
 
+# A host-provided reference transcriber (VoiceStudio installs its selected ASR
+# engine here at model-load time). Contract: callable(audio) -> str, where
+# ``audio`` is a file path or a ``(waveform, sample_rate)`` tuple — the same
+# shapes :meth:`OmniVoice.transcribe` accepts. When set, the clone-reference
+# path consults it BEFORE the bundled transformers Whisper fallback, so the
+# engine the user selected in Model Catalogue is actually the one used
+# (#3176): previously the selection was ignored and only a local
+# ``openai/whisper-large-v3-turbo`` snapshot could ever satisfy the request.
+_reference_transcriber = None
+
+
+def set_reference_transcriber(fn) -> None:
+    """Install (or, with ``None``, remove) the host reference transcriber."""
+    global _reference_transcriber
+    _reference_transcriber = fn
+
+
+def _host_reference_transcript(audio) -> Optional[str]:
+    """The host transcriber's answer, or None when absent/unavailable.
+
+    Never raises: the caller falls back to the bundled Whisper snapshot
+    chain, which is the behavior every pre-existing consumer relied on.
+    Returns ``None`` for an empty transcript too — whitespace is not a
+    transcript, and an empty answer must not short-circuit the fallback.
+    """
+    fn = _reference_transcriber
+    if fn is None:
+        return None
+    try:
+        text = fn(audio)
+    except Exception:
+        logger.debug("host reference transcriber failed; using bundled ASR",
+                     exc_info=True)
+        return None
+    text = (text or "").strip() if isinstance(text, str) else ""
+    return text or None
+
 
 def _reference_asr_repos() -> List[str]:
     """Whisper checkpoints the implicit cloning fallback may reuse, best first.
@@ -600,12 +637,43 @@ class OmniVoice(PreTrainedModel):
         if snapshot is None:
             raise _ReferenceAsrNotInstalled(
                 "Automatic reference transcription needs an installed speech-to-text "
-                "model. Provide a matching reference transcript, or install and select "
-                "a speech-to-text model in Model Catalogue, then try again."
+                "model. Provide a matching reference transcript, or install a "
+                "transcription (ASR) model in Model Catalogue — e.g. \"Whisper "
+                "large-v3 Turbo (PyTorch)\" or any Whisper listed there — then "
+                "try again."
             )
         # Pass a directory rather than the repo ID so transformers cannot make
         # metadata requests or download missing assets from a partial snapshot.
         self.load_asr_model(model_name=snapshot)
+
+    def _reference_transcript(self, audio) -> Optional[str]:
+        """Transcript from the host-installed ASR engine, or None.
+
+        VoiceStudio installs its selected ASR engine via
+        :func:`set_reference_transcriber`. Consulting it FIRST (before the
+        bundled transformers Whisper snapshot) is what makes "the engine the
+        user selected" actually mean something (#3176): the bundled fallback
+        only accepts transformers-format Whisper weights, so a CTranslate2
+        (faster-whisper) selection used to dead-end here even though the app
+        transcribed the very same clip successfully at profile-save time.
+        Returns ``None`` when no host transcriber is installed or it produced
+        nothing, so every caller keeps its existing bundled-ASR fallback.
+        """
+        return _host_reference_transcript(audio)
+
+    def unload_asr_model(self) -> bool:
+        """Drop the reference-transcription ASR pipeline and free its memory.
+
+        Independent of the TTS model: only ``_asr_pipe`` is released, so a
+        user on a small GPU can reclaim the ~1.6 GB the reference ASR holds
+        without losing the loaded TTS weights (#3176). Idempotent — returns
+        ``False`` when no ASR pipeline was resident. The caller is responsible
+        for the allocator cleanup (``gc``/``empty_cache``) as usual.
+        """
+        if self._asr_pipe is None:
+            return False
+        self._asr_pipe = None
+        return True
 
     @torch.inference_mode()
     def transcribe(
@@ -958,7 +1026,10 @@ class OmniVoice(PreTrainedModel):
                 power = audio.abs().amax(dim=0).square().clamp_max(activity_cap)
                 return float(power.double().sum())
 
-            if self._asr_pipe is None:
+            if self._asr_pipe is None and _reference_transcriber is None:
+                # A host-installed engine (set_reference_transcriber) can rank
+                # the windows itself (#3176); only when neither it nor a
+                # resident pipeline exists is the bundled snapshot needed.
                 logger.info("Loading cached ASR for reference transcription ...")
                 try:
                     self._load_cached_reference_asr()
@@ -1000,10 +1071,12 @@ class OmniVoice(PreTrainedModel):
                         return 0
                 return len(re.sub(r"[^\w]+", "", text or "", flags=re.UNICODE))
 
-            transcribed = [
-                (self.transcribe((candidate, self.sampling_rate)), candidate)
-                for candidate in candidates
-            ]
+            transcribed = []
+            for candidate in candidates:
+                text = self._reference_transcript((candidate, self.sampling_rate))
+                if text is None:
+                    text = self.transcribe((candidate, self.sampling_rate))
+                transcribed.append((text, candidate))
             # A loud non-speech window must not disqualify the only spoken
             # passage merely because that passage repeats a phrase.
             strongest_power = max(
@@ -1058,10 +1131,12 @@ class OmniVoice(PreTrainedModel):
 
         # Auto-transcribe if ref_text not provided
         if ref_text is None:
-            if self._asr_pipe is None:
-                logger.info("Loading cached ASR for reference transcription ...")
-                self._load_cached_reference_asr()
-            ref_text = self.transcribe((ref_wav, self.sampling_rate))
+            ref_text = self._reference_transcript((ref_wav, self.sampling_rate))
+            if ref_text is None:
+                if self._asr_pipe is None:
+                    logger.info("Loading cached ASR for reference transcription ...")
+                    self._load_cached_reference_asr()
+                ref_text = self.transcribe((ref_wav, self.sampling_rate))
             logger.debug("Auto-transcribed ref_text: %s", ref_text)
 
         chunk_size = self.audio_tokenizer.config.hop_length
