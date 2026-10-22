@@ -1,4 +1,4 @@
-﻿"""#3176 — reference transcription must honor the app's selected ASR engine.
+"""#3176 — reference transcription must honor the app's selected ASR engine.
 
 The bundled OmniVoice clone-reference path hardcoded
 ``openai/whisper-large-v3-turbo`` and consulted no external engine, so a user
