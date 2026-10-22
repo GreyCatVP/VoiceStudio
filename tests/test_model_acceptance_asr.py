@@ -293,6 +293,11 @@ def test_nllb_is_gated_in_the_registry(store):
     assert ma.status("facebook/nllb-200-distilled-600M")["required"] is True
 
 
+def test_typhoon_whisper_is_gated_in_the_registry(store):
+    state = ma.status("typhoon-ai/typhoon-whisper-turbo")
+    assert state["required"] is True and state["accepted"] is False
+
+
 def test_typhoon_translate_is_gated_in_the_registry(store):
     state = ma.status("typhoon-ai/typhoon-translate1.5-4b")
     assert state["required"] is True and state["accepted"] is False

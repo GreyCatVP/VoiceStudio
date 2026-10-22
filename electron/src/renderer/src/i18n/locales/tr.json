@@ -379,6 +379,7 @@
     "unavailable": "müsait değil",
     "select": "Seç",
     "selected": "Seçili",
+    "languageOnly": "Yalnızca {{language}}",
     "change": "Motoru değiştir",
     "failed": "Motor değiştirilemedi. Tekrar deneyin."
   },

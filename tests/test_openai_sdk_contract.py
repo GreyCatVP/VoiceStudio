@@ -454,6 +454,7 @@ def test_faster_whisper_forwards_request_options():
 
     b = FasterWhisperBackend.__new__(FasterWhisperBackend)
     b._model = _Model()
+    b._model_name = "Systran/faster-whisper-large-v3"
     out = b.transcribe("x.wav", word_timestamps=False, language="fr", initial_prompt="p",
                        temperature=0.3, task="translate")
     assert (seen["language"], seen["initial_prompt"], seen["temperature"], seen["task"]) == ("fr", "p", 0.3, "translate")

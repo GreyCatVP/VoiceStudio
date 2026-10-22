@@ -726,6 +726,7 @@
     "unavailable": "Unavailable",
     "select": "Select",
     "selected": "Selected",
+    "languageOnly": "{{language}} only",
     "change": "Change engine",
     "failed": "Could not change the engine. Try again."
   },

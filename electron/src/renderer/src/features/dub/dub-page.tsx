@@ -90,7 +90,10 @@ import { LanguagePicker, MultiLanguagePicker } from '@/features/clone/language-p
 import { EngineLanguagePicker } from '@/features/clone/engine-language-picker';
 import { useTranslationEngines } from '@/features/settings/translation-settings';
 import { agentFitSkillsReady, useLlmSkills } from '@/features/settings/llm-skills';
-import { useModelCatalogue } from '@/features/settings/model-catalogue-query';
+import {
+  isFasterWhisperModel,
+  useModelCatalogue,
+} from '@/features/settings/model-catalogue-query';
 import { useProfiles } from '@/hooks/use-profiles';
 import { useTtsReadiness } from '@/hooks/use-tts-readiness';
 import { useReviewMode } from '@/hooks/use-review-mode';
@@ -460,10 +463,7 @@ export function DubPage() {
     !dismissedCheckpoints.has(checkpointId),
   );
   const installedAsrModel = modelCatalogue.data?.models.find(
-    (model) =>
-      model.installed &&
-      (model.repo_id.startsWith('Systran/faster-') ||
-        model.repo_id === 'deepdml/faster-whisper-large-v3-turbo-ct2'),
+    (model) => model.installed && isFasterWhisperModel(model.repo_id),
   );
   const diarisationModel = modelCatalogue.data?.models.find((model) =>
     ['diarisation', 'diarization'].includes(model.role.toLowerCase()),

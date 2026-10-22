@@ -392,6 +392,7 @@
     "unavailable": "不可用",
     "select": "选择",
     "selected": "已选择",
+    "languageOnly": "仅限{{language}}",
     "change": "更换引擎",
     "failed": "无法更换引擎，请重试。"
   },

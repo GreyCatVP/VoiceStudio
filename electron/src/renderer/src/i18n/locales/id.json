@@ -379,6 +379,7 @@
     "unavailable": "tidak tersedia",
     "select": "Pilih",
     "selected": "Dipilih",
+    "languageOnly": "Hanya {{language}}",
     "change": "Ganti mesin",
     "failed": "Mesin tidak dapat diganti. Coba lagi."
   },

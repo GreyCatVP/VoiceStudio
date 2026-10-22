@@ -503,3 +503,63 @@ def test_typhoon_translates_english_to_thai_following_a_glossary_rule():
         ray_settings.save({"enabled": False, "auth_token": ""})
         runtime.shutdown()
         runtime.reopen_for_tests()
+
+
+def _cer(ref: str, hyp: str) -> float:
+    """Character error rate, whitespace ignored (Thai is written without spaces)."""
+    ref, hyp = re.sub(r"\s+", "", ref), re.sub(r"\s+", "", hyp)
+    row = list(range(len(hyp) + 1))
+    for i, r in enumerate(ref, 1):
+        prev, row[0] = row[0], i
+        for j, h in enumerate(hyp, 1):
+            prev, row[j] = row[j], min(row[j] + 1, row[j - 1] + 1, prev + (r != h))
+    return row[-1] / max(1, len(ref))
+
+
+# Thai marks that can never begin a word: a merged word starting with one is a BPE piece.
+_THAI_DEPENDENT = re.compile("^[ัิ-ฺ็-๎]")
+
+
+@pytest.mark.skipif("faster-whisper-isolated" not in ENGINES or not os.environ.get("VS_RAY_TEST_THAI_CLIP"),
+                    reason="set VS_RAY_TEST_ENGINES=faster-whisper-isolated and VS_RAY_TEST_THAI_CLIP=<clip.wav> "
+                           "(a Thai clip with its transcript in clip.json {\"sentence\": ...}; e.g. one TVSpeech "
+                           "test row). Downloads and converts ~1.6 GB on the cluster.")
+def test_typhoon_whisper_transcribes_thai_on_the_cluster(monkeypatch):
+    """Typhoon Whisper Turbo on the Ray faster-whisper engine: one-time CTranslate2
+    conversion in the cluster cache, 15 s batched decode, whole Thai words."""
+    import json
+    from pathlib import Path
+    from core.db import init_db
+    from services.ray_jobs import runtime
+    from services.ray_jobs import settings as ray_settings
+    from services.subprocess_asr import IsolatedFasterWhisperBackend
+
+    clip = Path(os.environ["VS_RAY_TEST_THAI_CLIP"])
+    reference = json.loads(clip.with_suffix(".json").read_text(encoding="utf-8"))["sentence"]
+    monkeypatch.setenv("ASR_MODEL_FW", "typhoon-ai/typhoon-whisper-turbo")
+    init_db()
+    runtime.reopen_for_tests()
+    ray_settings.save({"enabled": True, "dashboard_url": URL, "engines": ["faster-whisper-isolated"],
+                       "num_gpus": float(os.environ.get("VS_RAY_TEST_NUM_GPUS", "0")),
+                       "auth_token": os.environ.get("VS_RAY_TEST_TOKEN") or ""})
+    try:
+        asr = IsolatedFasterWhisperBackend()
+        started = time.monotonic()
+        asr.ensure_loaded()  # install + download + conversion (first run) + load
+        warm_s = time.monotonic() - started
+        started = time.monotonic()
+        result = asr.transcribe(str(clip), word_timestamps=True, language="th")
+        run_s = time.monotonic() - started
+        text = " ".join(seg["text"] for seg in result["segments"])
+        words = [w["word"].strip() for seg in result["segments"] for w in seg.get("words") or []]
+        cer = _cer(reference, text)
+        print(f"typhoon whisper: warm-up {warm_s:.0f}s, transcribe {run_s:.1f}s, CER {cer:.1%}\n"
+              f"  hyp: {text}\n  ref: {reference}\n  words: {words[:30]}")
+        assert result["language"] == "th"
+        assert cer < 0.12
+        assert words and not any(_THAI_DEPENDENT.match(w) for w in words)  # whole words, not pieces
+        assert sum(len(w) for w in words) / len(words) >= 2.5
+    finally:
+        ray_settings.save({"enabled": False, "auth_token": ""})
+        runtime.shutdown()
+        runtime.reopen_for_tests()

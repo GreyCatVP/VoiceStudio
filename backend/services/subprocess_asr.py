@@ -395,6 +395,10 @@ class SubprocessASRBackend(SubprocessBackend):
                     **({"request_options": request} if request else {}),
                 })
                 reply = self._recv_with_timeout(timeout_s)
+                # A one-time model conversion heartbeats with progress frames;
+                # each re-arms the deadline, a silent wedge still times out.
+                while reply is not None and reply.get("op") == "progress":
+                    reply = self._recv_with_timeout(timeout_s)
                 timed_out = self._last_recv_timed_out
                 if not reply:
                     # EOF can arrive before Windows updates poll(); retire the

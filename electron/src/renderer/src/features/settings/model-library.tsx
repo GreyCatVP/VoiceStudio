@@ -40,7 +40,11 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { SettingsSection, SettingsRow } from './settings-layout';
 import { familyIcons, type ModelFamily } from './model-family';
-import { useModelCatalogue, type CatalogueModel } from './model-catalogue-query';
+import {
+  isFasterWhisperModel,
+  useModelCatalogue,
+  type CatalogueModel,
+} from './model-catalogue-query';
 import { ModelLicense } from './model-license';
 import { resolvePerformanceModelPack } from './performance-model-packs';
 import { modelDiskShortfall } from './model-disk-space';
@@ -94,6 +98,15 @@ type DestructiveAction = {
   kind: 'delete' | 'reinstall';
   model: CatalogueModel;
 };
+
+/** A language code named in the UI language ("Thai", "Thaï", "ไทย"). */
+function languageName(code: string, locale?: string) {
+  try {
+    return new Intl.DisplayNames([locale || 'en'], { type: 'language' }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
 
 function modelPath(repoId: string) {
   return repoId.split('/').map(encodeURIComponent).join('/');
@@ -549,7 +562,7 @@ export function ModelLibrary({
   title?: string;
   icon?: LucideIcon;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const client = useQueryClient();
   const catalogue = useModelCatalogue();
   const engineQuery = useEngines();
@@ -752,8 +765,7 @@ export function ModelLibrary({
       setPending(null);
     }
   };
-  const selectableAsrModel = (repoId: string) =>
-    repoId.startsWith('Systran/faster-') || repoId === 'deepdml/faster-whisper-large-v3-turbo-ct2';
+  const selectableAsrModel = isFasterWhisperModel;
   const selectAsrModel = async (model: CatalogueModel) => {
     setPending(model.repo_id);
     setFailed(false);
@@ -925,6 +937,13 @@ export function ModelLibrary({
             title={t('firstrun.chip_recommended_title')}
           >
             {t('firstrun.chip_recommended')}
+          </span>
+        )}
+        {model.languages?.length === 1 && (
+          <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
+            {t('modelSettings.languageOnly', {
+              language: languageName(model.languages[0], i18n?.resolvedLanguage),
+            })}
           </span>
         )}
         <ModelLicense

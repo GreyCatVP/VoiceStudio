@@ -383,6 +383,7 @@
     "unavailable": "niedostępne",
     "select": "Wybierz",
     "selected": "Wybrano",
+    "languageOnly": "Tylko {{language}}",
     "change": "Zmień silnik",
     "failed": "Nie można zmienić silnika. Spróbuj ponownie."
   },

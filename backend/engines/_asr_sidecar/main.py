@@ -7,7 +7,8 @@ protocol (length-prefixed JSON over stdin/stdout):
     on start          → {"op":"ready","engine":"faster-whisper-isolated"}
     {"op":"ping"}     → {"op":"pong"}
     {"op":"transcribe","audio_path":...,"word_timestamps":bool}
-                      → {"op":"segments","result":{"segments":[...],"language":...}}
+                      → {"op":"progress",...}* (one-time model conversion)
+                        {"op":"segments","result":{"segments":[...],"language":...}}
     {"op":"shutdown"} → exit 0
     error             → {"op":"error","message":...}
 
@@ -25,6 +26,8 @@ import traceback
 
 MAX_FRAME_BYTES = 64 * 1024 * 1024
 _model = None
+_model_name = None
+_out = None  # the frame stream, for progress frames during a one-time model conversion
 
 # The parent's cuDNN 8 preload lives in the parent PROCESS, and this is a child
 # with its own clean import path — so without this, an install whose side-loaded
@@ -81,8 +84,13 @@ def _is_ct_error(msg):
     return "compute type" in low or "efficient float16" in low
 
 
+def _progress(message):
+    if _out is not None:
+        _send(_out, {"op": "progress", "stage": "loading", "message": message})
+
+
 def _get_model():
-    global _model
+    global _model, _model_name
     if _model is None:
         from core.execstack import ensure_ctranslate2_loadable
         ok, detail = ensure_ctranslate2_loadable()
@@ -99,6 +107,12 @@ def _get_model():
             or os.environ.get("ASR_MODEL_FASTER")
             or "large-v3"
         )
+        _model_name = name
+        source = name
+        from core import whisper_ct2
+        if whisper_ct2.model_settings(name):
+            # Transformers-only checkpoint: convert once into the HF cache.
+            source = whisper_ct2.ensure_converted(name, progress=_progress)
         try:
             # The probe honors the user compute-device override and the
             # ROCm/CT2 incompatibility (#1529) — the child must agree with
@@ -116,7 +130,7 @@ def _get_model():
         last_err = None
         for compute in _ct_candidates(device):
             try:
-                _model = WhisperModel(name, device=device, compute_type=compute)
+                _model = WhisperModel(source, device=device, compute_type=compute)
                 break
             except (ValueError, RuntimeError) as e:
                 last_err = e
@@ -161,8 +175,10 @@ def _transcribe(audio_path, word_timestamps, decode_options=None, request_option
         raise ValueError("Invalid ASR decoding options")
     extra = _request_options(request_options)
     model = _get_model()
-    segments, info = model.transcribe(
-        audio_path, word_timestamps=word_timestamps, **options, **extra,
+    from core import whisper_ct2
+    from core.thai_words import merge_segment_words
+    segments, info = whisper_ct2.transcribe(
+        model, audio_path, _model_name, word_timestamps=word_timestamps, **options, **extra,
     )
     out = []
     for s in segments:
@@ -174,10 +190,12 @@ def _transcribe(audio_path, word_timestamps, decode_options=None, request_option
                 for w in s.words
             ]
         out.append(seg)
+    language = getattr(info, "language", "unknown")
+    merge_segment_words(out, language)  # Thai sub-word pieces -> whole words
     return {
         "segments": out,
         "text": " ".join(s["text"].strip() for s in out).strip(),
-        "language": getattr(info, "language", "unknown"),
+        "language": language,
     }
 
 
@@ -201,6 +219,8 @@ def main() -> int:
     _frame_fd = os.dup(1)
     os.dup2(2, 1)
     stdout = os.fdopen(_frame_fd, "wb")
+    global _out
+    _out = stdout
     _send(stdout, {"op": "ready", "engine": "faster-whisper-isolated"})
     while True:
         try:

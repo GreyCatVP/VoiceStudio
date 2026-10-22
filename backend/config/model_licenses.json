@@ -423,6 +423,50 @@
       }
     },
     {
+      "id": "typhoon-ai/typhoon-whisper-turbo",
+      "license": "mit; other",
+      "commercial_use": false,
+      "review_status": "unreviewed",
+      "credit": "Typhoon Whisper Turbo — Typhoon (SCB 10X); based on OpenAI Whisper large-v3 Turbo",
+      "source_url": "https://huggingface.co/typhoon-ai/typhoon-whisper-turbo",
+      "evidence_url": "https://huggingface.co/typhoon-ai/typhoon-whisper-turbo/blob/3c03fa84c26f172944422ceb8a4e88a2dbc08b10/README.md",
+      "revision": "3c03fa84c26f172944422ceb8a4e88a2dbc08b10",
+      "engines": [
+        "faster-whisper",
+        "faster-whisper-isolated"
+      ],
+      "configured_at": "backend/config/models.yaml",
+      "notes": "Thai-only ASR fine-tune of openai/whisper-large-v3-turbo. The pinned card states the MIT License (inherited from OpenAI Whisper) and also says that using the model means agreeing to the OpenTyphoon Terms and Conditions (https://opentyphoon.ai/tac) and acknowledging the Privacy Notice. Training data includes internal curated public media. The faster-whisper engines convert the pinned revision to CTranslate2 locally (core/whisper_ct2.py). Weight terms, output terms and attribution require review.",
+      "runtime_revision": "3c03fa84c26f172944422ceb8a4e88a2dbc08b10",
+      "runtime_pin_scope": "central",
+      "runtime_pin_source": "backend/services/hf_revisions.py",
+      "component_closure": "incomplete",
+      "commercial_inference": "unknown",
+      "commercial_outputs": "unknown",
+      "documents": [],
+      "artifacts": [],
+      "required_components": [],
+      "upstream_access": "unknown",
+      "audit_observations": {
+        "commercial_inference": {
+          "status": "unreviewed",
+          "scope": "Selected weight/component only; not complete workflow clearance."
+        },
+        "output_terms": {
+          "status": "not_assessed",
+          "ownership_or_all_rights_cleared": false
+        },
+        "sources": [],
+        "open_questions": [
+          "Governing terms at installed revision (MIT card licence vs OpenTyphoon Terms and Conditions)",
+          "OpenTyphoon Terms and Conditions (https://opentyphoon.ai/tac) obligations",
+          "Attribution/NOTICE/redistribution duties",
+          "Reference voice and input rights, consent, training-provenance scope"
+        ],
+        "identified_components": []
+      }
+    },
+    {
       "id": "Systran/faster-distil-whisper-large-v3",
       "license": "mit",
       "commercial_use": false,

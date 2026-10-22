@@ -379,6 +379,7 @@
     "unavailable": "niet beschikbaar",
     "select": "Selecteer",
     "selected": "Geselecteerd",
+    "languageOnly": "Alleen {{language}}",
     "change": "Engine wijzigen",
     "failed": "De engine kon niet worden gewijzigd. Probeer opnieuw."
   },

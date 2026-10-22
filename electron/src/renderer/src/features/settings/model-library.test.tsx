@@ -407,6 +407,58 @@ it('surfaces the backend routing verdict when selecting an ASR model from the ca
   expect(mock.toast.success).not.toHaveBeenCalled();
 });
 
+it('marks a Thai-only model and lets faster-whisper select it', async () => {
+  mock.api.mockImplementation((path: string) => {
+    if (path === '/models') {
+      return Promise.resolve({
+        models: [
+          {
+            repo_id: 'typhoon-ai/typhoon-whisper-turbo',
+            label: 'Typhoon Whisper Turbo (Thai only)',
+            role: 'ASR',
+            languages: ['th'],
+            size_gb: 1.6,
+            installed: true,
+            supported: true,
+          },
+        ],
+      });
+    }
+    if (path === '/models/install/status') return Promise.resolve({ jobs: [] });
+    if (path === '/model/loaded') return Promise.resolve({ models: [], count: 0 });
+    if (path === '/engines') {
+      return Promise.resolve({
+        asr: {
+          active: 'faster-whisper-isolated',
+          backends: [{ id: 'faster-whisper-isolated', available: true }],
+        },
+      });
+    }
+    if (path === '/engines/select') return Promise.resolve({ active: 'faster-whisper-isolated' });
+    return Promise.resolve({});
+  });
+
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <ModelLibrary family="asr" />
+    </QueryClientProvider>,
+  );
+
+  await screen.findByText('Typhoon Whisper Turbo (Thai only)');
+  expect(screen.getByText('modelSettings.languageOnly')).toBeTruthy();
+  fireEvent.click(await screen.findByRole('button', { name: 'modelSettings.select' }));
+  await waitFor(() =>
+    expect(mock.api).toHaveBeenCalledWith('/engines/select', {
+      method: 'POST',
+      body: JSON.stringify({
+        family: 'asr',
+        backend_id: 'faster-whisper-isolated',
+        model_id: 'typhoon-ai/typhoon-whisper-turbo',
+      }),
+    }),
+  );
+});
+
 it('surfaces an interrupted cache as repairable and removable', async () => {
   mock.api.mockImplementation((path: string) => {
     if (path === '/models') {

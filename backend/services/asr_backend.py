@@ -1197,13 +1197,17 @@ class FasterWhisperBackend(ASRBackend):
         candidates = _compute_type_candidates(device)
         if compute_type in candidates:
             candidates = candidates[candidates.index(compute_type):]
+        from core import whisper_ct2
+        if whisper_ct2.model_settings(self._model_name):
+            # Transformers-only checkpoint: convert once into the HF cache.
+            source = whisper_ct2.ensure_converted(self._model_name)
+        else:
+            source = _local_model_source(self._model_name)
         last_err: Exception | None = None
         while True:
             for ct in candidates:
                 try:
-                    self._model = WhisperModel(
-                        _local_model_source(self._model_name), device=device, compute_type=ct
-                    )
+                    self._model = WhisperModel(source, device=device, compute_type=ct)
                     self._device, self._compute_type = device, ct
                     return
                 except (ValueError, RuntimeError) as e:
@@ -1258,10 +1262,14 @@ class FasterWhisperBackend(ASRBackend):
         # faster-whisper returns a generator of Segment objects + an Info
         # struct. Materialise the generator so downstream consumers can
         # index / re-iterate.
+        from core import whisper_ct2
+        from core.thai_words import merge_segment_words
         from services.performance_profiles import asr_decode_defaults
 
-        segments_iter, info = self._model.transcribe(
+        segments_iter, info = whisper_ct2.transcribe(
+            self._model,
             audio_path,
+            self._model_name,
             word_timestamps=word_timestamps,
             vad_filter=True,  # built-in Silero VAD — cleaner segment starts
             **asr_decode_defaults(),
@@ -1302,6 +1310,7 @@ class FasterWhisperBackend(ASRBackend):
             "language_probability": info.language_probability,
             "duration": info.duration,
         }
+        merge_segment_words(out["segments"], info.language)  # Thai sub-word pieces -> whole words
         return out
 
     def unload(self) -> None:
@@ -3925,6 +3934,20 @@ def faster_whisper_model_id() -> str:
             env="ASR_MODEL_FASTER",
             default=_FASTER_WHISPER_DEFAULT,
         )
+    )
+
+
+def faster_whisper_selectable(repo_id: str) -> bool:
+    """Whether Settings may select ``repo_id`` for the faster-whisper engines:
+    a CTranslate2 build, or a checkpoint the engines convert on first use
+    (core/whisper_ct2.py). Converted models are language-specific, so the
+    automatic reference fallbacks never pick them."""
+    from core.whisper_ct2 import model_settings
+
+    return (
+        repo_id.startswith("Systran/faster-")
+        or repo_id == "deepdml/faster-whisper-large-v3-turbo-ct2"
+        or model_settings(repo_id) is not None
     )
 
 

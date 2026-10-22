@@ -19,6 +19,7 @@ metadata and the backend fallback mirror it.
 - Remote GPU (opt-in): run selected engines on your own Ray cluster or Modal account, freeing the GPU after every run; offered when this computer has no GPU ([guide](docs/electron-ray-cluster.md)) (#1)
 - User guide in the app (English and Thai): how every workspace works, with diagrams and step-by-step annotated screenshots (#1)
 - Typhoon Translate (Thai↔English) as a dubbing translator on your remote GPU, with glossary terms as translation rules ([guide](docs/electron-dubbing.md)) (#1)
+- Typhoon Whisper Turbo for Thai speech recognition (Thai only, about 5% character errors vs 13% for large-v3), locally or on your remote GPU; Thai word timings come back as whole words ([guide](docs/engines/faster-whisper.md)) (#1)
 
 ### Fixed
 

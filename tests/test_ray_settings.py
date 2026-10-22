@@ -623,6 +623,7 @@ def test_asr_package_ships_the_stdlib_core_modules_it_imports():
 
     _, data, task = build_package({"v": 1, "op": "transcribe", "engine": "faster-whisper-isolated"}, {})
     names = set(_zf.ZipFile(_io.BytesIO(data)).namelist())
+    assert {"core/whisper_ct2.py", "core/thai_words.py"} <= names
     assert {"engines/_asr_sidecar/main.py", "core/__init__.py", "core/execstack.py", "core/cudnn8.py",
             "core/device_caps.py", "core/gpu_inventory.py"} <= names
     assert not any(n.startswith(("services/", "api/")) for n in names)
@@ -1140,8 +1141,9 @@ def test_ray_pyannote_falls_back_to_opus_only_when_flac_does_not_fit(rs, monkeyp
     assert "audio_path.ogg" in sent["task"].inputs and "audio_path.flac" not in sent["task"].inputs
 
 
+@pytest.mark.parametrize("model_id", ["Systran/faster-whisper-small", "typhoon-ai/typhoon-whisper-turbo"])
 @pytest.mark.parametrize("routed", [True, False])
-def test_ray_routed_asr_model_selection_needs_no_local_download(rs, monkeypatch, tmp_path, routed):
+def test_ray_routed_asr_model_selection_needs_no_local_download(rs, monkeypatch, tmp_path, routed, model_id):
     from fastapi import HTTPException
     from api.routers import engines
     from api.routers.setup import models as setup_models
@@ -1156,11 +1158,10 @@ def test_ray_routed_asr_model_selection_needs_no_local_download(rs, monkeypatch,
     monkeypatch.setattr(asr_backend, "select_faster_whisper_model", picked.append)
     if routed:
         rs.save({"enabled": True, "dashboard_url": "https://ray.example.com", "engines": ["faster-whisper-isolated"]})
-    req = engines.SelectEngineRequest(family="asr", backend_id="faster-whisper-isolated",
-                                      model_id="Systran/faster-whisper-small")
+    req = engines.SelectEngineRequest(family="asr", backend_id="faster-whisper-isolated", model_id=model_id)
     if routed:  # the cluster downloads the model; a local copy would go unused
         engines.select_engine(req)
-        assert picked == ["Systran/faster-whisper-small"]
+        assert picked == [model_id]
     else:
         with pytest.raises(HTTPException) as info:
             engines.select_engine(req)

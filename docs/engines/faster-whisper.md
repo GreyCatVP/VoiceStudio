@@ -39,6 +39,21 @@ Whisper repo on HF. Weights download on first load — see
 Segments are cleaned up by faster-whisper's built-in Silero VAD before
 transcription.
 
+**Thai: Typhoon Whisper Turbo** (`typhoon-ai/typhoon-whisper-turbo`, Thai
+only; MIT plus the [OpenTyphoon terms](https://opentyphoon.ai/tac), accepted in
+Model Catalogue before first use). Measured on 40 Thai TV-speech clips it makes
+about 5% character errors where large-v3 makes about 13%. It ships in
+Transformers format only, so on first use the engine converts the pinned
+revision to CTranslate2 (float16) into the Hugging Face cache, beside the
+download (`models--typhoon-ai--typhoon-whisper-turbo/voicestudio-ct2/`; about a
+minute and another 1.6 GB, removed with the model). It decodes in 15-second
+batched windows: with the default 30-second window it drops the end of long
+clips. It is not used by WhisperX or as an automatic fallback.
+
+**Thai word timings:** faster-whisper returns Thai "words" as sub-word pieces;
+VoiceStudio regroups them into whole words with PyThaiNLP (newmm) for every
+faster-whisper model, so subtitles and dubbing alignment get real words.
+
 ## Degradation chains
 
 - GPUs without efficient fp16 (older Maxwell/Pascal, GTX 16xx, or a

@@ -379,6 +379,7 @@
     "unavailable": "nicht verfügbar",
     "select": "Auswählen",
     "selected": "Ausgewählt",
+    "languageOnly": "Nur {{language}}",
     "change": "Engine wechseln",
     "failed": "Die Engine konnte nicht gewechselt werden. Erneut versuchen."
   },

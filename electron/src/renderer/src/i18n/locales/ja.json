@@ -379,6 +379,7 @@
     "unavailable": "利用不可",
     "select": "選択",
     "selected": "選択中",
+    "languageOnly": "{{language}}のみ",
     "change": "エンジンを変更",
     "failed": "エンジンを変更できませんでした。再試行してください。"
   },

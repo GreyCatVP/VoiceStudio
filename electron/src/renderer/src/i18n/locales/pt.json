@@ -381,6 +381,7 @@
     "unavailable": "indisponível",
     "select": "Selecione",
     "selected": "Selecionado",
+    "languageOnly": "Apenas {{language}}",
     "change": "Alterar mecanismo",
     "failed": "Não foi possível alterar o mecanismo. Tente novamente."
   },

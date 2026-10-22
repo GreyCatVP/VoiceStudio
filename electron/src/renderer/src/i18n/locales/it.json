@@ -381,6 +381,7 @@
     "unavailable": "non disponibile",
     "select": "Seleziona",
     "selected": "Selezionato",
+    "languageOnly": "Solo {{language}}",
     "change": "Cambia motore",
     "failed": "Impossibile cambiare motore. Riprova."
   },

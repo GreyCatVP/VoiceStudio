@@ -77,6 +77,9 @@ dependencies = [
     # where no wav2vec2 alignment model exists.
     "whisperx>=3.1.0",
     "faster-whisper>=1.0.0",
+    # Thai word boundaries (newmm, bundled dictionary, pure Python): faster-whisper
+    # returns Thai "words" as sub-word pieces; core/thai_words.py regroups them.
+    "pythainlp>=5.3.8,<6",
     # Apple Silicon-only speedup; skipped everywhere else so `uv sync` can
     # succeed on Linux/Windows/mac-Intel (no mlx wheels exist for those).
     "mlx-whisper>=0.2.1 ; sys_platform == 'darwin' and platform_machine == 'arm64'",

@@ -4175,6 +4175,7 @@ dependencies = [
     { name = "pyannote-audio" },
     { name = "pydub" },
     { name = "pypdf" },
+    { name = "pythainlp" },
     { name = "python-multipart" },
     { name = "pytorch-lightning" },
     { name = "scalar-fastapi" },
@@ -4290,6 +4291,7 @@ requires-dist = [
     { name = "pyannote-audio", specifier = ">=3.3.2,<4.0" },
     { name = "pydub" },
     { name = "pypdf", specifier = ">=6.19.0" },
+    { name = "pythainlp", specifier = ">=5.3.8,<6" },
     { name = "python-multipart", specifier = ">=0.0.31" },
     { name = "pytorch-lightning", specifier = ">=2.6.6" },
     { name = "requests", marker = "extra == 'ui'" },
@@ -5426,6 +5428,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b1/51/a849f96e117386044471c8ec2bd6cfebacda285da9525c9106aeb28da671/pytest_cov-7.1.0.tar.gz", hash = "sha256:30674f2b5f6351aa09702a9c8c364f6a01c27aae0c1366ae8016160d1efc56b2", size = 55592, upload-time = "2026-03-21T20:11:16.284Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9d/7a/d968e294073affff457b041c2be9868a40c1c71f4a35fcc1e45e5493067b/pytest_cov-7.1.0-py3-none-any.whl", hash = "sha256:a0461110b7865f9a271aa1b51e516c9a95de9d696734a2f71e3e78f46e1d4678", size = 22876, upload-time = "2026-03-21T20:11:14.438Z" },
+]
+
+[[package]]
+name = "pythainlp"
+version = "5.3.8"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "tzdata", marker = "sys_platform == 'win32' or (extra == 'group-9-omnivoice-cpu' and extra == 'group-9-omnivoice-cuda')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a6/64/2a6f498cd05b15960e036c543d2efdfd9f2dddf784aaa491d980e2a7eddc/pythainlp-5.3.8.tar.gz", hash = "sha256:ef8cd131421b3f80a1262c63ce3391ccdfb155a60453051b09e6b5fdf1e62c0a", size = 19309864, upload-time = "2026-09-24T18:41:20.237Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c6/21/eec2b16a7e4f1ffb9577c62ef786e1eaad315ce2320c642835d11610b2de/pythainlp-5.3.8-py3-none-any.whl", hash = "sha256:7f4367782d250afa936f65a1c151129fb80c316c3b3dbaa08923de04705b53b3", size = 19852536, upload-time = "2026-09-24T18:41:17.248Z" },
 ]
 
 [[package]]

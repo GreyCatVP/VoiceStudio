@@ -27,6 +27,8 @@
 #                            Unlike `platforms` this never hides a model — it
 #                            only drives recommendations.
 #   note       (optional) — shown in the UI as a tooltip/footnote
+#   languages  (optional) — ISO 639-1 codes a language-specific model handles;
+#                            the UI marks a single-language model "<language> only".
 #   config_only (optional) — true for pipeline repos that ship no weight file of
 #                            their own (weights live in referenced sub-repos). Such
 #                            a cache is legitimately tiny, so the truncated-download
@@ -115,6 +117,14 @@ models:
     size_gb: 1.6
     curated_on: [cuda, cpu]
     note: "Best speed/quality tradeoff. 5× faster than large-v3 with minimal WER loss. Community CTranslate2 conversion (no official Systran/OpenAI turbo repo) — re-verify availability on catalog audits."
+
+  - repo_id: "typhoon-ai/typhoon-whisper-turbo"
+    label: "Typhoon Whisper Turbo (Thai only)"
+    role: ASR
+    engines: [faster-whisper, faster-whisper-isolated]
+    languages: [th]
+    size_gb: 1.6
+    note: "Thai-only fine-tune of Whisper large-v3 Turbo by Typhoon (SCB 10X): about 5% character error rate on Thai TV speech versus about 13% for large-v3. Transcribes Thai only. Converted to CTranslate2 once on first use (another 1.6 GB beside the download)."
 
   - repo_id: "Systran/faster-distil-whisper-large-v3"
     label: "Distil-Whisper large-v3 (distilled, fast)"

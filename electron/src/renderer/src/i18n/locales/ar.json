@@ -387,6 +387,7 @@
     "unavailable": "غير متاح",
     "select": "اختر",
     "selected": "محدد",
+    "languageOnly": "{{language}} فقط",
     "change": "تغيير المحرك",
     "failed": "تعذر تغيير المحرك. حاول مجددًا."
   },

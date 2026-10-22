@@ -97,13 +97,18 @@ _OMNIVOICE_RECIPE: Dict[str, Any] = {
 # The isolated faster-whisper sidecar imports these (cudnn8/device_caps are
 # optional, execstack is not); all stdlib-only.
 _ASR_CORE_FILES = tuple((f"core/{n}", f"core/{n}") for n in
-                        ("__init__.py", "execstack.py", "cudnn8.py", "device_caps.py", "gpu_inventory.py"))
+                        ("__init__.py", "execstack.py", "cudnn8.py", "device_caps.py", "gpu_inventory.py",
+                         "whisper_ct2.py", "thai_words.py"))
 # The desktop stack's versions (uv.lock). ctranslate2 4.4 needs cuDNN 8, which
 # core/cudnn8.py finds under <site-packages>/cudnn8_compat; torch lets
 # core.device_caps see the GPU (without it the sidecar falls back to CPU).
+# transformers feeds ctranslate2's converter (core/whisper_ct2.py converts
+# Transformers-only checkpoints such as Typhoon Whisper Turbo with this same
+# 4.4.0); pythainlp groups Thai word timestamps (core/thai_words.py).
 _FASTER_WHISPER_RECIPE: Dict[str, Any] = {
     "venv_args": ["--python", "3.11"],
-    "install_args": ["faster-whisper==1.2.1", "ctranslate2==4.4.0"],
+    "install_args": ["faster-whisper==1.2.1", "ctranslate2==4.4.0", "transformers==5.15.1", "tokenizers==0.22.2",
+                     "safetensors==0.8.0", "huggingface_hub==1.28.0", "pythainlp==5.3.8"],
     "torch_pins": ["torch==2.11.0"],
     "target_installs": [{"site_rel": "cudnn8_compat", "args": ["nvidia-cudnn-cu12==8.9.7.29"], "variants": ["cuda"]}],
     # Repair CTranslate2's executable-stack flag first (newer kernels refuse
@@ -111,8 +116,9 @@ _FASTER_WHISPER_RECIPE: Dict[str, Any] = {
     "probe_code": ("import sys; sys.path.insert(0, {workdir_repr}); "
                    "from core.execstack import ensure_ctranslate2_loadable; "
                    "ok, why = ensure_ctranslate2_loadable(); assert ok, why; "
-                   "import faster_whisper, ctranslate2"),
-    "install_revision": "ray-asr-v1",
+                   "import faster_whisper, ctranslate2, pythainlp; "
+                   "from ctranslate2.converters import TransformersConverter"),
+    "install_revision": "ray-asr-v2",
 }
 
 

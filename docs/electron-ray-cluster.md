@@ -60,6 +60,12 @@ Available engines:
   dubbing. Select it as the ASR engine and choose a Hugging Face model, not a
   local folder. Word timings are refined on this machine with the same wav2vec2
   forced alignment WhisperX uses (`OMNIVOICE_RAY_ASR_ALIGN=0` turns it off).
+  For Thai, choose **Typhoon Whisper Turbo** (Thai only; about 5% character
+  error rate on Thai TV speech against about 13% for large-v3). It has no
+  CTranslate2 build on Hugging Face, so the first job converts it once into
+  the cluster cache (about a minute, another 1.6 GB) and later jobs load the
+  converted copy. Thai word timings come back as whole words (PyThaiNLP word
+  boundaries), for either model.
 - **Translation:** NLLB or Typhoon Translate, when it is the dubbing
   translation provider. One job translates the whole dub. Typhoon Translate
   1.5 (`typhoon-translate`, about 8 GB of weights) translates English to Thai

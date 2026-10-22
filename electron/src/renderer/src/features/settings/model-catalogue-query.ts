@@ -18,6 +18,8 @@ export interface CatalogueModel {
   incomplete?: boolean;
   size_on_disk_bytes?: number;
   note?: string;
+  /** ISO 639-1 codes of a language-specific model (models.yaml `languages`). */
+  languages?: string[];
   gated?: boolean;
   requires_hf_token?: boolean;
   access_url?: string;
@@ -36,6 +38,13 @@ export interface ModelCatalogueResponse {
   /** Free space the backend keeps on top of every model download. */
   disk_headroom_gb?: number;
 }
+
+/** Repos the faster-whisper engines load: CTranslate2 builds, or a checkpoint
+ * they convert on first use (backend `faster_whisper_selectable`). */
+export const isFasterWhisperModel = (repoId: string) =>
+  repoId.startsWith('Systran/faster-') ||
+  repoId === 'deepdml/faster-whisper-large-v3-turbo-ct2' ||
+  repoId === 'typhoon-ai/typhoon-whisper-turbo';
 
 export function useModelCatalogue() {
   const status = useBackendStatus();

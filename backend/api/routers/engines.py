@@ -945,9 +945,7 @@ def select_engine(req: SelectEngineRequest):
         from api.routers.setup.models import KNOWN_MODELS, is_cached
 
         model = next((item for item in KNOWN_MODELS if item["repo_id"] == req.model_id), None)
-        compatible = req.model_id.startswith("Systran/faster-") or req.model_id == (
-            "deepdml/faster-whisper-large-v3-turbo-ct2"
-        )
+        compatible = asr_backend.faster_whisper_selectable(req.model_id)
         if model is None or str(model.get("role", "")).lower() != "asr" or not compatible:
             raise HTTPException(400, "This model is not compatible with Faster-Whisper")
         from services.subprocess_backend import ray_routed
