@@ -17,9 +17,12 @@ metadata and the backend fallback mirror it.
 - Preview iOS and Android companion apps: drive your own VoiceStudio from your phone (speak, voices and cloning, dubbing, dictation) after pairing by QR code; build from source for now ([guide](docs/mobile.md)) (#2965)
 - Smart Fit speed limits: set the fastest and slowest speed dubbing may apply to a line, from the Timing section (#3026) — thanks @MoonDragon-MD!
 - Remote GPU (opt-in): run selected engines on your own Ray cluster or Modal account, freeing the GPU after every run; offered when this computer has no GPU ([guide](docs/electron-ray-cluster.md)) (#1)
+- User guide in the app (English and Thai): how every workspace works, with diagrams and step-by-step annotated screenshots (#1)
 
 ### Fixed
 
+- Thai interface rewritten: hundreds of mistranslations fixed, and story/audiobook script tags work in Thai again (#1)
+- Stories offer Resume after a stopped render again (#1)
 - Older synthesized takes play again with accurate play/pause controls after a newer generation (#3102)
 - Generation-complete notifications appear above the workspace instead of covering synthesis controls (#3102)
 - Generated speech no longer starts and ends with silence, and `[pause]` markers give exactly the pause you asked for (Raw preset and explicit durations untouched) (#3080)
