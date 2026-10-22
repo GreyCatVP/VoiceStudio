@@ -425,6 +425,13 @@ hard rules from the first prompt.
     hands out. Turning either off stops every request at once; switching
     account features off sends one best-effort token revocation. Hidden in
     packaged builds until VoiceStudio Cloud launches.
+  - **Remote GPU execution, only after the user sets it up and turns it on**
+    (Settings → Remote GPU; off by default): jobs for the engines the user
+    selects go to the user's own Ray cluster dashboard
+    (`backend/services/ray_jobs/client.py`) or to the user's own Modal account
+    through the Modal SDK (`backend/services/ray_jobs/modal_executor.py`,
+    `backend/modal_driver/`); the Modal SDK itself is fetched from PyPI by `uv`
+    on first use. See `docs/electron-ray-cluster.md`.
   - Bug reports as prefilled GitHub Issue URLs opened in the user's browser.
   - PostHog analytics only after a yes at the first-run consent prompt
     (`backend/core/analytics.py`, allowlisted content-free metadata).

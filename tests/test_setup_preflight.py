@@ -593,3 +593,43 @@ def test_optional_gpu_never_blocks_cpu_setup(monkeypatch, tmp_path, vendor, avai
     if vendor == "nvidia" and not available:
         assert "CPU-only" in gpu["fix"]
         assert "GPU-only engines remain unavailable" in gpu["fix"]
+
+
+# ── No local GPU: remote GPU choice (Ray cluster / Modal) ────────────────
+
+def _no_gpu():
+    return {"available": False, "backend": "cpu", "vendor": "none", "device_name": None,
+            "driver": None, "notes": []}
+
+
+def test_preflight_without_a_gpu_offers_cpu_ray_or_modal():
+    from api.routers.setup import wizard as setup_mod
+
+    with patch.object(setup_mod, "_detect_gpu", _no_gpu), \
+         patch.object(setup_mod, "_remote_gpu_summary", lambda: None):
+        r = client_factory().get("/setup/preflight").json()
+    gpu = next(c for c in r["checks"] if c["id"] == "gpu")
+    assert gpu["status"] == "warn" and gpu["choices"] == ["cpu", "ray", "modal"]
+
+
+def test_preflight_without_a_gpu_reports_where_remote_gpu_work_runs():
+    from api.routers.setup import wizard as setup_mod
+
+    remote = {"provider": "modal", "gpu": "L4", "engines": 3}
+    with patch.object(setup_mod, "_detect_gpu", _no_gpu), \
+         patch.object(setup_mod, "_remote_gpu_summary", lambda: remote):
+        r = client_factory().get("/setup/preflight").json()
+    gpu = next(c for c in r["checks"] if c["id"] == "gpu")
+    assert gpu["status"] == "pass" and gpu["remote"] == remote and "choices" not in gpu
+    assert "Modal (L4)" in gpu["detail"] and gpu["fix"] is None
+
+
+def test_remote_gpu_summary_follows_the_saved_settings(monkeypatch):
+    from api.routers.setup import wizard as setup_mod
+    from services.ray_jobs import settings as rs
+
+    monkeypatch.setattr(rs, "load", lambda: rs.RaySettings(enabled=True, provider="modal", has_modal_token=True,
+                                                           engines=("voxcpm2", "nllb"), modal_gpu="H100"))
+    assert setup_mod._remote_gpu_summary() == {"provider": "modal", "gpu": "H100", "engines": 2}
+    monkeypatch.setattr(rs, "load", lambda: rs.RaySettings(enabled=True, provider="modal", engines=("voxcpm2",)))
+    assert setup_mod._remote_gpu_summary() is None  # no token: not active

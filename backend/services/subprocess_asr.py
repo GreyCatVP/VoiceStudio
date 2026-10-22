@@ -252,7 +252,7 @@ class SubprocessASRBackend(SubprocessBackend):
         task = RayTask(
             op="batch", engine=self.id, params={"call": "transcribe", "shared": shared, "items": items},
             inputs=inputs, install=install_recipe(self.id), env=self._ray_env(),
-            num_gpus=(ray_cfg.num_gpus or None) if engine and engine.gpu else None, num_cpus=ray_cfg.num_cpus,
+            num_gpus=ray_cfg.gpu_request(bool(engine and engine.gpu)), num_cpus=ray_cfg.num_cpus,
         )
         result = self._run_ray_job(ray_cfg, task, timeout=_RAY_INSTALL_ALLOWANCE_S + 2 * idle * len(paths),
                                    idle_timeout=idle)
@@ -298,7 +298,7 @@ class SubprocessASRBackend(SubprocessBackend):
         from services.ray_jobs.engines import install_recipe
         recipe = install_recipe(self.id) or {}
         # Keyed on the model actually sent (the selected hub id) and the build.
-        key = (ray_cfg.dashboard_url, ray_cfg.cache_dir, self.id, self._ray_env()["ASR_MODEL_FW"], recipe.get("key"))
+        key = (ray_cfg.target, ray_cfg.cache_dir, self.id, self._ray_env()["ASR_MODEL_FW"], recipe.get("key"))
         if key in _RAY_WARM:
             return
         import tempfile

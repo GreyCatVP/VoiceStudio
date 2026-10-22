@@ -7,16 +7,25 @@ import {
   RefreshCwIcon,
   ServerCogIcon,
   ShieldAlertIcon,
+  ShieldCheckIcon,
   SquareIcon,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { apiJson, describeError } from '@/lib/api/client';
 import { SettingsActionError } from './settings-action-error';
 import { SettingsRow, SettingsSection } from './settings-layout';
@@ -35,7 +44,17 @@ export interface RayConfig {
   has_cf_secret: boolean;
   env_pinned: string[];
   available_engines: RayEngine[];
+  /** Older backends omit the Modal fields; they only know the Ray provider. */
+  provider?: RemoteProvider;
+  /** One of `modal_gpus`, or '' when GPU engines run on CPU. */
+  modal_gpu?: string;
+  modal_gpus?: string[];
+  modal_app?: string;
+  modal_volume?: string;
+  has_modal_token?: boolean;
 }
+
+export type RemoteProvider = 'ray' | 'modal';
 
 export interface RayEngine {
   id: string;
@@ -127,6 +146,8 @@ const SETTINGS_KEY = ['ray-settings'] as const;
 const JOBS_KEY = ['ray-jobs'] as const;
 const SECRET_MASK = '••••••••';
 const STOPPABLE = new Set(['RUNNING', 'PENDING']);
+/** Select sentinel for `modal_gpu: ''` (Base UI treats '' as no selection). */
+const MODAL_CPU = '__cpu__';
 
 interface Draft {
   enabled: boolean;
@@ -142,10 +163,24 @@ interface Draft {
   cfSecret: string;
   clearToken: boolean;
   clearCfSecret: boolean;
+  provider: RemoteProvider;
+  modalGpu: string;
+  modalApp: string;
+  modalVolume: string;
+  modalTokenId: string;
+  modalTokenSecret: string;
+  clearModalToken: boolean;
 }
 
 function draftFrom(config: RayConfig): Draft {
   return {
+    provider: config.provider ?? 'ray',
+    modalGpu: config.modal_gpu ?? '',
+    modalApp: config.modal_app ?? '',
+    modalVolume: config.modal_volume ?? '',
+    modalTokenId: '',
+    modalTokenSecret: '',
+    clearModalToken: false,
     enabled: config.enabled,
     dashboardUrl: config.dashboard_url || '',
     cfClientId: config.cf_access_client_id || '',
@@ -169,6 +204,7 @@ const sameSet = (a: string[], b: string[]) =>
 export function rayChanges(config: RayConfig, draft: Draft): Record<string, unknown> {
   const body: Record<string, unknown> = {};
   const pinned = new Set(config.env_pinned);
+  if (draft.provider !== (config.provider ?? 'ray')) body.provider = draft.provider;
   if (draft.enabled !== config.enabled) body.enabled = draft.enabled;
   if (!pinned.has('dashboard_url') && draft.dashboardUrl.trim() !== (config.dashboard_url || ''))
     body.dashboard_url = draft.dashboardUrl.trim();
@@ -186,6 +222,15 @@ export function rayChanges(config: RayConfig, draft: Draft): Record<string, unkn
   }
   if (draft.cfSecret) body.cf_access_client_secret = draft.cfSecret;
   else if (draft.clearCfSecret) body.cf_access_client_secret = '';
+  if (draft.modalGpu !== (config.modal_gpu ?? '')) body.modal_gpu = draft.modalGpu;
+  if (draft.modalApp.trim() !== (config.modal_app ?? '')) body.modal_app = draft.modalApp.trim();
+  if (draft.modalVolume.trim() !== (config.modal_volume ?? ''))
+    body.modal_volume = draft.modalVolume.trim();
+  // The Modal token is one credential pair: clearing removes both halves.
+  if (draft.modalTokenId) body.modal_token_id = draft.modalTokenId;
+  else if (draft.clearModalToken) body.modal_token_id = '';
+  if (draft.modalTokenSecret) body.modal_token_secret = draft.modalTokenSecret;
+  else if (draft.clearModalToken) body.modal_token_secret = '';
   return body;
 }
 
@@ -198,7 +243,7 @@ function formatTime(value?: number | null) {
   return new Date(ms).toLocaleString();
 }
 
-export function RaySettings() {
+export function RaySettings({ initialProvider }: { initialProvider?: RemoteProvider } = {}) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const config = useQuery({
@@ -213,18 +258,25 @@ export function RaySettings() {
   const [error, setError] = useState('');
   const [testResult, setTestResult] = useState<RayTestResult | null>(null);
   const [stopping, setStopping] = useState<string | null>(null);
+  // `initialProvider` preselects the provider once, as an unsaved draft change.
+  const preselect = useRef(initialProvider);
 
   useEffect(() => {
     if (!config.data) return;
     setServer(config.data);
-    setDraft(draftFrom(config.data));
+    const next = draftFrom(config.data);
+    if (preselect.current) next.provider = preselect.current;
+    preselect.current = undefined;
+    setDraft(next);
   }, [config.data]);
 
+  // Modal has no job list; only a saved, enabled Ray provider is polled.
+  const rayJobs = Boolean(server?.enabled) && (server?.provider ?? 'ray') === 'ray';
   const jobs = useQuery({
     queryKey: JOBS_KEY,
     queryFn: ({ signal }) => apiJson<RayJobsResponse>('/api/settings/ray/jobs', { signal }),
-    enabled: Boolean(server?.enabled),
-    refetchInterval: server?.enabled ? 5000 : false,
+    enabled: rayJobs,
+    refetchInterval: rayJobs ? 5000 : false,
   });
 
   const update = (patch: Partial<Draft>) => {
@@ -237,6 +289,8 @@ export function RaySettings() {
   const dirty = Object.keys(changes).length > 0;
   const pinned = new Set(server?.env_pinned ?? []);
   const busy = config.isPending || saving || testing;
+  const modal = draft?.provider === 'modal';
+  const savedModal = (server?.provider ?? 'ray') === 'modal';
 
   const save = async () => {
     if (saving || !server || !draft) return false;
@@ -278,7 +332,11 @@ export function RaySettings() {
     setError('');
     setTestResult(null);
     try {
-      setTestResult(await apiJson<RayTestResult>('/api/settings/ray/test', { method: 'POST' }));
+      setTestResult(
+        await apiJson<RayTestResult>('/api/settings/ray/test', {
+          method: 'POST',
+        }),
+      );
     } catch (reason) {
       setError(describeError(reason));
     } finally {
@@ -299,10 +357,31 @@ export function RaySettings() {
       else if (result.ok) toast.info(t('settings.ray_job_not_running', { id }));
       else toast.error(result.message || kindMessage(result.kind ?? 'error'));
     } catch (reason) {
-      toast.error(t('settings.ray_job_stop_failed'), { description: describeError(reason) });
+      toast.error(t('settings.ray_job_stop_failed'), {
+        description: describeError(reason),
+      });
     } finally {
       setStopping(null);
       void queryClient.invalidateQueries({ queryKey: JOBS_KEY });
+    }
+  };
+
+  const modalKindMessage = (kind: RayKind) => {
+    switch (kind) {
+      case 'ok':
+        return t('settings.modal_kind_ok');
+      case 'not_configured':
+        return t('settings.modal_kind_not_configured');
+      case 'auth':
+        return t('settings.modal_kind_auth');
+      case 'network':
+        return t('settings.modal_kind_network');
+      case 'job_failed':
+        return t('settings.modal_kind_job_failed');
+      case 'timeout':
+        return t('settings.modal_kind_timeout');
+      default:
+        return t('settings.modal_kind_error');
     }
   };
 
@@ -347,27 +426,70 @@ export function RaySettings() {
         className="inline-flex items-center gap-1 text-xs text-emerald-500"
       >
         <CheckCircle2Icon className="size-3.5" />
-        {t('settings.ray_saved')}
+        {t(savedModal ? 'settings.modal_saved' : 'settings.ray_saved')}
       </span>
     );
   const pinnedNote = (
     <span className="block text-amber-600 dark:text-amber-400">{t('settings.ray_env_pinned')}</span>
   );
   const jobList = jobs.data?.jobs ?? [];
+  const modalGpus = server?.modal_gpus ?? [];
+  const gpuItems = [
+    { value: MODAL_CPU, label: t('settings.modal_gpu_cpu') },
+    ...modalGpus.map((gpu) => ({ value: gpu, label: gpu })),
+  ];
 
   return (
     <>
       <SettingsSection icon={ServerCogIcon} title={t('settings.ray_connection')}>
         <SettingsRow
+          id="remote-provider"
+          title={t('settings.remote_provider')}
+          description={t('settings.remote_provider_hint')}
+        >
+          <ToggleGroup
+            aria-label={t('settings.remote_provider')}
+            value={[draft?.provider ?? 'ray']}
+            onValueChange={(values) => {
+              const provider = (['ray', 'modal'] as const).find((p) => p === values[0]);
+              if (provider) update({ provider });
+            }}
+            disabled={busy || !draft}
+            className="rounded-xl border border-border/60 bg-muted/45 p-1"
+          >
+            <ToggleGroupItem value="ray">{t('settings.remote_provider_ray')}</ToggleGroupItem>
+            <ToggleGroupItem value="modal">{t('settings.remote_provider_modal')}</ToggleGroupItem>
+          </ToggleGroup>
+        </SettingsRow>
+
+        {modal && (
+          <div className="p-4">
+            <div
+              role="note"
+              className="flex gap-3 rounded-xl border border-border/60 bg-muted/40 p-4 text-sm"
+            >
+              <ShieldCheckIcon
+                className="mt-0.5 size-5 shrink-0 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <div className="space-y-1">
+                <p className="font-medium">{t('settings.modal_privacy_title')}</p>
+                <p className="text-muted-foreground">{t('settings.modal_privacy_body')}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <SettingsRow
           id="ray-enabled"
-          title={t('settings.ray_enabled')}
-          description={t('settings.ray_desc')}
+          title={t(modal ? 'settings.modal_enabled' : 'settings.ray_enabled')}
+          description={t(modal ? 'settings.modal_desc' : 'settings.ray_desc')}
         >
           {config.isPending ? (
             <LoaderCircleIcon className="size-4 animate-spin text-muted-foreground" />
           ) : (
             <Switch
-              aria-label={t('settings.ray_enabled')}
+              aria-label={t(modal ? 'settings.modal_enabled' : 'settings.ray_enabled')}
               checked={draft?.enabled ?? false}
               disabled={busy || !draft}
               onCheckedChange={(enabled) => update({ enabled })}
@@ -387,109 +509,191 @@ export function RaySettings() {
           </div>
         )}
 
-        <SettingsRow
-          id="ray-dashboard-url"
-          title={t('settings.ray_dashboard_url')}
-          description={
-            <>
-              {t('settings.ray_dashboard_url_hint')}
-              {pinned.has('dashboard_url') && pinnedNote}
-            </>
-          }
-        >
-          <Input
-            aria-label={t('settings.ray_dashboard_url')}
-            value={draft?.dashboardUrl ?? ''}
-            className="w-full font-mono @2xl:w-96"
-            placeholder="https://ray.example.com"
-            readOnly={pinned.has('dashboard_url')}
-            disabled={busy}
-            onChange={(event) => update({ dashboardUrl: event.target.value })}
-          />
-        </SettingsRow>
-
-        <SettingsRow
-          id="ray-token"
-          title={t('settings.ray_token')}
-          description={
-            <>
-              {draft?.clearToken
-                ? t('settings.ray_secret_will_clear')
-                : server?.has_token
-                  ? t('settings.ray_token_stored')
-                  : t('settings.ray_token_hint')}
-              {pinned.has('token') && pinnedNote}
-            </>
-          }
-        >
-          <Input
-            aria-label={t('settings.ray_token')}
-            type="password"
-            value={draft?.token ?? ''}
-            className="w-full font-mono @2xl:w-72"
-            placeholder={server?.has_token && !draft?.clearToken ? SECRET_MASK : ''}
-            autoComplete="off"
-            readOnly={pinned.has('token')}
-            disabled={busy}
-            onChange={(event) => update({ token: event.target.value, clearToken: false })}
-          />
-          {server?.has_token && !pinned.has('token') && (
-            <Button
-              variant="ghost"
-              disabled={busy || draft?.clearToken}
-              onClick={() => update({ token: '', clearToken: true })}
+        {!modal && (
+          <>
+            <SettingsRow
+              id="ray-dashboard-url"
+              title={t('settings.ray_dashboard_url')}
+              description={
+                <>
+                  {t('settings.ray_dashboard_url_hint')}
+                  {pinned.has('dashboard_url') && pinnedNote}
+                </>
+              }
             >
-              {t('settings.ray_clear_token')}
-            </Button>
-          )}
-        </SettingsRow>
+              <Input
+                aria-label={t('settings.ray_dashboard_url')}
+                value={draft?.dashboardUrl ?? ''}
+                className="w-full font-mono @2xl:w-96"
+                placeholder="https://ray.example.com"
+                readOnly={pinned.has('dashboard_url')}
+                disabled={busy}
+                onChange={(event) => update({ dashboardUrl: event.target.value })}
+              />
+            </SettingsRow>
 
-        <SettingsRow
-          id="ray-cf-client-id"
-          title={t('settings.ray_cf_client_id')}
-          description={t('settings.ray_cf_hint')}
-        >
-          <Input
-            aria-label={t('settings.ray_cf_client_id')}
-            value={draft?.cfClientId ?? ''}
-            className="w-full font-mono @2xl:w-72"
-            autoComplete="off"
-            disabled={busy}
-            onChange={(event) => update({ cfClientId: event.target.value })}
-          />
-        </SettingsRow>
-
-        <SettingsRow
-          id="ray-cf-secret"
-          title={t('settings.ray_cf_client_secret')}
-          description={
-            draft?.clearCfSecret
-              ? t('settings.ray_secret_will_clear')
-              : server?.has_cf_secret
-                ? t('settings.ray_cf_secret_stored')
-                : t('settings.ray_cf_hint')
-          }
-        >
-          <Input
-            aria-label={t('settings.ray_cf_client_secret')}
-            type="password"
-            value={draft?.cfSecret ?? ''}
-            className="w-full font-mono @2xl:w-72"
-            placeholder={server?.has_cf_secret && !draft?.clearCfSecret ? SECRET_MASK : ''}
-            autoComplete="off"
-            disabled={busy}
-            onChange={(event) => update({ cfSecret: event.target.value, clearCfSecret: false })}
-          />
-          {server?.has_cf_secret && (
-            <Button
-              variant="ghost"
-              disabled={busy || draft?.clearCfSecret}
-              onClick={() => update({ cfSecret: '', clearCfSecret: true })}
+            <SettingsRow
+              id="ray-token"
+              title={t('settings.ray_token')}
+              description={
+                <>
+                  {draft?.clearToken
+                    ? t('settings.ray_secret_will_clear')
+                    : server?.has_token
+                      ? t('settings.ray_token_stored')
+                      : t('settings.ray_token_hint')}
+                  {pinned.has('token') && pinnedNote}
+                </>
+              }
             >
-              {t('settings.ray_clear_cf_secret')}
-            </Button>
-          )}
-        </SettingsRow>
+              <Input
+                aria-label={t('settings.ray_token')}
+                type="password"
+                value={draft?.token ?? ''}
+                className="w-full font-mono @2xl:w-72"
+                placeholder={server?.has_token && !draft?.clearToken ? SECRET_MASK : ''}
+                autoComplete="off"
+                readOnly={pinned.has('token')}
+                disabled={busy}
+                onChange={(event) => update({ token: event.target.value, clearToken: false })}
+              />
+              {server?.has_token && !pinned.has('token') && (
+                <Button
+                  variant="ghost"
+                  disabled={busy || draft?.clearToken}
+                  onClick={() => update({ token: '', clearToken: true })}
+                >
+                  {t('settings.ray_clear_token')}
+                </Button>
+              )}
+            </SettingsRow>
+
+            <SettingsRow
+              id="ray-cf-client-id"
+              title={t('settings.ray_cf_client_id')}
+              description={t('settings.ray_cf_hint')}
+            >
+              <Input
+                aria-label={t('settings.ray_cf_client_id')}
+                value={draft?.cfClientId ?? ''}
+                className="w-full font-mono @2xl:w-72"
+                autoComplete="off"
+                disabled={busy}
+                onChange={(event) => update({ cfClientId: event.target.value })}
+              />
+            </SettingsRow>
+
+            <SettingsRow
+              id="ray-cf-secret"
+              title={t('settings.ray_cf_client_secret')}
+              description={
+                draft?.clearCfSecret
+                  ? t('settings.ray_secret_will_clear')
+                  : server?.has_cf_secret
+                    ? t('settings.ray_cf_secret_stored')
+                    : t('settings.ray_cf_hint')
+              }
+            >
+              <Input
+                aria-label={t('settings.ray_cf_client_secret')}
+                type="password"
+                value={draft?.cfSecret ?? ''}
+                className="w-full font-mono @2xl:w-72"
+                placeholder={server?.has_cf_secret && !draft?.clearCfSecret ? SECRET_MASK : ''}
+                autoComplete="off"
+                disabled={busy}
+                onChange={(event) => update({ cfSecret: event.target.value, clearCfSecret: false })}
+              />
+              {server?.has_cf_secret && (
+                <Button
+                  variant="ghost"
+                  disabled={busy || draft?.clearCfSecret}
+                  onClick={() => update({ cfSecret: '', clearCfSecret: true })}
+                >
+                  {t('settings.ray_clear_cf_secret')}
+                </Button>
+              )}
+            </SettingsRow>
+          </>
+        )}
+
+        {modal && (
+          <>
+            <SettingsRow
+              id="modal-token-id"
+              title={t('settings.modal_token_id')}
+              description={
+                draft?.clearModalToken
+                  ? t('settings.ray_secret_will_clear')
+                  : server?.has_modal_token
+                    ? t('settings.modal_token_stored')
+                    : t('settings.modal_token_hint')
+              }
+            >
+              <Input
+                aria-label={t('settings.modal_token_id')}
+                type="password"
+                value={draft?.modalTokenId ?? ''}
+                className="w-full font-mono @2xl:w-72"
+                placeholder={
+                  server?.has_modal_token && !draft?.clearModalToken ? SECRET_MASK : 'ak-…'
+                }
+                autoComplete="off"
+                disabled={busy}
+                onChange={(event) =>
+                  update({
+                    modalTokenId: event.target.value,
+                    clearModalToken: false,
+                  })
+                }
+              />
+            </SettingsRow>
+            <SettingsRow
+              id="modal-token-secret"
+              title={t('settings.modal_token_secret')}
+              description={
+                draft?.clearModalToken
+                  ? t('settings.ray_secret_will_clear')
+                  : server?.has_modal_token
+                    ? t('settings.modal_token_stored')
+                    : t('settings.modal_token_hint')
+              }
+            >
+              <Input
+                aria-label={t('settings.modal_token_secret')}
+                type="password"
+                value={draft?.modalTokenSecret ?? ''}
+                className="w-full font-mono @2xl:w-72"
+                placeholder={
+                  server?.has_modal_token && !draft?.clearModalToken ? SECRET_MASK : 'as-…'
+                }
+                autoComplete="off"
+                disabled={busy}
+                onChange={(event) =>
+                  update({
+                    modalTokenSecret: event.target.value,
+                    clearModalToken: false,
+                  })
+                }
+              />
+              {server?.has_modal_token && (
+                <Button
+                  variant="ghost"
+                  disabled={busy || draft?.clearModalToken}
+                  onClick={() =>
+                    update({
+                      modalTokenId: '',
+                      modalTokenSecret: '',
+                      clearModalToken: true,
+                    })
+                  }
+                >
+                  {t('settings.modal_clear_token')}
+                </Button>
+              )}
+            </SettingsRow>
+          </>
+        )}
 
         <SettingsRow
           id="ray-save"
@@ -503,11 +707,15 @@ export function RaySettings() {
         <SettingsRow
           id="ray-test"
           title={t('settings.ray_test')}
-          description={t('settings.ray_test_hint')}
+          description={t(modal ? 'settings.modal_test_hint' : 'settings.ray_test_hint')}
         >
           <Button
             variant="outline"
-            disabled={busy || dirty || !(draft?.dashboardUrl ?? '').trim()}
+            disabled={
+              busy ||
+              dirty ||
+              (modal ? !server?.has_modal_token : !(draft?.dashboardUrl ?? '').trim())
+            }
             onClick={() => void testConnection()}
           >
             {testing ? <LoaderCircleIcon className="animate-spin" /> : <PlugIcon />}
@@ -524,12 +732,14 @@ export function RaySettings() {
               title={testResult.message}
               className={testResult.ok ? 'text-xs text-emerald-500' : 'text-xs text-destructive'}
             >
-              {kindMessage(testResult.ok ? 'ok' : testResult.kind)}
+              {(savedModal ? modalKindMessage : kindMessage)(
+                testResult.ok ? 'ok' : testResult.kind,
+              )}
             </span>
           )}
         </SettingsRow>
 
-        {authDisabled && (
+        {authDisabled && !savedModal && (
           <div className="p-4">
             <div
               role="alert"
@@ -617,7 +827,11 @@ export function RaySettings() {
                 {testResult.latency_ms != null && (
                   <>
                     <dt className="text-muted-foreground">{t('settings.ray_info_latency')}</dt>
-                    <dd>{t('settings.ray_info_ms', { ms: Math.round(testResult.latency_ms) })}</dd>
+                    <dd>
+                      {t('settings.ray_info_ms', {
+                        ms: Math.round(testResult.latency_ms),
+                      })}
+                    </dd>
                   </>
                 )}
               </dl>
@@ -628,11 +842,15 @@ export function RaySettings() {
       <SettingsSection icon={CpuIcon} title={t('settings.ray_engines')}>
         <SettingsRow
           id="ray-engines"
-          title={t('settings.ray_engines_title')}
+          title={t(modal ? 'settings.modal_engines_title' : 'settings.ray_engines_title')}
           description={
             <>
-              <span className="block">{t('settings.ray_engines_hint')}</span>
-              <span className="block">{t('settings.ray_engines_first_run')}</span>
+              <span className="block">
+                {t(modal ? 'settings.modal_engines_hint' : 'settings.ray_engines_hint')}
+              </span>
+              <span className="block">
+                {t(modal ? 'settings.modal_engines_first_run' : 'settings.ray_engines_first_run')}
+              </span>
             </>
           }
         >
@@ -723,23 +941,53 @@ export function RaySettings() {
       </SettingsSection>
 
       <SettingsSection icon={ServerCogIcon} title={t('settings.ray_resources')}>
-        <SettingsRow
-          id="ray-num-gpus"
-          title={t('settings.ray_num_gpus')}
-          description={t('settings.ray_num_gpus_hint')}
-        >
-          <Input
-            aria-label={t('settings.ray_num_gpus')}
-            type="number"
-            min={0}
-            max={8}
-            step={0.05}
-            value={draft?.numGpus ?? ''}
-            className="w-28 font-mono"
-            disabled={busy}
-            onChange={(event) => update({ numGpus: event.target.value })}
-          />
-        </SettingsRow>
+        {modal && (
+          <SettingsRow
+            id="modal-gpu"
+            title={t('settings.modal_gpu')}
+            description={t('settings.modal_gpu_hint')}
+          >
+            <Select
+              items={gpuItems}
+              value={draft?.modalGpu || MODAL_CPU}
+              disabled={busy || !draft}
+              onValueChange={(value) => {
+                if (typeof value !== 'string') return;
+                update({ modalGpu: value === MODAL_CPU ? '' : value });
+              }}
+            >
+              <SelectTrigger aria-label={t('settings.modal_gpu')} className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {gpuItems.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </SettingsRow>
+        )}
+        {!modal && (
+          <SettingsRow
+            id="ray-num-gpus"
+            title={t('settings.ray_num_gpus')}
+            description={t('settings.ray_num_gpus_hint')}
+          >
+            <Input
+              aria-label={t('settings.ray_num_gpus')}
+              type="number"
+              min={0}
+              max={8}
+              step={0.05}
+              value={draft?.numGpus ?? ''}
+              className="w-28 font-mono"
+              disabled={busy}
+              onChange={(event) => update({ numGpus: event.target.value })}
+            />
+          </SettingsRow>
+        )}
         <SettingsRow
           id="ray-num-cpus"
           title={t('settings.ray_num_cpus')}
@@ -757,140 +1005,184 @@ export function RaySettings() {
             onChange={(event) => update({ numCpus: event.target.value })}
           />
         </SettingsRow>
-        <SettingsRow
-          id="ray-cache-dir"
-          title={t('settings.ray_cache_dir')}
-          description={t('settings.ray_cache_dir_hint')}
-        >
-          <Input
-            aria-label={t('settings.ray_cache_dir')}
-            value={draft?.cacheDir ?? ''}
-            className="w-full font-mono @2xl:w-96"
-            placeholder="/mnt/cache/voicestudio"
-            disabled={busy}
-            onChange={(event) => update({ cacheDir: event.target.value })}
-          />
-        </SettingsRow>
-        <SettingsRow
-          id="ray-python"
-          title={t('settings.ray_python')}
-          description={t('settings.ray_python_hint')}
-        >
-          <Input
-            aria-label={t('settings.ray_python')}
-            value={draft?.python ?? ''}
-            className="w-full font-mono @2xl:w-72"
-            placeholder="python3"
-            disabled={busy}
-            onChange={(event) => update({ python: event.target.value })}
-          />
-        </SettingsRow>
-        <SettingsRow
-          id="ray-keep-failed"
-          title={t('settings.ray_keep_failed')}
-          description={t('settings.ray_keep_failed_hint')}
-        >
-          <Switch
-            aria-label={t('settings.ray_keep_failed')}
-            checked={draft?.keepFailed ?? false}
-            disabled={busy || !draft}
-            onCheckedChange={(keepFailed) => update({ keepFailed })}
-          />
-        </SettingsRow>
+        {modal && (
+          <>
+            <SettingsRow
+              id="modal-app"
+              title={t('settings.modal_app')}
+              description={t('settings.modal_app_hint')}
+            >
+              <Input
+                aria-label={t('settings.modal_app')}
+                value={draft?.modalApp ?? ''}
+                className="w-full font-mono @2xl:w-72"
+                placeholder="voicestudio"
+                disabled={busy}
+                onChange={(event) => update({ modalApp: event.target.value })}
+              />
+            </SettingsRow>
+            <SettingsRow
+              id="modal-volume"
+              title={t('settings.modal_volume')}
+              description={t('settings.modal_volume_hint')}
+            >
+              <Input
+                aria-label={t('settings.modal_volume')}
+                value={draft?.modalVolume ?? ''}
+                className="w-full font-mono @2xl:w-72"
+                placeholder="voicestudio-cache"
+                disabled={busy}
+                onChange={(event) => update({ modalVolume: event.target.value })}
+              />
+            </SettingsRow>
+          </>
+        )}
+        {!modal && (
+          <>
+            <SettingsRow
+              id="ray-cache-dir"
+              title={t('settings.ray_cache_dir')}
+              description={t('settings.ray_cache_dir_hint')}
+            >
+              <Input
+                aria-label={t('settings.ray_cache_dir')}
+                value={draft?.cacheDir ?? ''}
+                className="w-full font-mono @2xl:w-96"
+                placeholder="/mnt/cache/voicestudio"
+                disabled={busy}
+                onChange={(event) => update({ cacheDir: event.target.value })}
+              />
+            </SettingsRow>
+            <SettingsRow
+              id="ray-python"
+              title={t('settings.ray_python')}
+              description={t('settings.ray_python_hint')}
+            >
+              <Input
+                aria-label={t('settings.ray_python')}
+                value={draft?.python ?? ''}
+                className="w-full font-mono @2xl:w-72"
+                placeholder="python3"
+                disabled={busy}
+                onChange={(event) => update({ python: event.target.value })}
+              />
+            </SettingsRow>
+            <SettingsRow
+              id="ray-keep-failed"
+              title={t('settings.ray_keep_failed')}
+              description={t('settings.ray_keep_failed_hint')}
+            >
+              <Switch
+                aria-label={t('settings.ray_keep_failed')}
+                checked={draft?.keepFailed ?? false}
+                disabled={busy || !draft}
+                onCheckedChange={(keepFailed) => update({ keepFailed })}
+              />
+            </SettingsRow>
+          </>
+        )}
         <SettingsRow id="ray-save-resources" title={t('settings.ray_save_title')} titleHidden>
           {saveButton}
           {savedNote(false)}
         </SettingsRow>
       </SettingsSection>
 
-      <SettingsSection icon={ListChecksIcon} title={t('settings.ray_jobs')}>
-        <SettingsRow
-          id="ray-jobs"
-          title={t('settings.ray_jobs_title')}
-          description={
-            server?.enabled ? t('settings.ray_jobs_hint') : t('settings.ray_jobs_disabled')
-          }
-        >
-          <Button
-            variant="outline"
-            disabled={!server?.enabled || jobs.isFetching}
-            onClick={() => void jobs.refetch()}
+      {!modal && (
+        <SettingsSection icon={ListChecksIcon} title={t('settings.ray_jobs')}>
+          <SettingsRow
+            id="ray-jobs"
+            title={t('settings.ray_jobs_title')}
+            description={
+              server?.enabled ? t('settings.ray_jobs_hint') : t('settings.ray_jobs_disabled')
+            }
           >
-            {jobs.isFetching ? <LoaderCircleIcon className="animate-spin" /> : <RefreshCwIcon />}
-            {t('common.refresh')}
-          </Button>
-        </SettingsRow>
-        {server?.enabled && jobs.isError && (
-          <div className="p-4">
-            <SettingsActionError
-              title={t('settings.ray_jobs_failed')}
-              detail={describeError(jobs.error)}
-            />
-          </div>
-        )}
-        {server?.enabled && jobs.data && !jobs.data.ok && (
-          <div className="p-4">
-            <SettingsActionError
-              title={kindMessage(jobs.data.kind ?? 'error')}
-              detail={jobs.data.message}
-            />
-          </div>
-        )}
-        {server?.enabled && jobs.data?.ok && jobList.length === 0 && (
-          <p className="px-4 py-3 text-sm text-muted-foreground">{t('settings.ray_jobs_empty')}</p>
-        )}
-        {server?.enabled && jobList.length > 0 && (
-          <div className="overflow-x-auto p-2">
-            <table className="w-full min-w-[40rem] text-left text-xs">
-              <thead className="text-muted-foreground">
-                <tr>
-                  <th className="px-2 py-1.5 font-medium">{t('settings.ray_job_status')}</th>
-                  <th className="px-2 py-1.5 font-medium">{t('settings.ray_job_engine')}</th>
-                  <th className="px-2 py-1.5 font-medium">{t('settings.ray_job_op')}</th>
-                  <th className="px-2 py-1.5 font-medium">{t('settings.ray_job_started')}</th>
-                  <th className="px-2 py-1.5 font-medium">{t('settings.ray_job_ended')}</th>
-                  <th className="px-2 py-1.5 font-medium">{t('settings.ray_job_message')}</th>
-                  <th className="px-2 py-1.5" />
-                </tr>
-              </thead>
-              <tbody>
-                {jobList.map((job) => (
-                  <tr key={job.submission_id} className="border-t border-border/50 align-top">
-                    <td className="px-2 py-1.5 font-mono" title={job.submission_id}>
-                      {job.status}
-                    </td>
-                    <td className="px-2 py-1.5 font-mono">{job.engine || '—'}</td>
-                    <td className="px-2 py-1.5 font-mono">{job.op || '—'}</td>
-                    <td className="px-2 py-1.5 whitespace-nowrap">{formatTime(job.start_time)}</td>
-                    <td className="px-2 py-1.5 whitespace-nowrap">{formatTime(job.end_time)}</td>
-                    <td className="max-w-64 break-words px-2 py-1.5 text-muted-foreground">
-                      {job.message || ''}
-                    </td>
-                    <td className="px-2 py-1.5 text-right">
-                      {STOPPABLE.has(job.status) && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          aria-label={t('settings.ray_job_stop', { id: job.submission_id })}
-                          disabled={stopping !== null}
-                          onClick={() => void stopJob(job.submission_id)}
-                        >
-                          {stopping === job.submission_id ? (
-                            <LoaderCircleIcon className="animate-spin" />
-                          ) : (
-                            <SquareIcon />
-                          )}
-                          {t('common.stop')}
-                        </Button>
-                      )}
-                    </td>
+            <Button
+              variant="outline"
+              disabled={!server?.enabled || jobs.isFetching}
+              onClick={() => void jobs.refetch()}
+            >
+              {jobs.isFetching ? <LoaderCircleIcon className="animate-spin" /> : <RefreshCwIcon />}
+              {t('common.refresh')}
+            </Button>
+          </SettingsRow>
+          {rayJobs && jobs.isError && (
+            <div className="p-4">
+              <SettingsActionError
+                title={t('settings.ray_jobs_failed')}
+                detail={describeError(jobs.error)}
+              />
+            </div>
+          )}
+          {rayJobs && jobs.data && !jobs.data.ok && (
+            <div className="p-4">
+              <SettingsActionError
+                title={kindMessage(jobs.data.kind ?? 'error')}
+                detail={jobs.data.message}
+              />
+            </div>
+          )}
+          {rayJobs && jobs.data?.ok && jobList.length === 0 && (
+            <p className="px-4 py-3 text-sm text-muted-foreground">
+              {t('settings.ray_jobs_empty')}
+            </p>
+          )}
+          {rayJobs && jobList.length > 0 && (
+            <div className="overflow-x-auto p-2">
+              <table className="w-full min-w-[40rem] text-left text-xs">
+                <thead className="text-muted-foreground">
+                  <tr>
+                    <th className="px-2 py-1.5 font-medium">{t('settings.ray_job_status')}</th>
+                    <th className="px-2 py-1.5 font-medium">{t('settings.ray_job_engine')}</th>
+                    <th className="px-2 py-1.5 font-medium">{t('settings.ray_job_op')}</th>
+                    <th className="px-2 py-1.5 font-medium">{t('settings.ray_job_started')}</th>
+                    <th className="px-2 py-1.5 font-medium">{t('settings.ray_job_ended')}</th>
+                    <th className="px-2 py-1.5 font-medium">{t('settings.ray_job_message')}</th>
+                    <th className="px-2 py-1.5" />
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </SettingsSection>
+                </thead>
+                <tbody>
+                  {jobList.map((job) => (
+                    <tr key={job.submission_id} className="border-t border-border/50 align-top">
+                      <td className="px-2 py-1.5 font-mono" title={job.submission_id}>
+                        {job.status}
+                      </td>
+                      <td className="px-2 py-1.5 font-mono">{job.engine || '—'}</td>
+                      <td className="px-2 py-1.5 font-mono">{job.op || '—'}</td>
+                      <td className="px-2 py-1.5 whitespace-nowrap">
+                        {formatTime(job.start_time)}
+                      </td>
+                      <td className="px-2 py-1.5 whitespace-nowrap">{formatTime(job.end_time)}</td>
+                      <td className="max-w-64 break-words px-2 py-1.5 text-muted-foreground">
+                        {job.message || ''}
+                      </td>
+                      <td className="px-2 py-1.5 text-right">
+                        {STOPPABLE.has(job.status) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            aria-label={t('settings.ray_job_stop', {
+                              id: job.submission_id,
+                            })}
+                            disabled={stopping !== null}
+                            onClick={() => void stopJob(job.submission_id)}
+                          >
+                            {stopping === job.submission_id ? (
+                              <LoaderCircleIcon className="animate-spin" />
+                            ) : (
+                              <SquareIcon />
+                            )}
+                            {t('common.stop')}
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </SettingsSection>
+      )}
     </>
   );
 }

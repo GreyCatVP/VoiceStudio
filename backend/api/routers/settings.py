@@ -1490,6 +1490,12 @@ class _RaySettingsBody(BaseModel):
     cf_access_client_id: str | None = Field(None, max_length=256)
     auth_token: str | None = Field(None, max_length=4096, description="'' clears it, None leaves unchanged")
     cf_access_client_secret: str | None = Field(None, max_length=4096, description="'' clears it, None leaves unchanged")
+    provider: str | None = Field(None, max_length=16, description="'ray' or 'modal'")
+    modal_gpu: str | None = Field(None, max_length=32, description="Modal GPU type; '' runs GPU engines on CPU")
+    modal_app: str | None = Field(None, max_length=64)
+    modal_volume: str | None = Field(None, max_length=64)
+    modal_token_id: str | None = Field(None, max_length=256, description="'' clears it, None leaves unchanged")
+    modal_token_secret: str | None = Field(None, max_length=256, description="'' clears it, None leaves unchanged")
 
 
 @router.get("/ray")

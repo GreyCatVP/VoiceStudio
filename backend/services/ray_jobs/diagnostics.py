@@ -30,7 +30,39 @@ def valid_submission_id(sid: str) -> bool:
     return bool(_SUBMISSION_ID.match(sid or ""))
 
 
+async def _test_modal(cfg, *, run_probe: bool) -> Dict[str, Any]:
+    from services.ray_jobs import settings as ray_settings  # noqa: PLC0415
+    from services.ray_jobs.modal_executor import ModalExecutor  # noqa: PLC0415
+
+    token_id, token_secret = ray_settings.modal_credentials()
+    if not (token_id and token_secret):
+        return {"ok": False, "kind": "not_configured", "message": "Set the Modal token id and secret first."}
+    started = time.monotonic()
+    out: Dict[str, Any] = {"ok": False, "warnings": [], "provider": "modal"}
+    executor = ModalExecutor(token_id=token_id, token_secret=token_secret, gpu=cfg.modal_gpu,
+                             app=cfg.modal_app, volume=cfg.modal_volume)
+    try:
+        await executor.probe()
+        if run_probe:
+            # One short sandbox on the configured GPU: proves the account can start it.
+            task = RayTask(op="probe", num_gpus=1.0 if cfg.modal_gpu else None, num_cpus=1.0)
+            result = await executor.run(task, timeout=PROBE_TIMEOUT_S + 300)
+            out["node"] = result.result.get("node")
+        out.update(ok=True, kind="ok")
+    except RayJobFailed as exc:
+        kind = "auth" if exc.status == "AUTH" else "job_failed"
+        out.update(kind=kind, message=_scrub(str(exc)))
+    except TimeoutError:
+        out.update(kind="timeout", message="The Modal probe did not finish in time.")
+    except Exception as exc:  # never let a probe crash the settings page
+        out.update(kind="error", message=_scrub(f"{type(exc).__name__}: {exc}"))
+    out["latency_ms"] = int((time.monotonic() - started) * 1000)
+    return out
+
+
 async def test_connection(cfg, auth, *, run_probe: bool = True) -> Dict[str, Any]:
+    if cfg.provider == "modal":
+        return await _test_modal(cfg, run_probe=run_probe)
     if not cfg.dashboard_url:
         return {"ok": False, "kind": "not_configured", "message": "Set the Ray dashboard URL first."}
     started = time.monotonic()
@@ -80,6 +112,8 @@ def _job_row(job: Dict[str, Any]) -> Dict[str, Any]:
 
 
 async def list_jobs(cfg, auth, limit: int = 30) -> Dict[str, Any]:
+    if cfg.provider == "modal":  # sandboxes end with their run; see Modal's dashboard for history
+        return {"ok": True, "provider": "modal", "jobs": []}
     if not cfg.dashboard_url:
         return {"ok": False, "kind": "not_configured", "jobs": []}
     try:
@@ -95,6 +129,8 @@ async def list_jobs(cfg, auth, limit: int = 30) -> Dict[str, Any]:
 
 
 async def stop_job(cfg, auth, submission_id: str) -> Dict[str, Any]:
+    if cfg.provider == "modal":
+        return {"ok": False, "kind": "invalid", "message": "Modal runs are stopped from the request that started them."}
     if not valid_submission_id(submission_id):
         return {"ok": False, "kind": "invalid", "message": "Not a VoiceStudio job id."}
     try:

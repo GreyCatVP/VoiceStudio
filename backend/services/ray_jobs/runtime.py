@@ -47,7 +47,14 @@ def _ensure_loop() -> asyncio.AbstractEventLoop:
         return _loop
 
 
-def _build(cfg, auth) -> RayJobsExecutor:
+def _build(cfg, auth):
+    if cfg.provider == "modal":
+        from services.ray_jobs import settings as ray_settings  # noqa: PLC0415
+        from services.ray_jobs.modal_executor import ModalExecutor  # noqa: PLC0415
+
+        token_id, token_secret = ray_settings.modal_credentials()
+        return ModalExecutor(token_id=token_id, token_secret=token_secret, gpu=cfg.modal_gpu,
+                             app=cfg.modal_app, volume=cfg.modal_volume)
     client = RayJobsClient(cfg.dashboard_url, auth)
     return RayJobsExecutor(client, cache_dir=cfg.cache_dir or None, python=cfg.python,
                            keep_failed_jobs=cfg.keep_failed_jobs)
@@ -60,14 +67,20 @@ def reopen_for_tests() -> None:
         _closed = False
 
 
-def executor_for(cfg) -> RayJobsExecutor:
-    """The executor for these settings, rebuilt when the connection changes."""
+def executor_for(cfg):
+    """The executor for these settings (a RayJobsExecutor or a ModalExecutor),
+    rebuilt when the connection changes."""
     from services.ray_jobs import settings as ray_settings  # noqa: PLC0415
 
     global _executor, _fingerprint
     auth = ray_settings.auth()
-    secret = hashlib.sha256(repr(sorted(auth.headers().items())).encode()).hexdigest()
-    fingerprint = (cfg.dashboard_url, secret, cfg.cache_dir, cfg.python, cfg.keep_failed_jobs)
+    if cfg.provider == "modal":
+        credentials = repr(ray_settings.modal_credentials())
+    else:
+        credentials = repr(sorted(auth.headers().items()))
+    secret = hashlib.sha256(credentials.encode()).hexdigest()
+    fingerprint = (cfg.provider, cfg.target, secret, cfg.cache_dir, cfg.python, cfg.keep_failed_jobs,
+                   cfg.modal_gpu)
     loop = _ensure_loop()
     with _lock:
         if _executor is not None and fingerprint == _fingerprint:
@@ -81,19 +94,24 @@ def executor_for(cfg) -> RayJobsExecutor:
     return new
 
 
-async def _retire(executor: RayJobsExecutor) -> None:
+async def _retire(executor) -> None:
     # Runs started before a settings change keep this executor's client until
     # they finish; closing it under them would fail healthy generations.
     try:
         await executor.wait_idle(timeout=6 * 3600)
     finally:
-        await executor.client.aclose()
+        await executor.aclose()
 
 
 def check_cluster(cfg, timeout: float = 15.0) -> Tuple[bool, str]:
     """Blocking reachability check of the configured cluster. Never raises."""
     async def probe() -> Tuple[bool, str]:
-        client = executor_for(cfg).client
+        executor = executor_for(cfg)
+        if cfg.provider == "modal":
+            await executor.probe(timeout=timeout)
+            gpu = cfg.modal_gpu or "CPU"
+            return True, f"Runs on Modal ({gpu})"
+        client = executor.client
         version = (await client.version()).get("ray_version")
         mode = await client.authentication_mode()
         note = " — cluster authentication is DISABLED" if mode == "disabled" else ""
@@ -102,7 +120,8 @@ def check_cluster(cfg, timeout: float = 15.0) -> Tuple[bool, str]:
     try:
         return asyncio.run_coroutine_threadsafe(probe(), _ensure_loop()).result(timeout)
     except Exception as exc:
-        return False, f"Ray cluster unreachable: {type(exc).__name__}: {exc}"
+        where = "Modal" if cfg.provider == "modal" else "Ray cluster"
+        return False, f"{where} unreachable: {type(exc).__name__}: {exc}"
 
 
 def run_async(coro) -> "asyncio.Future":
@@ -196,7 +215,7 @@ async def _stop_everything(executors) -> None:
     for ex in executors:
         # Bounded: a delete still in its grace is swept on the next start.
         await ex.wait_idle(timeout=5)
-        await ex.client.aclose()
+        await ex.aclose()
 
 
 def shutdown(timeout: float = 15.0) -> None:

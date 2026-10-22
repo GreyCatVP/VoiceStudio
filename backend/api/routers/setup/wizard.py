@@ -586,10 +586,23 @@ def preflight():
             "small Whisper model in the Model Catalogue. If you have an "
             "NVIDIA/AMD card, check drivers are installed."
         )
-    checks.append({
+    gpu_check = {
         "id": "gpu", "label": "GPU acceleration",
         "status": gpu_status, "detail": gpu_detail, "fix": gpu_fix,
-    })
+    }
+    if not gpu["available"]:
+        # No usable local GPU: a remote GPU (Ray cluster or Modal) is the
+        # other way to run the heavy engines. The UI offers the choice; once
+        # one is set up the check says where GPU work goes instead.
+        remote = _remote_gpu_summary()
+        if remote:
+            gpu_check.update(status="pass", fix=None, remote=remote, detail=(
+                f"No local GPU — {remote['engines']} engine(s) run on "
+                + (f"Modal ({remote['gpu'] or 'CPU'})" if remote["provider"] == "modal" else "the Ray cluster")
+            ))
+        else:
+            gpu_check["choices"] = ["cpu", "ray", "modal"]
+    checks.append(gpu_check)
 
     # ── GPU routing for the ACTIVE TTS engine (#21 — no silent CPU fallback).
     # Distinct from the hardware "gpu" check above: this asks "will the engine
@@ -700,3 +713,18 @@ async def setup_warmup():
 
     loop.create_task(_do_warmup())
     return {"status": "warmup_started"}
+
+
+
+def _remote_gpu_summary() -> dict | None:
+    """Where GPU engines run when remote execution is on, else None. Never raises."""
+    try:
+        from services.ray_jobs import settings as ray_settings
+
+        cfg = ray_settings.load()
+    except Exception:  # preflight must not break on a settings hiccup
+        return None
+    if not cfg.active or not cfg.engines:
+        return None
+    return {"provider": cfg.provider, "gpu": cfg.modal_gpu if cfg.provider == "modal" else None,
+            "engines": len(cfg.engines)}

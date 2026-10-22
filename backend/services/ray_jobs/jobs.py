@@ -58,5 +58,5 @@ def engine_task(engine_id: str, ray_cfg, op: str, params: dict, inputs: Optional
     return RayTask(
         op=op, engine=engine_id, params=params, inputs=inputs or {}, install=install_recipe(engine_id),
         env={**(dict(engine.env) if engine else {}), **(env or {})},
-        num_gpus=(ray_cfg.num_gpus or None) if engine and engine.gpu else None, num_cpus=ray_cfg.num_cpus,
+        num_gpus=ray_cfg.gpu_request(bool(engine and engine.gpu)), num_cpus=ray_cfg.num_cpus,
     )

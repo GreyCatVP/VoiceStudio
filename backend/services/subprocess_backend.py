@@ -404,7 +404,7 @@ def ray_routed(engine_id: str) -> bool:
 
 
 def _ray_install_key(cfg, engine_id: str, recipe: dict) -> tuple:
-    return (cfg.dashboard_url, cfg.cache_dir, engine_id, recipe.get("key"))
+    return (cfg.target, cfg.cache_dir, engine_id, recipe.get("key"))
 
 
 def _ray_installed(cfg, engine_id: str, recipe: dict) -> bool:
@@ -920,7 +920,7 @@ class SubprocessBackend(TTSBackend):
         # Same placement as synthesis: venvs live per node, and a GPU node
         # needs the CUDA build.
         self._run_ray_job(ray_cfg, RayTask(op="install", engine=self.id, install=recipe,
-                                           num_gpus=(ray_cfg.num_gpus or None) if engine and engine.gpu else None,
+                                           num_gpus=ray_cfg.gpu_request(bool(engine and engine.gpu)),
                                            num_cpus=ray_cfg.num_cpus),
                           timeout=_RAY_INSTALL_ALLOWANCE_S, idle_timeout=_RAY_INSTALL_IDLE_S)
         _RAY_INSTALLED.add(_ray_install_key(ray_cfg, self.id, recipe))
@@ -951,7 +951,7 @@ class SubprocessBackend(TTSBackend):
         task = RayTask(
             op="synthesize", engine=self.id, params=params, inputs=inputs, install=recipe,
             env={**(dict(engine.env) if engine else {}), **self._ray_env()},
-            num_gpus=(ray_cfg.num_gpus or None) if engine and engine.gpu else None,
+            num_gpus=ray_cfg.gpu_request(bool(engine and engine.gpu)),
             num_cpus=ray_cfg.num_cpus,
         )
         result = self._run_ray_job(ray_cfg, task, timeout=timeout, idle_timeout=idle)
@@ -1020,7 +1020,7 @@ class SubprocessBackend(TTSBackend):
         task = RayTask(
             op="batch", engine=self.id, params={"call": "synthesize", "items": items}, inputs=inputs,
             install=install_recipe(self.id), env={**(dict(engine.env) if engine else {}), **self._ray_env()},
-            num_gpus=(ray_cfg.num_gpus or None) if engine and engine.gpu else None, num_cpus=ray_cfg.num_cpus,
+            num_gpus=ray_cfg.gpu_request(bool(engine and engine.gpu)), num_cpus=ray_cfg.num_cpus,
         )
         result = self._run_ray_job(ray_cfg, task, timeout=_RAY_INSTALL_ALLOWANCE_S + 2 * sum(idles),
                                    idle_timeout=max(idles))

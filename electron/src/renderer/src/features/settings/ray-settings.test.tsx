@@ -17,7 +17,7 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 vi.mock('sonner', () => ({ toast: { success: mock.success, error: mock.error, info: mock.info } }));
 
-import { RaySettings, type RayConfig, type RayEngineKind } from './ray-settings';
+import { RaySettings, rayChanges, type RayConfig, type RayEngineKind } from './ray-settings';
 
 afterEach(() => {
   cleanup();
@@ -46,6 +46,7 @@ const BASE: RayConfig = {
 function renderSettings(
   overrides: Partial<RayConfig> = {},
   handlers: Record<string, (init?: RequestInit) => unknown> = {},
+  props: Parameters<typeof RaySettings>[0] = {},
 ) {
   const config = { ...BASE, ...overrides };
   mock.api.mockImplementation((path: string, init?: RequestInit) => {
@@ -61,7 +62,7 @@ function renderSettings(
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
-      <RaySettings />
+      <RaySettings {...props} />
     </QueryClientProvider>,
   );
 }
@@ -362,4 +363,149 @@ it('marks environment-pinned fields read-only and does not poll jobs when disabl
   expect(screen.queryByRole('button', { name: 'settings.ray_clear_token' })).toBeNull();
   expect(screen.getByText('settings.ray_jobs_disabled')).toBeInTheDocument();
   expect(mock.api).not.toHaveBeenCalledWith('/api/settings/ray/jobs', expect.anything());
+});
+
+const MODAL: Partial<RayConfig> = {
+  provider: 'modal',
+  modal_gpu: 'L4',
+  modal_gpus: ['T4', 'L4', 'H100'],
+  modal_app: 'voicestudio',
+  modal_volume: 'voicestudio-cache',
+  has_modal_token: false,
+};
+
+const lastPut = () => {
+  const call = mock.api.mock.calls.find(([, init]) => init?.method === 'PUT');
+  return call ? JSON.parse(String(call[1].body)) : undefined;
+};
+
+it('switching to Modal shows Modal rows and hides the Ray-only rows and jobs', async () => {
+  renderSettings({ ...MODAL, provider: 'ray' });
+  await waitFor(() => expect(input('settings.ray_dashboard_url')).toHaveValue(BASE.dashboard_url));
+  expect(screen.getByText('settings.ray_jobs_title')).toBeInTheDocument();
+  expect(input('settings.modal_token_id')).toBeNull();
+
+  fireEvent.click(screen.getByRole('button', { name: 'settings.remote_provider_modal' }));
+
+  expect(input('settings.ray_dashboard_url')).toBeNull();
+  expect(input('settings.ray_token')).toBeNull();
+  expect(input('settings.ray_num_gpus')).toBeNull();
+  expect(input('settings.ray_cache_dir')).toBeNull();
+  expect(screen.queryByText('settings.ray_jobs_title')).toBeNull();
+  expect(input('settings.modal_token_id')).toBeInTheDocument();
+  expect(input('settings.modal_token_secret')).toBeInTheDocument();
+  expect(input('settings.modal_app')).toHaveValue('voicestudio');
+  expect(input('settings.modal_volume')).toHaveValue('voicestudio-cache');
+  expect(input('settings.ray_num_cpus')).toHaveValue(2);
+  expect(screen.getByText('settings.modal_privacy_body')).toBeInTheDocument();
+  expect(screen.getByRole('switch', { name: 'settings.modal_enabled' })).toBeChecked();
+
+  fireEvent.click(screen.getByRole('button', { name: 'settings.remote_provider_ray' }));
+  expect(input('settings.ray_dashboard_url')).toHaveValue(BASE.dashboard_url);
+  expect(input('settings.modal_token_id')).toBeNull();
+});
+
+it('saves the provider and typed Modal credentials', async () => {
+  renderSettings({ ...MODAL, provider: 'ray' });
+  await waitFor(() => expect(input('settings.ray_dashboard_url')).toHaveValue(BASE.dashboard_url));
+  fireEvent.click(screen.getByRole('button', { name: 'settings.remote_provider_modal' }));
+  fireEvent.change(input('settings.modal_token_id'), { target: { value: 'ak-123' } });
+  fireEvent.change(input('settings.modal_token_secret'), { target: { value: 'as-456' } });
+  fireEvent.change(input('settings.modal_app'), { target: { value: ' my-app ' } });
+  fireEvent.click(screen.getAllByRole('button', { name: 'common.save' })[0]);
+
+  await waitFor(() =>
+    expect(lastPut()).toEqual({
+      provider: 'modal',
+      modal_app: 'my-app',
+      modal_token_id: 'ak-123',
+      modal_token_secret: 'as-456',
+    }),
+  );
+});
+
+it('computes Modal changes, including the CPU-only GPU and a token clear', () => {
+  const config = { ...BASE, ...MODAL, has_modal_token: true } as RayConfig;
+  const draft = {
+    enabled: true,
+    dashboardUrl: BASE.dashboard_url,
+    cfClientId: '',
+    engines: ['voxcpm2'],
+    numGpus: '1',
+    numCpus: '2',
+    cacheDir: '',
+    python: 'python3',
+    keepFailed: false,
+    token: '',
+    cfSecret: '',
+    clearToken: false,
+    clearCfSecret: false,
+    provider: 'modal' as const,
+    modalGpu: '',
+    modalApp: 'voicestudio',
+    modalVolume: 'shared-cache',
+    modalTokenId: '',
+    modalTokenSecret: '',
+    clearModalToken: true,
+  };
+  expect(rayChanges(config, draft)).toEqual({
+    modal_gpu: '',
+    modal_volume: 'shared-cache',
+    modal_token_id: '',
+    modal_token_secret: '',
+  });
+  // Older backends without the Modal fields see no Modal changes from an untouched draft.
+  const legacy = { ...BASE };
+  expect(
+    rayChanges(legacy, {
+      ...draft,
+      provider: 'ray',
+      modalApp: '',
+      modalVolume: '',
+      clearModalToken: false,
+    }),
+  ).toEqual({});
+});
+
+it('never prefills a stored Modal token and clears typed secrets after saving', async () => {
+  renderSettings({ ...MODAL, enabled: true, has_modal_token: true });
+  await waitFor(() => expect(input('settings.modal_token_id')).toBeInTheDocument());
+  for (const label of ['settings.modal_token_id', 'settings.modal_token_secret']) {
+    expect(input(label)).toHaveValue('');
+    expect(input(label)).toHaveAttribute('type', 'password');
+    expect(input(label)).toHaveAttribute('placeholder', '••••••••');
+  }
+  expect(screen.getAllByText('settings.modal_token_stored')).toHaveLength(2);
+
+  fireEvent.change(input('settings.modal_token_secret'), { target: { value: 'as-new' } });
+  fireEvent.click(screen.getAllByRole('button', { name: 'common.save' })[0]);
+  await waitFor(() => expect(lastPut()).toEqual({ modal_token_secret: 'as-new' }));
+  await waitFor(() => expect(input('settings.modal_token_secret')).toHaveValue(''));
+
+  fireEvent.click(screen.getByRole('button', { name: 'settings.modal_clear_token' }));
+  expect(screen.getAllByText('settings.ray_secret_will_clear')).toHaveLength(2);
+});
+
+it('hides the jobs panel and never polls jobs for an enabled Modal provider', async () => {
+  renderSettings({ ...MODAL, enabled: true });
+  await waitFor(() => expect(input('settings.modal_token_id')).toBeInTheDocument());
+  expect(screen.queryByText('settings.ray_jobs_title')).toBeNull();
+  expect(screen.queryByText('settings.ray_jobs')).toBeNull();
+  expect(mock.api).not.toHaveBeenCalledWith('/api/settings/ray/jobs', expect.anything());
+});
+
+it('preselects the initial provider as an unsaved change', async () => {
+  renderSettings({ ...MODAL, provider: 'ray', enabled: false }, {}, { initialProvider: 'modal' });
+  await waitFor(() => expect(input('settings.modal_token_id')).toBeInTheDocument());
+  expect(screen.getByRole('button', { name: 'settings.remote_provider_modal' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  expect(mock.api).not.toHaveBeenCalledWith(
+    '/api/settings/ray',
+    expect.objectContaining({ method: 'PUT' }),
+  );
+  fireEvent.click(screen.getByRole('switch', { name: 'settings.modal_enabled' }));
+  fireEvent.click(screen.getAllByRole('button', { name: 'common.save' })[0]);
+  await waitFor(() => expect(lastPut()).toEqual({ provider: 'modal', enabled: true }));
 });

@@ -307,6 +307,9 @@ class RayJobsExecutor:
         except RayJobsError:
             return {}
 
+    async def aclose(self) -> None:
+        await self.client.aclose()
+
     # -- cleanup -----------------------------------------------------------
     async def drain(self, timeout: Optional[float] = None) -> None:
         """Wait for outstanding stop/delete work (call on backend shutdown)."""

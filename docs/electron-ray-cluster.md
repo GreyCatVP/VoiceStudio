@@ -1,6 +1,19 @@
-# Ray cluster execution (opt-in)
+# Remote GPU execution: Ray cluster or Modal (opt-in)
 
-VoiceStudio can run selected TTS engines on a [Ray](https://www.ray.io/)
+VoiceStudio can run selected engines on a remote GPU instead of this machine,
+using one of two providers (Settings → **Remote GPU**):
+
+- **Ray cluster** — your own [Ray](https://www.ray.io/) cluster (below).
+- **Modal** — serverless GPUs in your own [Modal](https://modal.com) account
+  (see [Modal](#modal)).
+
+When no usable local GPU is found, the **GPU acceleration** check (first-run
+setup and Settings → Performance → System check) offers the three choices:
+keep using the CPU, set up a Ray cluster, or set up Modal.
+
+## Ray cluster
+
+VoiceStudio can run selected engines on a [Ray](https://www.ray.io/)
 cluster instead of this machine. Each generation step is submitted as **one
 Ray job** through the cluster dashboard's HTTPS Jobs API; when the job ends,
 its process and the engine inside it exit, so the GPU memory is returned to
@@ -93,10 +106,46 @@ small, CPU-bound or latency-critical.
 - Cancelling a generation, or a deadline expiring, stops the job — including
   a job still waiting in the cluster's queue.
 
+## Modal
+
+With the **Modal** provider every run is one
+[Modal Sandbox](https://modal.com/docs/guide/sandbox): a container with the
+GPU type you choose, which runs the same job package and worker as a Ray job
+and is terminated when the run ends — on success, failure, cancellation, a
+deadline, or if VoiceStudio exits — so the GPU is released and billing stops.
+Modal bills per second of container time on your account.
+
+Setup:
+
+1. Create a token in your Modal account (`modal token new`, or modal.com →
+   Settings → API tokens).
+2. Settings → **Remote GPU** → provider **Modal**; paste the token id
+   (`ak-…`) and secret (`as-…`), pick a GPU type (default L4; "CPU only" runs
+   GPU engines on CPU), save.
+3. **Test connection** checks the token and starts one short sandbox on that
+   GPU type, which reports the GPU and its memory.
+4. Tick the engines to run remotely, enable remote execution, and save.
+
+Details:
+
+- The backend does not depend on the Modal SDK: on first use `uv` installs a
+  pinned `modal` package and Python 3.12 into its cache, and a small driver
+  (`backend/modal_driver/vs_modal_driver.py`) talks to Modal. The token is
+  passed only to that driver process; it never enters the sandbox.
+- The sandbox image is Debian with Python 3.12, build tools and ffmpeg; Modal
+  builds it once and caches it.
+- Engine environments, `uv`'s cache and model downloads persist on a Modal
+  Volume (default `voicestudio-cache`, in an app named `voicestudio`), so only
+  the first run of each engine installs it. Changing the volume name starts
+  from an empty cache.
+- The same engines as on Ray are available, with the same 50 MB result limit
+  per job. There is no job list in VoiceStudio for Modal; see the app's
+  sandboxes in the Modal dashboard.
+
 ## Privacy
 
-Text, reference audio and generated audio for Ray-routed engines are sent to
-the cluster you configure; for Ray-routed dubbing steps that includes the
+Text, reference audio and generated audio for remotely run engines are sent to
+the Ray cluster you configure, or to Modal's cloud under your Modal account; for Ray-routed dubbing steps that includes the
 source recording, its transcript and translations, and (for diarization) your
 installed pyannote model files. Your Hugging Face token and other secrets are never
 sent to the cluster or passed to engine code there; engines whose weights are
@@ -108,6 +157,7 @@ gated behind a Hugging Face login are therefore not offered on Ray.
 |---|---|
 | `OMNIVOICE_RAY_DASHBOARD_URL` | Pins the dashboard URL (the field becomes read-only). |
 | `OMNIVOICE_RAY_AUTH_TOKEN` | Pins the Ray auth token. |
+| `OMNIVOICE_MODAL_TOKEN_ID` + `OMNIVOICE_MODAL_TOKEN_SECRET` | Pin the Modal token (both must be set). |
 
 ## Troubleshooting
 
@@ -118,3 +168,8 @@ gated behind a Hugging Face login are therefore not offered on Ray.
   "Keep failed jobs" is off.
 - **timeout** — the probe job did not start in time, usually because the
   cluster has no free CPU for it.
+- **auth** (Modal) — the token id or secret is wrong or was revoked.
+- **job_failed** (Modal) — often a GPU type your Modal workspace cannot use, or
+  an engine install error; the message carries the detail.
+- **uv was not found** (Modal) — the Modal SDK is installed with `uv`; the
+  desktop app ships it, source installs need `uv` on `PATH`.

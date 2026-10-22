@@ -5537,6 +5537,69 @@
       ],
       "title": "Keep Failed Jobs"
      },
+     "modal_app": {
+      "anyOf": [
+       {
+        "maxLength": 64,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Modal App"
+     },
+     "modal_gpu": {
+      "anyOf": [
+       {
+        "maxLength": 32,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Modal GPU type; '' runs GPU engines on CPU",
+      "title": "Modal Gpu"
+     },
+     "modal_token_id": {
+      "anyOf": [
+       {
+        "maxLength": 256,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "'' clears it, None leaves unchanged",
+      "title": "Modal Token Id"
+     },
+     "modal_token_secret": {
+      "anyOf": [
+       {
+        "maxLength": 256,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "'' clears it, None leaves unchanged",
+      "title": "Modal Token Secret"
+     },
+     "modal_volume": {
+      "anyOf": [
+       {
+        "maxLength": 64,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Modal Volume"
+     },
      "num_cpus": {
       "anyOf": [
        {
@@ -5558,6 +5621,19 @@
        }
       ],
       "title": "Num Gpus"
+     },
+     "provider": {
+      "anyOf": [
+       {
+        "maxLength": 16,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "'ray' or 'modal'",
+      "title": "Provider"
      },
      "python": {
       "anyOf": [
