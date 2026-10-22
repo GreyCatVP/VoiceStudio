@@ -1426,7 +1426,7 @@
     "gpu_report_engine_needs_accelerator": "このマシンにない GPU（{{needs}}）が必要です",
     "ray_title": "リモート GPU",
     "ray_connection": "接続",
-    "ray_desc": "選択した TTS エンジンをリモートの Ray クラスター上でジョブとして実行します。既定ではオフで、オフの間はすべてのエンジンがこのコンピューターで動作します。",
+    "ray_desc": "選択したエンジンをリモートの Ray クラスター上でジョブとして実行します。既定ではオフで、オフの間はすべてのエンジンがこのコンピューターで動作します。",
     "ray_enabled": "Ray クラスターを使用",
     "ray_dashboard_url": "ダッシュボード URL",
     "ray_dashboard_url_hint": "Ray ダッシュボード（Jobs API）のアドレス。",
@@ -1503,7 +1503,7 @@
     "ray_jobs_title": "最近の VoiceStudio ジョブ",
     "ray_jobs_hint": "このページを開いている間、5 秒ごとに更新されます。",
     "ray_jobs_disabled": "ジョブを表示するには Ray クラスターをオンにしてください。",
-    "ray_jobs_empty": "まだジョブはありません。",
+    "ray_jobs_empty": "現在ジョブはありません。完了したジョブは自動的に削除されます。",
     "ray_jobs_failed": "ジョブを読み込めませんでした。",
     "ray_job_status": "状態",
     "ray_job_engine": "エンジン",
@@ -1548,7 +1548,11 @@
     "modal_app": "Modal アプリ名",
     "modal_app_hint": "Modal アカウント内で VoiceStudio のサンドボックスをまとめるアプリです。",
     "modal_volume": "キャッシュボリューム（詳細）",
-    "modal_volume_hint": "ジョブ間でエンジンとモデルを保持する Modal ボリュームです。アカウントを共有している場合のみ変更してください。"
+    "modal_volume_hint": "ジョブ間でエンジンとモデルを保持する Modal ボリュームです。アカウントを共有している場合のみ変更してください。",
+    "ray_use_token": "Ray トークン認証",
+    "ray_use_token_hint": "クラスターが Ray 認証トークンを要求する場合にオンにします（RAY_AUTH_MODE=token）。",
+    "ray_use_cf": "Cloudflare Access",
+    "ray_use_cf_hint": "ダッシュボードが Cloudflare Access の背後にある場合にオンにし、サービストークンのクライアント ID とシークレットを入力します。"
   },
   "gallery": {
     "title": "VoiceStudio ギャラリー",
@@ -2025,7 +2029,7 @@
     "save_bundle": "診断バンドルを保存",
     "bundle_saved": "診断バンドルを保存しました: {{filename}}",
     "title": "情報",
-    "diagnostics": "システムプリフライト",
+    "diagnostics": "診断",
     "model_credits": "モデルのクレジット",
     "model_credits_hint": "対応モデルのクレジットです。モデルと各構成要素にはそれぞれの利用条件が適用されます。この表示は商用利用の権利を付与するものではありません。",
     "model_terms": "モデルの利用条件",
@@ -3929,5 +3933,16 @@
       "remove_file": "削除",
       "no_matches": "「{{query}}」に一致する項目はありません。"
     }
+  },
+  "guide": {
+    "title": "ユーザーガイド",
+    "contents": "目次",
+    "chapter": "第 {{n}} 章",
+    "step": "ステップ {{n}}",
+    "expected": "期待される結果",
+    "verify": "結果を確認",
+    "missing_shot": "スクリーンショットはまだありません",
+    "enlarge": "拡大: {{caption}}",
+    "language_note": "このガイドは英語とタイ語で提供されています。英語で表示しています。"
   }
 }

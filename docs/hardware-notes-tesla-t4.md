@@ -31,7 +31,7 @@ request succeeds in ~1s (reproduced 5x: 1.574s / 1.034s / 1.065s / 0.995s / 0.91
   (`repo_id` is required — `InstallModelRequest` in `backend/api/schemas.py` rejects a bare/empty
   body — and must match one of the entries in `KNOWN_MODELS`, e.g. the default engine's
   `k2-fsa/OmniVoice`.) Progress streams over the existing `/setup/download-stream` SSE feed.
-- Or raise the compute-time budget in **Settings → Performance & Device** for the first
+- Or raise the compute-time budget in **Settings → Compute device** for the first
   request (`OMNIVOICE_GENERATE_TIMEOUT_S` does the same thing from the environment, and
   takes precedence over the setting when both are present).
 

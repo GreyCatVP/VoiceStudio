@@ -1428,7 +1428,7 @@
     "gpu_report_engine_needs_accelerator": "Nécessite un GPU ({{needs}}) que cette machine n'a pas",
     "ray_title": "GPU distant",
     "ray_connection": "Connexion",
-    "ray_desc": "Exécute les moteurs TTS sélectionnés comme tâches sur un cluster Ray distant. Désactivé par défaut ; tous les moteurs tournent alors sur cet ordinateur.",
+    "ray_desc": "Exécute les moteurs sélectionnés comme tâches sur un cluster Ray distant. Désactivé par défaut ; tous les moteurs tournent alors sur cet ordinateur.",
     "ray_enabled": "Utiliser le cluster Ray",
     "ray_dashboard_url": "URL du tableau de bord",
     "ray_dashboard_url_hint": "Adresse du tableau de bord Ray (API Jobs).",
@@ -1505,7 +1505,7 @@
     "ray_jobs_title": "Tâches VoiceStudio récentes",
     "ray_jobs_hint": "Mise à jour toutes les 5 secondes tant que cette page est ouverte.",
     "ray_jobs_disabled": "Activez le cluster Ray pour voir les tâches.",
-    "ray_jobs_empty": "Aucune tâche pour l’instant.",
+    "ray_jobs_empty": "Aucune tâche en cours. Les tâches terminées sont supprimées automatiquement.",
     "ray_jobs_failed": "Impossible de charger les tâches.",
     "ray_job_status": "État",
     "ray_job_engine": "Moteur",
@@ -1550,7 +1550,11 @@
     "modal_app": "Nom de l’app Modal",
     "modal_app_hint": "App qui regroupe les sandboxes de VoiceStudio dans votre compte Modal.",
     "modal_volume": "Volume de cache (avancé)",
-    "modal_volume_hint": "Volume Modal qui conserve moteurs et modèles entre les tâches. Ne le modifiez que si vous partagez le compte."
+    "modal_volume_hint": "Volume Modal qui conserve moteurs et modèles entre les tâches. Ne le modifiez que si vous partagez le compte.",
+    "ray_use_token": "Authentification par jeton Ray",
+    "ray_use_token_hint": "Activez-la si le cluster exige un jeton d’authentification Ray (RAY_AUTH_MODE=token).",
+    "ray_use_cf": "Cloudflare Access",
+    "ray_use_cf_hint": "Activez-la si le tableau de bord est derrière Cloudflare Access ; saisissez l’ID client et le secret d’un jeton de service."
   },
   "gallery": {
     "title": "VoiceStudio Galerie",
@@ -2027,7 +2031,7 @@
     "save_bundle": "Enregistrer le paquet de diagnostic",
     "bundle_saved": "Paquet de diagnostic enregistré : {{filename}}",
     "title": "À propos",
-    "diagnostics": "Contrôle en amont du système",
+    "diagnostics": "Diagnostic",
     "model_credits": "Crédits des modèles",
     "model_credits_hint": "Crédits des modèles pris en charge. Les modèles et composants ont leurs propres conditions ; ces crédits ne confèrent aucun droit d’utilisation commerciale.",
     "model_terms": "Conditions du modèle",
@@ -3931,5 +3935,16 @@
       "remove_file": "Retirer",
       "no_matches": "Aucun résultat pour \"{{query}}\"."
     }
+  },
+  "guide": {
+    "title": "Guide d’utilisation",
+    "contents": "Sommaire",
+    "chapter": "Chapitre {{n}}",
+    "step": "Étape {{n}}",
+    "expected": "Résultat attendu",
+    "verify": "Vérifier le résultat",
+    "missing_shot": "Capture d’écran pas encore prise",
+    "enlarge": "Agrandir : {{caption}}",
+    "language_note": "Ce guide est disponible en anglais et en thaï ; il est affiché en anglais."
   }
 }

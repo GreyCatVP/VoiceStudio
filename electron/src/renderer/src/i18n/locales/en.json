@@ -1554,7 +1554,7 @@
     "gpu_report_engine_needs_accelerator": "Needs a GPU ({{needs}}) this machine does not have",
     "ray_title": "Remote GPU",
     "ray_connection": "Connection",
-    "ray_desc": "Run selected TTS engines as jobs on a remote Ray cluster. Off by default; when off, every engine runs on this computer.",
+    "ray_desc": "Run selected engines as jobs on a remote Ray cluster. Off by default; when off, every engine runs on this computer.",
     "ray_enabled": "Use Ray cluster",
     "ray_dashboard_url": "Dashboard URL",
     "ray_dashboard_url_hint": "Address of the Ray dashboard (Jobs API).",
@@ -1631,7 +1631,7 @@
     "ray_jobs_title": "Recent VoiceStudio jobs",
     "ray_jobs_hint": "Updates every 5 seconds while this page is open.",
     "ray_jobs_disabled": "Turn on the Ray cluster to see jobs.",
-    "ray_jobs_empty": "No jobs yet.",
+    "ray_jobs_empty": "No jobs right now. Finished jobs are removed automatically.",
     "ray_jobs_failed": "Could not load jobs.",
     "ray_job_status": "Status",
     "ray_job_engine": "Engine",
@@ -1676,7 +1676,11 @@
     "modal_app": "Modal app name",
     "modal_app_hint": "App that groups VoiceStudio's sandboxes in your Modal account.",
     "modal_volume": "Cache volume (advanced)",
-    "modal_volume_hint": "Modal volume that keeps engines and models between jobs. Change it only if you share the account."
+    "modal_volume_hint": "Modal volume that keeps engines and models between jobs. Change it only if you share the account.",
+    "ray_use_token": "Ray token authentication",
+    "ray_use_token_hint": "Turn on when the cluster requires a Ray auth token (RAY_AUTH_MODE=token).",
+    "ray_use_cf": "Cloudflare Access",
+    "ray_use_cf_hint": "Turn on when the dashboard is behind Cloudflare Access; enter a service token's client ID and secret."
   },
   "gallery": {
     "title": "VoiceStudio Gallery",
@@ -2140,7 +2144,7 @@
     "save_bundle": "Save diagnostic bundle",
     "bundle_saved": "Diagnostic bundle saved: {{filename}}",
     "title": "About",
-    "diagnostics": "System preflight",
+    "diagnostics": "Diagnostics",
     "model_credits": "Model credits",
     "model_credits_hint": "Credits for supported models. Model and component terms apply separately; these credits do not grant commercial rights.",
     "model_terms": "Model terms",
@@ -3929,5 +3933,16 @@
       "remove_file": "Remove",
       "no_matches": "No matches for \"{{query}}\"."
     }
+  },
+  "guide": {
+    "title": "User guide",
+    "contents": "Contents",
+    "chapter": "Chapter {{n}}",
+    "step": "Step {{n}}",
+    "expected": "Expected result",
+    "verify": "Check the result",
+    "missing_shot": "Screenshot not captured yet",
+    "enlarge": "Enlarge: {{caption}}",
+    "language_note": "This guide is available in English and Thai; it is shown in English."
   }
 }

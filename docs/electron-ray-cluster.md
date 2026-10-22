@@ -28,7 +28,7 @@ It is **off by default**. Engines you do not select keep running locally.
 - **Authentication on the cluster.** A dashboard without authentication lets
   anyone who can reach it run code on the cluster. Enable one of:
   - Ray token authentication (`RAY_AUTH_MODE=token` on the head), and paste the
-    token into Settings → Ray cluster; or
+    token into Settings → Remote GPU; or
   - Cloudflare Access in front of the dashboard, with a service token (client
     ID + secret) entered in the same page.
 
@@ -42,7 +42,7 @@ It is **off by default**. Engines you do not select keep running locally.
 
 ## Setup
 
-1. Settings → **Ray cluster**.
+1. Settings → **Remote GPU**, provider **Ray cluster**.
 2. Enter the dashboard URL (e.g. `https://ray.example.com`) and the token or
    Cloudflare Access credentials. Save.
 3. **Test connection**. This submits a small probe job and shows the Ray and

@@ -1426,7 +1426,7 @@
     "gpu_report_engine_needs_accelerator": "이 컴퓨터에 없는 GPU({{needs}})가 필요함",
     "ray_title": "원격 GPU",
     "ray_connection": "연결",
-    "ray_desc": "선택한 TTS 엔진을 원격 Ray 클러스터에서 작업으로 실행합니다. 기본값은 꺼짐이며, 꺼져 있으면 모든 엔진이 이 컴퓨터에서 실행됩니다.",
+    "ray_desc": "선택한 엔진을 원격 Ray 클러스터에서 작업으로 실행합니다. 기본값은 꺼짐이며, 꺼져 있으면 모든 엔진이 이 컴퓨터에서 실행됩니다.",
     "ray_enabled": "Ray 클러스터 사용",
     "ray_dashboard_url": "대시보드 URL",
     "ray_dashboard_url_hint": "Ray 대시보드(Jobs API) 주소입니다.",
@@ -1503,7 +1503,7 @@
     "ray_jobs_title": "최근 VoiceStudio 작업",
     "ray_jobs_hint": "이 페이지가 열려 있는 동안 5초마다 새로 고칩니다.",
     "ray_jobs_disabled": "작업을 보려면 Ray 클러스터를 켜세요.",
-    "ray_jobs_empty": "아직 작업이 없습니다.",
+    "ray_jobs_empty": "지금은 작업이 없습니다. 완료된 작업은 자동으로 삭제됩니다.",
     "ray_jobs_failed": "작업을 불러오지 못했습니다.",
     "ray_job_status": "상태",
     "ray_job_engine": "엔진",
@@ -1548,7 +1548,11 @@
     "modal_app": "Modal 앱 이름",
     "modal_app_hint": "Modal 계정에서 VoiceStudio 샌드박스를 묶는 앱입니다.",
     "modal_volume": "캐시 볼륨(고급)",
-    "modal_volume_hint": "작업 사이에 엔진과 모델을 보관하는 Modal 볼륨입니다. 계정을 공유하는 경우에만 변경하세요."
+    "modal_volume_hint": "작업 사이에 엔진과 모델을 보관하는 Modal 볼륨입니다. 계정을 공유하는 경우에만 변경하세요.",
+    "ray_use_token": "Ray 토큰 인증",
+    "ray_use_token_hint": "클러스터가 Ray 인증 토큰을 요구할 때 켭니다(RAY_AUTH_MODE=token).",
+    "ray_use_cf": "Cloudflare Access",
+    "ray_use_cf_hint": "대시보드가 Cloudflare Access 뒤에 있을 때 켜고 서비스 토큰의 클라이언트 ID와 시크릿을 입력합니다."
   },
   "gallery": {
     "title": "VoiceStudio 갤러리",
@@ -2025,7 +2029,7 @@
     "save_bundle": "진단 번들 저장",
     "bundle_saved": "진단 번들 저장됨: {{filename}}",
     "title": "정보",
-    "diagnostics": "시스템 프리플라이트",
+    "diagnostics": "진단",
     "model_credits": "모델 크레딧",
     "model_credits_hint": "지원 모델의 크레딧입니다. 모델과 구성 요소에는 각각 별도의 약관이 적용되며, 이 크레딧은 상업적 이용 권한을 부여하지 않습니다.",
     "model_terms": "모델 이용 약관",
@@ -3929,5 +3933,16 @@
       "remove_file": "제거",
       "no_matches": "\"{{query}}\"에 대한 결과가 없습니다."
     }
+  },
+  "guide": {
+    "title": "사용 가이드",
+    "contents": "목차",
+    "chapter": "{{n}}장",
+    "step": "{{n}}단계",
+    "expected": "예상 결과",
+    "verify": "결과 확인",
+    "missing_shot": "아직 스크린샷이 없습니다",
+    "enlarge": "크게 보기: {{caption}}",
+    "language_note": "이 가이드는 영어와 태국어로 제공되며 영어로 표시됩니다."
   }
 }

@@ -1426,7 +1426,7 @@
     "gpu_report_engine_needs_accelerator": "需要此电脑没有的 GPU（{{needs}}）",
     "ray_title": "远程 GPU",
     "ray_connection": "连接",
-    "ray_desc": "将选定的 TTS 引擎作为作业在远程 Ray 集群上运行。默认关闭；关闭时所有引擎都在本机运行。",
+    "ray_desc": "将选定的引擎作为作业在远程 Ray 集群上运行。默认关闭；关闭时所有引擎都在本机运行。",
     "ray_enabled": "使用 Ray 集群",
     "ray_dashboard_url": "仪表板 URL",
     "ray_dashboard_url_hint": "Ray 仪表板（Jobs API）的地址。",
@@ -1503,7 +1503,7 @@
     "ray_jobs_title": "最近的 VoiceStudio 作业",
     "ray_jobs_hint": "此页面打开时每 5 秒刷新一次。",
     "ray_jobs_disabled": "开启 Ray 集群以查看作业。",
-    "ray_jobs_empty": "暂无作业。",
+    "ray_jobs_empty": "当前没有作业。已完成的作业会自动删除。",
     "ray_jobs_failed": "无法加载作业。",
     "ray_job_status": "状态",
     "ray_job_engine": "引擎",
@@ -1548,7 +1548,11 @@
     "modal_app": "Modal 应用名称",
     "modal_app_hint": "在你的 Modal 账户中归组 VoiceStudio 沙箱的应用。",
     "modal_volume": "缓存存储卷（高级）",
-    "modal_volume_hint": "在任务之间保留引擎和模型的 Modal 存储卷。仅在共享账户时修改。"
+    "modal_volume_hint": "在任务之间保留引擎和模型的 Modal 存储卷。仅在共享账户时修改。",
+    "ray_use_token": "Ray 令牌认证",
+    "ray_use_token_hint": "集群要求 Ray 认证令牌时开启（RAY_AUTH_MODE=token）。",
+    "ray_use_cf": "Cloudflare Access",
+    "ray_use_cf_hint": "控制台位于 Cloudflare Access 之后时开启，并填写服务令牌的客户端 ID 和密钥。"
   },
   "gallery": {
     "title": "VoiceStudio 音色库",
@@ -2025,7 +2029,7 @@
     "save_bundle": "保存诊断包",
     "bundle_saved": "诊断包已保存：{{filename}}",
     "title": "关于",
-    "diagnostics": "系统预检",
+    "diagnostics": "诊断",
     "model_credits": "模型致谢",
     "model_credits_hint": "受支持模型的来源与作者。模型和组件分别适用各自的条款；这些致谢不授予商业使用权。",
     "model_terms": "模型条款",
@@ -3929,5 +3933,16 @@
       "remove_file": "移除",
       "no_matches": "没有与“{{query}}”匹配的结果。"
     }
+  },
+  "guide": {
+    "title": "使用指南",
+    "contents": "目录",
+    "chapter": "第 {{n}} 章",
+    "step": "第 {{n}} 步",
+    "expected": "预期结果",
+    "verify": "检查结果",
+    "missing_shot": "尚未截图",
+    "enlarge": "放大：{{caption}}",
+    "language_note": "本指南提供英文和泰文版本，当前以英文显示。"
   }
 }

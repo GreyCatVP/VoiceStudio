@@ -1426,7 +1426,7 @@
     "gpu_report_engine_needs_accelerator": "Kräver en GPU ({{needs}}) som den här datorn inte har",
     "ray_title": "Fjärr-GPU",
     "ray_connection": "Anslutning",
-    "ray_desc": "Kör valda TTS-motorer som jobb på ett fjärranslutet Ray-kluster. Av som standard; då körs alla motorer på den här datorn.",
+    "ray_desc": "Kör valda motorer som jobb på ett fjärranslutet Ray-kluster. Av som standard; då körs alla motorer på den här datorn.",
     "ray_enabled": "Använd Ray-kluster",
     "ray_dashboard_url": "Dashboard-URL",
     "ray_dashboard_url_hint": "Adressen till Ray-dashboarden (Jobs-API).",
@@ -1503,7 +1503,7 @@
     "ray_jobs_title": "Senaste VoiceStudio-jobb",
     "ray_jobs_hint": "Uppdateras var 5:e sekund medan sidan är öppen.",
     "ray_jobs_disabled": "Slå på Ray-klustret för att se jobb.",
-    "ray_jobs_empty": "Inga jobb ännu.",
+    "ray_jobs_empty": "Inga jobb just nu. Färdiga jobb tas bort automatiskt.",
     "ray_jobs_failed": "Det gick inte att läsa in jobben.",
     "ray_job_status": "Status",
     "ray_job_engine": "Motor",
@@ -1548,7 +1548,11 @@
     "modal_app": "Namn på Modal-appen",
     "modal_app_hint": "App som grupperar VoiceStudios sandlådor i ditt Modal-konto.",
     "modal_volume": "Cachevolym (avancerat)",
-    "modal_volume_hint": "Modal-volym som sparar motorer och modeller mellan jobb. Ändra bara om du delar kontot."
+    "modal_volume_hint": "Modal-volym som sparar motorer och modeller mellan jobb. Ändra bara om du delar kontot.",
+    "ray_use_token": "Autentisering med Ray-token",
+    "ray_use_token_hint": "Slå på när klustret kräver en Ray-autentiseringstoken (RAY_AUTH_MODE=token).",
+    "ray_use_cf": "Cloudflare Access",
+    "ray_use_cf_hint": "Slå på när instrumentpanelen ligger bakom Cloudflare Access; ange klient-ID och hemlighet för en tjänsttoken."
   },
   "gallery": {
     "title": "VoiceStudio Galleri",
@@ -2025,7 +2029,7 @@
     "save_bundle": "Spara diagnostikpaket",
     "bundle_saved": "Diagnostikpaket sparat: {{filename}}",
     "title": "Om",
-    "diagnostics": "System preflight",
+    "diagnostics": "Diagnostik",
     "model_credits": "Modellernas upphovspersoner",
     "model_credits_hint": "Upphovsuppgifter för modeller som stöds. Modeller och komponenter har separata villkor; dessa uppgifter ger inga rättigheter till kommersiell användning.",
     "model_terms": "Modellvillkor",
@@ -3929,5 +3933,16 @@
       "remove_file": "Ta bort",
       "no_matches": "Inga träffar för \"{{query}}\"."
     }
+  },
+  "guide": {
+    "title": "Användarguide",
+    "contents": "Innehåll",
+    "chapter": "Kapitel {{n}}",
+    "step": "Steg {{n}}",
+    "expected": "Förväntat resultat",
+    "verify": "Kontrollera resultatet",
+    "missing_shot": "Skärmbild saknas ännu",
+    "enlarge": "Förstora: {{caption}}",
+    "language_note": "Guiden finns på engelska och thailändska; den visas på engelska."
   }
 }

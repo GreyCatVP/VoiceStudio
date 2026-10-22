@@ -103,7 +103,7 @@ receive a stable `docs_topic` and a safe fallback message, never private excepti
 
 | Topic | Recovery |
 | --- | --- |
-| `GPU_ARCH_UNSUPPORTED` | The installed PyTorch build cannot run kernels on this GPU. Select CPU in Settings → Performance & Device, or use a PyTorch build compatible with the GPU. |
+| `GPU_ARCH_UNSUPPORTED` | The installed PyTorch build cannot run kernels on this GPU. Select CPU in Settings → Compute device, or use a PyTorch build compatible with the GPU. |
 | `HOST_MEMORY_EXHAUSTED` | The machine ran out of system memory, so the engine could not finish. Close other memory-heavy apps, unload unused models with **Flush models**, render a shorter passage, or select a lighter TTS engine. On Windows, enlarging the page file also helps. A CPU-only machine has no GPU memory to free — this is RAM, not VRAM. |
 | `WINDOWS_APP_CONTROL_BLOCKED` | Windows application control blocked a required file. Ask the administrator to allow the trusted VoiceStudio runtime, then restart the app. |
 | `AUDIO_IO_FAILED` | Check the audio format, free disk space, and file permissions; review the folder in Settings → Storage. |
@@ -839,7 +839,7 @@ same as it always has (a quick way to lower the watchdog everywhere with one
 var); it only stops doing so once you also set an explicit
 `OMNIVOICE_CPU_GENERATE_TIMEOUT_S`, which then takes precedence for CPU jobs.
 
-Both budgets are also editable from **Settings → Performance & Device →
+Both budgets are also editable from **Settings → Compute device →
 Compute-time budget** — no env var or config file needed. A value saved there
 persists across restarts but only takes effect on the *next* backend restart
 (the running process already read the old value at startup), which the panel

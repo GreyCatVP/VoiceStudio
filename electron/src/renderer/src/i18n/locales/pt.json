@@ -1428,7 +1428,7 @@
     "gpu_report_engine_needs_accelerator": "Precisa de uma GPU ({{needs}}) que esta máquina não tem",
     "ray_title": "GPU remota",
     "ray_connection": "Conexão",
-    "ray_desc": "Executa os motores TTS selecionados como jobs num cluster Ray remoto. Desativado por padrão; assim, todos os motores rodam neste computador.",
+    "ray_desc": "Executa os motores selecionados como jobs num cluster Ray remoto. Desativado por padrão; assim, todos os motores rodam neste computador.",
     "ray_enabled": "Usar cluster Ray",
     "ray_dashboard_url": "URL do painel",
     "ray_dashboard_url_hint": "Endereço do painel do Ray (API de Jobs).",
@@ -1505,7 +1505,7 @@
     "ray_jobs_title": "Jobs recentes do VoiceStudio",
     "ray_jobs_hint": "Atualiza a cada 5 segundos enquanto esta página estiver aberta.",
     "ray_jobs_disabled": "Ative o cluster Ray para ver os jobs.",
-    "ray_jobs_empty": "Nenhum job ainda.",
+    "ray_jobs_empty": "Nenhum job no momento. Jobs concluídos são removidos automaticamente.",
     "ray_jobs_failed": "Não foi possível carregar os jobs.",
     "ray_job_status": "Estado",
     "ray_job_engine": "Motor",
@@ -1550,7 +1550,11 @@
     "modal_app": "Nome do app do Modal",
     "modal_app_hint": "App que agrupa as sandboxes do VoiceStudio na sua conta Modal.",
     "modal_volume": "Volume de cache (avançado)",
-    "modal_volume_hint": "Volume do Modal que mantém motores e modelos entre tarefas. Altere apenas se compartilhar a conta."
+    "modal_volume_hint": "Volume do Modal que mantém motores e modelos entre tarefas. Altere apenas se compartilhar a conta.",
+    "ray_use_token": "Autenticação por token do Ray",
+    "ray_use_token_hint": "Ative quando o cluster exigir um token de autenticação do Ray (RAY_AUTH_MODE=token).",
+    "ray_use_cf": "Cloudflare Access",
+    "ray_use_cf_hint": "Ative quando o painel estiver atrás do Cloudflare Access; informe o client ID e o secret de um token de serviço."
   },
   "gallery": {
     "title": "VoiceStudio Galeria",
@@ -2027,7 +2031,7 @@
     "save_bundle": "Salvar pacote de diagnóstico",
     "bundle_saved": "Pacote de diagnóstico salvo: {{filename}}",
     "title": "Sobre",
-    "diagnostics": "Comprovação do sistema",
+    "diagnostics": "Diagnóstico",
     "model_credits": "Créditos dos modelos",
     "model_credits_hint": "Créditos dos modelos compatíveis. Os modelos e componentes têm condições próprias; estes créditos não concedem direitos de uso comercial.",
     "model_terms": "Termos do modelo",
@@ -3931,5 +3935,16 @@
       "remove_file": "Remover",
       "no_matches": "Nenhum resultado para \"{{query}}\"."
     }
+  },
+  "guide": {
+    "title": "Guia de uso",
+    "contents": "Sumário",
+    "chapter": "Capítulo {{n}}",
+    "step": "Passo {{n}}",
+    "expected": "Resultado esperado",
+    "verify": "Confira o resultado",
+    "missing_shot": "Captura de tela ainda não feita",
+    "enlarge": "Ampliar: {{caption}}",
+    "language_note": "Este guia está disponível em inglês e tailandês; é exibido em inglês."
   }
 }

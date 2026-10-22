@@ -1426,7 +1426,7 @@
     "gpu_report_engine_needs_accelerator": "Cần GPU ({{needs}}) mà máy này không có",
     "ray_title": "GPU từ xa",
     "ray_connection": "Kết nối",
-    "ray_desc": "Chạy các engine TTS đã chọn dưới dạng job trên một cụm Ray từ xa. Mặc định tắt; khi tắt, mọi engine chạy trên máy tính này.",
+    "ray_desc": "Chạy các engine đã chọn dưới dạng job trên một cụm Ray từ xa. Mặc định tắt; khi tắt, mọi engine chạy trên máy tính này.",
     "ray_enabled": "Dùng cụm Ray",
     "ray_dashboard_url": "URL bảng điều khiển",
     "ray_dashboard_url_hint": "Địa chỉ bảng điều khiển Ray (Jobs API).",
@@ -1503,7 +1503,7 @@
     "ray_jobs_title": "Job VoiceStudio gần đây",
     "ray_jobs_hint": "Cập nhật mỗi 5 giây khi trang này đang mở.",
     "ray_jobs_disabled": "Bật cụm Ray để xem các job.",
-    "ray_jobs_empty": "Chưa có job nào.",
+    "ray_jobs_empty": "Hiện không có job nào. Job đã xong được tự động xóa.",
     "ray_jobs_failed": "Không thể tải các job.",
     "ray_job_status": "Trạng thái",
     "ray_job_engine": "Engine",
@@ -1548,7 +1548,11 @@
     "modal_app": "Tên ứng dụng Modal",
     "modal_app_hint": "Ứng dụng nhóm các sandbox của VoiceStudio trong tài khoản Modal của bạn.",
     "modal_volume": "Volume bộ nhớ đệm (nâng cao)",
-    "modal_volume_hint": "Volume Modal giữ engine và mô hình giữa các tác vụ. Chỉ đổi nếu bạn dùng chung tài khoản."
+    "modal_volume_hint": "Volume Modal giữ engine và mô hình giữa các tác vụ. Chỉ đổi nếu bạn dùng chung tài khoản.",
+    "ray_use_token": "Xác thực bằng token Ray",
+    "ray_use_token_hint": "Bật khi cụm yêu cầu token xác thực Ray (RAY_AUTH_MODE=token).",
+    "ray_use_cf": "Cloudflare Access",
+    "ray_use_cf_hint": "Bật khi bảng điều khiển nằm sau Cloudflare Access; nhập client ID và secret của service token."
   },
   "gallery": {
     "title": "VoiceStudio Thư viện ảnh",
@@ -2025,7 +2029,7 @@
     "save_bundle": "Lưu gói chẩn đoán",
     "bundle_saved": "Đã lưu gói chẩn đoán: {{filename}}",
     "title": "Giới thiệu",
-    "diagnostics": "Đèn chiếu trước hệ thống",
+    "diagnostics": "Chẩn đoán",
     "model_credits": "Ghi công mô hình",
     "model_credits_hint": "Ghi công các mô hình được hỗ trợ. Mô hình và thành phần có điều khoản riêng; phần ghi công này không cấp quyền sử dụng thương mại.",
     "model_terms": "Điều khoản mô hình",
@@ -3929,5 +3933,16 @@
       "remove_file": "Xóa",
       "no_matches": "Không có kết quả cho \"{{query}}\"."
     }
+  },
+  "guide": {
+    "title": "Hướng dẫn sử dụng",
+    "contents": "Mục lục",
+    "chapter": "Chương {{n}}",
+    "step": "Bước {{n}}",
+    "expected": "Kết quả mong đợi",
+    "verify": "Kiểm tra kết quả",
+    "missing_shot": "Chưa có ảnh chụp màn hình",
+    "enlarge": "Phóng to: {{caption}}",
+    "language_note": "Hướng dẫn này có bằng tiếng Anh và tiếng Thái; đang hiển thị bằng tiếng Anh."
   }
 }

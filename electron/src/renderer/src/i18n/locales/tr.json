@@ -1426,7 +1426,7 @@
     "gpu_report_engine_needs_accelerator": "Bu bilgisayarda olmayan bir GPU ({{needs}}) gerekir",
     "ray_title": "Uzak GPU",
     "ray_connection": "Bağlantı",
-    "ray_desc": "Seçilen TTS motorlarını uzak bir Ray kümesinde iş olarak çalıştırın. Varsayılan olarak kapalıdır; kapalıyken tüm motorlar bu bilgisayarda çalışır.",
+    "ray_desc": "Seçilen motorları uzak bir Ray kümesinde iş olarak çalıştırın. Varsayılan olarak kapalıdır; kapalıyken tüm motorlar bu bilgisayarda çalışır.",
     "ray_enabled": "Ray kümesini kullan",
     "ray_dashboard_url": "Pano URL’si",
     "ray_dashboard_url_hint": "Ray panosunun adresi (Jobs API).",
@@ -1503,7 +1503,7 @@
     "ray_jobs_title": "Son VoiceStudio işleri",
     "ray_jobs_hint": "Bu sayfa açıkken her 5 saniyede bir güncellenir.",
     "ray_jobs_disabled": "İşleri görmek için Ray kümesini açın.",
-    "ray_jobs_empty": "Henüz iş yok.",
+    "ray_jobs_empty": "Şu anda iş yok. Tamamlanan işler otomatik olarak kaldırılır.",
     "ray_jobs_failed": "İşler yüklenemedi.",
     "ray_job_status": "Durum",
     "ray_job_engine": "Motor",
@@ -1548,7 +1548,11 @@
     "modal_app": "Modal uygulama adı",
     "modal_app_hint": "VoiceStudio korumalı alanlarını Modal hesabınızda gruplayan uygulama.",
     "modal_volume": "Önbellek birimi (gelişmiş)",
-    "modal_volume_hint": "Motorları ve modelleri işler arasında saklayan Modal birimi. Yalnızca hesabı paylaşıyorsanız değiştirin."
+    "modal_volume_hint": "Motorları ve modelleri işler arasında saklayan Modal birimi. Yalnızca hesabı paylaşıyorsanız değiştirin.",
+    "ray_use_token": "Ray belirteciyle kimlik doğrulama",
+    "ray_use_token_hint": "Küme bir Ray kimlik doğrulama belirteci istiyorsa açın (RAY_AUTH_MODE=token).",
+    "ray_use_cf": "Cloudflare Access",
+    "ray_use_cf_hint": "Pano Cloudflare Access arkasındaysa açın; bir hizmet belirtecinin istemci kimliğini ve sırrını girin."
   },
   "gallery": {
     "title": "VoiceStudio Galeri",
@@ -2025,7 +2029,7 @@
     "save_bundle": "Tanılama paketini kaydet",
     "bundle_saved": "Tanılama paketi kaydedildi: {{filename}}",
     "title": "Hakkında",
-    "diagnostics": "Sistem ön kontrolü",
+    "diagnostics": "Tanılama",
     "model_credits": "Model katkıları",
     "model_credits_hint": "Desteklenen modellerin katkı bilgileri. Model ve bileşen koşulları ayrı ayrı geçerlidir; bu bilgiler ticari kullanım hakkı vermez.",
     "model_terms": "Model koşulları",
@@ -3929,5 +3933,16 @@
       "remove_file": "Kaldır",
       "no_matches": "\"{{query}}\" için eşleşme yok."
     }
+  },
+  "guide": {
+    "title": "Kullanım kılavuzu",
+    "contents": "İçindekiler",
+    "chapter": "Bölüm {{n}}",
+    "step": "Adım {{n}}",
+    "expected": "Beklenen sonuç",
+    "verify": "Sonucu kontrol edin",
+    "missing_shot": "Ekran görüntüsü henüz alınmadı",
+    "enlarge": "Büyüt: {{caption}}",
+    "language_note": "Bu kılavuz İngilizce ve Tayca olarak mevcuttur; İngilizce gösterilmektedir."
   }
 }

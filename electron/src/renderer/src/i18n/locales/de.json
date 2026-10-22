@@ -1426,7 +1426,7 @@
     "gpu_report_engine_needs_accelerator": "Benötigt eine GPU ({{needs}}), die dieser Rechner nicht hat",
     "ray_title": "Entfernte GPU",
     "ray_connection": "Verbindung",
-    "ray_desc": "Ausgewählte TTS-Engines als Jobs auf einem entfernten Ray-Cluster ausführen. Standardmäßig aus; dann laufen alle Engines auf diesem Computer.",
+    "ray_desc": "Ausgewählte Engines als Jobs auf einem entfernten Ray-Cluster ausführen. Standardmäßig aus; dann laufen alle Engines auf diesem Computer.",
     "ray_enabled": "Ray-Cluster verwenden",
     "ray_dashboard_url": "Dashboard-URL",
     "ray_dashboard_url_hint": "Adresse des Ray-Dashboards (Jobs-API).",
@@ -1503,7 +1503,7 @@
     "ray_jobs_title": "Letzte VoiceStudio-Jobs",
     "ray_jobs_hint": "Wird alle 5 Sekunden aktualisiert, solange diese Seite offen ist.",
     "ray_jobs_disabled": "Schalte den Ray-Cluster ein, um Jobs zu sehen.",
-    "ray_jobs_empty": "Noch keine Jobs.",
+    "ray_jobs_empty": "Derzeit keine Jobs. Abgeschlossene Jobs werden automatisch entfernt.",
     "ray_jobs_failed": "Jobs konnten nicht geladen werden.",
     "ray_job_status": "Status",
     "ray_job_engine": "Engine",
@@ -1548,7 +1548,11 @@
     "modal_app": "Name der Modal-App",
     "modal_app_hint": "App, die die Sandboxes von VoiceStudio in Ihrem Modal-Konto gruppiert.",
     "modal_volume": "Cache-Volume (erweitert)",
-    "modal_volume_hint": "Modal-Volume, das Engines und Modelle zwischen Aufträgen behält. Nur ändern, wenn Sie das Konto teilen."
+    "modal_volume_hint": "Modal-Volume, das Engines und Modelle zwischen Aufträgen behält. Nur ändern, wenn Sie das Konto teilen.",
+    "ray_use_token": "Authentifizierung per Ray-Token",
+    "ray_use_token_hint": "Einschalten, wenn der Cluster ein Ray-Auth-Token verlangt (RAY_AUTH_MODE=token).",
+    "ray_use_cf": "Cloudflare Access",
+    "ray_use_cf_hint": "Einschalten, wenn das Dashboard hinter Cloudflare Access liegt; Client-ID und Secret eines Service-Tokens eingeben."
   },
   "gallery": {
     "title": "VoiceStudio Galerie",
@@ -2025,7 +2029,7 @@
     "save_bundle": "Diagnosepaket speichern",
     "bundle_saved": "Diagnosepaket gespeichert: {{filename}}",
     "title": "Über",
-    "diagnostics": "System-Preflight",
+    "diagnostics": "Diagnose",
     "model_credits": "Modellnachweise",
     "model_credits_hint": "Nachweise für unterstützte Modelle. Für Modelle und Komponenten gelten eigene Bedingungen; diese Nachweise gewähren keine kommerziellen Nutzungsrechte.",
     "model_terms": "Modellbedingungen",
@@ -3929,5 +3933,16 @@
       "remove_file": "Entfernen",
       "no_matches": "Keine Treffer für \"{{query}}\"."
     }
+  },
+  "guide": {
+    "title": "Benutzerhandbuch",
+    "contents": "Inhalt",
+    "chapter": "Kapitel {{n}}",
+    "step": "Schritt {{n}}",
+    "expected": "Erwartetes Ergebnis",
+    "verify": "Ergebnis prüfen",
+    "missing_shot": "Screenshot noch nicht erstellt",
+    "enlarge": "Vergrößern: {{caption}}",
+    "language_note": "Dieses Handbuch gibt es auf Englisch und Thai; es wird auf Englisch angezeigt."
   }
 }

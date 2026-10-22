@@ -1430,7 +1430,7 @@
     "gpu_report_engine_needs_accelerator": "Wymaga GPU ({{needs}}), którego ten komputer nie ma",
     "ray_title": "Zdalny GPU",
     "ray_connection": "Połączenie",
-    "ray_desc": "Uruchamiaj wybrane silniki TTS jako zadania na zdalnym klastrze Ray. Domyślnie wyłączone; wtedy wszystkie silniki działają na tym komputerze.",
+    "ray_desc": "Uruchamiaj wybrane silniki jako zadania na zdalnym klastrze Ray. Domyślnie wyłączone; wtedy wszystkie silniki działają na tym komputerze.",
     "ray_enabled": "Używaj klastra Ray",
     "ray_dashboard_url": "Adres URL panelu",
     "ray_dashboard_url_hint": "Adres panelu Ray (Jobs API).",
@@ -1507,7 +1507,7 @@
     "ray_jobs_title": "Ostatnie zadania VoiceStudio",
     "ray_jobs_hint": "Odświeżane co 5 sekund, gdy ta strona jest otwarta.",
     "ray_jobs_disabled": "Włącz klaster Ray, aby zobaczyć zadania.",
-    "ray_jobs_empty": "Brak zadań.",
+    "ray_jobs_empty": "Brak zadań. Ukończone zadania są usuwane automatycznie.",
     "ray_jobs_failed": "Nie udało się wczytać zadań.",
     "ray_job_status": "Stan",
     "ray_job_engine": "Silnik",
@@ -1552,7 +1552,11 @@
     "modal_app": "Nazwa aplikacji Modal",
     "modal_app_hint": "Aplikacja grupująca piaskownice VoiceStudio na Twoim koncie Modal.",
     "modal_volume": "Wolumin pamięci podręcznej (zaawansowane)",
-    "modal_volume_hint": "Wolumin Modal przechowujący silniki i modele między zadaniami. Zmień go tylko, jeśli współdzielisz konto."
+    "modal_volume_hint": "Wolumin Modal przechowujący silniki i modele między zadaniami. Zmień go tylko, jeśli współdzielisz konto.",
+    "ray_use_token": "Uwierzytelnianie tokenem Ray",
+    "ray_use_token_hint": "Włącz, gdy klaster wymaga tokenu uwierzytelniania Ray (RAY_AUTH_MODE=token).",
+    "ray_use_cf": "Cloudflare Access",
+    "ray_use_cf_hint": "Włącz, gdy panel jest za Cloudflare Access; podaj client ID i secret tokenu usługi."
   },
   "gallery": {
     "title": "VoiceStudio Galeria",
@@ -2029,7 +2033,7 @@
     "save_bundle": "Zapisz pakiet diagnostyczny",
     "bundle_saved": "Pakiet diagnostyczny zapisany: {{filename}}",
     "title": "O programie",
-    "diagnostics": "Wstępna inspekcja systemu",
+    "diagnostics": "Diagnostyka",
     "model_credits": "Autorzy modeli",
     "model_credits_hint": "Informacje o autorach obsługiwanych modeli. Modele i komponenty podlegają odrębnym warunkom; te informacje nie przyznają praw do użytku komercyjnego.",
     "model_terms": "Warunki modelu",
@@ -3933,5 +3937,16 @@
       "remove_file": "Usuń",
       "no_matches": "Brak wyników dla \"{{query}}\"."
     }
+  },
+  "guide": {
+    "title": "Instrukcja obsługi",
+    "contents": "Spis treści",
+    "chapter": "Rozdział {{n}}",
+    "step": "Krok {{n}}",
+    "expected": "Oczekiwany wynik",
+    "verify": "Sprawdź wynik",
+    "missing_shot": "Zrzut ekranu jeszcze nie wykonany",
+    "enlarge": "Powiększ: {{caption}}",
+    "language_note": "Ta instrukcja jest dostępna po angielsku i tajsku; wyświetlana jest po angielsku."
   }
 }

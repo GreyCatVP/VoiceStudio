@@ -35,7 +35,7 @@ weights still download on first synthesis.
 The first synthesis downloads the weights, which takes a while on a slow
 connection. The generation stays alive while the download makes progress;
 if a stalled download runs out of time, raise the compute-time budget in
-**Settings → Performance & Device** and try again.
+**Settings → Compute device** and try again.
 
 ## Install
 

@@ -1426,7 +1426,7 @@
     "gpu_report_engine_needs_accelerator": "ऐसे GPU ({{needs}}) की ज़रूरत है जो इस मशीन में नहीं है",
     "ray_title": "रिमोट GPU",
     "ray_connection": "कनेक्शन",
-    "ray_desc": "चुने गए TTS इंजनों को रिमोट Ray क्लस्टर पर जॉब के रूप में चलाएँ। डिफ़ॉल्ट रूप से बंद; बंद होने पर सभी इंजन इसी कंप्यूटर पर चलते हैं।",
+    "ray_desc": "चुने गए इंजनों को रिमोट Ray क्लस्टर पर जॉब के रूप में चलाएँ। डिफ़ॉल्ट रूप से बंद; बंद होने पर सभी इंजन इसी कंप्यूटर पर चलते हैं।",
     "ray_enabled": "Ray क्लस्टर का उपयोग करें",
     "ray_dashboard_url": "डैशबोर्ड URL",
     "ray_dashboard_url_hint": "Ray डैशबोर्ड (Jobs API) का पता।",
@@ -1503,7 +1503,7 @@
     "ray_jobs_title": "हाल के VoiceStudio जॉब",
     "ray_jobs_hint": "यह पेज खुला रहने तक हर 5 सेकंड में अपडेट होता है।",
     "ray_jobs_disabled": "जॉब देखने के लिए Ray क्लस्टर चालू करें।",
-    "ray_jobs_empty": "अभी कोई जॉब नहीं।",
+    "ray_jobs_empty": "अभी कोई जॉब नहीं है। पूरे हुए जॉब अपने-आप हटा दिए जाते हैं।",
     "ray_jobs_failed": "जॉब लोड नहीं हो सके।",
     "ray_job_status": "स्थिति",
     "ray_job_engine": "इंजन",
@@ -1548,7 +1548,11 @@
     "modal_app": "Modal ऐप का नाम",
     "modal_app_hint": "वह ऐप जो आपके Modal खाते में VoiceStudio के सैंडबॉक्स को समूहित करता है।",
     "modal_volume": "कैश वॉल्यूम (उन्नत)",
-    "modal_volume_hint": "Modal वॉल्यूम जो जॉब्स के बीच इंजन और मॉडल रखता है। केवल तभी बदलें जब आप खाता साझा करते हों।"
+    "modal_volume_hint": "Modal वॉल्यूम जो जॉब्स के बीच इंजन और मॉडल रखता है। केवल तभी बदलें जब आप खाता साझा करते हों।",
+    "ray_use_token": "Ray टोकन प्रमाणीकरण",
+    "ray_use_token_hint": "चालू करें जब क्लस्टर को Ray auth टोकन चाहिए (RAY_AUTH_MODE=token)।",
+    "ray_use_cf": "Cloudflare Access",
+    "ray_use_cf_hint": "चालू करें जब डैशबोर्ड Cloudflare Access के पीछे हो; सर्विस टोकन का client ID और secret डालें।"
   },
   "gallery": {
     "title": "VoiceStudio गैलरी",
@@ -2025,7 +2029,7 @@
     "save_bundle": "डायग्नोस्टिक बंडल सहेजें",
     "bundle_saved": "डायग्नोस्टिक बंडल सहेजा गया: {{filename}}",
     "title": "विवरण",
-    "diagnostics": "सिस्टम प्रीफ्लाइट",
+    "diagnostics": "निदान",
     "model_credits": "मॉडल का श्रेय",
     "model_credits_hint": "समर्थित मॉडलों का श्रेय। मॉडल और घटकों की शर्तें अलग-अलग लागू होती हैं; यह श्रेय व्यावसायिक उपयोग के अधिकार नहीं देता।",
     "model_terms": "मॉडल की शर्तें",
@@ -3929,5 +3933,16 @@
       "remove_file": "हटाएँ",
       "no_matches": "\"{{query}}\" के लिए कोई परिणाम नहीं।"
     }
+  },
+  "guide": {
+    "title": "उपयोग गाइड",
+    "contents": "विषय-सूची",
+    "chapter": "अध्याय {{n}}",
+    "step": "चरण {{n}}",
+    "expected": "अपेक्षित परिणाम",
+    "verify": "परिणाम जाँचें",
+    "missing_shot": "स्क्रीनशॉट अभी लिया नहीं गया",
+    "enlarge": "बड़ा करें: {{caption}}",
+    "language_note": "यह गाइड अंग्रेज़ी और थाई में उपलब्ध है; इसे अंग्रेज़ी में दिखाया गया है।"
   }
 }

@@ -1426,7 +1426,7 @@
     "gpu_report_engine_needs_accelerator": "Memerlukan GPU ({{needs}}) yang tidak dimiliki komputer ini",
     "ray_title": "GPU jarak jauh",
     "ray_connection": "Koneksi",
-    "ray_desc": "Jalankan mesin TTS pilihan sebagai job di kluster Ray jarak jauh. Nonaktif secara bawaan; saat nonaktif, semua mesin berjalan di komputer ini.",
+    "ray_desc": "Jalankan mesin pilihan sebagai job di kluster Ray jarak jauh. Nonaktif secara bawaan; saat nonaktif, semua mesin berjalan di komputer ini.",
     "ray_enabled": "Gunakan kluster Ray",
     "ray_dashboard_url": "URL dasbor",
     "ray_dashboard_url_hint": "Alamat dasbor Ray (Jobs API).",
@@ -1503,7 +1503,7 @@
     "ray_jobs_title": "Job VoiceStudio terbaru",
     "ray_jobs_hint": "Diperbarui setiap 5 detik selama halaman ini terbuka.",
     "ray_jobs_disabled": "Aktifkan kluster Ray untuk melihat job.",
-    "ray_jobs_empty": "Belum ada job.",
+    "ray_jobs_empty": "Tidak ada job saat ini. Job yang selesai dihapus otomatis.",
     "ray_jobs_failed": "Tidak dapat memuat job.",
     "ray_job_status": "Status",
     "ray_job_engine": "Mesin",
@@ -1548,7 +1548,11 @@
     "modal_app": "Nama aplikasi Modal",
     "modal_app_hint": "Aplikasi yang mengelompokkan sandbox VoiceStudio di akun Modal Anda.",
     "modal_volume": "Volume cache (lanjutan)",
-    "modal_volume_hint": "Volume Modal yang menyimpan mesin dan model antarpekerjaan. Ubah hanya jika Anda berbagi akun."
+    "modal_volume_hint": "Volume Modal yang menyimpan mesin dan model antarpekerjaan. Ubah hanya jika Anda berbagi akun.",
+    "ray_use_token": "Autentikasi token Ray",
+    "ray_use_token_hint": "Aktifkan bila kluster mewajibkan token autentikasi Ray (RAY_AUTH_MODE=token).",
+    "ray_use_cf": "Cloudflare Access",
+    "ray_use_cf_hint": "Aktifkan bila dasbor berada di balik Cloudflare Access; masukkan client ID dan secret token layanan."
   },
   "gallery": {
     "title": "VoiceStudio Galeri",
@@ -2025,7 +2029,7 @@
     "save_bundle": "Simpan bundel diagnostik",
     "bundle_saved": "Bundel diagnostik tersimpan: {{filename}}",
     "title": "Tentang",
-    "diagnostics": "Pra-penerbangan sistem",
+    "diagnostics": "Diagnostik",
     "model_credits": "Kredit model",
     "model_credits_hint": "Kredit untuk model yang didukung. Ketentuan model dan komponen berlaku secara terpisah; kredit ini tidak memberikan hak penggunaan komersial.",
     "model_terms": "Ketentuan model",
@@ -3929,5 +3933,16 @@
       "remove_file": "Hapus",
       "no_matches": "Tidak ada hasil untuk \"{{query}}\"."
     }
+  },
+  "guide": {
+    "title": "Panduan pengguna",
+    "contents": "Daftar isi",
+    "chapter": "Bab {{n}}",
+    "step": "Langkah {{n}}",
+    "expected": "Hasil yang diharapkan",
+    "verify": "Periksa hasilnya",
+    "missing_shot": "Tangkapan layar belum dibuat",
+    "enlarge": "Perbesar: {{caption}}",
+    "language_note": "Panduan ini tersedia dalam bahasa Inggris dan Thai; ditampilkan dalam bahasa Inggris."
   }
 }

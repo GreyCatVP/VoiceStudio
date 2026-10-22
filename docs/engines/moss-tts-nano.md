@@ -82,7 +82,7 @@ offered on Intel Macs, where the PyTorch version it pins has no build.
 The first synthesis downloads the model and its audio tokenizer. The
 generation stays alive while the download makes progress; if a stalled
 download runs out of time, raise the compute-time budget in
-**Settings → Performance & Device** and try again.
+**Settings → Compute device** and try again.
 
 ## Troubleshooting
 

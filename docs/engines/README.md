@@ -12,7 +12,7 @@ paths or credentials, so it is never shown verbatim — and the page below is
 where the actual requirements and setup steps live.
 
 The compute device (CUDA/ROCm/MPS/CPU) is auto-detected; pin it under
-**Settings → Performance & Device** (or `OMNIVOICE_DEVICE`) if auto-detect
+**Settings → Compute device** (or `OMNIVOICE_DEVICE`) if auto-detect
 picks wrong — see [performance](../performance.md).
 
 Measured speed/VRAM numbers live in [benchmarks](../benchmarks.md); what each

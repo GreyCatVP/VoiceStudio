@@ -1428,7 +1428,7 @@
     "gpu_report_engine_needs_accelerator": "Richiede una GPU ({{needs}}) che questo computer non ha",
     "ray_title": "GPU remota",
     "ray_connection": "Connessione",
-    "ray_desc": "Esegui i motori TTS selezionati come job su un cluster Ray remoto. Disattivato per impostazione predefinita; in tal caso tutti i motori girano su questo computer.",
+    "ray_desc": "Esegui i motori selezionati come job su un cluster Ray remoto. Disattivato per impostazione predefinita; in tal caso tutti i motori girano su questo computer.",
     "ray_enabled": "Usa il cluster Ray",
     "ray_dashboard_url": "URL della dashboard",
     "ray_dashboard_url_hint": "Indirizzo della dashboard di Ray (API Jobs).",
@@ -1505,7 +1505,7 @@
     "ray_jobs_title": "Job recenti di VoiceStudio",
     "ray_jobs_hint": "Si aggiorna ogni 5 secondi mentre questa pagina è aperta.",
     "ray_jobs_disabled": "Attiva il cluster Ray per vedere i job.",
-    "ray_jobs_empty": "Ancora nessun job.",
+    "ray_jobs_empty": "Nessun job al momento. I job completati vengono rimossi automaticamente.",
     "ray_jobs_failed": "Impossibile caricare i job.",
     "ray_job_status": "Stato",
     "ray_job_engine": "Motore",
@@ -1550,7 +1550,11 @@
     "modal_app": "Nome dell’app Modal",
     "modal_app_hint": "App che raggruppa le sandbox di VoiceStudio nel tuo account Modal.",
     "modal_volume": "Volume cache (avanzato)",
-    "modal_volume_hint": "Volume Modal che conserva motori e modelli tra i lavori. Modificalo solo se condividi l’account."
+    "modal_volume_hint": "Volume Modal che conserva motori e modelli tra i lavori. Modificalo solo se condividi l’account.",
+    "ray_use_token": "Autenticazione con token Ray",
+    "ray_use_token_hint": "Attivala se il cluster richiede un token di autenticazione Ray (RAY_AUTH_MODE=token).",
+    "ray_use_cf": "Cloudflare Access",
+    "ray_use_cf_hint": "Attivala se la dashboard è dietro Cloudflare Access; inserisci client ID e secret di un token di servizio."
   },
   "gallery": {
     "title": "VoiceStudio Galleria",
@@ -2027,7 +2031,7 @@
     "save_bundle": "Salva pacchetto diagnostico",
     "bundle_saved": "Pacchetto diagnostico salvato: {{filename}}",
     "title": "Informazioni",
-    "diagnostics": "Verifica preliminare del sistema",
+    "diagnostics": "Diagnostica",
     "model_credits": "Crediti dei modelli",
     "model_credits_hint": "Crediti dei modelli supportati. Modelli e componenti hanno condizioni proprie; questi crediti non concedono diritti di utilizzo commerciale.",
     "model_terms": "Condizioni del modello",
@@ -3931,5 +3935,16 @@
       "remove_file": "Rimuovi",
       "no_matches": "Nessun risultato per \"{{query}}\"."
     }
+  },
+  "guide": {
+    "title": "Guida all’uso",
+    "contents": "Indice",
+    "chapter": "Capitolo {{n}}",
+    "step": "Passo {{n}}",
+    "expected": "Risultato atteso",
+    "verify": "Controlla il risultato",
+    "missing_shot": "Screenshot non ancora acquisito",
+    "enlarge": "Ingrandisci: {{caption}}",
+    "language_note": "Questa guida è disponibile in inglese e thailandese; è mostrata in inglese."
   }
 }
