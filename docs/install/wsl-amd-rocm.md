@@ -35,9 +35,11 @@ setup can be wiped and restored in under a minute.
 - The web UI loads from Windows.
 - A reset from the saved image comes back with a working GPU.
 
+**Also verified:** OmniVoice cloning runs on the GPU in eager mode at 2–5 s per
+sentence once warm ([error 8](#8-first-generations-take-minutes-torchcompile-on-rocm)).
+
 **Not yet verified:**
 
-- A full TTS or voice-clone job with GPU-utilization evidence.
 - ASR (WhisperX / faster-whisper use CTranslate2, which has no ROCm build here and stays on CPU).
 
 ## Why this route
@@ -504,7 +506,33 @@ and `:3901` timed out. With `networkingMode=Mirrored`, IPv6 `::1` hangs while
 **`127.0.0.1` works**. Use `http://127.0.0.1:3901`. The UI's backend websocket
 connects normally that way.
 
-### 8. Smaller slips worth avoiding
+### 8. First generations take minutes: `torch.compile` on ROCm
+
+The first voice-clone generation took **101 s** and the second **150 s** for one short
+sentence, with uvicorn at 400 % CPU. Triton is importable in the ROCm torch
+build, so the backend applied `torch.compile(mode="reduce-overhead")`, and
+Inductor recompiled for every new text length. The fix is to disable it.
+Either turn on **Settings → Performance → Disable torch.compile**, or call:
+
+```bash
+curl -X PUT http://127.0.0.1:3900/api/settings/perf/torch-compile-disabled \
+  -H 'Content-Type: application/json' -d '{"enabled":true}'
+```
+
+Then restart the backend; the model loads at start. Measured on the RX 7800 XT
+in eager mode, for a ~7 s Spanish sentence:
+
+| Run | Time |
+|---|---|
+| First few runs | 18–37 s (MIOpen finds and caches kernels in `~/.cache/miopen`) |
+| Warm runs | **2–5 s** |
+
+The many `MIOpen(HIP): Warning [IsEnoughWorkspace] ... provided ptr: 0 size: 0`
+lines during those first runs are harmless; MIOpen falls back to a solver
+that needs no workspace. Run `save` after a few generations so the warm MIOpen
+cache is kept in the ready image.
+
+### 9. Smaller slips worth avoiding
 
 - **The first VoiceStudio install stopped partway** because of error 5
   (`set -e`), so `~/start-voicestudio.sh` was never written. Re-running the
@@ -526,6 +554,7 @@ connects normally that way.
 | `rocminfo` shows only the CPU agent | Is `HSA_ENABLE_DXG_DETECTION=1` set (`/etc/profile.d/rocm-wsl.sh`, login shell `bash -l`)? Is `/dev/dxg` present? Is the Adrenalin driver current, and did you reboot after installing it? |
 | `gpu available: False` but `rocminfo` is fine | Run `ldd` on torch's libs to find missing system libraries (error 5). Check that the venv still has the ROCm torch (`torch.version.hip` not `None`). A plain `uv run` without `--no-sync` restores the CUDA build. |
 | Backend log says `Falling back to CPU:` | Read the reason on that line. For an architecture mismatch, try `HSA_OVERRIDE_GFX_VERSION=11.0.0` (RDNA 3) only if your card's `gfx` ID is missing from `torch.cuda.get_arch_list()`. |
+| Generation takes minutes, high CPU | `torch.compile` is recompiling: disable it (error 8). The first runs after that still warm up MIOpen. |
 | Breaks after a Windows driver update | Test with `vs-wsl.ps1 check`. If `rocminfo` lost the GPU, roll back the driver or move to a newer librocdxg/ROCm pair from the librocdxg compatibility table. |
 
 ## Sources
