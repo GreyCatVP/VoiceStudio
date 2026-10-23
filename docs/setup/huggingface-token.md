@@ -1,40 +1,45 @@
 # Hugging Face Token Setup
 
 VoiceStudio uses a single HF token for every model download, license-gate
-check, and an explicit **Test now** action. This page covers the three places VoiceStudio will
+check, and an explicit **Test now** action. This page covers the places VoiceStudio will
 look for a token and the recommended path for v0.3+.
 
-## Three sources (cascade)
+## Sources (cascade)
 
-VoiceStudio resolves the active HF token by walking three sources in priority
+VoiceStudio resolves the active HF token by walking these sources in priority
 order — the first source that has a token *and* survives a live `whoami`
 call wins:
 
+0. **OpenBao** — only when you turn it on (see
+   [Reading the token from OpenBao](#reading-the-token-from-openbao)). If
+   OpenBao is unreachable, sealed or denies access, the next source is used.
 1. **App** — encrypted in VoiceStudio's SQLite settings store.
-   Set via the in-app **Settings → API Keys** panel.
+   Set via the in-app **Settings → Credentials** panel.
 2. **Env** — `HF_TOKEN` (or the legacy `HUGGING_FACE_HUB_TOKEN`) environment
    variable visible to the VoiceStudio process.
 3. **HF CLI** — the local `HF_TOKEN_PATH` file (normally `~/.cache/huggingface/token`) written by
-   `huggingface-cli login`.
+   `huggingface-cli login`. VoiceStudio only reads this file; it never writes it.
 
 Source labels in onboarding and Settings follow the selected UI language;
 product names such as HuggingFace CLI remain unchanged.
 
-On opening **Settings → API Keys**, each row shows local set/unset state and
+On opening **Settings → Credentials**, each row shows local set/unset state and
 a masked preview (`hf_…3jw`). Tokens remain **Not tested** until you select
 **Test now**. That explicit check displays the `whoami` username and a green
 check for valid sources, with an **Active** badge on the highest-priority valid source.
 
 ## Setting via the app (recommended)
 
-1. Open **Settings → API Keys**.
+1. Open **Settings → Credentials**.
 2. Paste your HF token (get one from
    [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) —
    the "read" scope is enough).
 3. Click **Save**. The token is encrypted at rest (Fernet symmetric AEAD,
-   key derived per-install from machine-id) and also written to the
-   canonical `huggingface_hub` token location so subprocess engines pick it
-   up automatically.
+   key derived per-install from machine-id). It is **not** written to the
+   plaintext `huggingface_hub` token file: VoiceStudio hands the resolved
+   token to every download and engine itself. (Versions before this change
+   did write that file; to remove a copy left there, use **Clear token** with
+   **Also clear saved HuggingFace CLI token files**.)
 4. Select **Test now** to validate the token with Hugging Face. A successful test turns the indicator green and moves the **Active** badge to "App".
 
 > **Known limitation (honest disclosure):** the encryption key is derived
@@ -68,7 +73,7 @@ to see it.
 
 > **Don't use `setx`.** `setx HF_TOKEN "hf_..."` writes the variable but
 > *doesn't propagate to the current shell* — a common source of "I set it
-> but it's empty" bug reports. Use the in-app Settings → API Keys path or
+> but it's empty" bug reports. Use the in-app Settings → Credentials path or
 > the `[Environment]::SetEnvironmentVariable` one-liner above.
 
 ## Setting via `huggingface-cli`
@@ -83,7 +88,52 @@ huggingface-cli login
 
 That normally writes to `~/.cache/huggingface/token`. VoiceStudio reads the
 selected local token file directly — you'll see the
-**HF CLI** row in **Settings → API Keys** flip to "set".
+**HF CLI** row in **Settings → Credentials** flip to "set".
+
+## Reading the token from OpenBao
+
+If you keep secrets in [OpenBao](https://openbao.org) (or HashiCorp Vault,
+which speaks the same API), VoiceStudio can read the HF token from a KV v2
+secret instead of storing it. It is off by default and nothing is sent until
+you turn it on.
+
+1. Store the token: `bao kv put secret/voicestudio/hf token=hf_…`.
+2. Create a read-only policy for that one path and a **periodic** (or
+   renewable) token with it, for example:
+
+   ```hcl
+   path "secret/data/voicestudio/hf" { capabilities = ["read"] }
+   ```
+
+   ```bash
+   bao policy write voicestudio-hf voicestudio-hf.hcl
+   bao token create -policy=voicestudio-hf -period=768h -orphan
+   ```
+
+   VoiceStudio does not renew the token; a periodic token stays valid while
+   it is used within its period, or renew it from your own tooling.
+3. Open **Settings → Credentials → OpenBao secret store**, fill in the
+   address (default `http://127.0.0.1:8200`), the KV v2 mount (default
+   `secret`), the secret path (`voicestudio/hf`), the field (default `token`)
+   and the OpenBao token, then select **Test** and turn the source on.
+
+The address must use HTTPS unless OpenBao runs on this computer, and may not
+contain credentials, a path or a query. The OpenBao token is stored encrypted
+like other secrets and never shown again; **Test** reports only success with a
+masked value (`hf_…ABC`), or why it failed: unreachable, sealed, permission
+denied, or no such secret/field. The HF token itself is read when needed
+(`GET {address}/v1/{mount}/data/{path}` with `X-Vault-Token`), kept in memory
+for at most five minutes and never written to disk. Requests go only to the
+address you configured.
+
+Unsealing is your server's job — configure OpenBao **auto-unseal** so it is
+ready after a reboot. While it is sealed, VoiceStudio reports **sealed** and
+falls back to the next token source.
+
+For headless or Docker setups, `OMNIVOICE_OPENBAO_ADDR` and
+`OMNIVOICE_OPENBAO_TOKEN` override the saved address and token (the page shows
+those fields as set by an environment variable). The source itself is still
+turned on in Settings or with `PUT /api/settings/openbao`.
 
 ## Accepting model licenses
 
@@ -111,7 +161,7 @@ process).
   token is valid at
   [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
   and has at least the "read" scope.
-- **Token didn't survive a reboot** — open **Settings → API Keys** and check
+- **Token didn't survive a reboot** — open **Settings → Credentials** and check
   the App row. If it's empty, the SQLite store may have been wiped — re-save.
   If it's set but the active source is "Env" or "HF CLI", that's the cascade
   working as intended (App is highest priority).

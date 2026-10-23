@@ -432,6 +432,11 @@ hard rules from the first prompt.
     through the Modal SDK (`backend/services/ray_jobs/modal_executor.py`,
     `backend/modal_driver/`); the Modal SDK itself is fetched from PyPI by `uv`
     on first use. See `docs/electron-ray-cluster.md`.
+  - **OpenBao secret store, only after the user configures it and turns it
+    on** (Settings → Credentials; off by default): reads of the Hugging Face
+    token secret from the address the user entered — normally their own
+    local OpenBao/Vault — with the user's OpenBao token
+    (`backend/services/openbao.py`). See `docs/setup/huggingface-token.md`.
   - Bug reports as prefilled GitHub Issue URLs opened in the user's browser.
   - PostHog analytics only after a yes at the first-run consent prompt
     (`backend/core/analytics.py`, allowlisted content-free metadata).

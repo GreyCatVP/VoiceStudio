@@ -56,8 +56,10 @@ from services import token_resolver as resolver
 legacy.parent.mkdir(parents=True, exist_ok=True)
 if not legacy.exists(): legacy.write_text("synthetic-old")
 legacy.with_name("stored_tokens").write_text("[old]\nhf_token = synthetic-old\n")
+expected.parent.mkdir(parents=True, exist_ok=True)
+expected.write_text("synthetic-cli-login")  # the user's own `hf auth login`
 resolver.save_app_token("hf_synthetic_saved")
-assert expected.read_text() == "hf_synthetic_saved"
+assert expected.read_text() == "synthetic-cli-login", "Saving must never write the plaintext Hub file"
 resolver.clear_app_token()
 assert expected.exists(), "App-only clear must preserve CLI login"
 resolver.clear_app_token(also_clear_hf_cli=True)

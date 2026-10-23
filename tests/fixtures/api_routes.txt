@@ -47,6 +47,7 @@ GET /api/settings/llm-endpoint
 GET /api/settings/llm-providers
 GET /api/settings/llm-providers/{provider_id}/models
 GET /api/settings/llm-skills
+GET /api/settings/openbao
 GET /api/settings/perf/offload-after-generation
 GET /api/settings/perf/torch-compile-disabled
 GET /api/settings/performance-profile
@@ -202,6 +203,7 @@ POST /api/settings/license
 POST /api/settings/llm-providers/active
 POST /api/settings/llm-providers/{provider_id}/connect
 POST /api/settings/llm-providers/{provider_id}/test
+POST /api/settings/openbao/test
 POST /api/settings/ray/jobs/{submission_id}/stop
 POST /api/settings/ray/test
 POST /api/settings/storage/temp/clear
@@ -337,6 +339,7 @@ PUT /api/settings/history-retention
 PUT /api/settings/llm-endpoint
 PUT /api/settings/llm-providers/{provider_id}
 PUT /api/settings/llm-skills/{skill_id}
+PUT /api/settings/openbao
 PUT /api/settings/perf/offload-after-generation
 PUT /api/settings/perf/torch-compile-disabled
 PUT /api/settings/performance-profile

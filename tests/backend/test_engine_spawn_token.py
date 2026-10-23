@@ -92,8 +92,6 @@ def test_post_hf_token_non_loopback_returns_403(fresh_app):
 def test_delete_hf_token_clears_store(fresh_app, monkeypatch):
     import huggingface_hub
     from services import token_resolver
-    # Only the app source is under test; keep the Hub token file untouched.
-    monkeypatch.setattr(token_resolver, "persist_hub_token", lambda token: None)
     monkeypatch.setattr(huggingface_hub, "logout", lambda: None)
     monkeypatch.setattr(
         huggingface_hub.HfApi,

@@ -12,18 +12,44 @@ import { PROVIDER_FIELDS } from '@shared/utils/translationProviderFields';
 interface TokenState {
   active: string | null;
   sources: {
-    source: 'app' | 'env' | 'hf-cli';
+    source: 'openbao' | 'app' | 'env' | 'hf-cli';
     set: boolean;
     masked?: string;
     whoami_ok?: boolean | null;
     whoami_user?: string | null;
+    /** OpenBao only: why the secret could not be read. */
+    error?: string | null;
   }[];
 }
-const sourceKeys = { app: 'app', env: 'env', 'hf-cli': 'cli' };
+export interface OpenBaoConfig {
+  enabled: boolean;
+  addr: string;
+  mount: string;
+  path: string;
+  field: string;
+  has_token: boolean;
+  env_pinned: string[];
+}
+interface OpenBaoTest {
+  ok: boolean;
+  kind: string;
+  masked?: string;
+  ttl?: number | null;
+}
+const sourceKeys = {
+  openbao: 'openbao',
+  app: 'app',
+  env: 'env',
+  'hf-cli': 'cli',
+};
+const OPENBAO_ERRORS = ['unreachable', 'sealed', 'denied', 'not_found', 'not_configured'];
+const openBaoError = (kind: string) =>
+  'settings.openbao_error_' + (OPENBAO_ERRORS.includes(kind) ? kind : 'error');
 export function CredentialSettings() {
   return (
     <>
       <HuggingFaceToken />
+      <OpenBaoSource />
       <TranslationCredentials />
     </>
   );
@@ -92,6 +118,9 @@ export function HuggingFaceToken() {
             {t(source.set ? 'settings.hf_token_set' : 'settings.hf_token_not_set')}
           </span>
           {source.set && source.masked && <code className="text-xs">{source.masked}</code>}
+          {!source.set && source.error && (
+            <span className="text-xs text-destructive">{t(openBaoError(source.error))}</span>
+          )}
           {source.set && (
             <span className="text-xs text-muted-foreground">
               {source.whoami_ok == null
@@ -178,6 +207,181 @@ export function HuggingFaceToken() {
       )}
       {action.saved && (
         <p role="status" className="p-4 text-sm text-muted-foreground">
+          {t('credentials.saved')}
+        </p>
+      )}
+    </SettingsSection>
+  );
+}
+export function OpenBaoSource() {
+  const { t } = useTranslation();
+  const client = useQueryClient();
+  const query = useQuery({
+    queryKey: ['openbao-settings'],
+    queryFn: ({ signal }) => apiJson<OpenBaoConfig>('/api/settings/openbao', { signal }),
+  });
+  const action = useSettingsAction();
+  const [draft, setDraft] = useState<Partial<OpenBaoConfig>>({});
+  const [token, setToken] = useState('');
+  const [result, setResult] = useState<OpenBaoTest | null>(null);
+  const cfg = query.data;
+  if (!cfg) return null;
+  const value = { ...cfg, ...draft };
+  const pinned = (field: string) => cfg.env_pinned.includes(field);
+  const put = async (body: Record<string, unknown>) => {
+    const next = await apiJson<OpenBaoConfig>('/api/settings/openbao', {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    client.setQueryData(['openbao-settings'], next);
+    setDraft({});
+    setToken('');
+    await client.invalidateQueries({ queryKey: ['hf-token-state'] });
+  };
+  const fields = () => ({
+    ...(pinned('addr') ? {} : { addr: value.addr }),
+    mount: value.mount,
+    path: value.path,
+    field: value.field,
+    ...(token.trim() && !pinned('token') ? { token: token.trim() } : {}),
+  });
+  const edit = (patch: Partial<OpenBaoConfig>) => {
+    setDraft((current) => ({ ...current, ...patch }));
+    setResult(null);
+    action.reset();
+  };
+  const text = (field: 'addr' | 'mount' | 'path' | 'field', placeholder?: string) => (
+    <SettingsRow
+      id={'openbao-' + field}
+      title={t('settings.openbao_' + field)}
+      description={
+        pinned(field)
+          ? t('settings.openbao_env_pinned')
+          : field === 'addr'
+            ? t('settings.openbao_addr_help')
+            : undefined
+      }
+    >
+      <Input
+        className="w-64"
+        aria-label={t('settings.openbao_' + field)}
+        value={value[field]}
+        placeholder={placeholder}
+        spellCheck={false}
+        disabled={action.busy || pinned(field)}
+        onChange={(event) => edit({ [field]: event.target.value })}
+      />
+    </SettingsRow>
+  );
+  return (
+    <SettingsSection icon={KeyRoundIcon} title={t('settings.openbao_title')}>
+      <SettingsRow
+        id="openbao-enabled"
+        title={t('settings.openbao_enabled')}
+        description={t('settings.openbao_desc')}
+      >
+        <Switch
+          aria-label={t('settings.openbao_enabled')}
+          checked={cfg.enabled}
+          disabled={action.busy}
+          onCheckedChange={(enabled) => void action.run(() => put({ enabled }), false)}
+        />
+      </SettingsRow>
+      {text('addr')}
+      {text('mount')}
+      {text('path', 'voicestudio/hf')}
+      {text('field')}
+      <SettingsRow
+        id="openbao-token"
+        title={t('settings.openbao_token')}
+        description={
+          pinned('token') ? t('settings.openbao_env_pinned') : t('settings.openbao_token_help')
+        }
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          {cfg.has_token && (
+            <span className="text-xs text-muted-foreground">
+              {t('settings.openbao_token_saved')}
+            </span>
+          )}
+          <Input
+            className="w-64"
+            type="password"
+            aria-label={t('settings.openbao_token')}
+            value={token}
+            autoComplete="new-password"
+            spellCheck={false}
+            disabled={action.busy || pinned('token')}
+            onChange={(event) => {
+              setToken(event.target.value);
+              setResult(null);
+              action.reset();
+            }}
+          />
+          {cfg.has_token && !pinned('token') && (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={action.busy}
+              onClick={() => void action.run(() => put({ token: '' }))}
+            >
+              {t('settings.openbao_token_remove')}
+            </Button>
+          )}
+        </div>
+      </SettingsRow>
+      <div className="flex flex-wrap items-center gap-2 p-4">
+        <Button
+          size="sm"
+          disabled={action.busy}
+          onClick={() => void action.run(() => put(fields()))}
+        >
+          {t('common.save')}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={action.busy}
+          onClick={() =>
+            void action.run(async () => {
+              await put(fields());
+              setResult(
+                await apiJson<OpenBaoTest>('/api/settings/openbao/test', {
+                  method: 'POST',
+                }),
+              );
+            }, false)
+          }
+        >
+          {t('settings.openbao_test')}
+        </Button>
+        {result && (
+          <span
+            role="status"
+            className={'text-sm ' + (result.ok ? 'text-muted-foreground' : 'text-destructive')}
+          >
+            {result.ok
+              ? t('settings.openbao_test_ok', { masked: result.masked ?? '' })
+              : t(openBaoError(result.kind))}
+            {result.ok && !!result.ttl && (
+              <>
+                {' '}
+                ·{' '}
+                {t('settings.openbao_ttl', {
+                  hours: Math.floor(result.ttl / 3600),
+                })}
+              </>
+            )}
+          </span>
+        )}
+      </div>
+      {action.error && (
+        <p role="alert" className="px-4 pb-3 text-sm text-destructive">
+          {t('common.error')}
+        </p>
+      )}
+      {action.saved && (
+        <p role="status" className="px-4 pb-3 text-sm text-muted-foreground">
           {t('credentials.saved')}
         </p>
       )}

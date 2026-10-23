@@ -5362,6 +5362,84 @@
     "title": "_OffloadAfterGenerationBody",
     "type": "object"
    },
+   "_OpenBaoBody": {
+    "properties": {
+     "addr": {
+      "anyOf": [
+       {
+        "maxLength": 512,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Addr"
+     },
+     "enabled": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Enabled"
+     },
+     "field": {
+      "anyOf": [
+       {
+        "maxLength": 128,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Field"
+     },
+     "mount": {
+      "anyOf": [
+       {
+        "maxLength": 128,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mount"
+     },
+     "path": {
+      "anyOf": [
+       {
+        "maxLength": 1024,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Path"
+     },
+     "token": {
+      "anyOf": [
+       {
+        "maxLength": 4096,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "'' clears it, None leaves unchanged; never returned",
+      "title": "Token"
+     }
+    },
+    "title": "_OpenBaoBody",
+    "type": "object"
+   },
    "_PerformanceProfileBody": {
     "properties": {
      "family": {
@@ -7328,7 +7406,7 @@
     ]
    },
    "post": {
-    "description": "Persist a new HF token to the encrypted settings store + the HF\ncanonical file (via huggingface_hub.login). Returns the updated\ncascade state.",
+    "description": "Persist a new HF token to the encrypted settings store (never the\nplaintext Hub token file). Returns the updated cascade state.",
     "operationId": "save_hf_token_api_settings_hf_token_post",
     "requestBody": {
      "content": {
@@ -7912,6 +7990,81 @@
      }
     },
     "summary": "Set Llm Skill",
+    "tags": [
+     "settings"
+    ]
+   }
+  },
+  "/api/settings/openbao": {
+   "get": {
+    "operationId": "get_openbao_settings_api_settings_openbao_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Get Openbao Settings",
+    "tags": [
+     "settings"
+    ]
+   },
+   "put": {
+    "operationId": "set_openbao_settings_api_settings_openbao_put",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/_OpenBaoBody"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Set Openbao Settings",
+    "tags": [
+     "settings"
+    ]
+   }
+  },
+  "/api/settings/openbao/test": {
+   "post": {
+    "operationId": "test_openbao_api_settings_openbao_test_post",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Test Openbao",
     "tags": [
      "settings"
     ]
@@ -18093,7 +18246,7 @@
   },
   "/system/set-env": {
    "post": {
-    "description": "Set an environment variable at runtime, persisted across restarts.\n\nPersistent keys (proxy, FFMPEG_PATH, translation provider keys, \u2026) are\nsaved to ``prefs.json`` so they survive backend restarts (restored at\nstartup in ``main.py``). HF_TOKEN is persisted via\n``token_resolver.persist_hub_token()`` (and cleared with the shared token-file helper). Other keys\nare set on ``os.environ`` for the running process.\n\nThe loopback-origin gate that previously lived inline here is now applied\nat the router level via `dependencies=[Depends(require_admin)]` on\n`router` \u2014 see the top of this file. Every route on this router is\ngated, including this one. The 403 body and behavior are unchanged.",
+    "description": "Set an environment variable at runtime, persisted across restarts.\n\nPersistent keys (proxy, FFMPEG_PATH, translation provider keys, \u2026) are\nsaved to ``prefs.json`` so they survive backend restarts (restored at\nstartup in ``main.py``). HF_TOKEN is persisted in the encrypted settings\nstore via ``token_resolver.save_app_token()`` (never the plaintext Hub\ntoken file); clearing it also removes local Hub token files. Other keys\nare set on ``os.environ`` for the running process.\n\nThe loopback-origin gate that previously lived inline here is now applied\nat the router level via `dependencies=[Depends(require_admin)]` on\n`router` \u2014 see the top of this file. Every route on this router is\ngated, including this one. The 403 body and behavior are unchanged.",
     "operationId": "set_env_var_system_set_env_post",
     "requestBody": {
      "content": {

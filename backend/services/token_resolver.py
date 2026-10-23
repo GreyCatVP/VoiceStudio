@@ -1,10 +1,14 @@
-"""3-source HF token resolver — AUTH-01, AUTH-03, AUTH-06.
+"""HF token resolver — AUTH-01, AUTH-03, AUTH-06.
 
 Resolution priority (highest → lowest):
 
-  1. app    — `settings_store.get_hf_token()` (encrypted in SQLite)
-  2. env    — `HF_TOKEN` or the legacy `HUGGING_FACE_HUB_TOKEN` env var
-  3. hf-cli — the selected local Hub token file (`HF_TOKEN_PATH`)
+  1. openbao — the user's OpenBao KV v2 secret (`services.openbao`), only when
+               the user turned that source on; read at use time, kept in
+               memory only. Unreachable/sealed/denied falls through below.
+  2. app     — `settings_store.get_hf_token()` (encrypted in SQLite)
+  3. env     — `HF_TOKEN` or the legacy `HUGGING_FACE_HUB_TOKEN` env var
+  4. hf-cli  — the selected local Hub token file (`HF_TOKEN_PATH`), read
+               only: the app never writes it (a plaintext file)
 
 For each candidate, the resolver calls whoami on huggingface.co itself
 (`hf_auth.canonical_whoami`, never a configured mirror) to verify the token
@@ -29,8 +33,8 @@ from typing import Literal, Optional
 
 logger = logging.getLogger("omnivoice.token_resolver")
 
-Source = Literal["app", "env", "hf-cli"]
-_PRIORITY: tuple[Source, ...] = ("app", "env", "hf-cli")
+Source = Literal["openbao", "app", "env", "hf-cli"]
+_PRIORITY: tuple[Source, ...] = ("openbao", "app", "env", "hf-cli")
 
 _CACHE_TTL_SECONDS = 300.0  # UI "Test now" busts it via GET /hf-token/state?fresh=1.
 
@@ -49,6 +53,7 @@ class SourceState:
     masked: Optional[str]
     whoami_user: Optional[str]
     whoami_ok: Optional[bool]
+    error: Optional[str] = None  # openbao only: unreachable | sealed | denied | not_found | ...
 
 
 # ── module-level cache ────────────────────────────────────────────────────
@@ -63,6 +68,8 @@ def invalidate_cache() -> None:
     endpoints, and by on_401()."""
     with _CACHE_LOCK:
         _VALIDATION_CACHE.clear()
+    from services import openbao
+    openbao.invalidate_cache()
 
 
 def _hash(token: str) -> str:
@@ -104,7 +111,40 @@ def _read_hf_cli() -> Optional[str]:
         return None
 
 
+def _openbao_enabled() -> bool:
+    try:
+        from services import openbao
+        return openbao.load().enabled
+    except Exception:
+        logger.exception("OpenBao settings read failed")
+        return False
+
+
+def _read_openbao_state() -> tuple[Optional[str], Optional[str]]:
+    """(token, error kind). Never raises: a broken secret store must not
+    break generation — the next source is used instead."""
+    from services import openbao
+    try:
+        return _clean_token(openbao.hf_token()), None
+    except openbao.OpenBaoError as exc:
+        logger.warning("OpenBao token source unavailable (%s): %s", exc.kind, exc)
+        return None, exc.kind
+    except Exception as exc:
+        logger.warning("OpenBao token source failed (%s)", type(exc).__name__)
+        return None, "error"
+
+
+def _read_openbao() -> Optional[str]:
+    return _read_openbao_state()[0]
+
+
+def _sources() -> tuple[Source, ...]:
+    """The cascade; OpenBao is part of it only once the user turned it on."""
+    return _PRIORITY if _openbao_enabled() else tuple(s for s in _PRIORITY if s != "openbao")
+
+
 _READERS: dict[Source, callable] = {  # type: ignore[type-arg]
+    "openbao": _read_openbao,
     "app": _read_app,
     "env": _read_env,
     "hf-cli": _read_hf_cli,
@@ -162,7 +202,7 @@ def resolve(skip: frozenset[Source] = frozenset()) -> Optional[ResolvedToken]:
     """Return the highest-priority valid token, or None if all sources are
     empty/invalid. `skip` excludes specific sources — used by `on_401()`
     when a previously-resolved token started returning 401 mid-job."""
-    for source in _PRIORITY:
+    for source in _sources():
         if source in skip:
             continue
         token = _READERS[source]()
@@ -196,11 +236,17 @@ def on_401(active_source: Source) -> Optional[ResolvedToken]:
 def state(*, validate: bool = False) -> dict:
     """Return one SourceState per priority position so the Settings UI can
     render the cascade table. Includes a masked token + whoami result;
-    never includes the raw token. Reads are local unless validation is explicitly requested."""
+    never includes the raw token. Reads are local unless validation is explicitly
+    requested — except the OpenBao row, which (only when the user turned it on)
+    reads the user's configured OpenBao address, cached in memory."""
     rows: list[SourceState] = []
     active: Optional[Source] = None
-    for source in _PRIORITY:
-        token = _READERS[source]()
+    for source in _sources():
+        error = None
+        if source == "openbao":
+            token, error = _read_openbao_state()
+        else:
+            token = _READERS[source]()
         if token:
             username = _validate(source, token) if validate else None
             ok = (username is not None) if validate else None
@@ -220,60 +266,23 @@ def state(*, validate: bool = False) -> dict:
                 masked=None,
                 whoami_user=None,
                 whoami_ok=False,
+                error=error,
             ))
     return {"sources": rows, "active": active}
 
 
-def persist_hub_token(token: str) -> None:
-    """Validate ``token`` on huggingface.co and make it the local Hub login.
-
-    Writes the same files as ``huggingface_hub.login()`` (``HF_TOKEN_PATH``
-    plus the named entry in ``stored_tokens``) without its whoami call, which
-    goes to ``HF_ENDPOINT`` and would hand the token to a configured mirror.
-    Never writes a git credential. Raises when the token is invalid.
-    """
-    from services.hf_auth import canonical_whoami
-
-    if token.startswith("api_org"):
-        raise ValueError("Use a personal account token, not an organization token")
-    info = canonical_whoami(token)
-    access = ((info or {}).get("auth") or {}).get("accessToken") or {}
-    name = access.get("displayName") or f"oauth-{(info or {}).get('name') or 'user'}"
-    try:
-        from huggingface_hub import _login
-        save, activate = _login._save_token, _login._set_active_token
-    except (ImportError, AttributeError):
-        # Library internals moved: the token file alone is what every Hub
-        # client reads.
-        from huggingface_hub import constants
-        path = Path(constants.HF_TOKEN_PATH)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(token, encoding="utf-8")
-        try:
-            path.chmod(0o600)
-        except OSError:
-            # Filesystems without POSIX modes (e.g. some Windows volumes) skip this.
-            pass
-        return
-    save(token=token, token_name=name)
-    activate(token_name=name, add_to_git_credential=False)
-
-
 def save_app_token(token: str) -> None:
-    """Persist token to the encrypted settings store AND the local Hub token
-    files via `persist_hub_token()`. Per Pitfall #2 no git credential is ever
-    written — that would leak the token into the user's global git config."""
+    """Persist token to the encrypted settings store only.
+
+    The plaintext Hub CLI token file (``HF_TOKEN_PATH``) is never written:
+    every backend Hub call passes the resolved token explicitly, and the
+    file stays the user's own ``hf auth login`` (read as the hf-cli source).
+    """
     if not token:
         clear_app_token()
         return
     from services import settings_store
     settings_store.set_hf_token(token)
-    try:
-        persist_hub_token(token)
-    except Exception as exc:
-        # Hub login failure must not strand the user — the token is still
-        # in the encrypted store and the resolver will pick it up.
-        logger.warning("Could not save the Hugging Face token file (%s, non-fatal)", type(exc).__name__)
     invalidate_cache()
 
 

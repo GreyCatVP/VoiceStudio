@@ -67,7 +67,7 @@ const chapter: GuideChapter = {
             '**Right away**: almost everything, including the proxy, tokens, engine choices and privacy options.',
             '**After a restart**: **Compute device**, the **Hugging Face mirror**, the backend and UI ports, and a new model cache folder. The page says **Takes effect after the app restarts** when this applies.',
             '**Reloads the app**: saving a **Remote backend** URL.',
-            'Your Hugging Face token: the one saved in VoiceStudio is used first, then the `HF_TOKEN` environment variable, then the Hugging Face CLI login.',
+            'Your Hugging Face token: OpenBao is used first when you turn it on in **Credentials**, then the one saved in VoiceStudio, then the `HF_TOKEN` environment variable, then the Hugging Face CLI login. VoiceStudio never writes the CLI login file.',
           ],
         },
       ],

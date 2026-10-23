@@ -53,9 +53,8 @@ def _state_response(*, validate: bool = False) -> dict:
 
 @router.post("/hf-token")
 def save_hf_token(body: _HFTokenBody):
-    """Persist a new HF token to the encrypted settings store + the HF
-    canonical file (via huggingface_hub.login). Returns the updated
-    cascade state."""
+    """Persist a new HF token to the encrypted settings store (never the
+    plaintext Hub token file). Returns the updated cascade state."""
     token = body.token.strip()
     if not token:
         raise HTTPException(status_code=400, detail="token must be non-empty")
@@ -92,6 +91,45 @@ def get_hf_token_state(fresh: bool = Query(False)):
     if fresh:
         token_resolver.invalidate_cache()
     return _state_response(validate=fresh)
+
+
+# ── OpenBao (opt-in): read the HF token from the user's own secret store ────
+
+class _OpenBaoBody(BaseModel):
+    enabled: bool | None = None
+    addr: str | None = Field(None, max_length=512)
+    mount: str | None = Field(None, max_length=128)
+    path: str | None = Field(None, max_length=1024)
+    field: str | None = Field(None, max_length=128)
+    token: str | None = Field(None, max_length=4096, description="'' clears it, None leaves unchanged; never returned")
+
+
+@router.get("/openbao")
+def get_openbao_settings():
+    from services import openbao
+
+    return openbao.load().public()
+
+
+@router.put("/openbao")
+def set_openbao_settings(body: _OpenBaoBody):
+    from services import openbao, token_resolver
+
+    try:
+        cfg = openbao.save(body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    token_resolver.invalidate_cache()
+    return cfg.public()
+
+
+@router.post("/openbao/test")
+def test_openbao():
+    # Reads the PERSISTED config (the page saves first); always 200. The
+    # result carries only a masked tail of the secret, never its value.
+    from services import openbao
+
+    return openbao.test_connection()
 
 
 # ── Performance settings (INST-12) ────────────────────────────────────────

@@ -183,45 +183,37 @@ def test_state_returns_three_rows(fresh_resolver, monkeypatch):
     assert cli_row.masked is None
 
 
-def test_save_writes_both_store_and_hub_files(fresh_resolver, monkeypatch):
-    """save_app_token() updates settings_store AND the local Hub token file,
-    so engines and the hf CLI see the same token."""
+def test_save_writes_only_the_encrypted_store(fresh_resolver, monkeypatch):
+    """save_app_token() keeps the token in the encrypted store and never
+    writes the plaintext Hub CLI token file (fail-before: it used to)."""
     from huggingface_hub import constants
     tr = fresh_resolver
     _mock_whoami(monkeypatch, {APP_TOKEN: {"name": "alice"}})
     tr.save_app_token(APP_TOKEN)
 
-    from services import settings_store
-    assert settings_store.get_hf_token() == APP_TOKEN
-    assert Path(constants.HF_TOKEN_PATH).read_text() == APP_TOKEN
-
-
-def test_save_never_writes_a_git_credential(fresh_resolver, monkeypatch):
-    """Pitfall #2: the token must never reach the user's git credentials."""
-    from huggingface_hub import _login
-    tr = fresh_resolver
-    _mock_whoami(monkeypatch, {APP_TOKEN: {"name": "alice"}})
-    monkeypatch.setattr(_login, "set_git_credential", lambda *a, **k: pytest.fail("git credential written"))
-    captured = {}
-    real = _login._set_active_token
-
-    def _spy(token_name, add_to_git_credential):
-        captured["add_to_git_credential"] = add_to_git_credential
-        return real(token_name=token_name, add_to_git_credential=add_to_git_credential)
-
-    monkeypatch.setattr(_login, "_set_active_token", _spy)
-    tr.save_app_token(APP_TOKEN)
-    assert captured == {"add_to_git_credential": False}
-
-
-def test_invalid_token_is_not_written_to_hub_files(fresh_resolver, monkeypatch):
-    from huggingface_hub import constants
-    _set_cli_token(monkeypatch, None)
-    _mock_whoami(monkeypatch, {APP_TOKEN: RuntimeError("401")})
-    fresh_resolver.save_app_token(APP_TOKEN)
     from services import settings_store
     assert settings_store.get_hf_token() == APP_TOKEN
     assert not Path(constants.HF_TOKEN_PATH).exists()
+    assert not Path(constants.HF_STORED_TOKENS_PATH).exists()
+
+
+def test_save_keeps_an_existing_cli_login_readable(fresh_resolver, monkeypatch):
+    from huggingface_hub import constants
+    _set_cli_token(monkeypatch, CLI_TOKEN)
+    _mock_whoami(monkeypatch, {APP_TOKEN: {"name": "alice"}})
+    fresh_resolver.save_app_token(APP_TOKEN)
+    assert Path(constants.HF_TOKEN_PATH).read_text() == CLI_TOKEN
+    assert fresh_resolver._read_hf_cli() == CLI_TOKEN
+
+
+def test_save_never_writes_hub_login_or_git_credential(fresh_resolver, monkeypatch):
+    """Pitfall #2 plus the plaintext file: no Hub login helper is ever called."""
+    import huggingface_hub
+    from huggingface_hub import _login
+    for name in ("set_git_credential", "_save_token", "_set_active_token", "login"):
+        monkeypatch.setattr(_login, name, lambda *a, **k: pytest.fail("Hub login helper called"))
+    monkeypatch.setattr(huggingface_hub, "login", lambda *a, **k: pytest.fail("login called"))
+    fresh_resolver.save_app_token(APP_TOKEN)
 
 
 def test_clear_app_token_removes_from_store(fresh_resolver, monkeypatch):
@@ -304,15 +296,13 @@ def test_environment_normalization_retains_correct_source(fresh_resolver, monkey
     assert fresh_resolver._read_hf_cli() is None
 
 
-def test_save_and_clear_use_the_same_real_hub_files(fresh_resolver, monkeypatch):
+def test_clear_uses_the_same_real_hub_files(fresh_resolver, monkeypatch):
     from huggingface_hub import constants
-    _mock_whoami(monkeypatch, {APP_TOKEN: {"name": "test", "auth": {"accessToken": {"role": "read", "displayName": "synthetic"}}}})
+    _set_cli_token(monkeypatch, CLI_TOKEN)
+    Path(constants.HF_STORED_TOKENS_PATH).write_text("synthetic", encoding="utf-8")
     fresh_resolver.save_app_token(APP_TOKEN)
-    assert Path(constants.HF_TOKEN_PATH).read_text() == APP_TOKEN
-    assert Path(constants.HF_STORED_TOKENS_PATH).exists()
-    assert fresh_resolver._read_hf_cli() == APP_TOKEN
     fresh_resolver.clear_app_token()
-    assert fresh_resolver._read_hf_cli() == APP_TOKEN
+    assert fresh_resolver._read_hf_cli() == CLI_TOKEN
     fresh_resolver.clear_app_token(also_clear_hf_cli=True)
     assert fresh_resolver._read_hf_cli() is None
     assert not Path(constants.HF_STORED_TOKENS_PATH).exists()
@@ -357,3 +347,14 @@ def test_clear_attempts_all_files_and_reports_failure(fresh_resolver, monkeypatc
     assert not selected.with_name("stored_tokens").exists()
     assert not legacy.with_name("stored_tokens").exists()
     assert not fresh_resolver._VALIDATION_CACHE
+
+
+def test_backend_never_writes_the_plaintext_hub_token_file():
+    """Class guard: no backend code may call the Hub login writers again."""
+    import re
+    backend = Path(__file__).resolve().parents[3] / "backend"
+    writer = re.compile(r"\b_save_token\b|\b_set_active_token\b|HfFolder\.save_token|"
+                        r"huggingface_hub\.login\(|from huggingface_hub import[^\n]*\blogin\b")
+    hits = [str(p) for p in backend.rglob("*.py")
+            if "tests" not in p.parts and ".venv" not in p.parts and writer.search(p.read_text(encoding="utf-8", errors="ignore"))]
+    assert hits == []
