@@ -22,7 +22,9 @@ try {
   };
   const navigation = sidebar.getByRole('navigation', { name: 'Workspaces', exact: true });
   await navigation.waitFor();
-  assert.equal(await sidebar.locator('footer a:visible').count(), 1);
+  await sidebar.getByRole('slider', { name: 'Speed / quality', exact: true }).waitFor();
+  assert.equal(await sidebar.locator('footer a:visible').count(), 0);
+  assert.equal(await sidebar.locator('[data-slot=engine-row]').count(), 0);
   await chooseView('Models');
   const speechTool = sidebar.getByRole('link', { name: /^Text to speech: .*Change engine$/ });
   await speechTool.focus();

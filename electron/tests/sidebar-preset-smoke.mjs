@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
+import { expect } from 'playwright/test';
 
 const browser = await chromium.launch({
   ...(process.env.PLAYWRIGHT_BUNDLED === '1' ? {} : { channel: process.env.PLAYWRIGHT_CHANNEL || 'msedge' }),
@@ -148,27 +149,19 @@ try {
   });
   await page.goto(ui + '/#/clone');
   const footer = page.locator('aside').first().locator('footer');
-  // Speed / quality: a radiogroup of tiers (Fast/Balanced/Quality/Max) plus a separate Auto toggle.
-  const tiers = footer.getByRole('radiogroup', { name: 'Speed / quality', exact: true });
-  const tier = (name) => tiers.getByRole('radio', { name, exact: true });
-  const checkedTier = () => tiers.locator('[role=radio][aria-checked=true]').innerText();
-  await tiers.waitFor();
-  await page.waitForFunction(
-    () =>
-      document.querySelector('footer [role=radiogroup][aria-describedby$="-help"] [role=radio]') &&
-      !document.querySelector('footer [role=radiogroup][aria-describedby$="-help"] [role=radio]')
-        .disabled,
-  );
-  await tier('Fast').focus();
+  // Speed / quality: a four-notch slider (Fast/Balanced/Quality/Max) plus a separate Auto toggle.
+  const slider = footer.getByRole('slider', { name: 'Speed / quality', exact: true });
+  const checkedTier = () => slider.getAttribute('aria-valuetext');
+  await slider.waitFor();
+  await expect(slider).toBeEnabled();
+  await slider.focus();
   await page.keyboard.press('ArrowRight');
-  await page.waitForFunction(
-    () =>
-      document.querySelector('footer [role=radiogroup][aria-describedby$="-help"] [role=radio]')
-        ?.disabled,
-  );
+  await expect(slider).toBeDisabled();
   releaseSave();
-  await footer.locator('[data-detail-level=models]').waitFor();
-  const asr = footer.locator('[data-slot=engine-row]').filter({ hasText: 'Speech to text' });
+  // Changing the tier opens the models popover so the switch is visible without a tall sidebar footer.
+  const popup = page.locator('[data-slot=popover-content]');
+  await popup.waitFor();
+  const asr = popup.locator('[data-slot=engine-row]').filter({ hasText: 'Speech to text' });
   await asr.getByRole('status').filter({ hasText: 'Switching' }).waitFor();
   assert.ok(
     (await asr.innerText()).includes('medium'),
@@ -181,7 +174,7 @@ try {
   assert.equal(await checkedTier(), 'Balanced');
   assert.deepEqual(writes, [{ tier: 'balanced', family: null }]);
   fail = true;
-  await tier('Balanced').focus();
+  await slider.focus();
   await page.keyboard.press('ArrowLeft');
   await footer.getByRole('alert').waitFor();
   assert.equal(
@@ -196,11 +189,12 @@ try {
   fail = false;
   await footer.getByRole('button', { name: 'Auto', exact: true }).click();
   await footer.getByRole('button', { name: 'Auto', exact: true, pressed: true }).waitFor();
-  await page.waitForFunction(
-    () =>
-      !document.querySelector('footer [role=radiogroup][aria-describedby$="-help"] [role=radio]')
-        ?.disabled,
-  );
+  await expect(slider).toBeEnabled();
+  // The popover opened with the tier change and polled live usage; start counting afresh once closed.
+  await page.keyboard.press('Escape');
+  await popup.waitFor({ state: 'hidden' });
+  telemetryReads = 0;
+  await page.waitForTimeout(2_300);
   assert.equal(telemetryReads, 0, 'Closed hardware panel does not poll');
   await footer.getByRole('button', { name: 'Adapted to your hardware' }).click();
   const live = page.getByRole('region', { name: 'Live usage' });
@@ -218,8 +212,8 @@ try {
   assert.equal(await hardwareSpecs.isVisible(), false, 'Details collapse with the keyboard');
   await details.blur();
   await page.getByText('Memory limit', { exact: true }).first().waitFor();
-  await footer.getByText('OmniVoice', { exact: true }).waitFor();
-  await footer.getByText('Parakeet TDT v3', { exact: true }).waitFor();
+  await popup.getByText('OmniVoice', { exact: true }).waitFor();
+  await popup.getByText('Parakeet TDT v3', { exact: true }).waitFor();
   assert.deepEqual(writes.at(-1), { tier: 'auto', family: null });
   await page
     .locator('[data-slot=popover-content]')

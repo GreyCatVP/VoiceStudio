@@ -55,6 +55,26 @@ export const freePort = () =>
     });
   });
 
+/** True when an app launch died because a port chosen by `freePort()` was taken meanwhile. */
+export const isPortConflict = (error) => /EADDRINUSE/.test(String(error?.message ?? error));
+
+/**
+ * `freePort()` can only report a port that was free a moment ago: between closing its
+ * probe and Electron binding the port, another process (a parallel test, the previous
+ * app still shutting down) can take it. Retry the launch with fresh ports rather than
+ * failing a test for a collision that has nothing to do with it.
+ */
+export async function launchWithFreshPorts(launchOnce, nextPorts, attempts = 3) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await launchOnce();
+    } catch (error) {
+      if (attempt >= attempts || !isPortConflict(error)) throw error;
+      await nextPorts();
+    }
+  }
+}
+
 const slug = (name) =>
   name
     .replace(/[^a-z0-9]+/gi, '-')
@@ -110,6 +130,7 @@ async function launch({ profile, backendPort, proxyPort, seed }) {
   try {
     page = await app.firstWindow();
   } catch (error) {
+    await app.close().catch(() => {});
     // The app died before showing a window: its own output is the only evidence of why.
     let journal = '(none)';
     try {
@@ -160,12 +181,18 @@ export async function withApp(t, options, body) {
           },
         })
       : null;
-  const backendPort = backend ? backend.port : await freePort();
-  const proxyPort = await freePort();
+  let backendPort = backend ? backend.port : await freePort();
+  let proxyPort = await freePort();
   const live = [];
   const session = { profile, backend, relaunch: null };
   const start = async () => {
-    const started = await launch({ profile, backendPort, proxyPort, seed });
+    const started = await launchWithFreshPorts(
+      () => launch({ profile, backendPort, proxyPort, seed }),
+      async () => {
+        proxyPort = await freePort();
+        if (!backend) backendPort = await freePort();
+      },
+    );
     live.push(started);
     Object.assign(session, started);
     return session;

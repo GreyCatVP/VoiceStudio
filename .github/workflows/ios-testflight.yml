@@ -17,7 +17,8 @@ concurrency:
 jobs:
   testflight:
     if: github.ref == 'refs/heads/main'
-    runs-on: macos-15
+    # App Store Connect only accepts builds from the current iOS SDK (Xcode 26+).
+    runs-on: macos-26
     timeout-minutes: 60
     # Holds the App Store Connect secrets; restrict it to `main` in repository settings.
     environment: app-store-connect
@@ -71,11 +72,16 @@ jobs:
             DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Automatic \
             archive
 
+      # Automatic signing archives with the team's development identity; the
+      # export below re-signs for App Store distribution and App Store Connect
+      # rejects anything else. The archive must still be validly signed by this team.
       - name: Verify archive signature and version
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           APP="$RUNNER_TEMP/VoiceStudio.xcarchive/Products/Applications/VoiceStudio.app"
           codesign --verify --deep --strict "$APP"
-          codesign -dvv "$APP" 2>&1 | grep -q '^Authority=Apple Distribution:'
+          codesign -dvv "$APP" 2>&1 | grep -qx "TeamIdentifier=$TEAM_ID"
           test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$APP/Info.plist")" = "$VOICESTUDIO_IOS_BUILD_NUMBER"
 
       - name: Upload to TestFlight
