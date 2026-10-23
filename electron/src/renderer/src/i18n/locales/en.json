@@ -2979,7 +2979,11 @@
     "toast_available": "VoiceStudio {{version}} is available",
     "toast_install": "Install and restart",
     "toast_whats_new": "What's new",
-    "toast_later": "Later"
+    "toast_later": "Later",
+    "channel": "Update channel",
+    "channel_stable": "Stable",
+    "channel_beta": "Beta",
+    "channel_beta_hint": "Beta gets early builds and may have bugs. You move to the next stable release automatically."
   },
   "openapi": {
     "title": "VoiceStudio API",

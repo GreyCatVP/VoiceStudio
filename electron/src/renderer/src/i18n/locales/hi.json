@@ -2916,7 +2916,11 @@
     "toast_available": "VoiceStudio {{version}} उपलब्ध है",
     "toast_install": "इंस्टॉल करें और पुनः आरंभ करें",
     "toast_whats_new": "नया क्या है",
-    "toast_later": "बाद में"
+    "toast_later": "बाद में",
+    "channel": "अपडेट चैनल",
+    "channel_stable": "स्थिर",
+    "channel_beta": "बीटा",
+    "channel_beta_hint": "बीटा में शुरुआती बिल्ड मिलते हैं और उनमें बग हो सकते हैं। अगली स्थिर रिलीज़ पर आप अपने आप चले जाते हैं।"
   },
   "openapi": {
     "title": "VoiceStudio API",

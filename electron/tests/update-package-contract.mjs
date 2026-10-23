@@ -48,11 +48,11 @@ const channel = option(
   process.env.VOICESTUDIO_UPDATE_CHANNEL || `electron-stable-${platform}-${arch}`,
 );
 const releaseDir = resolve(electronRoot, option('release', 'release'));
-const expectedChannel =
+const expectedChannels =
   process.env.VOICESTUDIO_DISTRIBUTION === 'microsoft-store'
-    ? `electron-microsoft-store-stable-${platform}-${arch}`
-    : `electron-stable-${platform}-${arch}`;
-assert.equal(channel, expectedChannel, 'Distribution uses its dedicated stable update channel');
+    ? [`electron-microsoft-store-stable-${platform}-${arch}`]
+    : [`electron-stable-${platform}-${arch}`, `electron-beta-${platform}-${arch}`];
+assert(expectedChannels.includes(channel), 'Distribution uses its dedicated update channel');
 
 assert(['win32', 'darwin', 'linux'].includes(platform), `Supported platform: ${platform}`);
 assert(['x64', 'arm64'].includes(arch), `Supported architecture: ${arch}`);

@@ -2916,7 +2916,11 @@
     "toast_available": "VoiceStudio {{version}} พร้อมใช้งาน",
     "toast_install": "ติดตั้งและรีสตาร์ต",
     "toast_whats_new": "มีอะไรใหม่",
-    "toast_later": "ไว้ทีหลัง"
+    "toast_later": "ไว้ทีหลัง",
+    "channel": "ช่องทางอัปเดต",
+    "channel_stable": "เสถียร",
+    "channel_beta": "เบต้า",
+    "channel_beta_hint": "เบต้าได้รับบิลด์รุ่นแรก ๆ และอาจมีข้อบกพร่อง คุณจะย้ายไปยังรุ่นเสถียรถัดไปโดยอัตโนมัติ"
   },
   "openapi": {
     "title": "API ของ VoiceStudio",

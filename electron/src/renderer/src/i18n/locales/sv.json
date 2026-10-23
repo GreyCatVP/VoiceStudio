@@ -2916,7 +2916,11 @@
     "toast_available": "VoiceStudio {{version}} är tillgänglig",
     "toast_install": "Installera och starta om",
     "toast_whats_new": "Nyheter",
-    "toast_later": "Senare"
+    "toast_later": "Senare",
+    "channel": "Uppdateringskanal",
+    "channel_stable": "Stabil",
+    "channel_beta": "Beta",
+    "channel_beta_hint": "Beta får tidiga versioner och kan innehålla buggar. Du byter automatiskt till nästa stabila version."
   },
   "openapi": {
     "title": "VoiceStudio API",

@@ -2916,7 +2916,11 @@
     "toast_available": "VoiceStudio {{version}}을(를) 사용할 수 있습니다",
     "toast_install": "설치 후 재시작",
     "toast_whats_new": "새로운 기능",
-    "toast_later": "나중에"
+    "toast_later": "나중에",
+    "channel": "업데이트 채널",
+    "channel_stable": "안정",
+    "channel_beta": "베타",
+    "channel_beta_hint": "베타는 초기 빌드를 받으며 버그가 있을 수 있습니다. 다음 안정 버전이 나오면 자동으로 전환됩니다."
   },
   "openapi": {
     "title": "VoiceStudio API",

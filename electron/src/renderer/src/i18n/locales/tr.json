@@ -2916,7 +2916,11 @@
     "toast_available": "VoiceStudio {{version}} kullanılabilir",
     "toast_install": "Yükle ve yeniden başlat",
     "toast_whats_new": "Yenilikler",
-    "toast_later": "Daha sonra"
+    "toast_later": "Daha sonra",
+    "channel": "Güncelleme kanalı",
+    "channel_stable": "Kararlı",
+    "channel_beta": "Beta",
+    "channel_beta_hint": "Beta erken sürümleri alır ve hatalar içerebilir. Bir sonraki kararlı sürüme otomatik olarak geçersiniz."
   },
   "openapi": {
     "title": "VoiceStudio API",

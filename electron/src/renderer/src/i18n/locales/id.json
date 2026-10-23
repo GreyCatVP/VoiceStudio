@@ -2916,7 +2916,11 @@
     "toast_available": "VoiceStudio {{version}} tersedia",
     "toast_install": "Instal dan mulai ulang",
     "toast_whats_new": "Yang baru",
-    "toast_later": "Nanti"
+    "toast_later": "Nanti",
+    "channel": "Kanal pembaruan",
+    "channel_stable": "Stabil",
+    "channel_beta": "Beta",
+    "channel_beta_hint": "Beta menerima versi awal dan mungkin berisi bug. Anda otomatis pindah ke rilis stabil berikutnya."
   },
   "openapi": {
     "title": "API VoiceStudio",

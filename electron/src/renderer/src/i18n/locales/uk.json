@@ -2920,7 +2920,11 @@
     "toast_available": "VoiceStudio {{version}} доступна",
     "toast_install": "Встановити та перезапустити",
     "toast_whats_new": "Що нового",
-    "toast_later": "Пізніше"
+    "toast_later": "Пізніше",
+    "channel": "Канал оновлень",
+    "channel_stable": "Стабільний",
+    "channel_beta": "Бета",
+    "channel_beta_hint": "Бета отримує ранні збірки й може містити помилки. Ви автоматично перейдете на наступний стабільний випуск."
   },
   "openapi": {
     "title": "API VoiceStudio",

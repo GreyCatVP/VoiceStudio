@@ -2924,7 +2924,11 @@
     "toast_available": "الإصدار {{version}} من VoiceStudio متاح",
     "toast_install": "تثبيت وإعادة التشغيل",
     "toast_whats_new": "ما الجديد",
-    "toast_later": "لاحقًا"
+    "toast_later": "لاحقًا",
+    "channel": "قناة التحديث",
+    "channel_stable": "مستقرة",
+    "channel_beta": "تجريبية",
+    "channel_beta_hint": "تحصل القناة التجريبية على إصدارات مبكرة وقد تحتوي على أخطاء. تنتقل تلقائيًا إلى الإصدار المستقر التالي."
   },
   "openapi": {
     "title": "واجهة VoiceStudio البرمجية",

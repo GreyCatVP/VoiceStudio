@@ -2916,7 +2916,11 @@
     "toast_available": "VoiceStudio {{version}} đã có",
     "toast_install": "Cài đặt và khởi động lại",
     "toast_whats_new": "Có gì mới",
-    "toast_later": "Để sau"
+    "toast_later": "Để sau",
+    "channel": "Kênh cập nhật",
+    "channel_stable": "Ổn định",
+    "channel_beta": "Beta",
+    "channel_beta_hint": "Beta nhận các bản dựng sớm và có thể có lỗi. Bạn sẽ tự động chuyển sang bản ổn định tiếp theo."
   },
   "openapi": {
     "title": "API VoiceStudio",

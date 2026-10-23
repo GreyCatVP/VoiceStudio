@@ -2,6 +2,7 @@
 """Copy authoritative catalogs; localize OS permission prompts; derive version from root."""
 import argparse
 import json
+import os
 import pathlib
 import plistlib
 import re
@@ -24,6 +25,21 @@ def lookup(catalog, key):
     for part in key.split("."):
         value = value.get(part, {}) if isinstance(value, dict) else {}
     return value if isinstance(value, str) else None
+
+
+def marketing_version(version):
+    # App Store Connect accepts only X.Y.Z, so a beta uploads as its X.Y.Z under a new build number.
+    match = re.fullmatch(r"(\d+\.\d+\.\d+)(?:-beta\.\d+)?", version)
+    if not match:
+        raise ValueError(f"Unsupported app version for iOS: {version}")
+    return match.group(1)
+
+
+def build_number(value):
+    # TestFlight needs a new, increasing build number per upload: up to three integers.
+    if not re.fullmatch(r"\d+(?:\.\d+){0,2}", value):
+        raise ValueError(f"Invalid iOS build number: {value}")
+    return value
 
 
 def prepare(output, info):
@@ -58,8 +74,8 @@ def prepare(output, info):
         (localized / "InfoPlist.strings").write_text("\n".join(lines) + "\n")
     version = json.loads((ROOT / "package.json").read_text())["version"]
     data = plistlib.loads((IOS / "VoiceStudio/Info.plist").read_bytes())
-    data["CFBundleShortVersionString"] = version
-    data["CFBundleVersion"] = "1"
+    data["CFBundleShortVersionString"] = marketing_version(version)
+    data["CFBundleVersion"] = build_number(os.environ.get("VOICESTUDIO_IOS_BUILD_NUMBER", "1"))
     data["CFBundleLocalizations"] = sorted(path.stem for path in source.glob("*.json"))
     for field, key in permissions.items():
         data[field] = lookup(english, key)
