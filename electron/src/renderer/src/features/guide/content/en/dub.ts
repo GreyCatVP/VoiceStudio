@@ -243,6 +243,82 @@ const chapter: GuideChapter = {
       ],
     },
     {
+      id: 'thai',
+      title: 'Dubbing Thai: Typhoon models',
+      blocks: [
+        {
+          kind: 'p',
+          text: 'For dubs between **Thai and English**, two models made for Thai give better results than the defaults: **Typhoon Whisper Turbo** recognises Thai speech, and **Typhoon Translate 1.5** translates English↔Thai. Use Typhoon Whisper Turbo when the video is spoken in Thai, and Typhoon Translate for English → Thai or Thai → English. For any other language keep Faster-Whisper large-v3 and NLLB-200.',
+        },
+        {
+          kind: 'table',
+          head: ['Task', 'Default model', 'Typhoon model', 'Measured on an H200'],
+          rows: [
+            ['Recognise Thai speech', 'Faster-Whisper large-v3: about 13% character errors', 'Typhoon Whisper Turbo: about 5% character errors', 'Real Thai TV speech; Typhoon was also about 3× faster'],
+            ['Translate English → Thai', 'NLLB-200: "campaign" became การเลือกตั้ง (election), "charts" became แผนที่ (maps)', 'Typhoon Translate 1.5: both correct', '20 dub lines: Typhoon was better on 15'],
+          ],
+        },
+        {
+          kind: 'table',
+          head: ['', 'Typhoon Translate 1.5', 'Typhoon Whisper Turbo'],
+          rows: [
+            ['Languages', 'English → Thai and Thai → English only', 'Thai speech only (it cannot transcribe English)'],
+            ['Runs', 'Only on the remote GPU (`typhoon-translate` engine)', 'On the remote GPU with `faster-whisper-isolated`, or on this computer'],
+            ['First use', 'The cluster installs the engine and downloads the model: several minutes', 'Downloads 1.6 GB, then converts it once (another 1.6 GB). On the remote GPU this happens on the cluster'],
+            ['Licence', 'Accept once, in the dialog that opens at the first **Translate All**', 'Accept once with the **Licence** button on its row'],
+          ],
+        },
+        {
+          kind: 'steps',
+          items: [
+            {
+              title: 'Turn on the remote engines',
+              text: 'Open **Settings → Remote GPU**. Under **Engines that run on Ray**, tick **typhoon-translate** (Translation) and, for Thai speech, **faster-whisper-isolated** (Speech recognition). Press **Save**. The first job on the cluster installs the engine there, so it takes several minutes.',
+              shot: 'dub-typhoon-engines',
+              check: 'Both engines are ticked after **Save**, also when you reopen the page.',
+            },
+            {
+              title: 'Select Typhoon Translate',
+              text: 'Open **Settings → Models → Translation** and press **Select** on **Typhoon Translate (Thai↔English, remote GPU)**. If it is listed under **Unavailable**, `typhoon-translate` is not turned on in step 1.',
+              shot: 'dub-typhoon-provider',
+              check: 'The row shows **Selected**, and **Translator** in the dub shows Typhoon Translate.',
+            },
+            {
+              title: 'For Thai speech: choose Typhoon Whisper Turbo',
+              text: 'Only when the video is spoken in Thai. Open **Settings → Models → ASR**. To run it on the remote GPU, the ASR engine must be **Faster-Whisper (crash-isolated subprocess)**. In the model list, find **Typhoon Whisper Turbo (Thai only)**: the **Thai only** chip marks it. Press **Licence**, read the terms and accept them. Press **Download**, then **Select** (the button appears once the model is downloaded). Back in the dub, set **Spoken language** to Thai before you import the video.',
+              shot: 'dub-typhoon-asr',
+              check: 'The row shows **Selected**. Thai lines in the transcript split at whole words.',
+            },
+            {
+              title: 'Add glossary rules and translate',
+              text: 'In the dub, open **+ Glossary** and add the terms that must always be translated the same way: **Source** in the spoken language, **Target** in the dub language. Typhoon Translate gets each term as a rule, only for the lines that contain it. Choose **Thai** (or **English**) under **Dub into** and press **Translate All**. The first time, a licence dialog opens: tick the box, press **Accept licence**, then **Close**, and press **Translate All** again.',
+              shot: 'dub-typhoon-translate',
+              check: 'Every line shows its translation, and the glossary terms appear as you defined them (here the rule **board** → คณะกรรมการบริษัท gives "การประชุมคณะกรรมการบริษัท").',
+            },
+          ],
+        },
+        {
+          kind: 'verify',
+          items: [
+            '**Translator** in the dub shows **Typhoon Translate (Thai↔English, remote GPU)**.',
+            'A line with a glossary term uses your **Target** text for it.',
+            '**Settings → Remote GPU** lists `typhoon-translate` jobs in its job list while a translation runs.',
+            'With Typhoon Whisper Turbo, a Thai transcript has few wrong words, and word timings cover whole Thai words.',
+          ],
+        },
+        {
+          kind: 'note',
+          tone: 'warn',
+          text: '**"Typhoon Translate only translates English to Thai or Thai to English."** The source or a target language is something else. Choose NLLB-200 in **Settings → Models → Translation** for other languages, or remove the other target languages.',
+        },
+        {
+          kind: 'note',
+          tone: 'warn',
+          text: '**"Typhoon Translate runs only on a remote GPU."** `typhoon-translate` is not ticked in **Settings → Remote GPU**, or the remote GPU is off. There is no local version yet.',
+        },
+      ],
+    },
+    {
       id: 'verify',
       title: 'Check the result',
       blocks: [
