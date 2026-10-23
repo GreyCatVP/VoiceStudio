@@ -256,6 +256,21 @@ def test_render_summary_is_settings_and_counts_never_script_text():
     assert "Zoe" not in json.dumps(out)                        # content-free
 
 
+def test_render_summary_counts_thai_words_not_spaces():
+    from types import SimpleNamespace as NS
+
+    from core.thai_words import count_words
+    from services.longform_render import render_summary
+
+    thai = "กาลครั้งหนึ่งนานมาแล้ว มีเด็กหญิงคนหนึ่งชื่อมะลิ"   # 2 by spaces
+    out = render_summary([NS(title="หนึ่ง", spans=[NS(text=thai, speed=None)])], voices=[])
+    assert out["words"] == count_words(thai) > 5
+    # The tokenizer is optional: without it the count falls back to spaces.
+    assert count_words(thai, tokenize=lambda _t: 1 / 0) == 2
+    assert count_words("Hello, world again.") == 3
+    assert count_words("ฉันชอบ ChatGPT มาก!", tokenize=lambda t: ["ฉัน", "ชอบ", " ", "ChatGPT", " ", "มาก", "!"]) == 4
+
+
 def test_a_summary_with_malformed_nested_fields_degrades_instead_of_reaching_clients():
     jid = _uid("story_nested")
     _seed_done(jid, type="story", done_payload={

@@ -123,7 +123,7 @@ def test_existing_markdown_headings_after_preamble_stay_verbatim(newline):
 
 # ── EPUB ────────────────────────────────────────────────────────────────────
 
-def _make_epub_raw(documents: list[bytes]) -> bytes:
+def _make_epub_raw(documents: list[bytes], *, metadata: str = "") -> bytes:
     """Build a minimal EPUB: container.xml → content.opf (manifest+spine) →
     one chapter document per entry, written verbatim so a test can control the
     bytes (and therefore the encoding) the importer receives."""
@@ -144,7 +144,7 @@ def _make_epub_raw(documents: list[bytes]) -> bytes:
         opf = (
             '<?xml version="1.0"?>'
             '<package xmlns="http://www.idpf.org/2007/opf" version="3.0">'
-            f'<manifest>{"".join(items)}</manifest>'
+            f'{metadata}<manifest>{"".join(items)}</manifest>'
             f'<spine>{"".join(refs)}</spine></package>'
         )
         z.writestr("OEBPS/content.opf", opf)
@@ -422,3 +422,80 @@ def test_text_after_block_end_tags_starts_a_new_line():
     title, body = _html_to_title_body("<h1>Chapter <p>One</p></h1><p>Body</p>after")
     assert title == "Chapter One"
     assert [ln for ln in body.split("\n") if ln] == ["Body", "after"]
+
+
+# ── Thai ────────────────────────────────────────────────────────────────────
+
+_THAI_BOOK = """คำนำ
+หนังสือเล่มนี้เขียนขึ้นเพื่อเด็กทุกคนที่เคยฝันถึงทะเล
+
+บทที่ 1 จุดเริ่มต้น
+กาลครั้งหนึ่งนานมาแล้ว มีเด็กหญิงคนหนึ่งชื่อมะลิอาศัยอยู่ในหมู่บ้านเล็กๆริมแม่น้ำ
+ตอนที่ 5 ขวบ มะลิเคยไปทะเลกับพ่อเป็นครั้งแรก
+บทที่ 3 ของหนังสือเล่มนี้พูดถึงพ่อ
+
+บทที่ ๒: การเดินทาง
+วันหนึ่งคุณครูประกาศว่าจะพานักเรียนไปทัศนศึกษาที่กรุงเทพมหานคร
+ตอนที่ฉันยังเด็ก ฉันชอบนั่งดูเรือ
+
+ภาคที่ 2
+บทที่ 3 - บ้าน
+เมื่อกลับถึงบ้าน มะลิเล่าเรื่องทั้งหมดให้แม่ฟังด้วยรอยยิ้ม
+
+ปัจฉิมบท
+บทนำของเรื่องนี้จบลงแล้ว
+บทส่งท้าย ความหวังใหม่
+มะลิเติบโตขึ้นและกลายเป็นครูในหมู่บ้านของเธอ"""
+
+
+def test_plaintext_promotes_thai_chapter_headings():
+    headings = [ln for ln in chapterize_plaintext(_THAI_BOOK).split("\n") if ln.startswith("# ")]
+    assert headings == [
+        "# คำนำ",
+        "# บทที่ 1 จุดเริ่มต้น",
+        "# บทที่ ๒: การเดินทาง",
+        "# ภาคที่ 2",
+        "# บทที่ 3 - บ้าน",
+        "# ปัจฉิมบท",
+        "# บทส่งท้าย ความหวังใหม่",
+    ]
+    # "ภาคที่ 2" has no body of its own, so the parser folds it away.
+    assert parse_audiobook_script(chapterize_plaintext(_THAI_BOOK)).chapter_count == 6
+
+
+@pytest.mark.parametrize("line", [
+    "ตอนที่ 5 ขวบ มะลิเคยไปทะเลกับพ่อเป็นครั้งแรก",   # "when she was five"
+    "ตอนที่ 5 ขวบ",
+    "ตอนที่ 3 ทุ่ม พ่อกลับบ้าน",                     # "at 9 pm"
+    "บทที่ 3 ของหนังสือเล่มนี้พูดถึงพ่อ",              # "chapter 3 of this book…"
+    "ตอนที่ฉันยังเด็ก ฉันชอบนั่งดูเรือ",                # "when I was young"
+    "บทนำของเรื่องนี้จบลงแล้ว",
+    "คำนำหน้าชื่อของเธอคือนางสาว",
+    "บทที่ 1 ตอนนั้นฉันยังเด็กมาก และไม่รู้อะไรเลย",     # a spaced phrase, not a title
+])
+def test_thai_sentences_that_begin_with_a_keyword_stay_body_text(line):
+    assert chapterize_plaintext(f"เกริ่น\n{line}\nจบ") == f"เกริ่น\n{line}\nจบ"
+
+
+def test_import_endpoint_fills_the_book_title_from_epub_metadata():
+    metadata = ('<metadata xmlns:dc="http://purl.org/dc/elements/1.1/">'
+                '<dc:title>  เจ้าชาย\n  น้อย </dc:title><dc:title>Subtitle</dc:title></metadata>')
+    epub = _make_epub_raw([_chapter_html("One", "Hello.").encode()], metadata=metadata)
+    res = asyncio.run(audiobook_import(_upload("book.epub", epub)))
+    assert res["title"] == "เจ้าชาย น้อย" and res["chapters"] == 1
+    # No dc:title, or a format without one: an empty title, never a guess.
+    assert asyncio.run(audiobook_import(_upload("book.epub", _make_epub([("One", "Hi.")]))))["title"] == ""
+    assert asyncio.run(audiobook_import(_upload("book.txt", b"Chapter 1\nHi.")))["title"] == ""
+
+
+def test_thai_front_matter_titles_are_skipped_only_as_whole_titles():
+    """Thai has no spaces: only a title that IS the word marks front matter."""
+    import sys
+    sys.path.insert(0, "backend")
+    from services.longform_import import _ANCILLARY_TITLE
+
+    for title in ("สารบัญ", "ลิขสิทธิ์", "ปก", "คำอุทิศ", "กิตติกรรมประกาศ", "สารบัญ:"):
+        assert _ANCILLARY_TITLE.match(title), title
+    # Real chapter titles that merely start with those words stay narrated.
+    for title in ("ปกป้องโลก", "สารบัญหนังสือเล่มนี้", "บทนำ", "บทที่ 1"):
+        assert not _ANCILLARY_TITLE.match(title), title

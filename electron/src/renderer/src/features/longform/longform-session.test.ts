@@ -9,6 +9,7 @@ import {
   chapterPreviewBody,
   clearLongformDraftForReset,
   stopLongform,
+  importedDraft,
 } from './longform-session';
 const eventResponse = (events: object[]) =>
   new Response(events.map((e) => 'data: ' + JSON.stringify(e) + '\n\n').join(''));
@@ -193,4 +194,15 @@ it('does not recreate a cleared draft during pagehide persistence', async () => 
   window.dispatchEvent(new Event('pagehide'));
   await new Promise((resolve) => setTimeout(resolve, 300));
   expect(localStorage.getItem('voicestudio.longform.v1')).toBeNull();
+});
+it('an imported book fills Title from its own title only while Title is empty', () => {
+  editLongform('audiobook', { title: '' });
+  expect(importedDraft('audiobook', 'Body', '  The Hobbit ')).toEqual({
+    script: 'Body',
+    title: 'The Hobbit',
+  });
+  expect(importedDraft('stories', 'Body', '')).toEqual({ importText: 'Body' });
+  editLongform('audiobook', { title: 'My own title' });
+  expect(importedDraft('audiobook', 'Body', 'The Hobbit')).toEqual({ script: 'Body' });
+  editLongform('audiobook', { title: '' });
 });

@@ -2,7 +2,7 @@ import { isChapterLine } from './storyExport';
 
 // Sentence-aware splitter for the "Paste & auto-split" panel. Walks the text
 // and breaks at the closest sentence boundary that keeps each chunk under
-// `maxChars`. Falls back to whitespace, then to the hard cap.
+// `maxChars`. Falls back to whitespace, then a word boundary, then the hard cap.
 export function splitIntoChunks(text, maxChars) {
   const out = [];
   const clean = String(text || '')
@@ -33,11 +33,23 @@ export function splitIntoChunks(text, maxChars) {
         }
       }
     }
+    if (cut < 0) cut = lastWordBreak(window, Math.floor(max * 0.4));
     if (cut < 0) cut = max;
     out.push(clean.slice(i, i + cut).trim());
     i += cut;
   }
   return out.filter(Boolean);
+}
+
+// Start of the last word that begins after `min`, or -1. Thai, Lao, Khmer and
+// CJK write runs far longer than a chunk with no space, and a hard cut there
+// splits a word in half, so the engine mispronounces both halves.
+function lastWordBreak(window, min) {
+  if (typeof Intl === 'undefined' || typeof Intl.Segmenter !== 'function') return -1;
+  let cut = -1;
+  for (const { index } of new Intl.Segmenter(undefined, { granularity: 'word' }).segment(window))
+    if (index > min) cut = index;
+  return cut;
 }
 
 // Split presets for the Paste & Split panel. A storybook read by one narrator

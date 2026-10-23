@@ -55,6 +55,7 @@ import { EngineLanguagePicker } from '@/features/clone/engine-language-picker';
 import { LANG_CODES } from '@shared/utils/languages';
 import {
   editLongform,
+  importedDraft,
   dismissLongformError,
   renderLongform,
   stopLongform,
@@ -149,19 +150,21 @@ export function LongformPage({ mode }: { mode: Mode }) {
     setLocalError(null);
     try {
       let text: string;
+      let bookTitle = '';
       if (mode === 'stories' && /\.(txt|md|srt|vtt)$/i.test(file.name))
         text = importToText(file.name, await readTextFile(file));
       else {
         const body = new FormData();
         body.set('file', file);
-        const data = await apiJson<{ text: string }>('/audiobook/import', {
+        const data = await apiJson<{ text: string; title?: string }>('/audiobook/import', {
           method: 'POST',
           body,
         });
         text = data.text;
+        bookTitle = data.title ?? '';
       }
       if (mode === 'stories' && importEpoch !== storiesImportEpoch.current) return;
-      set(mode === 'audiobook' ? { script: text } : { importText: text });
+      set(importedDraft(mode, text, bookTitle));
     } catch (cause) {
       if (mode === 'stories' && importEpoch !== storiesImportEpoch.current) return;
       setLocalError(describeError(cause));

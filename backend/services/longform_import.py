@@ -21,12 +21,23 @@ from html.parser import HTMLParser
 from xml.etree import ElementTree as ET
 from urllib.parse import unquote, urlsplit
 
+from core.thai_words import count_words
 from services.text_upload import bom_encoding, decode_text_upload
 
 # A line that *starts* with a chapter keyword and is short enough to be a title
 # (not a sentence that happens to begin with "Chapter"). Anchored, no ambiguous
 # quantifiers → ReDoS-safe and applied per-line (short input) anyway.
 _CH_RE = re.compile(r"^(?:chapter|part|book|prologue|epilogue|section)\b", re.IGNORECASE)
+# Thai has no word spaces, so ``\b`` can't anchor it: a Thai heading is the
+# keyword (chapter/episode/part + Arabic or Thai digits, or a prologue/preface/
+# epilogue word), then the end of the line, a separator and a title, or a
+# space and a ONE-word title. "ตอนที่" also means "when", so a phrase after it
+# ("ตอนที่ 5 ขวบ ฉันเคยไปทะเล", "when I was five, I went to the sea") must not
+# become a chapter: no spaced titles, and no age/clock/"of" word after the number.
+_TH_CH_RE = re.compile(
+    r"^(?:(?:บทที่|ตอนที่|ภาคที่)[ \t]*[0-9\u0e50-\u0e59]+|บทนำ|คำนำ|อารัมภบท|ปัจฉิมบท|บทส่งท้าย)"
+    r"(?:[ \t]*[:.\-\u2013\u2014][ \t]*\S.*|[ \t]+(?!ขวบ|ทุ่ม|โมง|นาฬิกา|ของ)\S+)?$"
+)
 # Already-present Markdown H1 — if the text has any, we leave it untouched.
 _H1_RE = re.compile(r"^[ \t]*#[ \t]+\S", re.MULTILINE)
 _CHAPTER_TITLE_MAX = 60
@@ -106,7 +117,7 @@ def chapterize_plaintext(text: str) -> str:
 
     No-op if the text already has Markdown H1 headings (the user has structured
     it). Otherwise short standalone lines beginning with a chapter keyword
-    (``Chapter 3``, ``Prologue`` …) become headings; body text is preserved with
+    (``Chapter 3``, ``Prologue``, Thai ``บทที่ 3`` …) become headings; body text is preserved with
     line endings normalized to LF. Text with no detectable breaks falls through
     as a single chapter.
     """
@@ -117,7 +128,7 @@ def chapterize_plaintext(text: str) -> str:
     out = []
     for line in normalized.split("\n"):
         s = line.strip()
-        if s and len(s) <= _CHAPTER_TITLE_MAX and _CH_RE.match(s):
+        if s and len(s) <= _CHAPTER_TITLE_MAX and (_CH_RE.match(s) or _TH_CH_RE.match(s)):
             out.append(f"# {s}")
         else:
             out.append(line)
@@ -280,7 +291,11 @@ def _html_extract(xhtml: str) -> tuple[set[str], str, str]:
     return p.epub_types, p.title, p.text()
 
 
-_OPF_NS = {"opf": "http://www.idpf.org/2007/opf", "c": "urn:oasis:names:tc:opendocument:xmlns:container"}
+_OPF_NS = {
+    "opf": "http://www.idpf.org/2007/opf",
+    "c": "urn:oasis:names:tc:opendocument:xmlns:container",
+    "dc": "http://purl.org/dc/elements/1.1/",
+}
 
 
 def _member_path(base: str, href: str) -> str:
@@ -324,7 +339,11 @@ _ANCILLARY_TITLE = re.compile(
     r"^\s*(cover|half[ -]?title|title[ -]?page|copyright|dedication|contents|"
     r"table of contents|acknowledg\w*|about the (author|illustrator|book)|"
     r"also (by|available)|praise for|imprint|colophon|newsletter|look out for|"
-    r"(other )?(works|books|titles) by|about the publisher|footnotes?|endnotes?)\b",
+    r"(other )?(works|books|titles) by|about the publisher|footnotes?|endnotes?)\b"
+    # Thai: the whole title only (Thai has no spaces, so a prefix would also
+    # match real chapter titles).
+    r"|^\s*(สารบัญ|ลิขสิทธิ์|หน้าลิขสิทธิ์|คำอุทิศ|กิตติกรรมประกาศ|เกี่ยวกับผู้เขียน|ประวัติผู้เขียน|"
+    r"หน้าปก|ปก|บรรณานุกรม|ดัชนี|เชิงอรรถ|อภิธานศัพท์|ผลงานอื่นของผู้เขียน)\s*[.:]?\s*$",
     re.I,
 )
 
@@ -413,6 +432,15 @@ def _toc_titles(
 _FRONT_MATTER_MAX_WORDS = 400
 
 
+def _is_short(body: str) -> bool:
+    """At most :data:`_FRONT_MATTER_MAX_WORDS` words — counted as words, not
+    spaces: a Thai prologue has a space per phrase, so a whitespace split
+    called a 3,000-character opening chapter "short" and dropped it."""
+    if len(body.split()) > _FRONT_MATTER_MAX_WORDS:
+        return False  # already long by spaces; no tokenizer needed
+    return count_words(body) <= _FRONT_MATTER_MAX_WORDS
+
+
 def _front_matter_end(
     sections: list[tuple[str, set[str], str, str]], toc: dict[str, str], declared: str | None
 ) -> tuple[int, bool]:
@@ -491,6 +519,32 @@ def epub_to_chapter_script(
 ) -> str:
     """Convert EPUB bytes into a ``# Chapter`` / body script in spine order.
 
+    See :func:`epub_import`, which also returns the book's title."""
+    return epub_import(data, max_entry_bytes=max_entry_bytes, max_total_bytes=max_total_bytes)[0]
+
+
+_BOOK_TITLE_MAX = 200
+
+
+def _book_title(opf: ET.Element) -> str:
+    """The package's first non-empty ``dc:title`` (the main title), whitespace-collapsed."""
+    for element in opf.findall(".//opf:metadata/dc:title", _OPF_NS):
+        title = " ".join("".join(element.itertext()).split())
+        if title:
+            return title[:_BOOK_TITLE_MAX]
+    return ""
+
+
+def epub_import(
+    data: bytes,
+    *,
+    max_entry_bytes: int = _EPUB_MAX_ENTRY_BYTES,
+    max_total_bytes: int = _EPUB_MAX_TOTAL_BYTES,
+) -> tuple[str, str]:
+    """``(script, book title)`` for EPUB bytes; the title is ``""`` when absent.
+
+    The script is a ``# Chapter`` / body script in spine order.
+
     Reads the OPF manifest + spine (the publisher's reading order), extracts
     each document's title + visible text, and emits one ``# Title`` block per
     document with renderable text. ``max_entry_bytes`` / ``max_total_bytes``
@@ -564,13 +618,13 @@ def epub_to_chapter_script(
             in_back_matter = in_back_matter or (index > start and full in toc)
             continue  # cover, title page, dedication, copyright, contents, …
         unlisted = full not in toc and not (types & _BODY_TYPES)
-        stray = not heading and len(body.split()) <= _FRONT_MATTER_MAX_WORDS
         front_furniture = bool(heading and re.match(r"^\s*(novels by|published by)\b", heading, re.I))
+        # Counted only when it decides something: newmm on a Thai book is not free.
         if (index < start and unlisted
-                and len(body.split()) <= _FRONT_MATTER_MAX_WORDS
-                and (not heading or front_furniture)):
+                and (not heading or front_furniture)
+                and _is_short(body)):
             continue  # unlisted page ahead of the book: a teaser/epigraph/blurb
-        if in_back_matter and unlisted and stray:
+        if in_back_matter and unlisted and not heading and _is_short(body):
             # Footnotes, a stray ad — but ONLY once listed back matter has begun:
             # an unlisted file straight after a chapter is that chapter's
             # continuation (split chapters list only their first file).
@@ -581,7 +635,7 @@ def epub_to_chapter_script(
 
     if not blocks:
         raise ValueError("no readable chapters found in the EPUB")
-    return "\n\n".join(blocks)
+    return "\n\n".join(blocks), _book_title(opf)
 
 
 # Page-count ceiling for PDF ingestion — a defence against a pathological

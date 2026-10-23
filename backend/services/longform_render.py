@@ -41,6 +41,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Optional
 
+from core.thai_words import count_words
 from services.ffmpeg_utils import local_inputs_only
 
 _BITRATE_RE = re.compile(r"^\d{2,3}k$")
@@ -812,7 +813,7 @@ def render_summary(
         "language": language or "",
         "format": fmt or "",
         "lines": len(spoken),
-        "words": sum(len(s.text.split()) for s in spoken),
+        "words": sum(count_words(s.text) for s in spoken),
         "speeds": speeds,
         # The caller passes only non-default options; keep explicit falsy values
         # (seed 0, postprocess off) — they are settings, not absences.

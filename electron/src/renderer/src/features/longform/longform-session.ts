@@ -165,6 +165,14 @@ export function editLongform(mode: Mode, value: Partial<Draft>) {
   if (longformSession.state.active) return;
   updateDraft(mode, value);
 }
+/** Draft fields an import sets: the text, plus the book's own title (EPUB
+ * dc:title) when the user has not typed one. */
+export function importedDraft(mode: Mode, text: string, bookTitle = ''): Partial<Draft> {
+  const value: Partial<Draft> = mode === 'audiobook' ? { script: text } : { importText: text };
+  const title = bookTitle.trim();
+  if (title && !longformSession.state.drafts[mode].title.trim()) value.title = title;
+  return value;
+}
 const storage = createCoalescedJsonStorage({
   warn: () => patch({ storageError: true }),
 });

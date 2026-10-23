@@ -184,10 +184,11 @@ async def audiobook_import(file: UploadFile = File(...)) -> dict:
     EPUB is parsed in spine order (stdlib only, local); PDF text is extracted
     with pypdf (pure-Python) then chapterized; plain text gets ``# `` headings
     inserted ahead of obvious chapter-title lines. Returns the script text (for
-    the editor) + the resulting chapter count."""
+    the editor), the resulting chapter count, and the book's own ``title``
+    (EPUB ``dc:title``; ``""`` when the format has none)."""
     from services.longform_import import (
         chapterize_plaintext,
-        epub_to_chapter_script,
+        epub_import,
         pdf_to_chapter_script,
     )
 
@@ -197,9 +198,10 @@ async def audiobook_import(file: UploadFile = File(...)) -> dict:
         raise HTTPException(status_code=400, detail="empty file")
     if len(data) > _IMPORT_MAX_BYTES:
         raise HTTPException(status_code=400, detail="file too large (max 64 MB)")
+    title = ""
     if name.endswith(".epub"):
         try:
-            script = epub_to_chapter_script(data)
+            script, title = epub_import(data)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=f"couldn't parse EPUB: {e}")
     elif name.endswith(".pdf"):
@@ -213,7 +215,7 @@ async def audiobook_import(file: UploadFile = File(...)) -> dict:
     if not script.strip():
         raise HTTPException(status_code=400, detail="no text found in the file")
     plan = parse_audiobook_script(script)
-    return {"text": script, "chapters": plan.chapter_count}
+    return {"text": script, "chapters": plan.chapter_count, "title": title}
 
 
 @router.post("/audiobook/cover")

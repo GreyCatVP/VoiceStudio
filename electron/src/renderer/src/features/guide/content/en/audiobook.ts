@@ -54,7 +54,7 @@ const chapter: GuideChapter = {
           kind: 'list',
           ordered: true,
           items: [
-            '**Import** sends the file to the backend on this computer. EPUB chapters are read in reading order, and each chapter’s first heading becomes its title; title pages and similar front matter are skipped when the book marks them. PDF text is extracted and split the same way. In plain text, short lines that start with `Chapter`, `Part`, `Book`, `Prologue`, `Epilogue` or `Section` become chapter headings.',
+            '**Import** sends the file to the backend on this computer. EPUB chapters are read in reading order, and each chapter’s first heading becomes its title; title pages and similar front matter are skipped when the book marks them. PDF text is extracted and split the same way. In plain text, short lines that start with `Chapter`, `Part`, `Book`, `Prologue`, `Epilogue` or `Section` become chapter headings, and so do Thai headings such as `บทที่ 1`, `ตอนที่ ๒`, `ภาคที่ 3`, `บทนำ`, `คำนำ`, `ปัจฉิมบท` and `บทส่งท้าย`.',
             'When you press **Create audiobook**, the backend splits the script into chapters and spans (runs of text with one voice and pace). It saves this plan as a resume manifest before it starts.',
             'Chapters render one at a time. A chapter that was rendered before with the same text, voices and settings comes from the cache at once.',
             'The engine renders the rest. On your Ray cluster, a chapter’s lines go out as batch jobs, so the model loads once per batch. Each chapter gets the inaudible AI watermark.',
@@ -89,7 +89,7 @@ const chapter: GuideChapter = {
           items: [
             {
               title: 'Import the book',
-              text: 'Open **Audiobook** from the workspace menu, press **Import** (**1**) and choose an `.epub`, `.pdf`, `.txt` or `.md` file. Type the book’s name in **Title** in the left panel. The script (**2**) now holds the text with one `#` line per chapter. The line under it (**3**) counts chapters and words and estimates the running time.',
+              text: 'Open **Audiobook** from the workspace menu, press **Import** (**1**) and choose an `.epub`, `.pdf`, `.txt` or `.md` file. An EPUB fills **Title** in the left panel with the book’s own title when it is empty; otherwise type the book’s name there. The script (**2**) now holds the text with one `#` line per chapter. The line under it (**3**) counts chapters and words (Thai and other languages without spaces are counted word by word) and estimates the running time.',
               shot: 'audiobook-import',
               check: 'Every chapter of the book starts with a `#` line, in the right order.',
             },
@@ -175,7 +175,7 @@ const chapter: GuideChapter = {
         {
           kind: 'note',
           tone: 'warn',
-          text: 'No chapters after importing a `.txt` file? Chapter detection only knows English keywords such as `Chapter` and `Part`. Add a line starting with `# ` before each chapter yourself, then the import keeps your headings as they are.',
+          text: 'No chapters after importing a `.txt` file? Chapter detection knows English keywords such as `Chapter` and `Part` and Thai headings such as `บทที่ 1`, each on a short line of its own. Otherwise add a line starting with `# ` before each chapter yourself, then the import keeps your headings as they are.',
         },
         {
           kind: 'note',

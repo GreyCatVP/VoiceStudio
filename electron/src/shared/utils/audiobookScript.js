@@ -23,8 +23,29 @@ const PAUSE_TOKEN_RE = /^\[\s*pause(?:\s+\d+(?:\.\d+)?(?:\s*(?:ms|s))?)?\s*\]$/i
 const SSML_TOKEN_RE = /^\[\/?(?:slow|fast|emphasis|spell)\]$/i;
 const REACTION_TOKENS = new Set(TAGS.map((s) => s.toLowerCase()));
 
-/** ~ words a listener hears per minute at an audiobook narration pace. */
+/**
+ * ~ words a listener hears per minute at an audiobook narration pace. One rate
+ * for every language: words come from `countWords`, whose dictionary words for
+ * Thai/CJK are shorter than English ones, so the estimate runs long for them —
+ * a rough guide, not a promise.
+ */
 export const AUDIOBOOK_WPM = 155;
+
+/**
+ * Spoken words in `text`. Thai, Lao, Khmer, Chinese and Japanese put no spaces
+ * between words, so a whitespace split counts a whole Thai sentence as one
+ * word; `Intl.Segmenter` (ICU dictionaries, built into Chromium/Node) finds the
+ * real word boundaries. Punctuation and symbols are not words.
+ */
+export function countWords(text) {
+  const str = text || '';
+  if (typeof Intl === 'undefined' || typeof Intl.Segmenter !== 'function')
+    return str.split(/\s+/).filter(Boolean).length; // no Segmenter: whitespace words
+  let words = 0;
+  for (const segment of new Intl.Segmenter(undefined, { granularity: 'word' }).segment(str))
+    if (segment.isWordLike) words += 1;
+  return words;
+}
 
 /**
  * Distinct `[voice:NAME]` names present in the script, in first-seen order.
@@ -53,16 +74,16 @@ function stripMarkup(text) {
 
 /**
  * Live script stats: chapters (`# ` H1 count, ≥1 so a title-less script still
- * reads as one chapter), spoken word count (whitespace split, markup stripped),
+ * reads as one chapter), spoken word count (`countWords`, markup stripped),
  * and an estimated runtime in seconds at {@link AUDIOBOOK_WPM}.
  */
 export function scriptStats(text) {
   const norm = (text || '').replace(/\r\n?/g, '\n');
   const headings = norm.match(new RegExp(HEADING_RE.source, HEADING_RE.flags)) || [];
   // Spoken words only: drop `# heading` lines (titles aren't narrated as body,
-  // mirroring the parser) AND bracket markup, then whitespace-split.
+  // mirroring the parser) AND bracket markup, then count words.
   const spoken = stripMarkup(norm.replace(new RegExp(HEADING_RE.source, HEADING_RE.flags), ' '));
-  const words = spoken.split(/\s+/).filter(Boolean).length;
+  const words = countWords(spoken);
   const chapters = Math.max(1, headings.length);
   const runtimeSec = words > 0 ? (words / AUDIOBOOK_WPM) * 60 : 0;
   return { chapters, words, runtimeSec };

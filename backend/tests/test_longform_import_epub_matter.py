@@ -541,3 +541,23 @@ def test_publisher_like_headings_keep_listed_or_substantive_sections(listed, sub
     guide = '<reference type="text" href="ch1.xhtml"/>'
     script = importer.epub_to_chapter_script(_epub(docs, nav=nav, guide=guide))
     assert 'This is real narrative.' in script
+
+
+def test_book_title_comes_from_the_package_metadata():
+    script, title = li.epub_import(_epub(_untyped_book(), nav=_PLAIN_NAV.format(extra="", landmarks="")))
+    assert title == "T" and script.startswith("# ")
+
+
+def test_long_thai_prologue_is_not_mistaken_for_a_short_stray_page():
+    # Thai puts a space only between phrases: 60 phrases are ~60 "words" by a
+    # whitespace split (under the 400-word stray-page ceiling) but ~500 real
+    # words. The headingless, unlisted prologue was dropped as front matter.
+    prologue = _doc("<p>" + "ฝนตกหนักตลอดทั้งคืนจนน้ำในคลองเอ่อล้นขึ้นมาถึงหน้าบ้าน " * 60 + "</p>")
+    nav = _PLAIN_NAV.format(extra="", landmarks="")
+    guide = '<reference type="text" href="ch1.xhtml"/>'
+    script = li.epub_to_chapter_script(_epub(_untyped_book(**{"teaser.xhtml": prologue}), nav=nav, guide=guide))
+    assert "ฝนตกหนักตลอดทั้งคืน" in script
+    # A genuinely short Thai teaser is still front matter.
+    teaser = _doc("<p>ฝนตกหนักตลอดทั้งคืน</p>")
+    script = li.epub_to_chapter_script(_epub(_untyped_book(**{"teaser.xhtml": teaser}), nav=nav, guide=guide))
+    assert "ฝนตกหนัก" not in script

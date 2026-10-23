@@ -2,7 +2,8 @@
 
 Thai has no spaces between words, so faster-whisper's "words" for Thai are
 BPE pieces ("ข", "อง", "ก", "าร"), which breaks subtitles and dub alignment.
-:func:`merge_thai_words` regroups them on PyThaiNLP (newmm) word boundaries.
+:func:`merge_thai_words` regroups them on PyThaiNLP (newmm) word boundaries;
+:func:`count_words` counts Thai words the same way.
 
 Stdlib-only at import (the isolated ASR sidecar runs with a clean import
 path); pythainlp imports lazily and its absence leaves the words unchanged.
@@ -10,6 +11,7 @@ path); pythainlp imports lazily and its absence leaves the words unchanged.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Callable, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -21,6 +23,28 @@ def _newmm(text: str) -> List[str]:
     from pythainlp.tokenize import word_tokenize  # noqa: PLC0415
 
     return word_tokenize(text, engine="newmm", keep_whitespace=True)
+
+
+_THAI_CHAR_RE = re.compile("[\u0e00-\u0e7f]")
+_SPEAKABLE_RE = re.compile(r"[^\W_]")  # a letter or digit, any script
+
+
+def count_words(text: str, tokenize: Optional[Tokenize] = None) -> int:
+    """Words in ``text``: whitespace words, or newmm words when it holds Thai.
+
+    A whitespace split counts a whole space-free Thai phrase as one word, so a
+    Thai chapter "has" a few dozen words. Without pythainlp the whitespace
+    count stands.
+    """
+    text = text or ""
+    if not _THAI_CHAR_RE.search(text):
+        return len(text.split())
+    try:
+        tokens = (tokenize or _newmm)(text)
+    except Exception as exc:  # noqa: BLE001 - an undercount beats a failed import/render
+        logger.info("Thai word count fell back to spaces: %s", exc)
+        return len(text.split())
+    return sum(1 for token in tokens if _SPEAKABLE_RE.search(token))
 
 
 def merge_thai_words(words: list, tokenize: Optional[Tokenize] = None) -> list:
