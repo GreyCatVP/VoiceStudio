@@ -456,7 +456,8 @@ key and share PIN are separate gates: signing in with `OMNIVOICE_API_KEY` does
 not bypass an active PIN gate on ordinary HTTP requests.
 
 To recover, restart the existing container. This interrupts running jobs and
-clears the in-memory sharing state and browser administrator sessions:
+clears the in-memory sharing state and server-side administrator sessions. It
+does not erase the administrator credential stored in the browser:
 
 ```bash
 docker restart omnivoice
