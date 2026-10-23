@@ -10,6 +10,7 @@ import { apiJson } from '@/lib/api/client';
 import { SettingsSection, SettingsRow } from './settings-layout';
 import { useSettingsAction } from './use-settings-action';
 import { translatorPrivacy } from '@shared/utils/translatorPrivacy';
+import { setCloneSetting, useCloneSetting } from '@/lib/store/clone-settings';
 export function PrivacySettings({ showAnalytics = true }: { showAnalytics?: boolean } = {}) {
   const { t } = useTranslation();
   const info = useQuery({
@@ -36,10 +37,28 @@ export function PrivacySettings({ showAnalytics = true }: { showAnalytics?: bool
           </Link>
         </SettingsRow>
         <PrivacyToggle kind="watermark" />
+        <PersonaReferenceToggle />
         {showAnalytics && <PrivacyToggle kind="analytics" />}
       </SettingsSection>
       <HistoryRetention />
     </>
+  );
+}
+function PersonaReferenceToggle() {
+  const { t } = useTranslation();
+  const checked = useCloneSetting('personaIncludeReference');
+  return (
+    <SettingsRow
+      id="privacy-persona-reference"
+      title={t('privacy.persona_include_ref_title')}
+      description={t('privacy.persona_include_ref_subtitle')}
+    >
+      <Switch
+        aria-label={t('privacy.persona_include_ref_title')}
+        checked={checked}
+        onCheckedChange={(next) => setCloneSetting('personaIncludeReference', next)}
+      />
+    </SettingsRow>
   );
 }
 interface PrivacyState {

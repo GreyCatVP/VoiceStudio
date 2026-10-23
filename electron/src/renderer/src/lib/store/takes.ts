@@ -23,15 +23,20 @@ export function useSelectedTake() {
 }
 const key = 'voicestudio.take-settings.v1';
 /** Application preferences, not generation controls: never stored or restored per take. */
-const PREFERENCES = new Set<keyof CloneSettings>(['autoPlay', 'showOverrides']);
-type TakeSettings = Omit<CloneSettings, 'autoPlay' | 'showOverrides'>;
+const PREFERENCES = new Set<keyof CloneSettings>([
+  'autoPlay',
+  'showOverrides',
+  'personaIncludeReference',
+]);
+type TakeSettings = Omit<CloneSettings, 'autoPlay' | 'showOverrides' | 'personaIncludeReference'>;
 export function rememberTake(id: string | null, settings: CloneSettings) {
   if (!id) return;
   try {
     const stored = JSON.parse(localStorage.getItem(key) ?? '{}');
     const records = stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {};
-    const { autoPlay: _autoPlay, showOverrides: _showOverrides, ...snapshot } = settings;
-    records[id] = snapshot;
+    records[id] = Object.fromEntries(
+      Object.entries(settings).filter(([name]) => !PREFERENCES.has(name as keyof CloneSettings)),
+    );
     localStorage.setItem(
       key,
       JSON.stringify(Object.fromEntries(Object.entries(records).slice(-200))),

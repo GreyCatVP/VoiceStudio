@@ -68,11 +68,13 @@ describe('take metadata', () => {
       showOverrides: true,
       selectedProfileId: 'ignored',
       autoPlay: true,
+      personaIncludeReference: true,
     };
     rememberTake('take', changed);
     const restored = takeSettings(item);
     for (const key of Object.keys(DEFAULT_CLONE_SETTINGS) as Array<keyof CloneSettings>) {
-      if (key === 'autoPlay' || key === 'showOverrides') expect(restored).not.toHaveProperty(key);
+      if (key === 'autoPlay' || key === 'showOverrides' || key === 'personaIncludeReference')
+        expect(restored).not.toHaveProperty(key);
       else expect(restored, key).toHaveProperty(key);
     }
   });

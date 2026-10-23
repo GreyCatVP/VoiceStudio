@@ -30,6 +30,8 @@ export interface CloneSettings {
   showOverrides: boolean;
   selectedProfileId: string | null;
   autoPlay: boolean;
+  /** Export persona: ship the raw reference clip by default (Settings → Privacy). */
+  personaIncludeReference: boolean;
 }
 
 export const DEFAULT_CLONE_SETTINGS: CloneSettings = {
@@ -53,6 +55,7 @@ export const DEFAULT_CLONE_SETTINGS: CloneSettings = {
   showOverrides: false,
   selectedProfileId: null,
   autoPlay: false,
+  personaIncludeReference: false,
 };
 
 /** Whether `value` is a valid stored value for the clone setting `key`. */

@@ -171,9 +171,9 @@ This section enumerates every state and "and then…" the feature must handle. N
 
 **A1 — Profile not found.** `SELECT * FROM voice_profiles WHERE id=?` returns no row → **404** `{"detail": "Voice profile not found"}` (exact marketplace idiom, `marketplace.py:94-95`). No partial file, no stream opened.
 
-**A2 — Both `ref_audio_path` and `locked_audio_path` empty/NULL.** Column is nullable (`db.py:42`). No source clip → `build_persona_bundle` raises `NoPreviewSource` → router **503** ("this profile has no reference or locked audio to build a preview from; re-create or re-import it"), framed like the design-render 503 (`profiles.py:103-107`). Do **not** emit a manifest with a missing `preview` member.
+**A2 — Both `ref_audio_path` and `locked_audio_path` empty/NULL.** Column is nullable (`db.py:42`). No source clip → `build_persona_bundle` raises `NoPreviewSource` → router **422** with typed detail `{"code": "persona_no_audio", "message": …}` (originally 503; changed so the UI can tell "no audio" apart from a build failure, which stays 503), framed like the design-render 503 (`profiles.py:103-107`). Do **not** emit a manifest with a missing `preview` member.
 
-**A3 — DB names a file that is gone from disk.** `_voices_path(name)` resolves to a path where `os.path.isfile(...)` is `False`, or `_voices_path` returns `None` (escape). Fall through the precedence chain: if locked is missing, try ref; if ref also missing/absent → `NoPreviewSource` (**503**). Mirrors the defensive `os.path.isfile(full_ref)` guards (`marketplace.py:112`, `:120`).
+**A3 — DB names a file that is gone from disk.** `_voices_path(name)` resolves to a path where `os.path.isfile(...)` is `False`, or `_voices_path` returns `None` (escape). Fall through the precedence chain: if locked is missing, try ref; if ref also missing/absent → `NoPreviewSource` (**422** `persona_no_audio`). Mirrors the defensive `os.path.isfile(full_ref)` guards (`marketplace.py:112`, `:120`).
 
 **A4 — `torchaudio.load` raises on the source clip.** Truncated/corrupt WAV. Catch it; try the *other* clip in the precedence chain; if both fail → **503** ("could not read the profile's audio to build a preview — see Settings → Logs"). Never let raw exception text leak into the HTTP body (CodeQL `31ee5ef` discipline).
 
@@ -191,7 +191,7 @@ This section enumerates every state and "and then…" the feature must handle. N
 
 **A11 — AudioSeal present but model load / embed throws.** `embed_watermark` swallows it (`except Exception … return waveform`, `watermark.py:140-142`). Service sets `watermarked = _check_available()` (best-effort honesty); the residual "claimed true but unmarked" risk is in Risk and acceptable for v0.3.x (row 5.4 re-detects via `detect_watermark`).
 
-**A12 — `include_reference=false` (privacy-stripped export).** Load source → build preview → write `preview.wav` → **do not** write raw `ref_audio`/`locked_audio`. `manifest.members.ref_audio`/`locked_audio` = `null`; preview-only. If A2/A3/A4 also apply, 503s.
+**A12 — `include_reference=false` (privacy-stripped export).** Load source → build preview → write `preview.wav` → **do not** write raw `ref_audio`/`locked_audio`. `manifest.members.ref_audio`/`locked_audio` = `null`; preview-only. If A2/A3/A4 also apply, 422 `persona_no_audio`.
 
 **A13 — `safe_name` collapses to empty.** `"".join(c if c.isalnum() or c in "-_ " else "" for c in name).strip().replace(" ", "_")[:40]` (`marketplace.py:125-127`) → `""`. Fall back to `f"persona_{profile_id}"` so `Content-Disposition` always carries a usable filename.
 

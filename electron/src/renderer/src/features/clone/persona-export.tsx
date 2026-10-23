@@ -4,8 +4,19 @@ import { DownloadIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { getBridge } from '@/components/bridge';
-import { apiFetch, apiPath, ApiError } from '@/lib/api/client';
+import { apiFetch, apiPath, ApiError, describeError } from '@/lib/api/client';
 import { saveBackendFile } from '@/lib/native-save';
+import { cloneSettingsStore } from '@/lib/store/clone-settings';
+
+/** The backend's typed refusal when a bundle would carry no audio at all. */
+function isNoAudio(error: unknown): boolean {
+  const detail = error instanceof ApiError ? error.payload?.detail : undefined;
+  return (
+    !!detail &&
+    typeof detail === 'object' &&
+    (detail as { code?: unknown }).code === 'persona_no_audio'
+  );
+}
 
 function exportPath(profileId: string, includeReference: boolean): string {
   return (
@@ -29,7 +40,10 @@ export function PersonaExport({
 }) {
   const { t } = useTranslation();
   const lock = useRef(false);
-  const [includeReference, setIncludeReference] = useState(true);
+  // Starts from Settings → Privacy; the checkbox still overrides it for this export only.
+  const [includeReference, setIncludeReference] = useState(
+    () => cloneSettingsStore.state.personaIncludeReference,
+  );
   const [busy, setBusy] = useState(false);
   const [issue, setIssue] = useState('');
   const exportVoice = async () => {
@@ -67,9 +81,11 @@ export function PersonaExport({
       toast.success(t('voice_profile.persona_exported'));
     } catch (error) {
       setIssue(
-        error instanceof ApiError && error.status === 503
-          ? 'voice_profile.persona_export_no_audio'
-          : 'voice_profile.persona_export_failed',
+        isNoAudio(error)
+          ? t('voice_profile.persona_export_no_audio') +
+              ' ' +
+              t('voice_profile.persona_export_no_audio_fix')
+          : describeError(error),
       );
     } finally {
       lock.current = false;
@@ -96,7 +112,7 @@ export function PersonaExport({
       </p>
       {issue && (
         <p role="alert" className="text-xs text-destructive">
-          {t(issue)}
+          <strong>{t('voice_profile.persona_export_failed')}</strong> {issue}
         </p>
       )}
       <Button

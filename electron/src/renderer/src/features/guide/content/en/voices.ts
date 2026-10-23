@@ -84,7 +84,7 @@ const chapter: GuideChapter = {
         {
           kind: 'note',
           tone: 'warn',
-          text: '**Include voice clip** is on by default. Turn it off before you share a persona with someone else: they then get only a watermarked preview, not the recording itself.',
+          text: '**Include voice clip** is off by default, so a shared persona carries only a watermarked preview, not the recording itself. Tick it for one export, or change the default in **Settings → Privacy**; turn it on only for people you trust with the raw recording. If the voice has no readable audio, the export fails and says why: lock a preview under **Try this voice**, or re-import the clip, then export again.',
         },
       ],
     },

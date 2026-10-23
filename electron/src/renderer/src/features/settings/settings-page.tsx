@@ -196,6 +196,7 @@ const extraSettings = [
       'settings.privacy',
       'privacy.analytics_title',
       'privacy.watermark_title',
+      'privacy.persona_include_ref_title',
       'settings.history_retention',
     ],
   },

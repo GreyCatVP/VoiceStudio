@@ -91,6 +91,20 @@ def test_export_404_when_profile_missing(client):
     assert r.status_code == 404
 
 
+@pytest.mark.parametrize("include_reference", ["true", "false"])
+def test_export_refuses_typed_when_no_audio(client, include_reference):
+    """A profile with no readable clip must never stream an audio-less bundle."""
+    with db_conn() as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO voice_profiles (id, name, ref_audio_path, locked_audio_path) "
+            "VALUES ('silent', 'Silent', 'gone.wav', '')"
+        )
+    r = client.post(f"/personas/export/silent?include_reference={include_reference}")
+    assert r.status_code == 422
+    assert r.json()["detail"]["code"] == "persona_no_audio"
+    assert "zip" not in r.headers.get("content-type", "")
+
+
 # ── import ───────────────────────────────────────────────────────────────────
 
 def test_import_rejects_bad_extension(client):

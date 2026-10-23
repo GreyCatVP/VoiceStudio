@@ -13,12 +13,18 @@ It supersedes the older `.omnivoice` share bundle. VoiceStudio still imports
 
 **Voices → open a voice → Export persona.**
 
-- The **"Include voice clip"** checkbox controls privacy:
-  - **On (default):** the bundle carries your raw reference/locked audio, so the
-    imported persona clones with full fidelity.
-  - **Off:** a **preview-only** bundle — only the watermarked preview travels, no
+- The **"Include voice clip"** checkbox controls privacy. It starts from
+  **Settings → Privacy → Include the original reference clip when exporting a
+  persona** (off by default) and can be changed for each export:
+  - **Off (default):** a **preview-only** bundle — only the watermarked preview travels, no
     raw recording of your voice leaves the machine. The imported persona is still
     usable (the preview becomes its reference clip).
+  - **On:** the bundle carries your raw reference/locked audio, so the
+    imported persona clones with full fidelity.
+- A bundle never ships without audio. If the voice has no readable reference or
+  locked clip, the export is refused (HTTP 422, `detail.code = "persona_no_audio"`)
+  and the app shows **Export failed** with the reason: lock a preview under
+  **Try this voice**, or re-import the clip, then export again.
 - A short **preview** is always generated and, when AudioSeal is installed,
   **watermarked** so the audio can be attributed back to VoiceStudio. Behaviour is
   identical on macOS, Windows, and Linux; without AudioSeal the preview is still

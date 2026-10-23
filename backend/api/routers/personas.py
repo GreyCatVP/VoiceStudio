@@ -84,10 +84,14 @@ async def export_persona(
             ),
         )
     except pb.NoPreviewSource:
+        # Typed refusal: never stream a bundle without audio; the UI keys off `code`.
         raise HTTPException(
-            status_code=503,
-            detail="This profile has no readable reference or locked audio to "
-                   "build a preview from — re-create or re-import it.",
+            status_code=422,
+            detail={
+                "code": "persona_no_audio",
+                "message": "This profile has no readable reference or locked audio "
+                           "to build a preview from — lock a preview or re-import the clip.",
+            },
         )
     except Exception as exc:
         logger.error("persona export failed for %s: %s", log_safe(profile_id), log_safe(exc))
