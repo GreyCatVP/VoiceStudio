@@ -129,6 +129,7 @@ _CHANGE_CASES = [
     # Asterisks open inside words (CommonMark); underscores do not
     ("English", "un**believ**able now", "unbelievable now"),
     ("English", "pre*fix* this", "prefix this"),
+    ("English", "___bold___ here", "bold here"),
 ]
 
 
@@ -235,6 +236,7 @@ _UNCHANGED_CASES = [
     # Unpaired markers and non-delimiter uses survive (#3197)
     ("English", "use snake_case names"),
     ("English", "foo__bar__baz here"),
+    ("English", "имя_файла_здесь test"),
     ("English", "a lone * stays"),
     ("English", "[**bold**] markers inside brackets stay untouched"),
     # Plain text is byte-identical
@@ -330,6 +332,17 @@ def test_many_unmatched_openers_stay_fast_and_untouched():
     raw = "**a " * 25000
     start = time.perf_counter()
     assert _strip_markdown_emphasis(raw) == raw
+    assert time.perf_counter() - start < 10
+
+
+def test_many_matched_pairs_stay_fast():
+    """One-join assembly (#3205 P1): per-span string rebuilds are quadratic
+    on matched pairs (~22 s at this size); retained-slice join takes ms."""
+    import time
+    from services.text_normalization import _strip_markdown_emphasis
+    raw = "**a** " * 300000
+    start = time.perf_counter()
+    assert _strip_markdown_emphasis(raw) == "a " * 300000
     assert time.perf_counter() - start < 10
 
 
