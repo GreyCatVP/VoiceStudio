@@ -350,6 +350,43 @@ def test_demucs_separates_speech_from_music_across_windows(tmp_path, monkeypatch
         runtime.reopen_for_tests()
 
 
+@pytest.mark.skipif("demucs" not in ENGINES, reason="set VS_RAY_TEST_ENGINES=demucs")
+def test_batch_preserve_background_separates_on_the_cluster(tmp_path):
+    """Batch dub's background step: a real video's audio split on the cluster."""
+    import numpy as np
+    import soundfile as sf
+    from api.routers import batch
+    from core.db import init_db
+    from services.ffmpeg_utils import find_ffmpeg
+    from services.ray_jobs import runtime
+    from services.ray_jobs import settings as ray_settings
+
+    video = os.environ.get("VS_RAY_TEST_VIDEO")
+    if not video or not os.path.exists(video):
+        pytest.skip("set VS_RAY_TEST_VIDEO to a video with speech and music")
+    init_db()
+    runtime.reopen_for_tests()
+    ray_settings.save({"enabled": True, "dashboard_url": URL, "engines": ["demucs"],
+                       "num_gpus": float(os.environ.get("VS_RAY_TEST_NUM_GPUS", "0")),
+                       "auth_token": os.environ.get("VS_RAY_TEST_TOKEN") or ""})
+    job = {"status": "running", "video_path": video, "langs": ["th"], "preserve_bg": True}
+    try:
+        bed_path = asyncio.run(batch._separate_background("itest-batch", job, str(tmp_path), find_ffmpeg()))
+        assert not job.get("warnings"), job.get("warnings")
+        assert bed_path and job["progress"]["stage"] == "separate"
+        original, _ = sf.read(tmp_path / "audio_hq.wav", dtype="float32", always_2d=True)
+        vocals, _ = sf.read(tmp_path / "vocals.wav", dtype="float32", always_2d=True)
+        bed, _ = sf.read(bed_path, dtype="float32", always_2d=True)
+        assert abs(len(bed) - len(original)) <= 44100 // 10
+        rms = lambda a: float(np.sqrt(np.mean(a ** 2)))
+        print(f"rms original={rms(original):.4f} vocals={rms(vocals):.4f} bed={rms(bed):.4f}")
+        assert rms(vocals) > 0.005 and rms(bed) < rms(original)
+    finally:
+        ray_settings.save({"enabled": False, "auth_token": ""})
+        runtime.shutdown()
+        runtime.reopen_for_tests()
+
+
 @pytest.mark.skipif("pyannote" not in ENGINES or "supertonic3" not in ENGINES,
                     reason="set VS_RAY_TEST_ENGINES=supertonic3,pyannote and VS_RAY_TEST_PYANNOTE_DIR")
 def test_pyannote_tells_two_speakers_apart_on_the_cluster(tmp_path, monkeypatch):

@@ -35,4 +35,6 @@ export interface BatchJob {
     segments_count?: number;
   };
   outputs?: Record<string, string>;
+  /** Non-fatal problems (silent segments, background kept with the original voices). */
+  warnings?: string[];
 }

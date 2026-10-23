@@ -82,6 +82,7 @@ class BatchJobStatus(BaseModel):
     error: Optional[str] = None
     docs_topic: Optional[str] = None
     progress: Optional[dict] = None
+    warnings: List[str] = []
     attempts: int = 1
     retry_ready: bool = True
     setup_required: Optional[dict] = None
@@ -153,6 +154,85 @@ async def _worker():
 def _set_progress(job, stage, percent=0, **extra):
     """Update a job's progress dict."""
     job["progress"] = {"stage": stage, "percent": percent, **extra}
+
+
+# Share of a file's bar per once-per-file stage; the target languages split
+# the rest evenly, each by (start, end) fraction of its own slice.
+_FILE_STAGES = (("extract", 5), ("transcribe", 20), ("separate", 15))
+_LANG_STAGES = {"translate": (0.0, 0.15), "generate": (0.15, 0.9), "mix": (0.9, 1.0)}
+
+
+def _overall_percent(job, stage, frac=0.0, lang_idx=0) -> int:
+    """Whole-file percent for ``frac`` (0-1) through ``stage`` — so a
+    single-language job moves through every stage instead of sitting at 0%."""
+    frac = max(0.0, min(1.0, frac))
+    done = 0
+    for name, weight in _FILE_STAGES:
+        if name == "separate" and not job.get("preserve_bg", True):
+            continue
+        if name == stage:
+            return int(done + weight * frac)
+        done += weight
+    lo, hi = _LANG_STAGES[stage]
+    langs = max(1, len(job.get("langs") or ()))
+    return int(done + (100 - done) * (lang_idx + lo + (hi - lo) * frac) / langs)
+
+
+SEPARATION_FALLBACK_WARNING = (
+    "Background kept with the original voices: vocal separation unavailable"
+)
+
+
+async def _separate_background(job_id: str, job: dict, batch_dir: str, ffmpeg: str) -> Optional[str]:
+    """Split the upload's audio with Demucs and return the background stem.
+
+    Same machinery as the dub ingest (``separate_stems``: the Ray cluster when
+    routed, else the local CLI). Returns None when the job was cancelled, or
+    when separation failed — then the job carries a warning and the mix falls
+    back to the full original audio."""
+    import subprocess
+    from services.dub_pipeline import separate_stems
+    from services.ffmpeg_utils import local_inputs_only
+
+    _set_progress(job, "separate", _overall_percent(job, "separate"))
+    # Separate a full-quality stereo copy, not the 22 kHz mono ASR file: the
+    # bed would lose its stereo image and top octave (see dub ingest).
+    src = os.path.join(batch_dir, "audio_hq.wav")
+    try:
+        await asyncio.get_running_loop().run_in_executor(None, lambda: subprocess.run(
+            local_inputs_only([ffmpeg, "-y", "-i", job["video_path"], "-vn",
+                               "-acodec", "pcm_s16le", "-ar", "44100", "-ac", "2", src]),
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=300, check=True,
+        ))
+    except Exception:  # noqa: BLE001 — quality upgrade only; the ASR file still separates
+        logger.warning("Batch HQ audio extraction failed; separating the ASR audio")
+    if not os.path.isfile(src):
+        src = os.path.join(batch_dir, "audio.wav")
+    bed_path = os.path.join(batch_dir, "no_vocals.wav")
+
+    async def _consume():
+        async for pct in separate_stems(job_id, src, batch_dir,
+                                        os.path.join(batch_dir, "vocals.wav"), bed_path):
+            _set_progress(job, "separate", _overall_percent(job, "separate", pct / 100))
+
+    task = asyncio.ensure_future(_consume())
+    try:
+        # Batch cancel only flips the status; poll it and stop the separation.
+        while not task.done():
+            await asyncio.wait({task}, timeout=0.5)
+            if job["status"] == "cancelled" and not task.done():
+                task.cancel()  # stops the cluster job / kills the demucs process
+                await asyncio.gather(task, return_exceptions=True)
+                return None
+        task.result()
+    except asyncio.CancelledError:
+        task.cancel()
+        raise
+    except Exception as e:  # noqa: BLE001 — degrade to the full mix, visibly
+        logger.warning("Batch vocal separation failed for %s: %s", log_safe(job_id), log_safe(e))
+        job.setdefault("warnings", []).append(f"{SEPARATION_FALLBACK_WARNING} ({str(e)[:300]})")
+        return None
+    return bed_path if os.path.isfile(bed_path) else None
 
 
 #: Override for the native dub batch width. Set to 1 to disable batching.
@@ -267,7 +347,7 @@ async def _run_batch_pipeline_leased(job_id: str, job: dict, lease: voice_leases
     os.makedirs(batch_dir, exist_ok=True)
 
     # ── 1. Extract audio ──────────────────────────────────────────────
-    _set_progress(job, "extract", 0)
+    _set_progress(job, "extract", _overall_percent(job, "extract"))
     audio_path = os.path.join(batch_dir, "audio.wav")
 
     from services.ffmpeg_utils import (
@@ -311,13 +391,13 @@ async def _run_batch_pipeline_leased(job_id: str, job: dict, lease: voice_leases
 
     duration = await loop.run_in_executor(None, _extract)
     job["duration"] = duration
-    _set_progress(job, "extract", 100)
+    _set_progress(job, "extract", _overall_percent(job, "extract", 1))
 
     if job["status"] == "cancelled":
         return
 
     # ── 2. Transcribe ─────────────────────────────────────────────────
-    _set_progress(job, "transcribe", 0)
+    _set_progress(job, "transcribe", _overall_percent(job, "transcribe"))
 
     from services.asr_backend import load_active_asr_backend
     from services.model_manager import _gpu_pool, executor_for_backend, run_on_gpu_pool_guarded
@@ -353,7 +433,7 @@ async def _run_batch_pipeline_leased(job_id: str, job: dict, lease: voice_leases
     source_lang = (source_lang or "en").split("_")[0][:2].lower()
     job["segments"] = segments
     job["source_lang"] = source_lang
-    _set_progress(job, "transcribe", 100, segments_count=len(segments))
+    _set_progress(job, "transcribe", _overall_percent(job, "transcribe", 1), segments_count=len(segments))
 
     if job["status"] == "cancelled" or not segments:
         if not segments:
@@ -376,8 +456,16 @@ async def _run_batch_pipeline_leased(job_id: str, job: dict, lease: voice_leases
     _profile_defaults = tts_defaults(engine_id)
     _batch_num_step = _profile_defaults.get("num_step", 16)
     _batch_postprocess = _profile_defaults.get("postprocess_output", True)
+    # ── 2b. Separate vocals from the background (once per file) ─────────
+    # "Preserve background audio" means music and effects, not the original
+    # speech under the dub.
+    bed_path = None
+    if job.get("preserve_bg", True):
+        bed_path = await _separate_background(job_id, job, batch_dir, ffmpeg)
+        if job["status"] == "cancelled":
+            return
+
     # ── 3. Translate + Generate per language ───────────────────────────
-    total_langs = len(langs)
     outputs = {}
 
     for lang_idx, target_lang in enumerate(langs):
@@ -387,7 +475,7 @@ async def _run_batch_pipeline_leased(job_id: str, job: dict, lease: voice_leases
         # ── 3a. Translate ─────────────────────────────────────────────
         _set_progress(
             job, "translate",
-            percent=int((lang_idx / total_langs) * 100),
+            percent=_overall_percent(job, "translate", 0, lang_idx),
             current_lang=target_lang,
         )
 
@@ -459,7 +547,7 @@ async def _run_batch_pipeline_leased(job_id: str, job: dict, lease: voice_leases
         # ── 3b. Generate TTS ──────────────────────────────────────────
         _set_progress(
             job, "generate",
-            percent=int((lang_idx / total_langs) * 100),
+            percent=_overall_percent(job, "generate", 0, lang_idx),
             current_lang=target_lang,
             current_segment=0,
             total_segments=len(translated_segments),
@@ -581,7 +669,7 @@ async def _run_batch_pipeline_leased(job_id: str, job: dict, lease: voice_leases
 
             _set_progress(
                 job, "generate",
-                percent=int(((lang_idx + (i / total_segs)) / total_langs) * 100),
+                percent=_overall_percent(job, "generate", i / total_segs, lang_idx),
                 current_lang=target_lang,
                 current_segment=i + 1,
                 total_segments=total_segs,
@@ -724,7 +812,7 @@ async def _run_batch_pipeline_leased(job_id: str, job: dict, lease: voice_leases
         # ── 3d. Mix with original video ───────────────────────────────
         _set_progress(
             job, "mix",
-            percent=int(((lang_idx + 0.8) / total_langs) * 100),
+            percent=_overall_percent(job, "mix", 0, lang_idx),
             current_lang=target_lang,
         )
 
@@ -732,13 +820,18 @@ async def _run_batch_pipeline_leased(job_id: str, job: dict, lease: voice_leases
 
         def _mix(bg=job.get("preserve_bg", True)):
             if bg:
-                # Mix dubbed audio with original background
+                # Dub over the separated background stem; without one (the
+                # separation failed — the job carries a warning), over the
+                # video's full original audio.
+                bed_input = ["-i", bed_path] if bed_path else []
+                bed = "2:a" if bed_path else "0:a"
                 subprocess.run(
                     local_inputs_only([ffmpeg, "-y",
                      "-i", video_path,
                      "-i", track_path,
+                     *bed_input,
                      "-filter_complex",
-                     bed_mix_filter("0:a", "1:a", out="out", duration="first"),
+                     bed_mix_filter(bed, "1:a", out="out", duration="first"),
                      "-map", "0:v", "-map", "[out]",
                      "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
                      "-shortest", output_path]),

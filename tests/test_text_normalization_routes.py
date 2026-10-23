@@ -245,7 +245,7 @@ def batch_env(monkeypatch, tmp_path):
             "video_path": str(tmp_path / "in.mp4"),
             "langs": ["en"],  # == source_lang → translation stage is a no-op
             "voice_id": None,
-            "preserve_bg": True,
+            "preserve_bg": False,  # no vocal separation: these tests cover TTS
             "created_at": 0.0,
             "started_at": None,
             "finished_at": None,

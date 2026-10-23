@@ -1445,12 +1445,8 @@ def parse_vtt_segments(vtt_path: str) -> list[dict]:
     return segments
 
 
-class _RayDone(Exception):
-    """Control flow: the Ray branch produced the stems; skip the local CLI."""
-
-
 async def _separate_on_ray_events(ray_cfg, src: str, vocals_out: str, bed_out: str):
-    """Run Ray separation in a thread; yield demucs_progress events as it goes.
+    """Run Ray separation in a thread; yield its percent (0-100) as it goes.
 
     Cancelling the consumer (job cancel / client gone) stops the cluster job."""
     import threading
@@ -1479,7 +1475,7 @@ async def _separate_on_ray_events(ray_cfg, src: str, vocals_out: str, bed_out: s
                 pct = max(0, min(100, getter.result()))
                 if pct != last:
                     last = pct
-                    yield prep_event("demucs_progress", percent=pct)
+                    yield pct
             else:
                 getter.cancel()
             if task in done:
@@ -1494,6 +1490,56 @@ async def _separate_on_ray_events(ray_cfg, src: str, vocals_out: str, bed_out: s
         # A cancelled run still finishes stopping its job in the thread; keep
         # its outcome retrieved so it never surfaces as an unhandled error.
         task.add_done_callback(lambda f: f.cancelled() or f.exception())
+
+
+async def separate_stems(
+    job_id: str, src: str, work_dir: str, vocals_path: str, no_vocals_path: str,
+) -> AsyncIterator[int]:
+    """Split ``src`` into vocals and background (Demucs htdemucs, two stems).
+
+    On the Ray cluster when ``demucs`` is routed there, else the local CLI
+    (tracked under ``job_id``, so ``kill_job_procs`` stops it). Yields each new
+    integer percent; raises when separation fails or writes no stems. Closing
+    or cancelling the consumer stops the cluster job / kills the subprocess.
+    Shared by dub ingest and batch dubbing.
+    """
+    if not os.path.isfile(src):
+        raise FileNotFoundError("Demucs input audio is missing")
+    from services.ray_jobs.settings import route_for
+    ray_cfg = route_for("demucs")
+    if ray_cfg is not None:
+        # On the Ray cluster: lossless windows, VRAM freed per job.
+        async for pct in _separate_on_ray_events(ray_cfg, src, vocals_path, no_vocals_path):
+            yield pct
+        return
+    cmd = [sys.executable, "-m", "demucs.separate",
+           "--two-stems", "vocals", "-n", "htdemucs", "-d", get_best_device(),
+           src, "-o", work_dir]
+    rc = -1
+    stderr_full = b""
+    last_pct = -1
+    # demucs writes a tqdm progress bar to stderr as "  42%|████      | …" —
+    # surface each new integer percent so the UI shows a moving bar.
+    async for evt in run_proc_streaming_stderr(job_id, cmd, timeout=1800.0):
+        if evt[0] == "stderr":
+            m = re.search(r"(\d{1,3})%", evt[1])
+            if m:
+                pct = max(0, min(100, int(m.group(1))))
+                if pct != last_pct:
+                    last_pct = pct
+                    yield pct
+        elif evt[0] == "done":
+            rc, stderr_full = evt[1], evt[2]
+    if rc != 0:
+        raise Exception(_media_process_error("Demucs", rc, stderr_full, paths=(src, work_dir)))
+    # Stems land under the INPUT's basename.
+    demucs_root = os.path.join(work_dir, "htdemucs")
+    demucs_out = os.path.join(demucs_root, os.path.splitext(os.path.basename(src))[0])
+    if not os.path.exists(os.path.join(demucs_out, "vocals.wav")):
+        raise RuntimeError("Demucs finished without writing the vocals/background stems")
+    shutil.move(os.path.join(demucs_out, "vocals.wav"), vocals_path)
+    shutil.move(os.path.join(demucs_out, "no_vocals.wav"), no_vocals_path)
+    shutil.rmtree(demucs_root, ignore_errors=True)
 
 
 async def ingest_pipeline(
@@ -1758,51 +1804,12 @@ async def ingest_pipeline(
             scene_cuts: list = []
 
             yield prep_event("demucs_start")
-            from services.ray_jobs.settings import route_for as _ray_route_for
-            _ray_demucs = _ray_route_for("demucs")
             try:
-                if _ray_demucs is not None:
-                    # On the Ray cluster: lossless windows, VRAM freed per job.
-                    async for evt in _separate_on_ray_events(_ray_demucs, audio_hq_path or audio_path,
-                                                             vocals_path, no_vocals_path):
-                        yield evt
-                    raise _RayDone()
-                demucs_cmd = [sys.executable, "-m", "demucs.separate",
-                              "--two-stems", "vocals", "-n", "htdemucs", "-d", get_best_device(),
-                              audio_hq_path or audio_path, "-o", job_dir]
-                rc = -1
-                stderr_full = b""
-                last_pct = -1
-                # demucs writes a tqdm progress bar to stderr as
-                # "  42%|████      | …" — surface each new integer percent
-                # to the UI so the user sees the bar instead of a static
-                # spinner during the multi-minute separation step.
-                async for evt in run_proc_streaming_stderr(job_id, demucs_cmd, timeout=1800.0):
-                    if evt[0] == "stderr":
-                        m = re.search(r"(\d{1,3})%", evt[1])
-                        if m:
-                            pct = max(0, min(100, int(m.group(1))))
-                            if pct != last_pct:
-                                last_pct = pct
-                                yield prep_event("demucs_progress", percent=pct)
-                    elif evt[0] == "done":
-                        rc, stderr_full = evt[1], evt[2]
-                if rc != 0:
-                    raise Exception(_media_process_error("Demucs", rc, stderr_full, paths=(audio_hq_path, audio_path, job_dir)))
-                # Stems land under the INPUT's basename ("audio_hq" when the
-                # full-quality extraction succeeded, "audio" on its fallback).
-                demucs_out = os.path.join(
-                    job_dir, "htdemucs",
-                    os.path.splitext(os.path.basename(audio_hq_path or audio_path))[0],
-                )
-                if os.path.exists(os.path.join(demucs_out, "vocals.wav")):
-                    shutil.move(os.path.join(demucs_out, "vocals.wav"), vocals_path)
-                    shutil.move(os.path.join(demucs_out, "no_vocals.wav"), no_vocals_path)
-                    shutil.rmtree(os.path.join(job_dir, "htdemucs"), ignore_errors=True)
+                async for pct in separate_stems(job_id, audio_hq_path or audio_path, job_dir,
+                                                vocals_path, no_vocals_path):
+                    yield prep_event("demucs_progress", percent=pct)
             except asyncio.CancelledError:
                 raise
-            except _RayDone:
-                pass
             except Exception as e:
                 logger.warning("Demucs failed for %s, falling back to mixed audio: %s", log_safe(job_id), log_safe(e))
                 # plan-04: surface the degradation (job continues with mixed audio).

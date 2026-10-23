@@ -13,7 +13,7 @@ const chapter: GuideChapter = {
       blocks: [
         {
           kind: 'p',
-          text: '**Batch Dubbing** (`/batch`) dubs a list of videos without asking you anything per file. You choose the target languages, one voice and the background option once; each file then runs through extract → transcribe → translate → speak → mix on its own.',
+          text: '**Batch Dubbing** (`/batch`) dubs a list of videos without asking you anything per file. You choose the target languages, one voice and the background option once; each file then runs through extract → transcribe → (separate voices) → translate → speak → mix on its own.',
         },
         {
           kind: 'list',
@@ -58,7 +58,7 @@ const chapter: GuideChapter = {
             ['**TARGET LANGUAGES**', 'Every file you add with this **Add to Queue**', 'The list in the panel; one output video per language'],
             ['**Engine** (translation)', 'All jobs', '**Settings → Models → Translation** (here NLLB-200)'],
             ['**VOICE**', 'Every line of every file in this **Add to Queue**', '**Default** (the engine’s own voice), one of your **Clone Profiles**, or a **Presets** voice'],
-            ['**Preserve background audio (music/FX)**', 'Every file in this **Add to Queue**', 'On: the dub is mixed over the video’s original sound. Off: the dub replaces the sound'],
+            ['**Preserve background audio (music/FX)**', 'Every file in this **Add to Queue**', 'On: the original voices are separated out (Demucs) and the dub is mixed over the remaining music and effects. Off: the dub replaces the sound'],
             ['Speech recognition, TTS engine', 'All jobs', 'The active engines in **Settings → Models**, local or on your remote GPU'],
           ],
         },
@@ -84,7 +84,7 @@ const chapter: GuideChapter = {
             },
             {
               title: 'Add them to the queue',
-              text: 'Press **Add to Queue**. Each file is uploaded and becomes a job on the **Active** tab. The first job starts at once; the others wait with **queued**. Each card shows the stage (**🎬 Extracting audio…**, **📝 Transcribing…**, **🌐 Translating…**, **🗣️ Generating speech…** with the line count, **🎛️ Mixing audio…**), the current language and a progress bar. The percentage counts finished languages, so with one target language it stays at 0% until the job is done.',
+              text: 'Press **Add to Queue**. Each file is uploaded and becomes a job on the **Active** tab. The first job starts at once; the others wait with **queued**. Each card shows the stage (**🎬 Extracting audio…**, **📝 Transcribing…**, **🎚️ Separating voices from background…** when the background is kept, **🌐 Translating…**, **🗣️ Generating speech…** with the line count, **🎛️ Mixing audio…**), the current language and a progress bar for the whole file.',
               shot: 'batch-dub-active',
               check: 'One job shows **running** with its stage and line count (for example **seg 1/3**); the rest show **queued**.',
             },
@@ -107,7 +107,7 @@ const chapter: GuideChapter = {
           items: [
             'The **Active** tab is empty and every file is on **Completed**.',
             'Each exported MP4 plays the translated speech in the voice you chose.',
-            'With **Preserve background audio (music/FX)** on, the music is still there.',
+            'With **Preserve background audio (music/FX)** on, the music is still there and the original voices are gone.',
           ],
         },
       ],
@@ -119,7 +119,7 @@ const chapter: GuideChapter = {
         {
           kind: 'note',
           tone: 'warn',
-          text: '**The original voices are still audible.** Batch does not run Demucs. With **Preserve background audio (music/FX)** on, the dub is laid over the whole original sound, speech included. For a clean result with music, dub the video in **Dubbing**, which separates the voices first.',
+          text: '**The original voices are still audible.** With **Preserve background audio (music/FX)** on, each file is split with Demucs (locally, or on your remote GPU when **demucs** is routed there) and the dub goes over the background only. When the split cannot run, the job still finishes but the card shows **Finished with warnings**: *background kept with the original voices*, followed by the cause. Fix the cause (for example, a remote GPU that cannot be reached) and add the file again.',
         },
         {
           kind: 'note',

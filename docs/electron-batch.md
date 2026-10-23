@@ -5,12 +5,17 @@ choose one or more target languages, optionally select a saved voice, and choose
 whether to preserve background audio. Add to Queue submits through the existing
 backend. Successfully submitted files leave the upload list; failed files remain.
 The backend enforces ASR readiness and owns translation, generation and mixing.
+Preserve background audio separates each file's voices from its music and effects
+with the same Demucs step as Dubbing (on the remote GPU when `demucs` is routed
+there, else locally) and mixes the dub over the background stem. If separation
+fails, the job still finishes over the full original audio and carries a warning
+("background kept with the original voices"), which the job card shows.
 The Electron setup sidebar accepts file picking or drag-and-drop, groups media,
 languages and voice/audio choices into stable cards, and exposes the same Add Videos
 action from the empty job view.
 
 Active, Completed and Failed views poll backend jobs. Progress shows backend stages
-and percentages. Active jobs can be cancelled; finished records require an inline
+and one whole-file percentage weighted by stage. Active jobs can be cancelled; finished records require an inline
 confirmation before deletion. Completed language outputs use the native save dialog.
 Reloading the renderer reads existing jobs and never re-enqueues them. Backend
 process restart recovery is not established by this behavior: the batch queue is

@@ -569,6 +569,19 @@ function BatchJobCard({
           {t('batch.completed_in', { duration: formatDuration(duration) })}
         </p>
       )}
+      {job.warnings && job.warnings.length > 0 && (
+        <div
+          role="status"
+          className="mt-3 rounded-lg bg-warning-surface px-3 py-2 text-xs text-warning-foreground"
+        >
+          <p className="font-medium">{t('batch.warnings_title')}</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4 break-words">
+            {job.warnings.map((warning, index) => (
+              <li key={index}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {job.error && generationFailureMessage(job, t) && (
         <p role="alert" className="mt-3 text-xs text-destructive">
           {generationFailureMessage(job, t)}
