@@ -39,6 +39,7 @@ One backend hosts many models. The curated set:
 | `chatterbox` | `mlx-community/Chatterbox-TTS-4bit` | expressive |
 | `melotts` | `mlx-community/MeloTTS-English-v3-MLX` | lightweight VITS |
 | `outetts` | `mlx-community/Llama-OuteTTS-1.0-1B-4bit` | LM-based |
+| `voxcpm2` | `mlx-community/VoxCPM2-8bit` | 30 languages, 48 kHz studio output (needs `mlx-audio` 0.4.4+) |
 
 Pick a model in the **Model Catalogue** curated picker
 ([#981](https://github.com/debpalash/VoiceStudio/issues/981)) or set

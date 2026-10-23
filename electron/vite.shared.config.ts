@@ -43,6 +43,9 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/shared/test/setup.js'],
+    // Shared release runners (Intel macOS, Windows ARM) run the suite many times slower
+    // than a laptop; a real hang still fails, a busy runner no longer does.
+    testTimeout: process.env.CI ? 30_000 : 5_000,
     include: ['src/shared/**/*.test.{js,jsx,ts,tsx}'],
     css: false,
   },

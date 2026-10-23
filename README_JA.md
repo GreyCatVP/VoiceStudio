@@ -18,6 +18,7 @@
     <a href="https://github.com/debpalash/VoiceStudio/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/debpalash/VoiceStudio/ci.yml?branch=main" alt="CI" /></a>
     <a href="https://github.com/debpalash/VoiceStudio/releases/latest"><img src="https://img.shields.io/github/v/release/debpalash/VoiceStudio" alt="最新リリース" /></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="AGPL-3.0" /></a>
+    <a href="https://supermetry.com"><img src="https://app.supermetry.com/px/zfjiv7psp4ed.svg?c=VoiceStudio&style=stats" alt="閲覧数" /></a>
   </p>
 </div>
 
@@ -130,9 +131,7 @@ bun run dev
 
 ## スポンサー
 
-<a href="https://forms.gle/2PYCvd39hbwijzX37"><img src="docs/media/sponsor-slot.svg" alt="あなたのブランドを — VoiceStudio の注目スポンサー枠に応募" width="640" /></a>
-
-**注目パートナーになりませんか。** [有料掲載に応募](https://forms.gle/2PYCvd39hbwijzX37) · [メールで問い合わせ](mailto:partner@voicestudio.sh)
+スポンサーシップはメンテナーの時間、開発ツール、リリース基盤、テスト用ハードウェアに充てられます。得られるのは謝辞の掲載であり、機能ではありません。
 
 開発を支援する：[Ko-fi](https://ko-fi.com/debpalash) · [PayPal](https://paypal.me/palashCoder) · [スポンサーシップの詳細](SPONSORS.md)
 

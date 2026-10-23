@@ -22,17 +22,26 @@ def validate_sunset(manifest, tag):
         if not entry.get("signature"):
             raise ValueError("Missing Tauri signature")
 
+def channel_for(version):
+    """`X.Y.Z` is Stable, `X.Y.Z-beta.N` is Beta; any other shape is not a release."""
+    if re.fullmatch(r"\d+\.\d+\.\d+", version):
+        return "stable"
+    if re.fullmatch(r"\d+\.\d+\.\d+-beta\.\d+", version):
+        return "beta"
+    raise ValueError(f"Not a stable or beta release version: {version}")
+
 def prepare(assets, tag, sunset_tag=None):
     version = json.loads(Path("package.json").read_text())["version"]
     if tag != f"v{version}":
         raise ValueError("Tag must match package version")
+    channel = channel_for(version)
     files = [p for p in assets.iterdir() if p.is_file()]
-    release = {"tagName": tag, "isPrerelease": False, "assets": [
+    release = {"tagName": tag, "isPrerelease": channel == "beta", "assets": [
         {"name": p.name, "size": p.stat().st_size,
          "digest": "sha256:" + hashlib.sha256(p.read_bytes()).hexdigest()}
         for p in files]}
-    verify_release(release, assets, channel="stable", version=version)
-    for manifest in assets.glob("electron-stable-*.yml"):
+    verify_release(release, assets, channel=channel, version=version)
+    for manifest in assets.glob(f"electron-{channel}-*.yml"):
         text = manifest.read_text()
         artifact = re.search(r"^\s+- url:\s*(.+)$", text, re.M)[1].strip().strip("'\"")
         expected = re.search(r"^\s{4}sha512:\s*(.+)$", text, re.M)[1].strip().strip("'\"")
@@ -42,7 +51,9 @@ def prepare(assets, tag, sunset_tag=None):
     for suffix in ("mac-arm64.dmg", "mac-x64.dmg", "linux-x64.deb"):
         if not (assets / f"VoiceStudio-Electron-{version}-{suffix}").is_file():
             raise ValueError(f"Missing installer: {suffix}")
-    if sunset_tag:
+    # Archived Tauri clients read `latest/download`, which never serves a
+    # prerelease, so betas carry no sunset feeds.
+    if sunset_tag and channel == "stable":
         for name in ("latest.json", "latest-user.json"):
             validate_sunset(json.loads((assets / name).read_text()), sunset_tag)
     section = re.search(rf"^## \[{re.escape(version)}\][^\n]*\n(.*?)(?=^## |\Z)",
@@ -57,8 +68,15 @@ def prepare(assets, tag, sunset_tag=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--assets", type=Path, required=True)
-    parser.add_argument("--tag", required=True)
+    parser.add_argument("--assets", type=Path)
+    parser.add_argument("--tag")
     parser.add_argument("--sunset-tag")
+    parser.add_argument("--print-channel", action="store_true",
+                        help="Print stable or beta for the package version and exit")
     args = parser.parse_args()
-    prepare(args.assets, args.tag, args.sunset_tag)
+    if args.print_channel:
+        print(channel_for(json.loads(Path("package.json").read_text())["version"]))
+    elif args.assets and args.tag:
+        prepare(args.assets, args.tag, args.sunset_tag)
+    else:
+        parser.error("--assets and --tag are required")
