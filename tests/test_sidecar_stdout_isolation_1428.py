@@ -56,6 +56,7 @@ EXPECTED_SIDECARS = {
     ENGINES / "demucs" / "main.py",
     ENGINES / "pyannote" / "main.py",
     ENGINES / "omnivoice_ray" / "main.py",
+    ENGINES / "f5_tts_thai" / "main.py",
 }
 
 

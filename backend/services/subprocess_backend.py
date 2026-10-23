@@ -1427,6 +1427,53 @@ def _read_exact(stream, n: int) -> Optional[bytes]:
     return bytes(out)
 
 
+class ReferenceScopeMixin:
+    """Temporary reference windows that live for one render (or Ray batch).
+
+    For sidecar engines whose ``_prepare_generate_kwargs`` cuts a passage out
+    of a long reference: the prepared files must outlive every item of a Ray
+    batch (their bytes are read when the job is sent), and are deleted when
+    the outermost render returns. Resolved transcripts are memoised per render.
+    """
+
+    def _ref_state(self) -> dict:
+        local = self.__dict__.setdefault("_ref_local", threading.local())
+        if not hasattr(local, "state"):
+            local.state = {"passages": [], "texts": {}, "depth": 0}
+        return local.state
+
+    @contextlib.contextmanager
+    def _reference_scope(self):
+        """Prepared passages live until the outermost render returns."""
+        state = self._ref_state()
+        state["depth"] += 1
+        try:
+            yield
+        finally:
+            state["depth"] -= 1
+            if state["depth"] == 0:
+                for passage in state["passages"]:
+                    try:
+                        os.remove(passage)
+                    except OSError:
+                        pass
+                state["passages"].clear()
+                state["texts"].clear()
+
+    @property
+    def has_native_batch(self) -> bool:
+        # generate() is wrapped below, so SubprocessBackend's own check fails.
+        return ray_routed(self.id)
+
+    def generate(self, text: str, **kw):
+        with self._reference_scope():
+            return super().generate(text, **kw)
+
+    def generate_batch(self, texts, **kw):
+        with self._reference_scope():
+            return super().generate_batch(texts, **kw)
+
+
 def _is_jsonable(v) -> bool:
     """Quick filter for kwargs that survive json.dumps. Lists/dicts are
     accepted only if their contents are themselves jsonable."""
@@ -1440,6 +1487,7 @@ def _is_jsonable(v) -> bool:
 
 
 __all__ = [
+    "ReferenceScopeMixin",
     "SubprocessBackend",
     "MAX_FRAME_BYTES",
     "PARENT_INBOUND_OPS",

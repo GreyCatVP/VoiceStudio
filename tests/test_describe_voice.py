@@ -197,3 +197,96 @@ def test_endpoint_empty_description(client):
 def test_endpoint_rejects_oversized_description(client):
     r = client.post("/design/describe", json={"description": "x" * 2001})
     assert r.status_code == 422
+
+
+# ── Leftover words and non-English descriptions ───────────────────────────────
+def test_unmapped_words_beside_a_match_are_reported_not_dropped():
+    res = parse_description("a warm elderly British storyteller, slightly raspy")
+    assert res["unmatched"] == ["warm", "storyteller", "slightly raspy"]
+    assert parse_description("old man with a warm, gentle voice")["unmatched"] == ["warm", "gentle voice"]
+    assert parse_description("deep male voice")["unmatched"] == []  # filler words are not reported
+
+
+@pytest.mark.parametrize("text, code", [
+    ("เสียงผู้หญิงสูงวัย น้ำเสียงอบอุ่น", "th"),
+    ("a warm elderly voice", None),
+    ("a warm elderly voice, สูงวัย", None),  # mostly English: mapped as written
+    ("", None),
+])
+def test_description_language_is_decided_by_script(text, code):
+    from core.describe_voice import description_language
+
+    assert description_language(text) == code
+
+
+@pytest.fixture
+def translation(monkeypatch):
+    """Fake translation path: which providers are usable and what they return."""
+    from api.routers import describe_voice as router_mod
+    from api.routers import dub_translate
+    from core import prefs
+    from services import subprocess_backend, translation_engines
+
+    state = {"routed": False, "configured": "argos", "ready": True, "calls": [],
+             "reply": {"typhoon": "a warm elderly woman", "argos": "an elderly woman"}}
+    router_mod._TRANSLATIONS.clear()
+    monkeypatch.setattr(subprocess_backend, "ray_routed", lambda e: state["routed"] and e == "typhoon-translate")
+    monkeypatch.setattr(prefs, "get", lambda k, d=None: state["configured"] if k == "translation_backend" else d)
+    monkeypatch.setattr(translation_engines, "is_ready", lambda e, **_k: state["ready"])
+
+    async def fake(req):
+        state["calls"].append((req.provider, req.source_lang, req.target_lang, req.segments[0].text))
+        text = state["reply"].get(req.provider)
+        if text is None:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=409, content={"error": "pack missing"})
+        return {"translated": [{"id": req.segments[0].id, "text": text}]}
+
+    monkeypatch.setattr(dub_translate, "dub_translate", fake)
+    return state
+
+
+THAI = "ผู้หญิงสูงวัย น้ำเสียงอบอุ่น"
+
+
+def test_thai_description_is_translated_by_typhoon_when_routed(client, translation):
+    translation["routed"] = True
+    body = client.post("/design/describe", json={"description": THAI}).json()
+    assert translation["calls"] == [("typhoon", "th", "en", THAI)]
+    assert body["language"] == "th" and body["translator"] == "typhoon"
+    assert body["translated"] == "a warm elderly woman"
+    assert body["attrs"]["Gender"] == "female" and body["attrs"]["Age"] == "elderly"
+    assert body["unmatched"] == ["warm"]
+    client.post("/design/describe", json={"description": THAI})
+    assert len(translation["calls"]) == 1  # remembered
+
+
+def test_configured_translator_is_used_when_typhoon_is_not_routed(client, translation):
+    body = client.post("/design/describe", json={"description": THAI}).json()
+    assert [c[0] for c in translation["calls"]] == ["argos"] and body["translator"] == "argos"
+    assert body["translated"] == "an elderly woman"
+
+
+def test_a_failed_translator_falls_through_to_the_next(client, translation):
+    translation["routed"] = True
+    translation["reply"]["typhoon"] = None  # e.g. an error response
+    body = client.post("/design/describe", json={"description": THAI}).json()
+    assert [c[0] for c in translation["calls"]] == ["typhoon", "argos"] and body["translator"] == "argos"
+
+
+def test_without_a_translator_the_original_is_mapped_and_reported_untranslated(client, translation):
+    translation["ready"] = False
+    body = client.post("/design/describe", json={"description": THAI}).json()
+    assert translation["calls"] == []
+    assert body["language"] == "th" and body["translated"] is None and body["translator"] is None
+    assert body["matched"] == [] and body["unmatched"] == [THAI]
+
+
+def test_a_translation_that_is_still_thai_counts_as_no_translation(client, translation):
+    translation["reply"]["argos"] = THAI
+    assert client.post("/design/describe", json={"description": THAI}).json()["translated"] is None
+
+
+def test_translation_can_be_turned_off(client, translation):
+    body = client.post("/design/describe", json={"description": THAI, "translate": False}).json()
+    assert translation["calls"] == [] and body["translated"] is None

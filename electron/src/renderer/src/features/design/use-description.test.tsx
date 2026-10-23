@@ -55,3 +55,43 @@ it('newest description wins even if an old request ignores cancellation', async 
   expect(apply).toHaveBeenCalledExactlyOnceWith({ Age: 'elderly' }, 'new');
   expect(result.current.unmatched).toEqual(['raspy']);
 });
+it('reports the English a Thai description was understood as, after a longer pause', async () => {
+  vi.useFakeTimers();
+  const apply = vi.fn();
+  vi.mocked(apiJson).mockResolvedValue({
+    attrs: { Gender: 'female', Age: 'elderly' },
+    matched: ['female', 'elderly'],
+    unmatched: ['warm'],
+    language: 'th',
+    translated: 'a warm elderly woman',
+  });
+  const { result } = renderHook(() => useDescription(apply));
+  act(() => result.current.describe('ผู้หญิงสูงวัย น้ำเสียงอบอุ่น'));
+  await act(() => vi.advanceTimersByTimeAsync(500));
+  expect(apiJson).not.toHaveBeenCalled(); // translated on the server: wait for a pause
+  await act(() => vi.advanceTimersByTimeAsync(1000));
+  expect(apply).toHaveBeenCalledExactlyOnceWith(
+    { Gender: 'female', Age: 'elderly' },
+    'ผู้หญิงสูงวัย น้ำเสียงอบอุ่น',
+  );
+  expect(result.current.translated).toBe('a warm elderly woman');
+  expect(result.current.unmatched).toEqual(['warm']);
+  expect(result.current.needsEnglish).toBe(false);
+});
+it('asks for English when no translator could translate the description', async () => {
+  vi.useFakeTimers();
+  vi.mocked(apiJson).mockResolvedValue({
+    attrs: {},
+    matched: [],
+    unmatched: ['ผู้หญิงสูงวัย'],
+    language: 'th',
+    translated: null,
+  });
+  const { result } = renderHook(() => useDescription(vi.fn()));
+  act(() => result.current.reset('ผู้หญิงสูงวัย'));
+  await act(() => vi.advanceTimersByTimeAsync(0));
+  expect(result.current.needsEnglish).toBe(true);
+  expect(result.current.translated).toBeNull();
+  act(() => result.current.describe('female'));
+  expect(result.current.needsEnglish).toBe(false);
+});

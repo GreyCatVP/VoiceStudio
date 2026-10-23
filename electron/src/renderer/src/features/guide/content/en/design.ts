@@ -49,7 +49,7 @@ const chapter: GuideChapter = {
         {
           kind: 'list',
           items: [
-            '**Describe your voice** is read for known words (male, elderly, low voice, British…). They set the **Details** below. Words it does not know are listed as **Couldn’t map: …** and ignored.',
+            '**Describe your voice** is read for known words (male, elderly, low voice, British…). They set the **Details** below. Words it does not know are listed as **Couldn’t map: …** and ignored. A description in Thai (or another non-Latin script) is first translated to English, shown as **Understood as: …**.',
             '**Details** is the real recipe: one choice per category. Every category on **Auto** lets the model decide.',
             'The **Seed** picks one speaker among all that match the recipe. Same details + same seed = the same voice every time. **New seed** gives a different speaker with the same description.',
             '**Save as voice profile** stores the recipe, the seed and the language. Its sample is rendered the first time you play the voice.',
@@ -138,7 +138,7 @@ const chapter: GuideChapter = {
         {
           kind: 'note',
           tone: 'tip',
-          text: 'Describe the voice in English words, even for a script in another language. The mapper only knows English trait words; a description in another language maps to nothing.',
+          text: 'The mapper only knows English trait words. A Thai description is translated to English first, with Typhoon Translate when it runs on your remote GPU, otherwise with the translator chosen in **Settings → Models → Translation**. With no translator available, describe the voice in English.',
         },
         {
           kind: 'note',

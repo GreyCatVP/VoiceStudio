@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import functools
 import logging
+import math
 import os
 import re
 import threading
@@ -1046,19 +1047,21 @@ def _reference_asr_identity() -> str:
         return ""
 
 
-def _passage_choice_key(ref_audio: str) -> tuple:
+def _passage_choice_key(ref_audio: str, window_s: Optional[float] = None) -> tuple:
     try:
         st = os.stat(ref_audio)
         version = (st.st_mtime_ns, st.st_size)
     except OSError:
         version = (0, 0)
-    return (os.path.abspath(ref_audio), version, _reference_asr_identity())
+    key = (os.path.abspath(ref_audio), version, _reference_asr_identity())
+    # A window length other than OmniVoice's 15 s indexes different windows.
+    return key if window_s is None else (*key, float(window_s))
 
 
-def _recall_passage(ref_audio: str) -> Optional[tuple[int, str]]:
+def _recall_passage(ref_audio: str, window_s: Optional[float] = None) -> Optional[tuple[int, str]]:
     if not _reference_asr_identity():
         return None
-    key = _passage_choice_key(ref_audio)
+    key = _passage_choice_key(ref_audio, window_s)
     with _prompt_cache_lock:
         hit = _passage_choices.get(key)
         if hit is None:
@@ -1067,10 +1070,10 @@ def _recall_passage(ref_audio: str) -> Optional[tuple[int, str]]:
         return hit
 
 
-def _remember_passage(ref_audio: str, index: int, text: str) -> None:
+def _remember_passage(ref_audio: str, index: int, text: str, window_s: Optional[float] = None) -> None:
     if not _reference_asr_identity():
         return
-    key = _passage_choice_key(ref_audio)
+    key = _passage_choice_key(ref_audio, window_s)
     with _prompt_cache_lock:
         _passage_choices[key] = (index, text)
         _passage_choices.move_to_end(key)
@@ -1119,7 +1122,9 @@ def _read_reference_mono(path: str):
     return audio, sr
 
 
-def _omnivoice_installed_passage(ref_audio: str) -> Optional[tuple[str, str]]:
+def _omnivoice_installed_passage(
+    ref_audio: str, window_s: Optional[float] = None,
+) -> Optional[tuple[str, str]]:
     """Pick a long clip's best 15 s window with the installed recognizer.
 
     OmniVoice cannot align a transcript to more than 20 s, so a longer clip
@@ -1129,6 +1134,9 @@ def _omnivoice_installed_passage(ref_audio: str) -> Optional[tuple[str, str]]:
     transcript)`` or None when no installed recognizer produced words. The
     caller deletes ``wav_path``. A decoded clip with no spoken words is
     remembered so the next chunk does not rank it again.
+
+    ``window_s`` picks a shorter window for engines that condition on less
+    (F5-TTS-THAI: 8 s); the clip length ranked stays the same (75 s).
     """
     from omnivoice.utils.audio import CLONE_REF_MAX_WINDOWS, CLONE_REF_WINDOW_SECONDS
 
@@ -1136,11 +1144,13 @@ def _omnivoice_installed_passage(ref_audio: str) -> Optional[tuple[str, str]]:
     if loaded is None:
         return None
     audio, sr = loaded
-    window = int(CLONE_REF_WINDOW_SECONDS * sr)
+    seconds = float(window_s or CLONE_REF_WINDOW_SECONDS)
+    max_windows = math.ceil(CLONE_REF_MAX_WINDOWS * CLONE_REF_WINDOW_SECONDS / seconds)
+    window = int(seconds * sr)
     if window <= 0 or len(audio) <= window:
         return None
-    if len(audio) > window * CLONE_REF_MAX_WINDOWS:
-        _remember_passage(ref_audio, _NO_PASSAGE, "")
+    if len(audio) > window * max_windows:
+        _remember_passage(ref_audio, _NO_PASSAGE, "", window_s)
         return None
     try:
         import soundfile as sf
@@ -1156,7 +1166,7 @@ def _omnivoice_installed_passage(ref_audio: str) -> Optional[tuple[str, str]]:
     best_path: Optional[str] = None
     best_text = ""
     best_index = 0
-    n_windows = min(CLONE_REF_MAX_WINDOWS, (len(audio) + window - 1) // window)
+    n_windows = min(max_windows, (len(audio) + window - 1) // window)
     for index in range(n_windows):
         chunk = audio[index * window:(index + 1) * window]
         if len(chunk) == 0:
@@ -1190,21 +1200,21 @@ def _omnivoice_installed_passage(ref_audio: str) -> Optional[tuple[str, str]]:
             except OSError:
                 pass
     if best_path is None:
-        _remember_passage(ref_audio, _NO_PASSAGE, "")
+        _remember_passage(ref_audio, _NO_PASSAGE, "", window_s)
         return None
-    _remember_passage(ref_audio, best_index, best_text)
+    _remember_passage(ref_audio, best_index, best_text, window_s)
     return best_path, best_text
 
 
-def _materialize_window(ref_audio: str, index: int) -> Optional[str]:
-    """Write one previously chosen 15 s window. The caller deletes the file."""
+def _materialize_window(ref_audio: str, index: int, window_s: Optional[float] = None) -> Optional[str]:
+    """Write one previously chosen window (15 s unless ``window_s``). The caller deletes the file."""
     from omnivoice.utils.audio import CLONE_REF_WINDOW_SECONDS
 
     loaded = _read_reference_mono(ref_audio)
     if loaded is None or index < 0:
         return None
     audio, sr = loaded
-    window = int(CLONE_REF_WINDOW_SECONDS * sr)
+    window = int(float(window_s or CLONE_REF_WINDOW_SECONDS) * sr)
     if window <= 0:
         return None
     chunk = audio[index * window:(index + 1) * window]
@@ -1227,21 +1237,34 @@ def _materialize_window(ref_audio: str, index: int) -> Optional[str]:
     return path
 
 
-def _reuse_or_rank_passage(ref_audio: str) -> Optional[tuple[str, str]]:
-    """Return the cached 15 s window, or rank one and remember the result.
+def _reuse_or_rank_passage(ref_audio: str, window_s: Optional[float] = None) -> Optional[tuple[str, str]]:
+    """Return the cached window (15 s unless ``window_s``), or rank one and
+    remember the result.
 
     A remembered miss (no spoken words, or a clip past five windows) is not
     ranked again. The caller deletes the wav path.
     """
     if _reference_asr_identity():
-        recalled = _recall_passage(ref_audio)
+        recalled = _recall_passage(ref_audio, window_s)
         if recalled is not None:
             if recalled[0] < 0:
                 return None
-            path = _materialize_window(ref_audio, recalled[0])
+            path = _materialize_window(ref_audio, recalled[0], window_s)
             if path is not None:
                 return path, recalled[1]
-    return _omnivoice_installed_passage(ref_audio)
+    if window_s is None:
+        return _omnivoice_installed_passage(ref_audio)
+    return _omnivoice_installed_passage(ref_audio, window_s)
+
+
+def best_reference_window(ref_audio: str, window_s: float) -> Optional[tuple[str, str]]:
+    """``(wav_path, transcript)`` of a long clip's best ``window_s`` window.
+
+    The same installed-recognizer ranking and memo OmniVoice uses for its
+    15 s passage, for engines that condition on a shorter clip. None when no
+    installed recognizer found words. The caller deletes ``wav_path``.
+    """
+    return _reuse_or_rank_passage(ref_audio, window_s)
 
 
 def prepare_reference_passage(ref_audio) -> bool:
@@ -3388,6 +3411,10 @@ _LAZY_REGISTRY: dict[str, tuple[str, str]] = {
     # same import-cycle reason as the entries above (engines.audiocpp
     # imports services.tts_backend for TTSBackend).
     "audiocpp": ("engines.audiocpp", "AudioCPPBackend"),
+    # VIZINTZOR/F5-TTS-THAI: Thai + English cloning, remote GPU only (a Ray
+    # cluster or Modal); available only while routed there. Lazy for the
+    # same import-cycle reason as the entries above.
+    "f5-tts-thai": ("engines.f5_tts_thai", "F5TTSThaiBackend"),
 }
 
 
@@ -3492,6 +3519,7 @@ _INSTALL_HINTS: dict[str, str] = {
     "moss-tts-v15":  "git clone OpenMOSS/MOSS-TTS + set OMNIVOICE_MOSS_TTS_V15_DIR  (own venv, transformers==5.0; 8B, ~16 GB weights; CUDA/ROCm/XPU/NPU/CPU, no MPS; Apache-2.0)",
     "dots-tts":      "git clone rednote-hilab/dots.tts + set OMNIVOICE_DOTS_TTS_DIR  (own venv, transformers==4.57; 2B, ~9 GB weights; CUDA/CPU, Linux/macOS only — no Windows; Apache-2.0)",
     "confucius4-tts":"git clone netease-youdao/Confucius4-TTS + set OMNIVOICE_CONFUCIUS4_TTS_DIR  (own Python 3.10 venv; 14-lang cross-lingual zero-shot clone; ~5 GB weights auto-download; CUDA/ROCm/XPU/NPU/CPU, no MPS; Apache-2.0)",
+    "f5-tts-thai":  "No local install: runs only on a remote GPU. Turn on f5-tts-thai in Settings → Remote GPU (installs f5-tts-th and downloads ~1.4 GB of weights on the cluster; Thai + English; CC-BY-4.0 weights)",
     "audiocpp":     "download the matching audio.cpp v0.7.4 prebuilt + set OMNIVOICE_AUDIOCPP_BIN, then explicitly install Breeze-TTS-2 in Model Catalogue → Models  (native CPU/Vulkan/CUDA/Metal GGUF server, no Python; en+zh clone+design; ~4.73 GiB; weights research/non-commercial only)",
 }
 
@@ -3540,6 +3568,7 @@ _ENGINE_DOCS: dict[str, str] = {
     "supertonic3":          "docs/engines/supertonic3.md",
     "pockettts":            "docs/engines/pockettts.md",
     "audiocpp":             "docs/engines/audio-cpp.md",
+    "f5-tts-thai":          "docs/engines/f5-tts-thai.md",
 }
 
 

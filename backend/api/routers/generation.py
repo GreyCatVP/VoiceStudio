@@ -2062,7 +2062,7 @@ async def generate_speech(
                     ref_lease.finish_request()
                 raise HTTPException(
                     status_code=400,
-                    detail=clone_ref_transcript_too_long_message(_ref_seconds),
+                    detail=clone_ref_transcript_too_long_message(_ref_seconds, _ref_max),
                 )
 
     # #308: a transcript-less reference is transcribed with the active ASR

@@ -1803,6 +1803,11 @@
       "maxLength": 2000,
       "title": "Description",
       "type": "string"
+     },
+     "translate": {
+      "default": true,
+      "title": "Translate",
+      "type": "boolean"
      }
     },
     "title": "DescribeRequest",
@@ -8997,7 +9002,7 @@
   },
   "/audiobook/import": {
    "post": {
-    "description": "Import a ``.txt``/``.md``/``.epub``/``.pdf`` into a chapter-delimited script.\n\nEPUB is parsed in spine order (stdlib only, local); PDF text is extracted\nwith pypdf (pure-Python) then chapterized; plain text gets ``# `` headings\ninserted ahead of obvious chapter-title lines. Returns the script text (for\nthe editor) + the resulting chapter count.",
+    "description": "Import a ``.txt``/``.md``/``.epub``/``.pdf`` into a chapter-delimited script.\n\nEPUB is parsed in spine order (stdlib only, local); PDF text is extracted\nwith pypdf (pure-Python) then chapterized; plain text gets ``# `` headings\ninserted ahead of obvious chapter-title lines. Returns the script text (for\nthe editor), the resulting chapter count, and the book's own ``title``\n(EPUB ``dc:title``; ``\"\"`` when the format has none).",
     "operationId": "audiobook_import_audiobook_import_post",
     "requestBody": {
      "content": {
@@ -10352,7 +10357,7 @@
   },
   "/design/describe": {
    "post": {
-    "description": "Parse a free-text description into design attrs + a validator-safe instruct.\n\nResponse shape::\n\n    {\n      \"attrs\":     {\"Gender\": \"female\", \"Age\": \"elderly\", ... or \"Auto\"},\n      \"instruct\":  \"female, elderly, low pitch, british accent\",\n      \"matched\":   [{\"category\": \"Age\", \"token\": \"elderly\", \"phrase\": \"elderly\"}, ...],\n      \"unmatched\": [\"slightly raspy\"]\n    }",
+    "description": "Parse a free-text description into design attrs + a validator-safe instruct.\n\nResponse shape::\n\n    {\n      \"attrs\":     {\"Gender\": \"female\", \"Age\": \"elderly\", ... or \"Auto\"},\n      \"instruct\":  \"female, elderly, low pitch, british accent\",\n      \"matched\":   [{\"category\": \"Age\", \"token\": \"elderly\", \"phrase\": \"elderly\"}, ...],\n      \"unmatched\": [\"warm\", \"slightly raspy\"]\n    }\n\nA non-English description adds ``language`` (e.g. \"th\"), ``translated``\n(the English text that was mapped, or null) and ``translator`` (the\nprovider id, or null). ``translated`` null means no translator could\ntranslate it: the original text was mapped as before.",
     "operationId": "describe_voice_design_describe_post",
     "requestBody": {
      "content": {

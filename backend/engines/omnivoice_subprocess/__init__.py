@@ -28,15 +28,13 @@ own pins.
 """
 from __future__ import annotations
 
-import contextlib
 import logging
 import os
 import sys
-import threading
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from services.subprocess_backend import SubprocessBackend
+from services.subprocess_backend import ReferenceScopeMixin, SubprocessBackend
 
 if TYPE_CHECKING:
     import torch  # noqa: F401
@@ -44,7 +42,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger("omnivoice.omnivoice_subprocess")
 
 
-class OmniVoiceSubprocessBackend(SubprocessBackend):
+class OmniVoiceSubprocessBackend(ReferenceScopeMixin, SubprocessBackend):
     """The resident OmniVoice model in a killable sidecar process."""
     supports_float_transport = True
     supports_native_omnivoice_controls = True
@@ -126,43 +124,6 @@ class OmniVoiceSubprocessBackend(SubprocessBackend):
         except Exception:  # noqa: BLE001 - the model copes without one
             logger.warning("reference transcript resolution failed")
             return None
-
-    def _ref_state(self) -> dict:
-        local = self.__dict__.setdefault("_ref_local", threading.local())
-        if not hasattr(local, "state"):
-            local.state = {"passages": [], "texts": {}, "depth": 0}
-        return local.state
-
-    @contextlib.contextmanager
-    def _reference_scope(self):
-        """Prepared passages live until the outermost render returns."""
-        state = self._ref_state()
-        state["depth"] += 1
-        try:
-            yield
-        finally:
-            state["depth"] -= 1
-            if state["depth"] == 0:
-                for passage in state["passages"]:
-                    try:
-                        os.remove(passage)
-                    except OSError:
-                        pass
-                state["passages"].clear()
-                state["texts"].clear()
-
-    @property
-    def has_native_batch(self) -> bool:
-        from services.subprocess_backend import ray_routed
-        return ray_routed(self.id)
-
-    def generate(self, text: str, **kw):
-        with self._reference_scope():
-            return super().generate(text, **kw)
-
-    def generate_batch(self, texts, **kw):
-        with self._reference_scope():
-            return super().generate_batch(texts, **kw)
 
     @classmethod
     def is_available(cls) -> tuple[bool, str]:

@@ -69,7 +69,8 @@ def test_save_round_trip_never_exposes_secrets(rs, ss):
     assert ss._test_secrets == {"ray_auth_token": "tok-SECRET", "ray_cf_access_client_secret": "cf-SECRET"}
     assert {e["id"] for e in state["available_engines"]} == {
         "supertonic3", "voxcpm2", "moss-tts-nano", "indextts2", "cosyvoice", "confucius4-tts", "moss-tts-v15", "dots-tts",
-        "faster-whisper-isolated", "nllb", "typhoon-translate", "demucs", "pyannote", "omnivoice"}
+        "faster-whisper-isolated", "nllb", "typhoon-translate", "demucs", "pyannote", "omnivoice",
+        "f5-tts-thai"}
     assert {e["id"]: e["kind"] for e in state["available_engines"]}["faster-whisper-isolated"] == "asr"
     # None leaves a secret alone, '' clears it
     rs.save({"auth_token": None})

@@ -228,14 +228,21 @@ export function DesignPage() {
                 ? t('clone.describe_freeform')
                 : mapper.pending
                   ? t('preferences.loading')
-                  : !mapper.matched
-                    ? t('clone.describe_no_match')
-                    : mapper.unmatched.length
-                      ? t('clone.describe_unmatched', {
-                          items: mapper.unmatched.join(', '),
-                        })
-                      : t('clone.describe_hint')}
+                  : mapper.needsEnglish
+                    ? t('clone.describe_needs_english')
+                    : !mapper.matched
+                      ? t('clone.describe_no_match')
+                      : mapper.unmatched.length
+                        ? t('clone.describe_unmatched', {
+                            items: mapper.unmatched.join(', '),
+                          })
+                        : t('clone.describe_hint')}
             </p>
+            {!freeform && !mapper.pending && mapper.translated && (
+              <p className="text-xs text-muted-foreground">
+                {t('clone.describe_translated', { text: mapper.translated })}
+              </p>
+            )}
             {!freeform && mapper.failed && (
               <Button variant="ghost" size="xs" onClick={() => mapper.describe(description)}>
                 {t('backend.retry')}

@@ -4,7 +4,14 @@ interface DescriptionResult {
   attrs: Record<string, string>;
   matched: unknown[];
   unmatched: string[];
+  /** Set for a non-English description (e.g. "th"). */
+  language?: string | null;
+  /** The English text that was mapped; null when no translator could translate it. */
+  translated?: string | null;
 }
+// Letters the English mapper cannot read: such a description is translated
+// on the server first, so wait for a longer pause in typing before sending it.
+const NON_LATIN = /[^\p{Script=Latin}\p{Script=Common}\p{Script=Inherited}]/u;
 /**
  * Manual edits, new text and navigation always supersede a queued mapper
  * response. `apply` also receives the description the mapping belongs to, so
@@ -21,6 +28,8 @@ export function useDescription(
   const [unmatched, setUnmatched] = useState<string[]>([]);
   const [matched, setMatched] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [translated, setTranslated] = useState<string | null>(null);
+  const [needsEnglish, setNeedsEnglish] = useState(false);
   const cancel = () => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
@@ -33,6 +42,8 @@ export function useDescription(
     setFailed(false);
     setUnmatched([]);
     setMatched(true);
+    setTranslated(null);
+    setNeedsEnglish(false);
     const normalized = description.trim();
     if (!normalized) {
       if (immediate) applyRef.current({}, '');
@@ -55,6 +66,8 @@ export function useDescription(
             applyRef.current(result.attrs, normalized);
             setUnmatched(result.unmatched ?? []);
             setMatched(Boolean(result.matched?.length));
+            setTranslated(result.translated ?? null);
+            setNeedsEnglish(Boolean(result.language) && !result.translated);
           })
           .catch(() => {
             if (!controller.signal.aborted) setFailed(true);
@@ -66,7 +79,7 @@ export function useDescription(
             }
           });
       },
-      immediate ? 0 : 450,
+      immediate ? 0 : NON_LATIN.test(normalized) ? 1500 : 450,
     );
   };
   useEffect(
@@ -84,5 +97,7 @@ export function useDescription(
     unmatched,
     matched,
     failed,
+    translated,
+    needsEnglish,
   };
 }

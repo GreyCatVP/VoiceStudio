@@ -52,13 +52,18 @@ CLONE_REF_WINDOW_SECONDS = 15.0
 CLONE_REF_MAX_WINDOWS = 5
 
 
-def clone_ref_transcript_too_long_message(duration_s: float) -> str:
-    """The actionable error for a supplied transcript on an over-long clip."""
+def clone_ref_transcript_too_long_message(
+    duration_s: float, max_seconds: float = CLONE_REF_TEXT_MAX_SECONDS,
+) -> str:
+    """The actionable error for a supplied transcript on an over-long clip.
+
+    ``max_seconds`` is the engine's own limit (F5-TTS-THAI: 8 s).
+    """
     return (
         f"{CLONE_REF_TOO_LONG_MARKER} Reference audio is {duration_s:.1f} "
         f"seconds long; supplied transcripts support at most "
-        f"{CLONE_REF_TEXT_MAX_SECONDS:.0f} seconds. Trim both the audio and "
-        "transcript to the same 3-10 second passage, or omit the transcript "
+        f"{max_seconds:.0f} seconds. Trim both the audio and "
+        f"transcript to the same 3-{min(10, int(max_seconds))} second passage, or omit the transcript "
         "so VoiceStudio can pick and transcribe the best passage automatically."
     )
 

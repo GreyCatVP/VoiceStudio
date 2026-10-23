@@ -44,7 +44,8 @@ VoiceStudio/
 │   ├── engines/                 per-engine adapters: indextts, supertonic3, confucius4,
 │   │                            dots_tts, moss_tts_v15, pockettts, audiocpp,
 │   │                            omnivoice_gguf, omnivoice_subprocess, _asr_sidecar, _echo,
-│   │                            voxcpm2_subprocess, moss_tts_nano_subprocess, cosyvoice_subprocess
+│   │                            voxcpm2_subprocess, moss_tts_nano_subprocess, cosyvoice_subprocess,
+│   │                            f5_tts_thai (remote GPU only)
 │   ├── mcp_shim/                MCP server entry point (docs/mcp.md)
 │   ├── speech_client/           speech sidecar client entry point
 │   ├── schemas/                 pydantic request/response shapes

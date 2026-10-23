@@ -46,6 +46,7 @@ approval), [Windows](../install/windows.md), [Linux](../install/linux.md),
 | PocketTTS (Kyutai) | [pockettts](pockettts.md) | CPU (not Intel Mac) | ✅ | `uv sync --extra pockettts` + license |
 | Confucius4-TTS | [confucius4-tts](confucius4-tts.md) | CUDA · CPU | ✅ | clone + env var |
 | audio.cpp (Breeze-TTS-2) | [audio-cpp](audio-cpp.md) | CPU + Vulkan/Metal/CUDA/HIP/ROCm where compiled | ✅ + voice design | prebuilt binary + env var (weights research/non-commercial) |
+| F5-TTS-THAI (Thai + English) | [f5-tts-thai](f5-tts-thai.md) | remote GPU only (Ray cluster or Modal) | ✅ | Settings → Remote GPU + license |
 
 ### Reference clip length
 
@@ -58,12 +59,13 @@ as `max_ref_seconds` and `ref_strategy`.
 |---|---|---|
 | VoiceStudio (OmniVoice), OmniVoice (subprocess) | up to 20 s | picks the 15 s passage with the most speech and transcribes it (`best_window`) |
 | VoxCPM2 | up to 30 s | keeps the first 30 s after edge-silence trim (`head`) |
+| F5-TTS-THAI | up to 8 s | picks the 8 s window with the most speech and transcribes it (`best_window`) |
 | Other engines | not verified | the clip is passed through (`null`) |
 
 A whole-clip transcript cannot match a passage the engine cuts out, so automatic
 and saved transcripts are ignored when the clip is over the limit. A transcript
-sent with a `/generate` request for an OmniVoice clip longer than 20 s, whether
-an upload or a saved voice, is rejected with `[clone_ref_too_long]`: trim both
+sent with a `/generate` request for an OmniVoice clip longer than 20 s (F5-TTS-THAI:
+8 s), whether an upload or a saved voice, is rejected with `[clone_ref_too_long]`: trim both
 to the same passage, or leave the transcript out. The limits are the same when
 an engine runs in its own environment.
 

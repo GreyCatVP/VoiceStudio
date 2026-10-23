@@ -375,7 +375,7 @@ def test_sidecar_request_drops_whole_clip_transcript(tmp_path, monkeypatch):
     seen = {}
     # The class's own base, not a fresh import: other suites purge
     # sys.modules["services"], leaving a second SubprocessBackend object.
-    base = OmniVoiceSubprocessBackend.__mro__[1]
+    base = next(c for c in OmniVoiceSubprocessBackend.__mro__ if c.__name__ == "SubprocessBackend")
     monkeypatch.setattr(base, "_generate_raw", lambda self, text, kw: seen.update(kw))
     backend = OmniVoiceSubprocessBackend.__new__(OmniVoiceSubprocessBackend)
     long_path = _wav(tmp_path / "long.wav", 25)
@@ -401,7 +401,7 @@ def test_sidecar_forwards_installed_passage(tmp_path, monkeypatch):
 
     monkeypatch.setattr(_tts(), "_omnivoice_installed_passage", _selected)
     seen = {}
-    base = OmniVoiceSubprocessBackend.__mro__[1]
+    base = next(c for c in OmniVoiceSubprocessBackend.__mro__ if c.__name__ == "SubprocessBackend")
     monkeypatch.setattr(base, "_generate_raw", lambda self, text, kw: seen.update(kw))
     backend = OmniVoiceSubprocessBackend.__new__(OmniVoiceSubprocessBackend)
     long_path = _wav(tmp_path / "long.wav", 25)

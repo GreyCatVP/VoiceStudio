@@ -20,11 +20,14 @@ metadata and the backend fallback mirror it.
 - User guide in the app (English and Thai): how every workspace works, with diagrams and step-by-step annotated screenshots (#1)
 - Typhoon Translate (Thai↔English) as a dubbing translator on your remote GPU, with glossary terms as translation rules ([guide](docs/electron-dubbing.md)) (#1)
 - Typhoon Whisper Turbo for Thai speech recognition (Thai only, about 5% character errors vs 13% for large-v3), locally or on your remote GPU; Thai word timings come back as whole words ([guide](docs/engines/faster-whisper.md)) (#1)
+- F5-TTS-THAI as a Thai + English voice-cloning engine on your remote GPU, using the best 8 s of your reference clip ([guide](docs/engines/f5-tts-thai.md)) (#1)
+- Voice Design understands Thai descriptions: they are translated to English first (Typhoon Translate on your remote GPU, or your chosen translator) and the app shows what it understood (#1)
 
 ### Fixed
 
 - Thai interface rewritten: hundreds of mistranslations fixed, and story/audiobook script tags work in Thai again (#1)
 - Stories offer Resume after a stopped render again (#1)
+- Voice Design lists unmapped words such as "warm" even when the rest of the phrase was recognised, instead of dropping them silently (#1)
 - Remote NLLB translation progress reaches 100% when the dub has blank lines (#1)
 - Older synthesized takes play again with accurate play/pause controls after a newer generation (#3102)
 - Generation-complete notifications appear above the workspace instead of covering synthesis controls (#3102)

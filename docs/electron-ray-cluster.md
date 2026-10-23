@@ -52,10 +52,13 @@ It is **off by default**. Engines you do not select keep running locally.
 Available engines:
 
 - **Text to speech:** VoiceStudio (OmniVoice), Supertonic-3 (CPU), VoxCPM2,
-  MOSS-TTS-Nano, IndexTTS2, CosyVoice, Confucius4-TTS, MOSS-TTS v1.5 and
-  dots.tts. Engines that install from a source checkout fetch the pinned
-  GitHub archive on the cluster (CosyVoice and dots.tts build native code, so
-  the node needs a C/C++ toolchain).
+  MOSS-TTS-Nano, IndexTTS2, CosyVoice, Confucius4-TTS, MOSS-TTS v1.5,
+  dots.tts and F5-TTS-THAI. Engines that install from a source checkout fetch
+  the pinned GitHub archive on the cluster (CosyVoice and dots.tts build native
+  code, so the node needs a C/C++ toolchain). F5-TTS-THAI (`f5-tts-thai`, about
+  1.4 GB of weights) speaks Thai and English in a voice cloned from 2–8 s of
+  reference audio; it has no local path, so it is available only while this
+  engine is ticked ([details](engines/f5-tts-thai.md)).
 - **Speech recognition:** Faster-Whisper (crash-isolated subprocess), used by
   dubbing. Select it as the ASR engine and choose a Hugging Face model, not a
   local folder. Word timings are refined on this machine with the same wav2vec2

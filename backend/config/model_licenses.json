@@ -1289,6 +1289,91 @@
       }
     },
     {
+      "id": "VIZINTZOR/F5-TTS-THAI",
+      "license": "cc-by-4.0; cc-by-nc-4.0 (base SWivid/F5-TTS)",
+      "commercial_use": false,
+      "review_status": "unreviewed",
+      "credit": "F5-TTS-THAI — VIZINTZOR (fine-tune of SWivid/F5-TTS by Yushen Chen et al.)",
+      "source_url": "https://huggingface.co/VIZINTZOR/F5-TTS-THAI",
+      "evidence_url": "https://huggingface.co/VIZINTZOR/F5-TTS-THAI/blob/af023c707f4208e5fc1fce59c1fd1501cfc3fc22/README.md",
+      "revision": "af023c707f4208e5fc1fce59c1fd1501cfc3fc22",
+      "engines": [
+        "f5-tts-thai"
+      ],
+      "configured_at": "backend/engines/f5_tts_thai/main.py",
+      "notes": "Thai + English TTS the Ray/Modal f5-tts-thai engine loads (remote GPU only; model_1000000.pt and vocab.txt at the pinned revision, plus sample/ref_audio.wav as the default voice). The card declares CC-BY-4.0, but the model is a fine-tune of SWivid/F5-TTS, whose weights are CC-BY-NC-4.0 (trained on the Emilia dataset); whether the fine-tune can carry CC-BY-4.0 is unresolved, so this record takes the more restrictive base terms. Training data per the card: Common Voice Thai (Porameht/processed-voice-th-169k), the CMKL Porjai Thai voice dataset and Common Voice English. The inference code (f5-tts-th on PyPI, VYNCX/F5-TTS-THAI on GitHub) and SWivid/F5-TTS code are MIT. Weight terms, output terms and attribution require review.",
+      "runtime_revision": "af023c707f4208e5fc1fce59c1fd1501cfc3fc22",
+      "runtime_pin_scope": "engine",
+      "runtime_pin_source": "backend/engines/f5_tts_thai/main.py",
+      "component_closure": "incomplete",
+      "commercial_inference": "unknown",
+      "commercial_outputs": "unknown",
+      "documents": [],
+      "artifacts": [],
+      "required_components": [],
+      "upstream_access": "unknown",
+      "audit_observations": {
+        "commercial_inference": {
+          "status": "noncommercial",
+          "scope": "Selected weight/component only; not complete workflow clearance.",
+          "summary": "Card metadata says cc-by-4.0; the base model SWivid/F5-TTS is cc-by-nc-4.0."
+        },
+        "output_terms": {
+          "status": "not_assessed",
+          "ownership_or_all_rights_cleared": false
+        },
+        "sources": [],
+        "open_questions": [
+          "Governing terms at installed revision (declared CC-BY-4.0 vs CC-BY-NC-4.0 base SWivid/F5-TTS weights)",
+          "Training-data terms (Common Voice CC0, Porjai dataset terms)",
+          "Attribution/NOTICE/redistribution duties",
+          "Reference voice and input rights, consent, training-provenance scope"
+        ],
+        "identified_components": []
+      }
+    },
+    {
+      "id": "charactr/vocos-mel-24khz",
+      "license": "mit",
+      "commercial_use": false,
+      "review_status": "unreviewed",
+      "credit": "Vocos (mel, 24 kHz) — Charactr",
+      "source_url": "https://huggingface.co/charactr/vocos-mel-24khz",
+      "evidence_url": "https://huggingface.co/charactr/vocos-mel-24khz/blob/0feb3fdd929bcd6649e0e7c5a688cf7dd012ef21/README.md",
+      "revision": "0feb3fdd929bcd6649e0e7c5a688cf7dd012ef21",
+      "engines": [
+        "f5-tts-thai"
+      ],
+      "configured_at": "backend/engines/f5_tts_thai/main.py",
+      "notes": "Vocoder the Ray/Modal f5-tts-thai engine loads (config.yaml and pytorch_model.bin at the pinned revision) to turn F5-TTS-THAI mel spectrograms into audio. The card declares MIT. Attribution text requires review.",
+      "runtime_revision": "0feb3fdd929bcd6649e0e7c5a688cf7dd012ef21",
+      "runtime_pin_scope": "engine",
+      "runtime_pin_source": "backend/engines/f5_tts_thai/main.py",
+      "component_closure": "incomplete",
+      "commercial_inference": "unknown",
+      "commercial_outputs": "unknown",
+      "documents": [],
+      "artifacts": [],
+      "required_components": [],
+      "upstream_access": "unknown",
+      "audit_observations": {
+        "commercial_inference": {
+          "status": "unreviewed",
+          "scope": "Selected weight/component only; not complete workflow clearance."
+        },
+        "output_terms": {
+          "status": "not_assessed",
+          "ownership_or_all_rights_cleared": false
+        },
+        "sources": [],
+        "open_questions": [
+          "Governing terms at installed revision",
+          "Attribution/NOTICE/redistribution duties"
+        ],
+        "identified_components": []
+      }
+    },
+    {
       "id": "pyannote/speaker-diarization-3.1",
       "license": "mit",
       "commercial_use": false,

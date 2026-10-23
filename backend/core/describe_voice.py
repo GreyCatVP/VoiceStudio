@@ -298,6 +298,42 @@ def _match_category(category: str, text: str):
 # CJK comma/ideographic stop, which CJK descriptions use instead of ASCII).
 _FRAGMENT = re.compile(r"[^,;.!?()\n，。；！？、]+")
 _HAS_CONTENT = re.compile(r"[\w一-鿿]")
+# Connecting words that carry no voice trait, left out of the leftover report.
+_FILLER = frozenset({
+    "a", "an", "the", "and", "or", "with", "of", "in", "who", "that", "is", "has", "like",
+    "voice", "voiced", "sounding", "sounds", "speaker", "person", "someone", "very", "quite",
+    "slightly", "somewhat", "bit", "little", "really", "kind", "sort",
+})
+
+
+# Scripts whose descriptions are translated before mapping: (first, last
+# code point, language code for the translator).
+_SCRIPTS = (
+    (0x0E00, 0x0E7F, "th"),
+    (0x3040, 0x30FF, "ja"),  # kana before Han: Japanese uses kanji too
+    (0xAC00, 0xD7A3, "ko"),
+    (0x1100, 0x11FF, "ko"),
+    (0x4E00, 0x9FFF, "zh"),
+    (0x0400, 0x04FF, "ru"),
+    (0x0600, 0x06FF, "ar"),
+)
+
+
+def description_language(description: str) -> str | None:
+    """Language code of a description the English mapper cannot read, or None.
+
+    Decided by script: when at least a third of the letters belong to one of
+    ``_SCRIPTS``, that language (the first listed one present wins); Latin
+    text, including English with a stray Thai word, is mapped as written.
+    """
+    letters = [ch for ch in description or "" if ch.isalpha() or "\u0e30" <= ch <= "\u0e4e"]
+    if not letters:
+        return None
+    found = [code for lo, hi, code in _SCRIPTS if any(lo <= ord(ch) <= hi for ch in letters)]
+    if not found:
+        return None
+    foreign = sum(1 for ch in letters if any(lo <= ord(ch) <= hi for lo, hi, _ in _SCRIPTS))
+    return found[0] if foreign * 3 >= len(letters) else None
 
 
 def parse_description(description: str) -> dict:
@@ -341,9 +377,19 @@ def parse_description(description: str) -> dict:
         if not _HAS_CONTENT.search(frag.group(0)):
             continue
         lo, hi = frag.start(), frag.end()
-        if any(s < hi and e > lo for s, e in spans):
+        if not any(s < hi and e > lo for s, e in spans):
+            unmatched.append(frag.group(0).strip())
             continue
-        unmatched.append(frag.group(0).strip())
+        # A fragment with a match can still carry words nothing maps ("a warm
+        # elderly British storyteller": "warm", "storyteller"); report each
+        # leftover run between the matched phrases instead of dropping it.
+        cuts = sorted((max(s, lo), min(e, hi)) for s, e in spans if s < hi and e > lo)
+        pos = lo
+        for s, e in [*cuts, (hi, hi)]:
+            words = [w for w in text[pos:s].split() if w.strip("'\"-") not in _FILLER]
+            if words and _HAS_CONTENT.search(" ".join(words)):
+                unmatched.append(" ".join(words))
+            pos = max(pos, e)
 
     return {
         "attrs": attrs,

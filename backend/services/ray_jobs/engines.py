@@ -94,6 +94,24 @@ _OMNIVOICE_RECIPE: Dict[str, Any] = {
     "install_revision": "ray-omnivoice-v1",
 }
 
+# F5-TTS-THAI (VIZINTZOR's Thai+English fine-tune of SWivid/F5-TTS) through
+# the f5-tts-th package its model card points to. f5-tts-th caps numpy at
+# 1.26.4; its other dependencies are pinned to what uv resolves with it. The
+# checkpoint, vocab and Vocos vocoder download on the cluster from pinned
+# revisions (engines/f5_tts_thai/main.py).
+_F5_TTS_THAI_RECIPE: Dict[str, Any] = {
+    "venv_args": ["--python", "3.11"],
+    "install_args": ["f5-tts-th==1.0.9", "numpy==1.26.4", "transformers==5.15.1", "tokenizers==0.22.2",
+                     "safetensors==0.8.0", "huggingface_hub==1.28.0", "soundfile==0.14.0", "pydub==0.25.1",
+                     "vocos==0.1.0", "x-transformers==2.31.8", "torchdiffeq==0.2.5", "pythainlp==5.3.8",
+                     "ssg==0.0.8", "python-crfsuite==0.9.12", "cached-path==1.8.10", "librosa==0.11.0",
+                     "matplotlib==3.11.2", "jieba==0.42.1", "pypinyin==0.55.0", "tqdm==4.70.0"],
+    "torch_pins": ["torch==2.8.0", "torchaudio==2.8.0"],
+    "probe_code": ("import torch, torchaudio, soundfile, vocos, pythainlp; "
+                   "from f5_tts_th.utils_infer import load_model, infer_process, preprocess_ref_audio_text"),
+    "install_revision": "ray-f5-tts-thai-v1",
+}
+
 # The isolated faster-whisper sidecar imports these (cudnn8/device_caps are
 # optional, execstack is not); all stdlib-only.
 _ASR_CORE_FILES = tuple((f"core/{n}", f"core/{n}") for n in
@@ -142,6 +160,9 @@ RAY_ENGINES: Dict[str, RayEngine] = {
                           recipe=_PYANNOTE_RECIPE),
     "omnivoice": RayEngine("omnivoice", "omnivoice_ray", ("main.py",), "main.py", gpu=True, kind="tts",
                            extra_files=_OMNIVOICE_FILES, recipe=_OMNIVOICE_RECIPE),
+    # Remote-only TTS (no local install path): Thai + English cloning.
+    "f5-tts-thai": RayEngine("f5-tts-thai", "f5_tts_thai", ("main.py",), "main.py", gpu=True, kind="tts",
+                             recipe=_F5_TTS_THAI_RECIPE),
     "nllb": RayEngine("nllb", "nllb", ("main.py",), "main.py", gpu=True, kind="translation", recipe=_NLLB_RECIPE),
     "typhoon-translate": RayEngine("typhoon-translate", "typhoon_translate", ("main.py",), "main.py", gpu=True,
                                    kind="translation", recipe=_TYPHOON_TRANSLATE_RECIPE),

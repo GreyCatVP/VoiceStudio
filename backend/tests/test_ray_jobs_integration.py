@@ -563,3 +563,50 @@ def test_typhoon_whisper_transcribes_thai_on_the_cluster(monkeypatch):
         ray_settings.save({"enabled": False, "auth_token": ""})
         runtime.shutdown()
         runtime.reopen_for_tests()
+
+
+@pytest.mark.skipif("f5-tts-thai" not in ENGINES or not os.environ.get("VS_RAY_TEST_THAI_CLIP"),
+                    reason="set VS_RAY_TEST_ENGINES=f5-tts-thai and VS_RAY_TEST_THAI_CLIP=<clip.wav> (a Thai "
+                           "clip with clip.json {\"sentence\": ...}, its first 5.4 s reading the first three "
+                           "phrases). Installs f5-tts-th and downloads ~1.4 GB on the cluster.")
+def test_f5_tts_thai_clones_a_thai_voice_on_the_cluster(tmp_path, monkeypatch):
+    """F5-TTS-THAI through the routed backend: a ~5 s Thai reference with its
+    transcript, a Thai sentence back. Set VS_RAY_TEST_F5_OUT=<file.wav> to keep it."""
+    import json
+    from pathlib import Path
+    import soundfile as sf
+    from core.db import init_db
+    from services.ray_jobs import runtime
+    from services.ray_jobs import settings as ray_settings
+    from services.tts_backend import get_backend_class
+
+    clip = Path(os.environ["VS_RAY_TEST_THAI_CLIP"])
+    sentence = json.loads(clip.with_suffix(".json").read_text(encoding="utf-8"))["sentence"]
+    audio, sr = sf.read(clip, dtype="float32", always_2d=False)
+    ref = tmp_path / "ref.wav"
+    sf.write(ref, audio[: int(5.4 * sr)], sr)  # ends where the third phrase does
+    ref_text = " ".join(sentence.split()[:3])
+    init_db()
+    runtime.reopen_for_tests()
+    ray_settings.save({"enabled": True, "dashboard_url": URL, "engines": ["f5-tts-thai"],
+                       "num_gpus": float(os.environ.get("VS_RAY_TEST_NUM_GPUS", "0")),
+                       "auth_token": os.environ.get("VS_RAY_TEST_TOKEN") or ""})
+    try:
+        backend = get_backend_class("f5-tts-thai")()
+        started = time.monotonic()
+        backend.ensure_ready()
+        install = time.monotonic() - started
+        started = time.monotonic()
+        out = backend.generate("สวัสดีครับ วันนี้อากาศดีมาก เราจะไปเที่ยวทะเลกัน", ref_audio=str(ref),
+                               ref_text=ref_text, language="th", seed=1234)
+        took = time.monotonic() - started
+        secs = out.shape[-1] / backend.sample_rate
+        print(f"f5-tts-thai: install {install:.0f}s, generate {took:.0f}s, {secs:.2f}s of audio")
+        if os.environ.get("VS_RAY_TEST_F5_OUT"):
+            sf.write(os.environ["VS_RAY_TEST_F5_OUT"], out[0].numpy(), backend.sample_rate)
+        assert 1.5 < secs < 15 and float(out.abs().max()) > 0.05
+        assert float(out.pow(2).mean().sqrt()) > 0.01  # speech, not near-silence
+    finally:
+        ray_settings.save({"enabled": False, "auth_token": ""})
+        runtime.shutdown()
+        runtime.reopen_for_tests()
