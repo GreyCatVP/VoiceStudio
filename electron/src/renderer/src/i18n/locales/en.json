@@ -517,7 +517,9 @@
     "replace_reference": "Replace reference",
     "keep_reference": "Keep current reference",
     "new_reference": "New reference: {{name}}",
-    "replace_reference_hint": "Saving replaces this voice's reference sample. Its locked take and own-voice verification are cleared because the new clip may be a different speaker. Leave the transcript blank to transcribe the new clip automatically."
+    "replace_reference_hint": "Saving replaces this voice's reference sample. Its locked take and own-voice verification are cleared because the new clip may be a different speaker. Leave the transcript blank to transcribe the new clip automatically.",
+    "describe_translated": "Understood as: “{{text}}”",
+    "describe_needs_english": "This description couldn't be translated: no translator is available. Describe the voice in English, or choose a translator in Settings → Models → Translation."
   },
   "recording": {
     "cleaned_loaded": "Recording cleaned and loaded.",
@@ -1849,7 +1851,17 @@
     "probe_placeholder": "/Users/you/Movies/sample.mp4",
     "probe_failed": "Probe failed: {{message}}",
     "parse_failed": "Parse failed: {{message}}",
-    "fit_failed": "Fit failed: {{message}}"
+    "fit_failed": "Fit failed: {{message}}",
+    "rate_fit_no_llm": "No language model is set up, so the line was only measured, not rewritten. Configure one in LLM Providers.",
+    "rate_fit_already_fits": "The line already fits its slot, so nothing was changed.",
+    "rate_fit_skip_short": "The line is much shorter than its slot. It was kept as is rather than padded with extra words.",
+    "rate_fit_provider_failed": "The language model could not be reached. Check LLM Providers and try again.",
+    "rate_fit_unchanged": "The language model returned the same line, so nothing was changed.",
+    "rate_fit_diverged": "The rewrite changed the meaning too much, so the original line was kept.",
+    "rate_fit_invalid_timing": "Enter a line and a slot longer than zero seconds.",
+    "rate_fit_budget": "Fitting ran out of time, so the line was kept as is.",
+    "direction_llm_parse_failed": "The language model could not be reached, so the built-in rules parsed this direction.",
+    "direction_llm_invalid_json": "The language model's reply could not be read, so the built-in rules parsed this direction."
   },
   "projects": {
     "title": "Projects",

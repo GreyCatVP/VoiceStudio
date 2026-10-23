@@ -12,6 +12,7 @@ import { SettingsSection, SettingsRow } from './settings-layout';
 import { SettingsActionError } from './settings-action-error';
 import { toast } from 'sonner';
 import {
+  ENGINE_FAMILY_LABEL_KEYS,
   engineSelectionFeedback,
   type EngineSelectionResult,
 } from '@/lib/engine-selection-feedback';
@@ -66,7 +67,10 @@ export function TranslationSettings() {
         client.invalidateQueries({ queryKey: ['performance-profile'] }),
       ]);
       if (!install) {
-        const feedback = engineSelectionFeedback(result, 'translation');
+        const feedback = engineSelectionFeedback(result, 'translation', {
+          family: t(ENGINE_FAMILY_LABEL_KEYS.translation),
+          engine: query.data?.engines.find((engine) => engine.id === result.active)?.display_name,
+        });
         toast.success(t(feedback.key, feedback.values));
       }
     } catch (error) {

@@ -617,7 +617,9 @@
     "replace_reference": "Referansı değiştir",
     "keep_reference": "Mevcut referansı koru",
     "new_reference": "Yeni referans: {{name}}",
-    "replace_reference_hint": "Kaydetmek bu sesin referans örneğini değiştirir. Yeni klip farklı bir konuşmacıya ait olabileceğinden kilitli kayıt ve kendi ses doğrulaması temizlenir. Yeni klibin otomatik olarak yazıya dökülmesi için transkripti boş bırakın."
+    "replace_reference_hint": "Kaydetmek bu sesin referans örneğini değiştirir. Yeni klip farklı bir konuşmacıya ait olabileceğinden kilitli kayıt ve kendi ses doğrulaması temizlenir. Yeni klibin otomatik olarak yazıya dökülmesi için transkripti boş bırakın.",
+    "describe_translated": "Şöyle anlaşıldı: “{{text}}”",
+    "describe_needs_english": "Bu açıklama çevrilemedi: kullanılabilir çevirmen yok. Sesi İngilizce tarif edin veya Ayarlar → Modeller → Çeviri bölümünden bir çevirmen seçin."
   },
   "designWorkspace": {
     "title": "Tasarla",
@@ -1721,7 +1723,17 @@
     "probe_placeholder": "/Kullanıcılar/siz/Filmler/sample.mp4",
     "probe_failed": "Prob başarısız oldu: {{message}}",
     "parse_failed": "Ayrıştırma başarısız oldu: {{message}}",
-    "fit_failed": "Sığdırma başarısız oldu: {{message}}"
+    "fit_failed": "Sığdırma başarısız oldu: {{message}}",
+    "rate_fit_no_llm": "Dil modeli ayarlanmamış: satır yalnızca ölçüldü, yeniden yazılmadı. LLM Sağlayıcıları’ndan birini ayarlayın.",
+    "rate_fit_already_fits": "Satır zaten kendi aralığına sığıyor, bu yüzden hiçbir şey değiştirilmedi.",
+    "rate_fit_skip_short": "Satır aralığından çok daha kısa. Fazladan kelimeyle uzatılmak yerine olduğu gibi bırakıldı.",
+    "rate_fit_provider_failed": "Dil modeline ulaşılamadı. LLM sağlayıcılarını kontrol edip yeniden deneyin.",
+    "rate_fit_unchanged": "Dil modeli aynı satırı döndürdü, bu yüzden hiçbir şey değiştirilmedi.",
+    "rate_fit_diverged": "Yeniden yazım anlamı fazla değiştirdi, bu yüzden özgün satır korundu.",
+    "rate_fit_invalid_timing": "Bir satır ve sıfır saniyeden uzun bir aralık girin.",
+    "rate_fit_budget": "Sığdırma zamanında bitmedi, bu yüzden satır olduğu gibi bırakıldı.",
+    "direction_llm_parse_failed": "Dil modeline ulaşılamadı, bu yüzden bu yönlendirmeyi yerleşik kurallar yorumladı.",
+    "direction_llm_invalid_json": "Dil modelinin yanıtı okunamadı, bu yüzden bu yönlendirmeyi yerleşik kurallar yorumladı."
   },
   "projects": {
     "title": "Projeler",

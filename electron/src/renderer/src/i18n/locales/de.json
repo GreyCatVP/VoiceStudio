@@ -617,7 +617,9 @@
     "replace_reference": "Referenz ersetzen",
     "keep_reference": "Aktuelle Referenz behalten",
     "new_reference": "Neue Referenz: {{name}}",
-    "replace_reference_hint": "Beim Speichern wird das Referenzbeispiel dieser Stimme ersetzt. Die fixierte Aufnahme und die Bestätigung der eigenen Stimme werden zurückgesetzt, da der neue Clip von einer anderen Person stammen kann. Lass das Transkript leer, um den neuen Clip automatisch zu transkribieren."
+    "replace_reference_hint": "Beim Speichern wird das Referenzbeispiel dieser Stimme ersetzt. Die fixierte Aufnahme und die Bestätigung der eigenen Stimme werden zurückgesetzt, da der neue Clip von einer anderen Person stammen kann. Lass das Transkript leer, um den neuen Clip automatisch zu transkribieren.",
+    "describe_translated": "Verstanden als: „{{text}}“",
+    "describe_needs_english": "Diese Beschreibung ließ sich nicht übersetzen: Es ist kein Übersetzer verfügbar. Beschreibe die Stimme auf Englisch oder wähle einen Übersetzer unter Einstellungen → Modelle → Übersetzung."
   },
   "designWorkspace": {
     "title": "Designen",
@@ -1721,7 +1723,17 @@
     "probe_placeholder": "/Users/you/Movies/sample.mp4",
     "probe_failed": "Probe fehlgeschlagen: {{message}}",
     "parse_failed": "Analyse fehlgeschlagen: {{message}}",
-    "fit_failed": "Anpassung fehlgeschlagen: {{message}}"
+    "fit_failed": "Anpassung fehlgeschlagen: {{message}}",
+    "rate_fit_no_llm": "Kein Sprachmodell eingerichtet: Die Zeile wurde nur gemessen, nicht umgeschrieben. Richte eines unter LLM-Anbieter ein.",
+    "rate_fit_already_fits": "Die Zeile passt bereits in ihren Zeitraum, daher wurde nichts geändert.",
+    "rate_fit_skip_short": "Die Zeile ist viel kürzer als ihr Zeitraum. Sie bleibt unverändert, statt mit Füllwörtern verlängert zu werden.",
+    "rate_fit_provider_failed": "Das Sprachmodell war nicht erreichbar. Prüfe die LLM-Anbieter und versuche es erneut.",
+    "rate_fit_unchanged": "Das Sprachmodell lieferte dieselbe Zeile, daher wurde nichts geändert.",
+    "rate_fit_diverged": "Die Umformulierung veränderte die Bedeutung zu stark, daher bleibt die Originalzeile.",
+    "rate_fit_invalid_timing": "Gib eine Zeile und einen Zeitraum über null Sekunden ein.",
+    "rate_fit_budget": "Die Anpassung hat zu lange gedauert, daher bleibt die Zeile unverändert.",
+    "direction_llm_parse_failed": "Das Sprachmodell war nicht erreichbar, daher haben die eingebauten Regeln diese Regieanweisung ausgewertet.",
+    "direction_llm_invalid_json": "Die Antwort des Sprachmodells war nicht lesbar, daher haben die eingebauten Regeln diese Regieanweisung ausgewertet."
   },
   "projects": {
     "title": "Projekte",

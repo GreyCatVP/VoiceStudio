@@ -611,8 +611,9 @@ def test_reset_pool_on_wedge_is_a_noop_without_reset():
         pool.shutdown(wait=False)
 
 
+@pytest.mark.parametrize("engine_id", ["whisperx", "faster-whisper-isolated"])
 @pytest.mark.parametrize("startup_delay", [0, 0.3])
-def test_wedged_chunk_does_not_overlap_a_native_retry(tmp_path, monkeypatch, startup_delay):
+def test_wedged_chunk_does_not_overlap_a_native_retry(tmp_path, monkeypatch, startup_delay, engine_id):
     """#1669: a timed-out native transcribe keeps executing in its thread.
 
     Resetting the pool and immediately retrying entered the same
@@ -664,7 +665,7 @@ def test_wedged_chunk_does_not_overlap_a_native_retry(tmp_path, monkeypatch, sta
     release_wedge = threading.Event()
 
     class _WedgedASR:
-        id = "whisperx"
+        id = engine_id
         calls = 0
 
         def ensure_loaded(self):
@@ -739,10 +740,37 @@ def test_wedged_chunk_does_not_overlap_a_native_retry(tmp_path, monkeypatch, sta
     assert "OMNIVOICE_TRANSCRIBE_CHUNK_TIMEOUT_S" in body, body
     # … not the old parallel mechanism's dead-end advice.
     assert "Try restarting the server" not in body, body
+    # Suggest the isolated engine only when another one is active, and never
+    # treat a timeout as a download problem.
+    assert ("select the faster-whisper-isolated engine" in body) == (engine_id != "faster-whisper-isolated"), body
+    assert "CDN" not in body and "video server" not in body, body
     # Terminal error followed by done — stream still closes via named events.
     err_idx = body.rfind("event: error")
     done_idx = body.rfind("event: done")
     assert done_idx > err_idx >= 0, body
+
+
+def test_transcription_timeout_hint_matches_the_engine_situation():
+    from core.public_errors import transcription_timeout_failure
+
+    other = transcription_timeout_failure(engine_id="whisperx")["detail"]
+    assert "select the faster-whisper-isolated engine" in other
+    assert "OMNIVOICE_TRANSCRIBE_CHUNK_TIMEOUT_S" in other
+
+    isolated = transcription_timeout_failure(engine_id="faster-whisper-isolated")
+    assert isolated["code"] == "transcription_timeout"
+    assert "faster-whisper-isolated" not in isolated["detail"]
+
+    remote = transcription_timeout_failure(
+        engine_id="faster-whisper-isolated", remote=True,
+        timeout_env="OMNIVOICE_ASR_TRANSCRIBE_TIMEOUT_S",
+    )["detail"]
+    assert "remote GPU" in remote and "Ray job" in remote
+    assert "OMNIVOICE_ASR_TRANSCRIBE_TIMEOUT_S" in remote
+    assert "faster-whisper-isolated" not in remote
+
+    # Only VoiceStudio-owned knob names reach the message.
+    assert "EVIL" not in transcription_timeout_failure(timeout_env="EVIL")["detail"]
 
 
 @pytest.mark.xfail(

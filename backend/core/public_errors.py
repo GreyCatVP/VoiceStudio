@@ -146,6 +146,47 @@ def stream_failure(code: str, *, device: str | None = None) -> dict[str, object]
     return failure
 
 
+#: The only timeout knobs a transcription timeout message may name.
+_TRANSCRIBE_TIMEOUT_ENVS = frozenset({
+    "OMNIVOICE_TRANSCRIBE_CHUNK_TIMEOUT_S",
+    "OMNIVOICE_ASR_TRANSCRIBE_TIMEOUT_S",
+})
+
+
+def transcription_timeout_failure(
+    *,
+    engine_id: str = "",
+    remote: bool = False,
+    timeout_env: str = "OMNIVOICE_TRANSCRIBE_CHUNK_TIMEOUT_S",
+) -> dict[str, object]:
+    """``transcription_timeout`` metadata worded for where the engine runs.
+
+    Recommending the isolated engine to a user who already runs it, or a local
+    engine switch for a job that timed out on the remote GPU, sends them the
+    wrong way. Only fixed VoiceStudio-owned wordings are returned.
+    """
+    failure = stream_failure("transcription_timeout")
+    env = timeout_env if timeout_env in _TRANSCRIBE_TIMEOUT_ENVS else "OMNIVOICE_TRANSCRIBE_CHUNK_TIMEOUT_S"
+    if remote:
+        failure["detail"] = (
+            "Transcription timed out on the remote GPU: the Ray job did not "
+            "finish before its deadline. The cluster may be busy, still "
+            "installing the engine or loading the model. Try again, or raise "
+            f"{env} to give the job more time."
+        )
+    elif engine_id == "faster-whisper-isolated":
+        failure["detail"] = (
+            "Transcription timed out while the backend is running. Increase "
+            f"{env} or choose a smaller ASR model, then try again."
+        )
+    else:
+        failure["detail"] = (
+            "Transcription timed out while the backend is running. Increase "
+            f"{env} or select the faster-whisper-isolated engine, then try again."
+        )
+    return failure
+
+
 def _exception_chain(error: object, limit: int = 8):
     """The exception, then its ``__cause__``/``__context__`` links (bounded)."""
     seen: set[int] = set()

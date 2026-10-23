@@ -50,6 +50,7 @@ import { resolvePerformanceModelPack } from './performance-model-packs';
 import { modelDiskShortfall } from './model-disk-space';
 import { fmtBytes } from '@shared/components/settings/models/format';
 import {
+  ENGINE_FAMILY_LABEL_KEYS,
   engineSelectionFeedback,
   type EngineSelectionResult,
 } from '@/lib/engine-selection-feedback';
@@ -766,6 +767,12 @@ export function ModelLibrary({
     }
   };
   const selectableAsrModel = isFasterWhisperModel;
+  // The active crash-isolated faster-whisper engine is routed to Ray/Modal
+  // (it reports "network"): selection then needs no local copy.
+  const remoteAsr =
+    engineQuery.data?.asr?.active === 'faster-whisper-isolated' &&
+    engineQuery.data.asr.backends.find((engine) => engine.id === 'faster-whisper-isolated')
+      ?.effective_device === 'network';
   const selectAsrModel = async (model: CatalogueModel) => {
     setPending(model.repo_id);
     setFailed(false);
@@ -784,7 +791,10 @@ export function ModelLibrary({
         client.invalidateQueries({ queryKey: ['engines'] }),
         client.invalidateQueries({ queryKey: ['performance-profile'] }),
       ]);
-      const feedback = engineSelectionFeedback(result, 'asr');
+      const feedback = engineSelectionFeedback(result, 'asr', {
+        family: t(ENGINE_FAMILY_LABEL_KEYS.asr),
+        engine: model.label,
+      });
       if (feedback.tone === 'warning') toast.warning(t(feedback.key, feedback.values));
       else toast.success(t(feedback.key, feedback.values));
     } catch (error) {
@@ -813,7 +823,10 @@ export function ModelLibrary({
         client.invalidateQueries({ queryKey: ['transcription-readiness'] }),
         client.invalidateQueries({ queryKey: ['performance-profile'] }),
       ]);
-      const feedback = engineSelectionFeedback({ active: model.dictation_id }, 'dictation');
+      const feedback = engineSelectionFeedback({ active: model.dictation_id }, 'dictation', {
+        family: t(ENGINE_FAMILY_LABEL_KEYS.dictation),
+        engine: model.label,
+      });
       toast.success(t(feedback.key, feedback.values));
     } catch (error) {
       setFailed(true);
@@ -882,6 +895,29 @@ export function ModelLibrary({
     const selectableAsr = isAsrModel && selectableAsrModel(model.repo_id);
     const checkingAsrSelection = selectableAsr && !engineQuery.data;
     const activeAsrModel = isAsrModel && engineQuery.data?.asr?.active_model === model.repo_id;
+    const asrSelectButton = (
+      <Button
+        size="sm"
+        className="min-w-24"
+        variant={activeAsrModel ? 'secondary' : 'outline'}
+        disabled={Boolean(pending) || checkingAsrSelection || activeAsrModel}
+        aria-pressed={activeAsrModel}
+        onClick={() => void selectAsrModel(model)}
+      >
+        {checkingAsrSelection ? (
+          <LoaderCircleIcon className="animate-spin motion-reduce:animate-none" />
+        ) : activeAsrModel ? (
+          <CheckIcon />
+        ) : null}
+        {t(
+          checkingAsrSelection
+            ? 'common.loading'
+            : activeAsrModel
+              ? 'modelSettings.selected'
+              : 'modelSettings.select',
+        )}
+      </Button>
+    );
     const engineFamily = model.role.toLowerCase();
     const activeEngineModel =
       family === engineFamily &&
@@ -942,7 +978,7 @@ export function ModelLibrary({
         {model.languages?.length === 1 && (
           <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
             {t('modelSettings.languageOnly', {
-              language: languageName(model.languages[0], i18n?.resolvedLanguage),
+              language: languageName(model.languages[0], i18n?.language),
             })}
           </span>
         )}
@@ -1168,29 +1204,7 @@ export function ModelLibrary({
                 {t('modelMaintenance.unload')}
               </Button>
             )}
-            {selectableAsr && (
-              <Button
-                size="sm"
-                className="min-w-24"
-                variant={activeAsrModel ? 'secondary' : 'outline'}
-                disabled={Boolean(pending) || checkingAsrSelection || activeAsrModel}
-                aria-pressed={activeAsrModel}
-                onClick={() => void selectAsrModel(model)}
-              >
-                {checkingAsrSelection ? (
-                  <LoaderCircleIcon className="animate-spin motion-reduce:animate-none" />
-                ) : activeAsrModel ? (
-                  <CheckIcon />
-                ) : null}
-                {t(
-                  checkingAsrSelection
-                    ? 'common.loading'
-                    : activeAsrModel
-                      ? 'modelSettings.selected'
-                      : 'modelSettings.select',
-                )}
-              </Button>
-            )}
+            {selectableAsr && asrSelectButton}
             {model.dictation_id && (
               <Button
                 size="sm"
@@ -1260,15 +1274,19 @@ export function ModelLibrary({
             )}
           </>
         ) : (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={Boolean(pending) || !model.supported}
-            onClick={() => void action(model.repo_id)}
-          >
-            <DownloadIcon />
-            {t(model.supported ? 'modelMaintenance.download' : 'modelSettings.unavailable')}
-          </Button>
+          <>
+            {/* On a remote GPU the cluster downloads the model: no local copy needed. */}
+            {selectableAsr && remoteAsr && asrSelectButton}
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={Boolean(pending) || !model.supported}
+              onClick={() => void action(model.repo_id)}
+            >
+              <DownloadIcon />
+              {t(model.supported ? 'modelMaintenance.download' : 'modelSettings.unavailable')}
+            </Button>
+          </>
         )}
       </SettingsRow>
     );

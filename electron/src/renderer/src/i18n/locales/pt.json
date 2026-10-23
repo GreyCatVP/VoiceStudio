@@ -619,7 +619,9 @@
     "replace_reference": "Substituir referência",
     "keep_reference": "Manter a referência atual",
     "new_reference": "Nova referência: {{name}}",
-    "replace_reference_hint": "Salvar substitui a amostra de referência desta voz. A tomada bloqueada e a verificação de voz própria são removidas porque o novo clipe pode ser de outra pessoa. Deixe a transcrição em branco para transcrever o novo clipe automaticamente."
+    "replace_reference_hint": "Salvar substitui a amostra de referência desta voz. A tomada bloqueada e a verificação de voz própria são removidas porque o novo clipe pode ser de outra pessoa. Deixe a transcrição em branco para transcrever o novo clipe automaticamente.",
+    "describe_translated": "Entendido como: “{{text}}”",
+    "describe_needs_english": "Não foi possível traduzir esta descrição: nenhum tradutor disponível. Descreva a voz em inglês ou escolha um tradutor em Configurações → Modelos → Tradução."
   },
   "designWorkspace": {
     "title": "Desenhar",
@@ -1723,7 +1725,17 @@
     "probe_placeholder": "/Usuários/você/Movies/sample.mp4",
     "probe_failed": "Falha na análise: {{message}}",
     "parse_failed": "Falha na análise: {{message}}",
-    "fit_failed": "Falha no ajuste: {{message}}"
+    "fit_failed": "Falha no ajuste: {{message}}",
+    "rate_fit_no_llm": "Nenhum modelo de linguagem configurado: a fala só foi medida, não reescrita. Configure um em Provedores de LLM.",
+    "rate_fit_already_fits": "A fala já cabe no seu espaço, então nada foi alterado.",
+    "rate_fit_skip_short": "A fala é bem mais curta que o seu espaço. Foi mantida como está em vez de receber palavras extras.",
+    "rate_fit_provider_failed": "Não foi possível contactar o modelo de linguagem. Verifique os provedores de LLM e tente de novo.",
+    "rate_fit_unchanged": "O modelo de linguagem devolveu a mesma fala, então nada foi alterado.",
+    "rate_fit_diverged": "A reescrita mudou demais o sentido, então a fala original foi mantida.",
+    "rate_fit_invalid_timing": "Digite uma fala e um espaço maior que zero segundos.",
+    "rate_fit_budget": "O ajuste ficou sem tempo, então a fala foi mantida como está.",
+    "direction_llm_parse_failed": "Não foi possível contactar o modelo de linguagem, então as regras internas interpretaram esta indicação.",
+    "direction_llm_invalid_json": "A resposta do modelo de linguagem não pôde ser lida, então as regras internas interpretaram esta indicação."
   },
   "projects": {
     "title": "Projetos",

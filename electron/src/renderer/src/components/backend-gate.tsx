@@ -397,7 +397,7 @@ export function BackendGate({ children, repairDock }: BackendGateProps) {
                   <span>{t('settings.language')}</span>
                   <Select
                     items={APP_LANGUAGE_ITEMS}
-                    value={i18n.resolvedLanguage || i18n.language}
+                    value={i18n.language}
                     onValueChange={(value) => void setAppLanguage(value as AppLocale)}
                   >
                     <SelectTrigger

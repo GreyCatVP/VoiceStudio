@@ -617,7 +617,9 @@
     "replace_reference": "Referentie vervangen",
     "keep_reference": "Huidige referentie behouden",
     "new_reference": "Nieuwe referentie: {{name}}",
-    "replace_reference_hint": "Opslaan vervangt het referentievoorbeeld van deze stem. De vastgezette opname en de verificatie van je eigen stem worden gewist, omdat de nieuwe clip van een andere spreker kan zijn. Laat het transcript leeg om de nieuwe clip automatisch te transcriberen."
+    "replace_reference_hint": "Opslaan vervangt het referentievoorbeeld van deze stem. De vastgezette opname en de verificatie van je eigen stem worden gewist, omdat de nieuwe clip van een andere spreker kan zijn. Laat het transcript leeg om de nieuwe clip automatisch te transcriberen.",
+    "describe_translated": "Begrepen als: ‘{{text}}’",
+    "describe_needs_english": "Deze beschrijving kon niet worden vertaald: er is geen vertaler beschikbaar. Beschrijf de stem in het Engels of kies een vertaler bij Instellingen → Modellen → Vertaling."
   },
   "designWorkspace": {
     "title": "Ontwerpen",
@@ -1721,7 +1723,17 @@
     "probe_placeholder": "/Gebruikers/jij/Films/sample.mp4",
     "probe_failed": "Sonde mislukt: {{message}}",
     "parse_failed": "Parseren mislukt: {{message}}",
-    "fit_failed": "Passen mislukt: {{message}}"
+    "fit_failed": "Passen mislukt: {{message}}",
+    "rate_fit_no_llm": "Er is geen taalmodel ingesteld: de regel is alleen gemeten, niet herschreven. Stel er een in bij LLM-providers.",
+    "rate_fit_already_fits": "De regel past al in zijn tijdvak, dus er is niets gewijzigd.",
+    "rate_fit_skip_short": "De regel is veel korter dan zijn tijdvak. Hij blijft zoals hij is in plaats van opgevuld te worden.",
+    "rate_fit_provider_failed": "Het taalmodel was niet bereikbaar. Controleer de LLM-providers en probeer het opnieuw.",
+    "rate_fit_unchanged": "Het taalmodel gaf dezelfde regel terug, dus er is niets gewijzigd.",
+    "rate_fit_diverged": "De herschrijving veranderde de betekenis te veel, dus de oorspronkelijke regel blijft.",
+    "rate_fit_invalid_timing": "Voer een regel en een tijdvak van meer dan nul seconden in.",
+    "rate_fit_budget": "Het passend maken duurde te lang, dus de regel blijft zoals hij is.",
+    "direction_llm_parse_failed": "Het taalmodel was niet bereikbaar, dus de ingebouwde regels hebben deze aanwijzing verwerkt.",
+    "direction_llm_invalid_json": "Het antwoord van het taalmodel was onleesbaar, dus de ingebouwde regels hebben deze aanwijzing verwerkt."
   },
   "projects": {
     "title": "Projecten",

@@ -619,7 +619,9 @@
     "replace_reference": "Remplacer la référence",
     "keep_reference": "Conserver la référence actuelle",
     "new_reference": "Nouvelle référence : {{name}}",
-    "replace_reference_hint": "L'enregistrement remplace l'échantillon de référence de cette voix. La prise verrouillée et la vérification de votre propre voix sont effacées, car le nouveau clip peut provenir d'une autre personne. Laissez la transcription vide pour transcrire automatiquement le nouveau clip."
+    "replace_reference_hint": "L'enregistrement remplace l'échantillon de référence de cette voix. La prise verrouillée et la vérification de votre propre voix sont effacées, car le nouveau clip peut provenir d'une autre personne. Laissez la transcription vide pour transcrire automatiquement le nouveau clip.",
+    "describe_translated": "Compris comme : « {{text}} »",
+    "describe_needs_english": "Impossible de traduire cette description : aucun traducteur n’est disponible. Décrivez la voix en anglais ou choisissez un traducteur dans Réglages → Modèles → Traduction."
   },
   "designWorkspace": {
     "title": "Concevoir",
@@ -1723,7 +1725,17 @@
     "probe_placeholder": "/Utilisateurs/vous/Films/sample.mp4",
     "probe_failed": "Échec de la sonde : {{message}}",
     "parse_failed": "Échec de l'analyse : {{message}}",
-    "fit_failed": "Échec de l'ajustement : {{message}}"
+    "fit_failed": "Échec de l'ajustement : {{message}}",
+    "rate_fit_no_llm": "Aucun modèle de langage n’est configuré : la ligne a seulement été mesurée, pas réécrite. Configurez-en un dans Fournisseurs LLM.",
+    "rate_fit_already_fits": "La ligne tient déjà dans son créneau, rien n’a été modifié.",
+    "rate_fit_skip_short": "La ligne est bien plus courte que son créneau. Elle est conservée telle quelle plutôt que d’être rallongée.",
+    "rate_fit_provider_failed": "Le modèle de langage est injoignable. Vérifiez les fournisseurs LLM et réessayez.",
+    "rate_fit_unchanged": "Le modèle de langage a renvoyé la même ligne, rien n’a été modifié.",
+    "rate_fit_diverged": "La réécriture changeait trop le sens, la ligne d’origine est conservée.",
+    "rate_fit_invalid_timing": "Saisissez une ligne et un créneau de plus de zéro seconde.",
+    "rate_fit_budget": "L’ajustement a manqué de temps, la ligne est conservée telle quelle.",
+    "direction_llm_parse_failed": "Le modèle de langage est injoignable, les règles intégrées ont interprété cette indication.",
+    "direction_llm_invalid_json": "La réponse du modèle de langage est illisible, les règles intégrées ont interprété cette indication."
   },
   "projects": {
     "title": "Projets",

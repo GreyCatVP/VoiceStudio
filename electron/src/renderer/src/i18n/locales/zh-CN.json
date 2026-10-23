@@ -630,7 +630,9 @@
     "replace_reference": "替换参考音频",
     "keep_reference": "保留当前参考音频",
     "new_reference": "新参考音频：{{name}}",
-    "replace_reference_hint": "保存后将替换此音色的参考样本。由于新片段可能来自其他说话人，已锁定的片段和本人声音验证会被清除。转写留空即可自动转写新片段。"
+    "replace_reference_hint": "保存后将替换此音色的参考样本。由于新片段可能来自其他说话人，已锁定的片段和本人声音验证会被清除。转写留空即可自动转写新片段。",
+    "describe_translated": "理解为：“{{text}}”",
+    "describe_needs_english": "无法翻译此描述：没有可用的翻译器。请用英文描述声音，或在 设置 → 模型 → 翻译 中选择翻译器。"
   },
   "designWorkspace": {
     "title": "设计",
@@ -1721,7 +1723,17 @@
     "probe_placeholder": "/Users/you/Movies/sample.mp4",
     "probe_failed": "探测失败：{{message}}",
     "parse_failed": "解析失败：{{message}}",
-    "fit_failed": "匹配失败：{{message}}"
+    "fit_failed": "匹配失败：{{message}}",
+    "rate_fit_no_llm": "未设置语言模型：该句只做了测量，没有改写。请在 LLM 提供商中设置。",
+    "rate_fit_already_fits": "该句已适合其时长，未做更改。",
+    "rate_fit_skip_short": "该句比时长短很多，保持原样而不添加词语。",
+    "rate_fit_provider_failed": "无法连接语言模型。请检查 LLM 提供商后重试。",
+    "rate_fit_unchanged": "语言模型返回了相同的句子，未做更改。",
+    "rate_fit_diverged": "改写后的意思变化太大，已保留原句。",
+    "rate_fit_invalid_timing": "请输入句子和大于 0 秒的时长。",
+    "rate_fit_budget": "调整超时，句子保持原样。",
+    "direction_llm_parse_failed": "无法连接语言模型，已用内置规则解析此指示。",
+    "direction_llm_invalid_json": "无法读取语言模型的回复，已用内置规则解析此指示。"
   },
   "projects": {
     "title": "项目",

@@ -15,7 +15,7 @@ import {
   Trash2Icon,
   WandSparklesIcon,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -92,11 +92,11 @@ function PreviewButton({
 export function SavedVoices({
   onSelected,
   library = false,
-  scrollRef,
+  scrollElement,
 }: {
   onSelected?: () => void;
   library?: boolean;
-  scrollRef?: RefObject<HTMLDivElement | null>;
+  scrollElement?: HTMLDivElement | null;
 }) {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
@@ -128,7 +128,7 @@ export function SavedVoices({
   const presentation = profileListPresentation(items.length, library);
   const virtualizer = useVirtualizer({
     count: presentation === 'virtual' ? items.length : 0,
-    getScrollElement: () => scrollRef?.current ?? null,
+    getScrollElement: () => scrollElement ?? null,
     estimateSize: () => 38,
     overscan: 6,
     getItemKey: (index) => items[index]?.id ?? index,
@@ -489,14 +489,14 @@ function TakeRow({ item, onStar, onReuse, onDelete }: TakeRowProps) {
 
 interface VirtualTakesProps {
   items: HistoryItem[];
-  scrollRef: RefObject<HTMLDivElement | null>;
+  scrollElement: HTMLDivElement | null;
   rowProps: Omit<TakeRowProps, 'item'>;
 }
 
-function VirtualTakes({ items, scrollRef, rowProps }: VirtualTakesProps) {
+function VirtualTakes({ items, scrollElement, rowProps }: VirtualTakesProps) {
   const virtualizer = useVirtualizer({
     count: items.length,
-    getScrollElement: () => scrollRef.current,
+    getScrollElement: () => scrollElement,
     estimateSize: () => 42,
     overscan: 6,
     getItemKey: (index) => items[index]?.id ?? index,
@@ -523,10 +523,10 @@ function VirtualTakes({ items, scrollRef, rowProps }: VirtualTakesProps) {
 }
 
 interface RecentTakesProps {
-  scrollRef: RefObject<HTMLDivElement | null>;
+  scrollElement: HTMLDivElement | null;
 }
 
-function RecentTakes({ scrollRef }: RecentTakesProps) {
+function RecentTakes({ scrollElement }: RecentTakesProps) {
   const { t } = useTranslation();
   const history = useHistory();
   const deleteItem = useDeleteHistoryItem();
@@ -621,7 +621,7 @@ function RecentTakes({ scrollRef }: RecentTakesProps) {
           {t('clone.history_empty')}
         </p>
       ) : items.length > VIRTUALIZE_ABOVE ? (
-        <VirtualTakes items={items} scrollRef={scrollRef} rowProps={rowProps} />
+        <VirtualTakes items={items} scrollElement={scrollElement} rowProps={rowProps} />
       ) : (
         <div className="flex flex-col gap-1.5 p-2">
           {items.map((item) => (
@@ -654,7 +654,9 @@ export function VoicesSidebar({
 }) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<'voices' | 'takes'>(initialTab);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  // State, not a ref: the virtualized lists below run their layout effects before React
+  // attaches this parent's ref, so a ref is still null on mount and leaves them empty.
+  const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
 
   return (
     <Card
@@ -706,14 +708,14 @@ export function VoicesSidebar({
           </TabsList>
         </div>
         <div
-          ref={scrollRef}
+          ref={setScrollElement}
           className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-width:thin]"
         >
           <TabsContent value="voices">
-            <SavedVoices onSelected={onVoiceSelected} scrollRef={scrollRef} />
+            <SavedVoices onSelected={onVoiceSelected} scrollElement={scrollElement} />
           </TabsContent>
           <TabsContent value="takes">
-            <RecentTakes scrollRef={scrollRef} />
+            <RecentTakes scrollElement={scrollElement} />
           </TabsContent>
         </div>
       </Tabs>

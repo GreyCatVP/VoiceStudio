@@ -31,7 +31,7 @@ export function ProductionSettings({
   onChange: (value: Overrides) => void;
 }) {
   const { t, i18n } = useTranslation();
-  const milliseconds = new Intl.NumberFormat(i18n.resolvedLanguage || i18n.language, {
+  const milliseconds = new Intl.NumberFormat(i18n.language, {
     style: 'unit',
     unit: 'millisecond',
     unitDisplay: 'short',

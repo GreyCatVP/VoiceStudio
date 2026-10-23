@@ -617,7 +617,9 @@
     "replace_reference": "Thay mẫu tham chiếu",
     "keep_reference": "Giữ mẫu tham chiếu hiện tại",
     "new_reference": "Mẫu tham chiếu mới: {{name}}",
-    "replace_reference_hint": "Khi lưu, mẫu tham chiếu của giọng này sẽ được thay thế. Bản thu đã khóa và xác minh giọng của chính bạn sẽ bị xóa vì đoạn mới có thể là của người nói khác. Để trống bản chép lời để tự động chép lời đoạn mới."
+    "replace_reference_hint": "Khi lưu, mẫu tham chiếu của giọng này sẽ được thay thế. Bản thu đã khóa và xác minh giọng của chính bạn sẽ bị xóa vì đoạn mới có thể là của người nói khác. Để trống bản chép lời để tự động chép lời đoạn mới.",
+    "describe_translated": "Được hiểu là: “{{text}}”",
+    "describe_needs_english": "Không dịch được mô tả này: chưa có trình dịch. Hãy mô tả giọng bằng tiếng Anh hoặc chọn trình dịch trong Cài đặt → Mô hình → Dịch."
   },
   "designWorkspace": {
     "title": "Thiết kế",
@@ -1721,7 +1723,17 @@
     "probe_placeholder": "/Users/bạn/Phim/sample.mp4",
     "probe_failed": "Thăm dò không thành công: {{message}}",
     "parse_failed": "Phân tích cú pháp không thành công: {{message}}",
-    "fit_failed": "Lắp không thành công: {{message}}"
+    "fit_failed": "Lắp không thành công: {{message}}",
+    "rate_fit_no_llm": "Chưa thiết lập mô hình ngôn ngữ: câu chỉ được đo, không được viết lại. Hãy thiết lập trong Nhà cung cấp LLM.",
+    "rate_fit_already_fits": "Câu đã vừa với khoảng thời gian, nên không có gì thay đổi.",
+    "rate_fit_skip_short": "Câu ngắn hơn nhiều so với khoảng thời gian. Câu được giữ nguyên thay vì thêm từ.",
+    "rate_fit_provider_failed": "Không kết nối được mô hình ngôn ngữ. Kiểm tra Nhà cung cấp LLM rồi thử lại.",
+    "rate_fit_unchanged": "Mô hình ngôn ngữ trả về đúng câu cũ, nên không có gì thay đổi.",
+    "rate_fit_diverged": "Bản viết lại làm thay đổi ý nghĩa quá nhiều, nên giữ câu gốc.",
+    "rate_fit_invalid_timing": "Nhập một câu và khoảng thời gian lớn hơn 0 giây.",
+    "rate_fit_budget": "Việc điều chỉnh hết thời gian, nên câu được giữ nguyên.",
+    "direction_llm_parse_failed": "Không kết nối được mô hình ngôn ngữ, nên quy tắc tích hợp đã phân tích chỉ dẫn này.",
+    "direction_llm_invalid_json": "Không đọc được phản hồi của mô hình ngôn ngữ, nên quy tắc tích hợp đã phân tích chỉ dẫn này."
   },
   "projects": {
     "title": "Dự án",

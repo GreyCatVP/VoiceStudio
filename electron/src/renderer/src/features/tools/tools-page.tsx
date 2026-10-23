@@ -38,6 +38,36 @@ const tools = [
   },
 ] as const;
 type Tool = (typeof tools)[number];
+// Codes the /tools endpoints return in `error` (services/speech_rate.py, services/director.py).
+const TOOL_ERROR_KEYS: Record<string, string> = {
+  'no-llm': 'tools.rate_fit_no_llm',
+  'already-fits': 'tools.rate_fit_already_fits',
+  'fit-skip-short': 'tools.rate_fit_skip_short',
+  'fit-provider-failed': 'tools.rate_fit_provider_failed',
+  'fit-unchanged': 'tools.rate_fit_unchanged',
+  'fit-diverged': 'tools.rate_fit_diverged',
+  'invalid-timing': 'tools.rate_fit_invalid_timing',
+  'fit-budget': 'tools.rate_fit_budget',
+  'llm-parse-failed': 'tools.direction_llm_parse_failed',
+  'llm-invalid-json': 'tools.direction_llm_invalid_json',
+};
+// Outcomes that are not failures: the line simply stays as it is.
+const TOOL_NOTICE_CODES = new Set(['already-fits', 'fit-skip-short', 'fit-unchanged']);
+export function toolErrorMessage(
+  tool: Tool['id'],
+  code: unknown,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  const key = TOOL_ERROR_KEYS[String(code)];
+  if (key) return t(key);
+  const failed =
+    tool === 'probe'
+      ? 'tools.probe_failed'
+      : tool === 'direction'
+        ? 'tools.parse_failed'
+        : 'tools.fit_failed';
+  return t(failed, { message: describeError(code) });
+}
 export function ToolsPage() {
   const { t } = useTranslation();
   const [comparing, setComparing] = useState(false);
@@ -241,7 +271,14 @@ function ToolForm({ tool }: { tool: Tool }) {
           aria-label={t('tools.result')}
           className="space-y-4 rounded-xl border border-border/50 p-4"
         >
-          {Boolean(result.error) && <PipelineFailure fallback={describeError(result.error)} />}
+          {Boolean(result.error) &&
+            (TOOL_NOTICE_CODES.has(String(result.error)) ? (
+              <p role="status" className="text-sm text-muted-foreground">
+                {toolErrorMessage(tool.id, result.error, t)}
+              </p>
+            ) : (
+              <PipelineFailure fallback={toolErrorMessage(tool.id, result.error, t)} />
+            ))}
           {tool.id === 'probe' ? (
             <pre className="overflow-x-auto whitespace-pre-wrap break-words text-xs">
               {JSON.stringify(result, null, 2)}

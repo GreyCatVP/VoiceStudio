@@ -13,6 +13,7 @@ from typing import Optional
 
 from core.config import DUB_DIR
 from core.http_headers import content_disposition
+from core.iso639 import audio_stream_tags
 from core.logging_utils import log_safe
 from core.path_security import UnsafePath, portable_filename, resolve_within
 from core.tasks import task_manager
@@ -1010,14 +1011,13 @@ async def dub_download(
 
     audio_stream_idx = 0
     if include_original:
-        cmd += [f"-metadata:s:a:{audio_stream_idx}", "language=und", f"-metadata:s:a:{audio_stream_idx}", "title=Original"]
+        cmd += audio_stream_tags(audio_stream_idx, "und", "Original")
         audio_stream_idx += 1
 
     for t in tracks_to_process:
-        cmd += [
-            f"-metadata:s:a:{audio_stream_idx}", f"language={t['lang_code']}",
-            f"-metadata:s:a:{audio_stream_idx}", f"title={t['info']['language']}"
-        ]
+        cmd += audio_stream_tags(
+            audio_stream_idx, t["lang_code"], t["info"].get("language") or t["lang_code"],
+        )
         t["stream_idx"] = audio_stream_idx
         audio_stream_idx += 1
 

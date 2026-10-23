@@ -621,7 +621,9 @@
     "replace_reference": "Zastąp próbkę referencyjną",
     "keep_reference": "Zachowaj obecną próbkę",
     "new_reference": "Nowa próbka: {{name}}",
-    "replace_reference_hint": "Zapisanie zastępuje próbkę referencyjną tego głosu. Zablokowane nagranie i weryfikacja własnego głosu zostaną wyczyszczone, ponieważ nowy klip może należeć do innej osoby. Zostaw transkrypcję pustą, aby nowy klip został przepisany automatycznie."
+    "replace_reference_hint": "Zapisanie zastępuje próbkę referencyjną tego głosu. Zablokowane nagranie i weryfikacja własnego głosu zostaną wyczyszczone, ponieważ nowy klip może należeć do innej osoby. Zostaw transkrypcję pustą, aby nowy klip został przepisany automatycznie.",
+    "describe_translated": "Zrozumiano jako: „{{text}}”",
+    "describe_needs_english": "Nie udało się przetłumaczyć opisu: brak dostępnego tłumacza. Opisz głos po angielsku albo wybierz tłumacza w Ustawienia → Modele → Tłumaczenie."
   },
   "designWorkspace": {
     "title": "Projektuj",
@@ -1725,7 +1727,17 @@
     "probe_placeholder": "/Użytkownicy/ty/Filmy/przykład.mp4",
     "probe_failed": "Sonda nie powiodła się: {{message}}",
     "parse_failed": "Analiza nie powiodła się: {{message}}",
-    "fit_failed": "Dopasowanie nie powiodło się: {{message}}"
+    "fit_failed": "Dopasowanie nie powiodło się: {{message}}",
+    "rate_fit_no_llm": "Nie skonfigurowano modelu językowego: kwestię tylko zmierzono, bez przepisywania. Skonfiguruj go w Dostawcach LLM.",
+    "rate_fit_already_fits": "Kwestia już mieści się w swoim przedziale, więc nic nie zmieniono.",
+    "rate_fit_skip_short": "Kwestia jest dużo krótsza niż jej przedział. Zostawiono ją bez zmian zamiast dopisywać słowa.",
+    "rate_fit_provider_failed": "Nie można połączyć się z modelem językowym. Sprawdź dostawców LLM i spróbuj ponownie.",
+    "rate_fit_unchanged": "Model językowy zwrócił tę samą kwestię, więc nic nie zmieniono.",
+    "rate_fit_diverged": "Przeróbka zbyt mocno zmieniła sens, więc zostawiono oryginalną kwestię.",
+    "rate_fit_invalid_timing": "Wpisz kwestię i przedział dłuższy niż zero sekund.",
+    "rate_fit_budget": "Dopasowanie trwało zbyt długo, więc kwestię zostawiono bez zmian.",
+    "direction_llm_parse_failed": "Nie można połączyć się z modelem językowym, więc wskazówkę zinterpretowały wbudowane reguły.",
+    "direction_llm_invalid_json": "Nie można odczytać odpowiedzi modelu językowego, więc wskazówkę zinterpretowały wbudowane reguły."
   },
   "projects": {
     "title": "Projekty",

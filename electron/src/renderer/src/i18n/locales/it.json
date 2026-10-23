@@ -619,7 +619,9 @@
     "replace_reference": "Sostituisci riferimento",
     "keep_reference": "Mantieni il riferimento attuale",
     "new_reference": "Nuovo riferimento: {{name}}",
-    "replace_reference_hint": "Il salvataggio sostituisce il campione di riferimento di questa voce. La ripresa bloccata e la verifica della propria voce vengono cancellate perché la nuova clip potrebbe essere di un'altra persona. Lascia vuota la trascrizione per trascrivere automaticamente la nuova clip."
+    "replace_reference_hint": "Il salvataggio sostituisce il campione di riferimento di questa voce. La ripresa bloccata e la verifica della propria voce vengono cancellate perché la nuova clip potrebbe essere di un'altra persona. Lascia vuota la trascrizione per trascrivere automaticamente la nuova clip.",
+    "describe_translated": "Interpretato come: «{{text}}»",
+    "describe_needs_english": "Impossibile tradurre questa descrizione: nessun traduttore disponibile. Descrivi la voce in inglese o scegli un traduttore in Impostazioni → Modelli → Traduzione."
   },
   "designWorkspace": {
     "title": "Progetta",
@@ -1723,7 +1725,17 @@
     "probe_placeholder": "/Utenti/tu/Film/sample.mp4",
     "probe_failed": "Sonda fallita: {{message}}",
     "parse_failed": "Analisi non riuscita: {{message}}",
-    "fit_failed": "Adattamento non riuscito: {{message}}"
+    "fit_failed": "Adattamento non riuscito: {{message}}",
+    "rate_fit_no_llm": "Nessun modello linguistico configurato: la riga è stata solo misurata, non riscritta. Configurane uno in Provider LLM.",
+    "rate_fit_already_fits": "La riga rientra già nel suo spazio, quindi non è stato cambiato nulla.",
+    "rate_fit_skip_short": "La riga è molto più corta del suo spazio. È stata lasciata com’è invece di aggiungere parole.",
+    "rate_fit_provider_failed": "Impossibile raggiungere il modello linguistico. Controlla i provider LLM e riprova.",
+    "rate_fit_unchanged": "Il modello linguistico ha restituito la stessa riga, quindi non è stato cambiato nulla.",
+    "rate_fit_diverged": "La riscrittura cambiava troppo il significato, quindi è stata mantenuta la riga originale.",
+    "rate_fit_invalid_timing": "Inserisci una riga e uno spazio maggiore di zero secondi.",
+    "rate_fit_budget": "L’adattamento ha esaurito il tempo, quindi la riga è rimasta com’è.",
+    "direction_llm_parse_failed": "Impossibile raggiungere il modello linguistico, quindi le regole integrate hanno interpretato questa indicazione.",
+    "direction_llm_invalid_json": "La risposta del modello linguistico non era leggibile, quindi le regole integrate hanno interpretato questa indicazione."
   },
   "projects": {
     "title": "Progetti",

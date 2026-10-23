@@ -16,6 +16,7 @@ import { DubExportPanel } from './dub-export-panel';
 import { DubTimeline } from './dub-timeline';
 import { PasteTranslation } from './paste-translation';
 import { GlossaryPanel } from './glossary-panel';
+import { useGlossaryCount } from './use-glossary-count';
 import { CastingBoard } from './casting-board';
 import { DubbingDemo } from './dubbing-demo';
 import { CheckpointBanner, type CheckpointStage } from './checkpoint-banner';
@@ -248,7 +249,7 @@ export function DubPage() {
   const [qcRunning, setQcRunning] = useState(false);
   const [pasteTranslationOpen, setPasteTranslationOpen] = useState(false);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
-  const [glossaryCount, setGlossaryCount] = useState(0);
+  const [glossaryCount, setGlossaryCount] = useGlossaryCount(session.jobId);
   const [recoveringAsr, setRecoveringAsr] = useState(false);
   const [installingArgosPacks, setInstallingArgosPacks] = useState(false);
   const [translationAgents, setTranslationAgents] = useState<RepairAgentInfo[]>([]);

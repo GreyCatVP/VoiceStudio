@@ -1630,9 +1630,10 @@ async def dub_transcribe_stream(
             else max(ASR_TRANSCRIBE_TIMEOUT_S, transcribe_chunk_s + 600.0) if _asr_lane is not None
             else TRANSCRIBE_CHUNK_TIMEOUT_S
         )
+        # The knob that actually sets transcribe_timeout_s above.
         transcribe_timeout_env = (
             "OMNIVOICE_ASR_TRANSCRIBE_TIMEOUT_S"
-            if global_speaker_clustering
+            if global_speaker_clustering or _asr_lane is not None
             else "OMNIVOICE_TRANSCRIBE_CHUNK_TIMEOUT_S"
         )
         chunks_n = (
@@ -1768,8 +1769,12 @@ async def dub_transcribe_stream(
                         i + 1, chunks_n, transcribe_timeout_s, _attempt,
                         _CHUNK_TRANSCRIBE_ATTEMPTS, log_safe(job_id),
                     )
-                    from core.public_errors import stream_failure
-                    failure = stream_failure("transcription_timeout")
+                    from core.public_errors import transcription_timeout_failure
+                    failure = transcription_timeout_failure(
+                        engine_id=getattr(_asr_backend, "id", "") or "",
+                        remote=_asr_lane is not None,
+                        timeout_env=transcribe_timeout_env,
+                    )
                     part = {
                         "chunks": [],
                         "language": None,
@@ -1874,11 +1879,13 @@ async def dub_transcribe_stream(
                 # Chunk failures already carry a complete recovery message.
                 # Do not prepend another generic sentence to it.
                 detail = " | ".join(uniq[:3])
-                # Add the actionable hint for a recognized failure class
-                # (e.g. pkg_resources missing → install setuptools).
-                hint = build_failure(" ".join(uniq), stage="transcribe", include_diagnostic=False).get("hint")
-                if hint:
-                    detail += f" — {hint}"
+                # A coded chunk error is a complete VoiceStudio-owned message;
+                # classifying its wording would bolt on an unrelated hint (its
+                # "timed out" / "broken pipe" read as a video-download blip).
+                if len(chunk_error_codes) < len(chunk_errors):
+                    hint = build_failure(" ".join(uniq), stage="transcribe", include_diagnostic=False).get("hint")
+                    if hint:
+                        detail += f" — {hint}"
             else:
                 detail = (
                     "Transcription produced no segments. The audio may be silent, "

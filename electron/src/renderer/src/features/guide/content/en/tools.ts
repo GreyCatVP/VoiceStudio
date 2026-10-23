@@ -93,7 +93,7 @@ const chapter: GuideChapter = {
               title: 'Check a line against its time slot',
               text: 'Select **Speech-rate fit**. Paste the translated line (1), set **Slot (seconds)** (2) and **Target language** (3), then press **Fit** (4).',
               shot: 'tools-rate-fit',
-              check: 'The result (5) shows **ratio:** (how long the line reads compared with its slot; 1.0 fits exactly), **attempts:** and **result:**, the line to use. A red `no-llm` line means no language model is set up: the line comes back unchanged and was only measured.',
+              check: 'The result (5) shows **ratio:** (how long the line reads compared with its slot; 1.0 fits exactly), **attempts:** and **result:**, the line to use. A red note saying no language model is set up means the line comes back unchanged and was only measured.',
             },
             {
               title: 'Inspect a media file',

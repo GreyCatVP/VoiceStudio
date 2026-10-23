@@ -503,7 +503,7 @@ function BatchJobCard({
   const StatusIcon = appearance.icon;
   const duration =
     job.finished_at && job.started_at ? Math.max(0, job.finished_at - job.started_at) : null;
-  const created = formatTimestamp(job.created_at, i18n.resolvedLanguage);
+  const created = formatTimestamp(job.created_at, i18n.language);
 
   return (
     <article className="rounded-xl border border-border/50 bg-card/20 p-4 transition-colors hover:border-border">

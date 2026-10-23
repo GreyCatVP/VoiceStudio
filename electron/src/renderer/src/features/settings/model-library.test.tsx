@@ -847,3 +847,50 @@ it('sends a gated install that failed on a chosen mirror to the mirror settings'
     '/settings/models',
   );
 });
+
+it.each([
+  ['network', true],
+  ['cpu', false],
+])('offers Select for a model not on this computer only when ASR runs remotely (%s)', async (device, offered) => {
+  mock.api.mockImplementation((path: string) => {
+    if (path === '/models') {
+      return Promise.resolve({
+        models: [
+          {
+            repo_id: 'typhoon-ai/typhoon-whisper-turbo',
+            label: 'Typhoon Whisper Turbo (Thai only)',
+            role: 'ASR',
+            languages: ['th'],
+            size_gb: 1.6,
+            installed: false,
+            supported: true,
+          },
+        ],
+      });
+    }
+    if (path === '/models/install/status') return Promise.resolve({ jobs: [] });
+    if (path === '/model/loaded') return Promise.resolve({ models: [], count: 0 });
+    if (path === '/engines') {
+      return Promise.resolve({
+        asr: {
+          active: 'faster-whisper-isolated',
+          backends: [{ id: 'faster-whisper-isolated', available: true, effective_device: device }],
+        },
+      });
+    }
+    return Promise.resolve({});
+  });
+
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <ModelLibrary family="asr" />
+    </QueryClientProvider>,
+  );
+
+  await screen.findByText('Typhoon Whisper Turbo (Thai only)');
+  // The download stays available either way; only Select depends on remote ASR.
+  expect(screen.getByRole('button', { name: /modelMaintenance.download/ })).toBeTruthy();
+  await waitFor(() =>
+    expect(Boolean(screen.queryByRole('button', { name: 'modelSettings.select' }))).toBe(offered),
+  );
+});

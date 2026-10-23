@@ -617,7 +617,9 @@
     "replace_reference": "Ersätt referens",
     "keep_reference": "Behåll nuvarande referens",
     "new_reference": "Ny referens: {{name}}",
-    "replace_reference_hint": "När du sparar ersätts röstens referensprov. Den låsta tagningen och verifieringen av egen röst rensas eftersom det nya klippet kan vara en annan talare. Lämna transkriptionen tom för att transkribera det nya klippet automatiskt."
+    "replace_reference_hint": "När du sparar ersätts röstens referensprov. Den låsta tagningen och verifieringen av egen röst rensas eftersom det nya klippet kan vara en annan talare. Lämna transkriptionen tom för att transkribera det nya klippet automatiskt.",
+    "describe_translated": "Tolkat som: ”{{text}}”",
+    "describe_needs_english": "Beskrivningen kunde inte översättas: ingen översättare är tillgänglig. Beskriv rösten på engelska eller välj en översättare under Inställningar → Modeller → Översättning."
   },
   "designWorkspace": {
     "title": "Designa",
@@ -1721,7 +1723,17 @@
     "probe_placeholder": "/Users/you/Movies/sample.mp4",
     "probe_failed": "Sond misslyckades: {{message}}",
     "parse_failed": "Analysen misslyckades: {{message}}",
-    "fit_failed": "Anpassningen misslyckades: {{message}}"
+    "fit_failed": "Anpassningen misslyckades: {{message}}",
+    "rate_fit_no_llm": "Ingen språkmodell är inställd: repliken mättes bara och skrevs inte om. Ställ in en under LLM-leverantörer.",
+    "rate_fit_already_fits": "Repliken passar redan sin tidslucka, så inget ändrades.",
+    "rate_fit_skip_short": "Repliken är mycket kortare än sin tidslucka. Den behölls som den är i stället för att fyllas ut.",
+    "rate_fit_provider_failed": "Språkmodellen gick inte att nå. Kontrollera LLM-leverantörerna och försök igen.",
+    "rate_fit_unchanged": "Språkmodellen returnerade samma replik, så inget ändrades.",
+    "rate_fit_diverged": "Omskrivningen ändrade betydelsen för mycket, så originalrepliken behölls.",
+    "rate_fit_invalid_timing": "Ange en replik och en tidslucka längre än noll sekunder.",
+    "rate_fit_budget": "Anpassningen tog för lång tid, så repliken behölls som den är.",
+    "direction_llm_parse_failed": "Språkmodellen gick inte att nå, så de inbyggda reglerna tolkade den här regianvisningen.",
+    "direction_llm_invalid_json": "Språkmodellens svar gick inte att läsa, så de inbyggda reglerna tolkade den här regianvisningen."
   },
   "projects": {
     "title": "Projekt",

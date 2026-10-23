@@ -617,7 +617,9 @@
     "replace_reference": "Ganti referensi",
     "keep_reference": "Pertahankan referensi saat ini",
     "new_reference": "Referensi baru: {{name}}",
-    "replace_reference_hint": "Menyimpan akan mengganti sampel referensi suara ini. Take yang dikunci dan verifikasi suara sendiri dihapus karena klip baru mungkin berasal dari pembicara lain. Biarkan transkrip kosong untuk mentranskripsikan klip baru secara otomatis."
+    "replace_reference_hint": "Menyimpan akan mengganti sampel referensi suara ini. Take yang dikunci dan verifikasi suara sendiri dihapus karena klip baru mungkin berasal dari pembicara lain. Biarkan transkrip kosong untuk mentranskripsikan klip baru secara otomatis.",
+    "describe_translated": "Dipahami sebagai: “{{text}}”",
+    "describe_needs_english": "Deskripsi ini tidak dapat diterjemahkan: tidak ada penerjemah. Jelaskan suara dalam bahasa Inggris, atau pilih penerjemah di Pengaturan → Model → Terjemahan."
   },
   "designWorkspace": {
     "title": "Desain",
@@ -1721,7 +1723,17 @@
     "probe_placeholder": "/Pengguna/Anda/Film/sample.mp4",
     "probe_failed": "Pemeriksaan gagal: {{message}}",
     "parse_failed": "Gagal menguraikan: {{message}}",
-    "fit_failed": "Gagal memasang: {{message}}"
+    "fit_failed": "Gagal memasang: {{message}}",
+    "rate_fit_no_llm": "Belum ada model bahasa yang diatur: baris hanya diukur, tidak ditulis ulang. Atur satu di Penyedia LLM.",
+    "rate_fit_already_fits": "Baris sudah pas dengan slotnya, jadi tidak ada yang diubah.",
+    "rate_fit_skip_short": "Baris jauh lebih pendek dari slotnya. Baris dibiarkan apa adanya alih-alih ditambah kata.",
+    "rate_fit_provider_failed": "Model bahasa tidak dapat dihubungi. Periksa Penyedia LLM lalu coba lagi.",
+    "rate_fit_unchanged": "Model bahasa mengembalikan baris yang sama, jadi tidak ada yang diubah.",
+    "rate_fit_diverged": "Penulisan ulang terlalu mengubah makna, jadi baris asli dipertahankan.",
+    "rate_fit_invalid_timing": "Masukkan baris dan slot lebih dari nol detik.",
+    "rate_fit_budget": "Penyesuaian kehabisan waktu, jadi baris dibiarkan apa adanya.",
+    "direction_llm_parse_failed": "Model bahasa tidak dapat dihubungi, jadi aturan bawaan menafsirkan arahan ini.",
+    "direction_llm_invalid_json": "Balasan model bahasa tidak dapat dibaca, jadi aturan bawaan menafsirkan arahan ini."
   },
   "projects": {
     "title": "Proyek",

@@ -29,6 +29,7 @@ import { AecSettings } from './aec-settings';
 import { ExternalLink } from '@/components/external-link';
 import { ComputeVendorIcon, formatComputeRuntime } from '@/components/compute-vendor-icon';
 import {
+  ENGINE_FAMILY_LABEL_KEYS,
   engineSelectionFeedback,
   type EngineSelectionResult,
 } from '@/lib/engine-selection-feedback';
@@ -101,7 +102,9 @@ export function DiarisationSettings() {
         client.invalidateQueries({ queryKey: ['sidebar-diarisation'] }),
         client.invalidateQueries({ queryKey: ['loaded-models'] }),
       ]);
-      const feedback = engineSelectionFeedback(result, 'diarisation');
+      const feedback = engineSelectionFeedback(result, 'diarisation', {
+        family: t(ENGINE_FAMILY_LABEL_KEYS.diarisation),
+      });
       toast.success(t(feedback.key, feedback.values));
     } catch (error) {
       setFailed(describeError(error));
@@ -295,9 +298,14 @@ export function ModelSettings({
             ]
           : []),
       ]);
+      const activeId = family === 'dictation' ? id : result.active;
       const feedback = engineSelectionFeedback(
         family === 'dictation' ? { active: id } : result,
         family ?? 'tts',
+        {
+          family: t(ENGINE_FAMILY_LABEL_KEYS[family ?? 'tts'] ?? ''),
+          engine: rows?.find((row) => row.id === activeId)?.name,
+        },
       );
       if (feedback.tone === 'warning') toast.warning(t(feedback.key, feedback.values));
       else toast.success(t(feedback.key, feedback.values));
