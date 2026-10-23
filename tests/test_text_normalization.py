@@ -126,6 +126,9 @@ _CHANGE_CASES = [
     ("English", "Say **first line\nsecond line** now", "Say first line\nsecond line now"),
     # Emphasis around a speech control strips; the control survives
     ("English", "**Hello [pause 300ms] world**", "Hello [pause 300ms] world"),
+    # Asterisks open inside words (CommonMark); underscores do not
+    ("English", "un**believ**able now", "unbelievable now"),
+    ("English", "pre*fix* this", "prefix this"),
 ]
 
 
@@ -316,6 +319,18 @@ def test_idempotent_double_encoded_entity():
     # "&amp;nbsp;" must not decode one layer per pass.
     once = normalize_text("bad &amp;nbsp; soup", None)
     assert normalize_text(once, None) == once
+
+
+def test_many_unmatched_openers_stay_fast_and_untouched():
+    """Linear scan (#3205 P1): 25k unmatched ``**`` openers must not stall
+    synthesis. The lazy-regex version took ~16 s here; the scanner takes ms.
+    The 10 s bound has 700x headroom and only trips on quadratic blowup."""
+    import time
+    from services.text_normalization import _strip_markdown_emphasis
+    raw = "**a " * 25000
+    start = time.perf_counter()
+    assert _strip_markdown_emphasis(raw) == raw
+    assert time.perf_counter() - start < 10
 
 
 # ── Toggle: default ON + env override ────────────────────────────────────────

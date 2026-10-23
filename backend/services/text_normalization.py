@@ -305,21 +305,73 @@ _UNSAFE_CONTROL_TRANSLATION = dict.fromkeys(_UNSAFE_CONTROL_CODEPOINTS)
 # ``_italic_``) reach the engine as spoken words ("asterisk", #3197): a lone
 # ``*`` pair happens to survive as emphasis, but ``**`` is read aloud.
 #
-# Guards (review on #3205): an opener needs a non-alphanumeric before it and
-# a non-space after it; a closer needs a non-space before it and a
-# non-alphanumeric after it — so arithmetic (``2 * 3 * 4``) and intra-word
-# underscores (``foo__bar__baz``, ``snake_case``) survive. Bodies span soft
-# line breaks (DOTALL, non-greedy so adjacent pairs stay separate).
+# Boundaries (#3205 review): ``*``/``**`` need whitespace flanks only — a
+# non-space after the opener, a non-space before the closer — because
+# CommonMark lets asterisks open inside words (``un**believ**able``). ``_``/
+# ``__`` additionally refuse word characters on the outer side, so
+# ``snake_case`` and ``foo__bar__baz`` survive. Arithmetic (``2 * 3 * 4``)
+# survives via the whitespace rule. Bodies span soft line breaks.
+#
+# Linear single-pass scan (#3205 P1): lazy ``(.+?)`` backtracks quadratically
+# on unmatched openers (``"**a " * 25000`` stalls synthesis), so delimiters
+# are tokenized once per class and paired left-to-right — a token pairs as a
+# closer when a pending opener exists, else opens, else is stray and kept.
 # Idempotent: a second pass finds no pairs. Bracket spans are masked during
 # the match so emphasis around a speech control (``**Hello [pause 300ms]
-# world**``) is stripped while the control itself is untouched; NUL
-# placeholders are safe because the safety filters already deleted NUL.
-_MD_BOLD_RE = re.compile(r"(?<![A-Za-z0-9])\*\*(?=\S)(.+?)(?<=\S)\*\*(?![A-Za-z0-9])", re.S)
-_MD_BOLD_US_RE = re.compile(r"(?<![A-Za-z0-9_])__(?=\S)(.+?)(?<=\S)__(?![A-Za-z0-9_])", re.S)
-_MD_ITALIC_RE = re.compile(
-    r"(?<![A-Za-z0-9*])\*(?!\*)(?=\S)(.+?)(?<=\S)(?<!\*)\*(?!\*)(?![A-Za-z0-9])", re.S
+# world**``) strips while the control survives; NUL placeholders are safe
+# because the safety filters already deleted NUL.
+_WORDCH = frozenset(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
 )
-_MD_ITALIC_US_RE = re.compile(r"(?<![A-Za-z0-9_])_(?=\S)(.+?)(?<=\S)_(?![A-Za-z0-9_])", re.S)
+
+
+def _delim_tokens(text: str, ch: str) -> list[tuple[int, int]]:
+    """Split each maximal run of ch into ``**`` tokens then at most one ``*``.
+
+    ``***`` → one ``**`` plus one ``*`` so bold+italic nests resolve across
+    the two passes instead of stranding the run.
+    """
+    toks: list[tuple[int, int]] = []
+    for m in re.finditer(re.escape(ch) + "+", text):
+        s, n = m.start(), m.end() - m.start()
+        while n > 3:
+            toks.append((s, 2))
+            s += 2
+            n -= 2
+        if n == 3:
+            toks.append((s, 2))
+            toks.append((s + 2, 1))
+        else:
+            toks.append((s, n))
+    return toks
+
+
+def _open_ok(text: str, s: int, L: int, n: int, word_guarded: bool) -> bool:
+    if s + L > n - 1 or text[s + L].isspace():
+        return False
+    return s == 0 or not word_guarded or text[s - 1] not in _WORDCH
+
+
+def _close_ok(text: str, s: int, L: int, n: int, word_guarded: bool) -> bool:
+    if s == 0 or text[s - 1].isspace():
+        return False
+    return s + L >= n or not word_guarded or text[s + L] not in _WORDCH
+
+
+def _pair_spans(
+    text: str, tokens: list[tuple[int, int]], word_guarded: bool
+) -> list[tuple[int, int]]:
+    drop: list[tuple[int, int]] = []
+    pending: tuple[int, int] | None = None
+    n = len(text)
+    for s, L in tokens:
+        if pending is not None and _close_ok(text, s, L, n, word_guarded):
+            drop.append((pending[0], pending[0] + pending[1]))
+            drop.append((s, s + L))
+            pending = None
+        elif _open_ok(text, s, L, n, word_guarded):
+            pending = (s, L)
+    return drop
 
 
 def _strip_markdown_emphasis(text: str) -> str:
@@ -330,15 +382,14 @@ def _strip_markdown_emphasis(text: str) -> str:
         return f"\x00{len(spans) - 1}\x00"
 
     out = _BRACKET_SPAN_RE.sub(_mask, text)
-    out = _MD_BOLD_RE.sub(r"\1", out)
-    out = _MD_BOLD_US_RE.sub(r"\1", out)
-    out = _MD_ITALIC_RE.sub(r"\1", out)
-    out = _MD_ITALIC_US_RE.sub(r"\1", out)
+    for ch, guarded in (("*", False), ("_", True)):
+        for L in (1, 2):
+            toks = [(s, ln) for s, ln in _delim_tokens(out, ch) if ln == L]
+            for a, b in reversed(_pair_spans(out, toks, guarded)):
+                out = out[:a] + out[b:]
     for i, span in enumerate(spans):
         out = out.replace(f"\x00{i}\x00", span)
     return out
-
-
 def _strip_unsafe_controls(text: str) -> str:
     """Delete only the explicitly enumerated unsafe Unicode controls."""
     return text.translate(_UNSAFE_CONTROL_TRANSLATION)
