@@ -10,8 +10,12 @@ import asyncio
 
 import pytest
 
-import services.model_lifecycle as ml
-import services.model_manager as mm
+@pytest.fixture(autouse=True)
+def app_modules():
+    import importlib
+    global ml, mm
+    ml = importlib.import_module("services.model_lifecycle")
+    mm = importlib.import_module("services.model_manager")
 
 
 class _Pipe:
@@ -144,8 +148,8 @@ def test_unload_all_includes_asr(monkeypatch):
     assert "asr" in calls
 
 
-def test_unload_asr_detaches_host_transcriber(monkeypatch):
-    """After unload, no later reference clip may reach the released pipeline."""
+def test_unload_asr_preserves_host_transcriber(monkeypatch):
+    """Unloading bundled Whisper keeps the independent selected-engine hook."""
     removed = []
     import services.asr_backend as ab_mod
     monkeypatch.setattr(ab_mod, "remove_reference_transcriber", lambda: removed.append(True))
@@ -162,4 +166,17 @@ def test_unload_asr_detaches_host_transcriber(monkeypatch):
     monkeypatch.setattr(mm, "free_vram", lambda: None)
     result = _locked_unload("asr")
     assert result["success"] is True
-    assert removed == [True]
+    assert removed == []
+
+
+def test_unload_drops_last_pipeline_reference_before_allocator_cleanup(monkeypatch):
+    import weakref
+    model = type("Model", (), {})()
+    model._asr_pipe = _Pipe()
+    ref = weakref.ref(model._asr_pipe)
+    _install_model(monkeypatch, model)
+    monkeypatch.setattr(mm, "_model_lock", asyncio.Lock())
+    def free():
+        assert ref() is None, "pipeline still alive during allocator cleanup"
+    monkeypatch.setattr(mm, "free_vram", free)
+    assert _locked_unload("asr")["success"] is True

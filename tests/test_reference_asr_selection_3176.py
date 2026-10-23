@@ -18,7 +18,6 @@ import torch
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from omnivoice.models import omnivoice as ov
 
 
 def _model_stub():
@@ -41,6 +40,9 @@ def _model_stub():
 
 @pytest.fixture(autouse=True)
 def _reset_transcriber():
+    import importlib
+    global ov
+    ov = importlib.import_module("omnivoice.models.omnivoice")
     ov.set_reference_transcriber(None)
     yield
     ov.set_reference_transcriber(None)
@@ -128,10 +130,66 @@ def test_unload_asr_model_is_independent_and_idempotent():
     assert m.unload_asr_model() is False  # idempotent
 
 
-def test_broken_transcription_error_names_an_installable_model():
+def test_broken_transcription_error_names_an_installable_model(monkeypatch):
     """The dead-end message must point at something the UI can actually install."""
+    monkeypatch.setattr(ov, "_find_cached_reference_asr", lambda: None)
     m = _model_stub()
     with pytest.raises(ov._ReferenceAsrNotInstalled) as excinfo:
         m._load_cached_reference_asr()
     assert "Model Catalogue" in str(excinfo.value)
     assert "openai/whisper-large-v3-turbo" not in str(excinfo.value)  # repo-id wall of text no
+
+@pytest.mark.parametrize('seconds', [4, 27])
+def test_real_host_bridge_transcribes_mono_reference(monkeypatch, seconds):
+    import soundfile as sf
+    from services import asr_backend as ab
+    paths = []
+    def transcribe(path):
+        samples, sr = sf.read(path)
+        assert samples.ndim == 1
+        assert sr == 24000
+        assert 0 < len(samples) <= 15 * sr
+        paths.append(path)
+        return 'Palabras de la referencia.'
+    monkeypatch.setattr(ab, 'transcribe_reference', transcribe)
+    ab.install_reference_transcriber()
+    m = _model_stub()
+    def missing():
+        raise ov._ReferenceAsrNotInstalled('Automatic reference transcription needs an installed speech-to-text model')
+    m._load_cached_reference_asr = missing
+    prompt = m.create_voice_clone_prompt(
+        (torch.full((1, seconds * 24000), 0.1), 24000), None, preprocess_prompt=False)
+    assert prompt.ref_text == 'Palabras de la referencia.'
+    assert len(paths) == (2 if seconds == 27 else 1)
+    assert all(not pathlib.Path(path).exists() for path in paths)
+
+@pytest.mark.parametrize('host_fails', [False, True])
+def test_long_host_miss_loads_bundled_fallback(monkeypatch, host_fails):
+    m = _model_stub()
+    def host(audio):
+        if host_fails:
+            raise RuntimeError('unavailable')
+        return None
+    ov.set_reference_transcriber(host)
+    loads = []
+    def load():
+        loads.append(True)
+        m._asr_pipe = object()
+    m._load_cached_reference_asr = load
+    def transcribe(audio):
+        assert m._asr_pipe is not None, 'bundled ASR was never loaded'
+        return 'Fallback words.'
+    m.transcribe = transcribe
+    prompt = m.create_voice_clone_prompt(
+        (torch.full((1, 27 * 24000), 0.1), 24000), None, preprocess_prompt=False)
+    assert prompt.ref_text == 'Fallback words.'
+    assert loads == [True]
+
+
+def test_long_host_miss_without_cached_asr_explains_trim(monkeypatch):
+    monkeypatch.setattr(ov, "_find_cached_reference_asr", lambda: None)
+    ov.set_reference_transcriber(lambda audio: None)
+    m = _model_stub()
+    with pytest.raises(ValueError, match=r"\[clone_ref_too_long\].*27.0"):
+        m.create_voice_clone_prompt(
+            (torch.full((1, 27 * 24000), 0.1), 24000), None, preprocess_prompt=False)

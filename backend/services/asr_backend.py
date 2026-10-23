@@ -3434,16 +3434,19 @@ def _reference_transcriber_call(audio) -> str | None:
             import soundfile as sf
 
             with os.fdopen(fd, "wb") as handle:
-                sf.write(handle, waveform.detach().cpu().numpy(), int(sr))
+                sf.write(
+                    handle, waveform.squeeze(0).detach().cpu().numpy(),
+                    int(sr), format="WAV",
+                )
         except Exception:
             try:
                 os.close(fd)
             except OSError:
-                pass
+                pass  # fdopen may already have closed the descriptor.
             try:
                 os.unlink(path)
             except OSError:
-                pass
+                pass  # Best-effort cleanup of the failed temporary WAV.
             return None
     try:
         return transcribe_reference(path)
@@ -3478,7 +3481,7 @@ def remove_reference_transcriber() -> None:
 
         set_reference_transcriber(None)
     except Exception:  # noqa: BLE001 — detach is best-effort
-        pass
+        logger.debug("Could not detach reference transcriber", exc_info=True)
 
 
 def transcribe_reference(audio_path: str, *, release_after: bool = False) -> str | None:

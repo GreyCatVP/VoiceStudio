@@ -3782,21 +3782,13 @@ def unload_shared_model() -> bool:
     global model, _ram_offload
     if model is None:
         return False
-    # The reference-ASR pipeline rides on the model object; dropping the model
-    # drops it. Detach the host transcriber too so a later reference clip can
-    # never reach a released pipeline (use-after-release, #3176).
-    try:
-        from omnivoice.models.omnivoice import set_reference_transcriber
-
-        set_reference_transcriber(None)
-    except Exception:
-        pass
+    # Clear the callback when TTS unloads; selected ASR is managed separately.
     try:
         from services.asr_backend import remove_reference_transcriber
 
         remove_reference_transcriber()
-    except Exception:
-        pass
+    except Exception:  # noqa: BLE001 — unloading TTS must still complete
+        logger.debug("Could not detach reference transcriber", exc_info=True)
     model = None
     _ram_offload = None
     release_tts_side_caches()

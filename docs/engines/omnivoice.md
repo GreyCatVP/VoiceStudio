@@ -77,6 +77,11 @@ The env var overrides the persisted UI choice.
   a fallback when no catalogue recognizer can transcribe a window, and it is
   never downloaded during cloning. When neither can run, the error says the clip
   is too long and to trim it to 3–10 seconds, since a transcript cannot rescue it.
+  This also applies to **Edit voice profile → Try this voice**: a saved
+  transcript for a 27-second recording does not describe the shorter selected
+  passage. Keep an installed recognizer available, or replace the reference with
+  a 3–10 second passage and its matching transcript. Unloading the bundled
+  reference Whisper does not disconnect the separately selected recognizer.
   A transcript typed on the request for
   such a clip is rejected with `[clone_ref_too_long]`.
   Only that 15-second window is sent to the model. Clips longer than 75 seconds

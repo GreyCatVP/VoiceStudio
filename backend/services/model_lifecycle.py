@@ -346,14 +346,9 @@ async def unload(model_id: str) -> dict:
                 released = True
             if not released:
                 return {"unloaded": model_id, "success": False, "reason": "not loaded"}
-            # Detach the host reference transcriber: a later reference clip
-            # must never reach the pipeline that was just released.
-            try:
-                from services.asr_backend import remove_reference_transcriber
-
-                remove_reference_transcriber()
-            except Exception:  # noqa: BLE001 - detach is best-effort
-                pass
+            # The host hook resolves the separately managed selected engine;
+            # unloading bundled Whisper must not disconnect that route.
+            pipe = None  # Release the final local reference before empty_cache.
             mm.free_vram()
             return {"unloaded": model_id, "success": True}
 

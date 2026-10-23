@@ -1026,10 +1026,11 @@ class OmniVoice(PreTrainedModel):
                 power = audio.abs().amax(dim=0).square().clamp_max(activity_cap)
                 return float(power.double().sum())
 
-            if self._asr_pipe is None and _reference_transcriber is None:
-                # A host-installed engine (set_reference_transcriber) can rank
-                # the windows itself (#3176); only when neither it nor a
-                # resident pipeline exists is the bundled snapshot needed.
+            def ensure_bundled_reference_asr():
+                if self._asr_pipe is not None:
+                    return
+                # Load only after the selected engine cannot transcribe a
+                # window, including when its installed hook returns no text.
                 logger.info("Loading cached ASR for reference transcription ...")
                 try:
                     self._load_cached_reference_asr()
@@ -1075,6 +1076,7 @@ class OmniVoice(PreTrainedModel):
             for candidate in candidates:
                 text = self._reference_transcript((candidate, self.sampling_rate))
                 if text is None:
+                    ensure_bundled_reference_asr()
                     text = self.transcribe((candidate, self.sampling_rate))
                 transcribed.append((text, candidate))
             # A loud non-speech window must not disqualify the only spoken
