@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 from pathlib import Path
 
 from packaging.version import Version
@@ -68,6 +69,28 @@ def test_brand_mark_is_shared_and_fills_the_icon() -> None:
     assert 'x="2" y="2" width="60" height="60"' in logo
     assert "<circle" not in logo
     assert 'src="docs/logo.png"' in (ROOT / "README.md").read_text()
+
+
+def test_waveform_stroke_is_never_filled() -> None:
+    # An SVG path fills black unless told otherwise; without fill="none" the
+    # waveform's closed curves painted a black band across every icon.
+    signature = "M6 34c4 0 5-7 9-7"
+    tracked = subprocess.run(["git", "ls-files", "*.svg"], cwd=ROOT, capture_output=True, text=True, check=True).stdout.split()
+    svgs = [ROOT / name for name in tracked if signature in (ROOT / name).read_text()]
+    assert len(svgs) >= 3
+    for svg in svgs:
+        stroke = re.search(rf'<path d="{re.escape(signature)}[^>]*>', svg.read_text())
+        assert stroke and 'fill="none"' in stroke.group(0), svg
+
+
+def test_raster_icons_have_no_black_band() -> None:
+    from PIL import Image
+
+    # Regenerated from docs/logo.svg by scripts/render_brand_icons.py.
+    for name in ("docs/logo.png", "docs/logo-256.png", "electron/build/icons/icon.png", "electron/build/icons/32x32.png"):
+        icon = Image.open(ROOT / name).convert("RGBA")
+        width, height = icon.size
+        assert icon.getpixel((width // 2, int(height * 0.53)))[:3] != (0, 0, 0), name
 
 
 def test_python_package_metadata_points_to_voicestudio() -> None:

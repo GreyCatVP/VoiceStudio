@@ -26,6 +26,7 @@ metadata and the backend fallback mirror it.
 
 ### Fixed
 
+- App icon, tray icons and in-app logo no longer show a black band behind the waveform (#3221)
 - Speed/quality changes finish as soon as they are saved, even while the clone controls are still loading (#3031)
 - Android dubbing errors remain visible when worker updates arrive while their receipt is being saved (#3031)
 - Speed / quality in the sidebar is a simple slider again; models and hardware fit open in a popover on hover, click or change, so the simplest view leaves the sidebar bottom free (#3031)
@@ -75,6 +76,7 @@ metadata and the backend fallback mirror it.
 
 ### CI
 
+- The main test step runs in parallel with pytest-xdist, about 3 minutes faster per CI run (#3223)
 - Interactive release helper: pick stable or beta, draft or publish, and confirm by typing the tag (`scripts/release.py`) (#3187)
 - Release helper choices are arrow-key menus (#3190)
 - Desktop request-guard self-tests stay deterministic when app requests arrive during cleanup (#2676)

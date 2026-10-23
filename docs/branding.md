@@ -18,8 +18,14 @@ spark identifies creation. The product voice is clear, calm, and direct.
 Regenerate every desktop icon from the canonical vector after changing the
 mark:
 
-Export the canonical vector to the required PNG, ICO, and ICNS sizes under
-`electron/build/icons/`, then run the Electron packaging contract.
+```sh
+uv run scripts/render_brand_icons.py
+```
+
+It renders `docs/logo.svg` to the README PNGs and every PNG, ICO and ICNS under
+`electron/build/icons/` (the ICNS only on macOS, which has `iconutil`). Then run
+the Electron packaging contract. Keep `fill="none"` on the waveform path in every
+SVG copy of the mark; without it the curve fills black.
 
 Do not redraw the waveform per screen. Use `VoiceStudioMark` in React and the
 canonical SVG elsewhere so the silhouette stays recognizable at 16–512 px.

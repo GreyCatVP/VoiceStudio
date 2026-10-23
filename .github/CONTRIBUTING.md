@@ -155,8 +155,9 @@ Open an [issue](https://github.com/debpalash/VoiceStudio/issues/new) with:
 2. **Keep PRs focused** — one feature or fix per PR
 3. **Run tests** before pushing:
    ```bash
-   # Backend tests (the same two runs as CI)
-   uv run pytest tests/ -q
+   # Backend tests (the same two runs as CI; -n auto runs tests/ in parallel,
+   # optional locally, it is about 4x faster on 4 cores)
+   uv run pytest tests/ -q -n auto
    uv run pytest backend/tests/ -q
 
    # Frontend build check
