@@ -456,8 +456,13 @@ def _safe_torchaudio_save(
         # 2.8.0 publishes no aarch64 wheel. soundfile is already a locked
         # dependency and the tensor is normalized by this point, so hand it to
         # the audited sibling helper rather than failing the request.
+        try:
+            from core.scrub import scrub_text as _scrub
+            _save_err_msg = _scrub(str(e))
+        except Exception:
+            _save_err_msg = type(e).__name__
         logger.warning(
-            "torchaudio.save unavailable (%s); writing via soundfile", e
+            "torchaudio.save unavailable (%s); writing via soundfile", _save_err_msg
         )
         if hasattr(path_or_buf, "seek") and hasattr(path_or_buf, "truncate"):
             try:

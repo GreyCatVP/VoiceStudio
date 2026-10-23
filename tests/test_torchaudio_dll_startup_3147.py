@@ -151,22 +151,26 @@ def test_audio_io_handles_missing_or_failing_torchaudio(monkeypatch, tmp_path):
     assert info.num_channels == waveform.shape[0]
 
 
-def test_audio_io_handles_torchaudio_oserror_during_save(monkeypatch, tmp_path):
+def test_audio_io_handles_torchaudio_oserror_during_save(monkeypatch, tmp_path, caplog):
     """services.audio_io._safe_torchaudio_save must catch OSError from torchaudio and fallback."""
+    import logging
     import services.audio_io as aio
 
     class FailingTorchaudio:
         @staticmethod
         def save(*_args, **_kwargs):
-            raise OSError("Could not find module 'libtorchaudio.pyd' (or one of its dependencies)")
+            raise OSError("Could not find module 'C:\\Users\\alice\\torchaudio\\lib\\libtorchaudio.pyd'")
 
     monkeypatch.setattr(aio, "torchaudio", FailingTorchaudio)
 
     out_path = tmp_path / "saved_oserror.wav"
     dummy_audio = torch.zeros(1, 16000, dtype=torch.float32)
-    aio._safe_torchaudio_save(out_path, dummy_audio, 16000, format="wav")
+    with caplog.at_level(logging.WARNING, logger="omnivoice.audio_io"):
+        aio._safe_torchaudio_save(out_path, dummy_audio, 16000, format="wav")
     assert out_path.exists()
     assert out_path.stat().st_size > 0
+    # Diagnostic detail in warning must redact the home-directory path
+    assert "alice" not in caplog.text
 
 
 def test_backend_crash_classifier_matches_windows_dll_load_error():
