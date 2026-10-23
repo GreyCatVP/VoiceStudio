@@ -392,6 +392,9 @@ export interface VoiceStudioBridge {
     platform: NodeJS.Platform;
     isDev: boolean;
     onNavigate(callback: (path: string) => void): () => void;
+    /** Native fullscreen state (macOS hides the traffic lights there); the callback fires on every change. */
+    isFullScreen(): Promise<boolean>;
+    onFullScreen(callback: (fullscreen: boolean) => void): () => void;
     onPersistenceFlush(callback: () => void | Promise<void>): () => void;
   };
   backend: {

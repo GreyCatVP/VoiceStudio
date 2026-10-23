@@ -66,8 +66,8 @@ try {
       const footer = sidebar.locator('footer');
       assert.equal(
         await footer.locator('[data-slot=engine-row]').count(),
-        1,
-        'Simple starts collapsed to voice readiness',
+        0,
+        'Simple keeps the sidebar bottom to the slider; engines open from its popover',
       );
       await chooseView('models');
       for (const family of ['tts', 'asr', 'llm', 'translation', 'dictation', 'diarisation']) {
@@ -85,27 +85,27 @@ try {
       assert.ok(await speech.evaluate((el) => el === document.activeElement));
       assert.equal(await page.locator('[data-slot=tooltip-content][data-open]').count(), 0);
       await speech.blur();
-      // Speed / quality is a radiogroup of tiers (Fast/Balanced/Quality/Max) with an Auto toggle.
-      const tiers = footer.getByRole('radiogroup', {
+      // Speed / quality is a four-notch slider (Fast/Balanced/Quality/Max) with an Auto toggle.
+      const tier = footer.getByRole('slider', {
         name: strings.performanceProfile.title,
         exact: true,
       });
-      await tiers.waitFor();
-      assert.ok(await tiers.getAttribute('aria-describedby'));
-      assert.equal(
-        await tiers.locator('[role=radio][aria-checked=true]').count(),
-        1,
-        'Exactly one speed/quality tier is selected',
-      );
+      await tier.waitFor();
+      assert.ok(await tier.getAttribute('aria-describedby'));
+      assert.ok(await tier.getAttribute('aria-valuetext'), 'The selected tier is announced');
       for (const level of ['simple', 'models', 'details']) {
         await chooseView(level);
-        assert.equal(
-          await footer.locator('#sidebar-engine-details').getAttribute('data-detail-level'),
-          level,
-        );
+        if (level === 'simple') {
+          assert.equal(await footer.locator('#sidebar-engine-details').count(), 0);
+        } else {
+          assert.equal(
+            await footer.locator('#sidebar-engine-details').getAttribute('data-detail-level'),
+            level,
+          );
+        }
         assert.equal(
           await footer.locator('[data-slot=engine-row]').count(),
-          level === 'simple' ? 1 : 6,
+          level === 'simple' ? 0 : 6,
           'Views replace one another; engine rows are never duplicated',
         );
         if (level === 'details') {

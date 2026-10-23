@@ -675,33 +675,19 @@ export function VoicesSidebar({
               value="voices"
               title={t('clone.saved_profiles')}
               aria-label={t('clone.saved_profiles')}
-              className="min-w-0 flex-none data-active:flex-1 @[300px]/library:flex-1 rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent/50 data-active:bg-[var(--sidebar-row-active)] data-active:text-sidebar-foreground dark:data-active:border-transparent dark:data-active:bg-[var(--sidebar-row-active)] dark:data-active:text-sidebar-foreground"
+              className="min-w-0 flex-1 rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent/50 data-active:bg-[var(--sidebar-row-active)] data-active:text-sidebar-foreground dark:data-active:border-transparent dark:data-active:bg-[var(--sidebar-row-active)] dark:data-active:text-sidebar-foreground"
             >
               <FingerprintIcon data-icon="inline-start" />
-              <span
-                className={cn(
-                  'min-w-0 truncate',
-                  tab !== 'voices' && 'hidden @[300px]/library:inline',
-                )}
-              >
-                {t('clone.saved_profiles')}
-              </span>
+              <span className="min-w-0 truncate">{t('clone.saved_profiles')}</span>
             </TabsTrigger>
             <TabsTrigger
               value="takes"
               title={t('clone.history_title')}
               aria-label={t('clone.history_title')}
-              className="min-w-0 flex-none data-active:flex-1 @[300px]/library:flex-1 rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent/50 data-active:bg-[var(--sidebar-row-active)] data-active:text-sidebar-foreground dark:data-active:border-transparent dark:data-active:bg-[var(--sidebar-row-active)] dark:data-active:text-sidebar-foreground"
+              className="min-w-0 flex-1 rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent/50 data-active:bg-[var(--sidebar-row-active)] data-active:text-sidebar-foreground dark:data-active:border-transparent dark:data-active:bg-[var(--sidebar-row-active)] dark:data-active:text-sidebar-foreground"
             >
               <HistoryIcon data-icon="inline-start" />
-              <span
-                className={cn(
-                  'min-w-0 truncate',
-                  tab !== 'takes' && 'hidden @[300px]/library:inline',
-                )}
-              >
-                {t('clone.history_title')}
-              </span>
+              <span className="min-w-0 truncate">{t('clone.history_title')}</span>
             </TabsTrigger>
           </TabsList>
         </div>

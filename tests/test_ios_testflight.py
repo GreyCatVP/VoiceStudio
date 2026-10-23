@@ -63,3 +63,44 @@ def test_workflow_signs_verifies_and_cleans_up_the_key():
     assert "testFlightInternalTestingOnly bool true" in source
     # Secrets reach only the steps that need them, never the whole job.
     assert "secrets." not in yaml.dump(load_workflow()["jobs"]["testflight"].get("env", {}))
+
+
+def test_archive_check_matches_automatic_signing():
+    # The archive carries the development identity until export re-signs it, so
+    # requiring Apple Distribution here failed every run; check the team instead.
+    steps = load_workflow()["jobs"]["testflight"]["steps"]
+    verify = next(step for step in steps if step.get("name") == "Verify archive signature and version")
+    assert "Authority=Apple Distribution" not in verify["run"]
+    assert 'TeamIdentifier=$TEAM_ID' in verify["run"]
+    assert verify["env"]["TEAM_ID"] == "${{ secrets.APPLE_TEAM_ID }}"
+
+
+IOS = ROOT / "mobile" / "ios" / "VoiceStudio"
+
+
+def test_app_store_validation_requirements():
+    # Each check mirrors an App Store Connect upload rejection (run 39956020986).
+    assert load_workflow()["jobs"]["testflight"]["runs-on"] == "macos-26"
+    info = plistlib.loads((IOS / "Info.plist").read_bytes())
+    assert info["CFBundleIconName"] == "AppIcon"
+    assert set(info["UISupportedInterfaceOrientations~ipad"]) == {
+        "UIInterfaceOrientationPortrait",
+        "UIInterfaceOrientationPortraitUpsideDown",
+        "UIInterfaceOrientationLandscapeLeft",
+        "UIInterfaceOrientationLandscapeRight",
+    }
+    project = yaml.safe_load((IOS / "project.yml").read_text())
+    assert project["targets"]["VoiceStudio"]["settings"]["base"]["ASSETCATALOG_COMPILER_APPICON_NAME"] == "AppIcon"
+
+
+def test_app_icon_is_an_opaque_1024_png():
+    png = (IOS / "Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png").read_bytes()
+    assert png[:8] == b"\x89PNG\r\n\x1a\n"
+    width, height = int.from_bytes(png[16:20], "big"), int.from_bytes(png[20:24], "big")
+    assert (width, height) == (1024, 1024)
+    assert png[25] == 2, "App Store icons must be RGB without an alpha channel"
+
+
+def test_mobile_ci_builds_ios_with_the_upload_toolchain():
+    mobile = yaml.load((ROOT / ".github/workflows/mobile.yml").read_text(), Loader=yaml.BaseLoader)
+    assert mobile["jobs"]["ios"]["runs-on"] == load_workflow()["jobs"]["testflight"]["runs-on"]

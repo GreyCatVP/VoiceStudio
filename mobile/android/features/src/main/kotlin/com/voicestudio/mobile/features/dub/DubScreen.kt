@@ -32,17 +32,13 @@ import kotlinx.serialization.json.*
     val works by workFlow.collectAsState(emptyList())
     val scope=rememberCoroutineScope()
     var visibleFailures by remember(host) {mutableStateOf(emptySet<java.util.UUID>())}
-    LaunchedEffect(works) {
-        for(info in works) if(info.state == WorkInfo.State.FAILED && info.id !in visibleFailures) {
-            try {
-                if(vm.store.consumeDubFailure(info.id)) visibleFailures = visibleFailures + info.id
-            } catch(cancelled: CancellationException) {throw cancelled}
-            catch(error: Exception) {
-                // A failed receipt write must never hide the actual job error.
-                visibleFailures = visibleFailures + info.id
-                vm.fail(error)
-            }
-        }
+    LaunchedEffect(host) {
+        collectDubFailureReceipts(
+            snapshotFlow { works.filter { it.state == WorkInfo.State.FAILED }.map { it.id }.toSet() },
+            consume = { vm.store.consumeDubFailure(it) },
+            display = { visibleFailures = visibleFailures + it },
+            report = vm::fail,
+        )
     }
     var link by rememberSaveable {mutableStateOf("")}
     var filePath by rememberSaveable {mutableStateOf<String?>(null)}
