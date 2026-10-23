@@ -121,6 +121,11 @@ _CHANGE_CASES = [
     ("English", "**bold** and **more** here", "bold and more here"),
     # Digits still verbalize around a surviving arithmetic asterisk
     ("English", "2 * 3 = 6", "two * three = six"),
+    ("English", "2 * 3 * 4 equals", "two * three * four equals"),
+    # Emphasis spans soft line breaks
+    ("English", "Say **first line\nsecond line** now", "Say first line\nsecond line now"),
+    # Emphasis around a speech control strips; the control survives
+    ("English", "**Hello [pause 300ms] world**", "Hello [pause 300ms] world"),
 ]
 
 
@@ -226,6 +231,7 @@ _UNCHANGED_CASES = [
     ("English", "[[term|5]] stays bracket-managed"),
     # Unpaired markers and non-delimiter uses survive (#3197)
     ("English", "use snake_case names"),
+    ("English", "foo__bar__baz here"),
     ("English", "a lone * stays"),
     ("English", "[**bold**] markers inside brackets stay untouched"),
     # Plain text is byte-identical
