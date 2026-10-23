@@ -106,7 +106,7 @@ models:
     role: ASR
     engines: [pytorch-whisper]
     size_gb: 1.6
-    platforms: [cuda, rocm, cpu]
+    platforms: [cuda, rocm, cpu, darwin-arm64]
     note: "Transformers-format Whisper weights — the checkpoint the automatic reference transcription fallback loads when no installed speech engine was attached. Install it if voice cloning reports a missing transcription model."
 
   - repo_id: "mlx-community/whisper-tiny-mlx"

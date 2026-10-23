@@ -150,7 +150,7 @@ def list_loaded() -> dict:
     if mm.model is not None and getattr(mm.model, "_asr_pipe", None) is not None:
         models.append({
             "id": "asr",
-            "name": "Reference Transcription ASR",
+            "name": "Whisper",
             "checkpoint": _loaded_asr_checkpoint(mm.model._asr_pipe),
             "device": _asr_device(),
             "vram_mb": 0,

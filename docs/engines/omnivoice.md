@@ -59,7 +59,8 @@ The env var overrides the persisted UI choice.
   has none, VoiceStudio uses an already-installed speech recognizer on first
   use and saves the result to the profile. This includes the catalogue’s
   Whisper Turbo CT2 build; cloning does not require a second Transformers copy.
-  The model-level Whisper fallback
+  The PyTorch Whisper Turbo fallback is available in Model Catalogue on
+  macOS (including Apple Silicon), Windows and Linux. The model-level fallback
   also requires cached weights; it never downloads another ASR during cloning.
   It reuses any installed snapshot of the configured PyTorch Whisper model
   (`OMNIVOICE_PYTORCH_ASR_MODEL`), `openai/whisper-large-v3-turbo` or
