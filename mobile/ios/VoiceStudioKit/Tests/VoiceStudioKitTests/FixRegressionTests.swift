@@ -176,7 +176,10 @@ func playbackUsesMinutesAndSeconds(_ sample: (Double, String)) { #expect(Playbac
     #expect(catalog.language("es")?.name == "Spanish")
     let rootVersion = try #require((JSONSerialization.jsonObject(with: Data(contentsOf: repository.appendingPathComponent("package.json"))) as? [String: Any])?["version"] as? String)
     let info = try #require(PropertyListSerialization.propertyList(from: Data(contentsOf: output.appendingPathComponent("Info.plist")), format: nil) as? [String: Any])
-    #expect(info["CFBundleShortVersionString"] as? String == rootVersion)
+    // App Store Connect accepts only X.Y.Z, so a Beta channel version drops its -beta.N here.
+    let marketingVersion = rootVersion.replacingOccurrences(of: #"-beta\.\d+$"#, with: "", options: .regularExpression)
+    #expect(info["CFBundleShortVersionString"] as? String == marketingVersion)
+    #expect(info["CFBundleVersion"] as? String == "1")
     for locale in L10n.languages {
         let strings = try #require(PropertyListSerialization.propertyList(from: Data(contentsOf: output.appendingPathComponent(locale + ".lproj/InfoPlist.strings")), format: nil) as? [String: String])
         #expect(strings["NSMicrophoneUsageDescription"]?.isEmpty == false)
