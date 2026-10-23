@@ -128,6 +128,8 @@ function brandIconPath(file: string): string {
     : join(backendRoot(), 'electron', 'build', 'icons', file);
 }
 
+ipcMain.handle('app:is-fullscreen', (event) => BrowserWindow.fromWebContents(event.sender)?.isFullScreen() ?? false);
+
 function createWindow(): BrowserWindow {
   const appUrl =
     is.dev && process.env.ELECTRON_RENDERER_URL
@@ -154,6 +156,8 @@ function createWindow(): BrowserWindow {
     },
   });
 
+  win.on('enter-full-screen', () => win.webContents.send('app:fullscreen', true));
+  win.on('leave-full-screen', () => win.webContents.send('app:fullscreen', false));
   win.on('ready-to-show', () => activateLiveWindow(win));
   win.on('close', (event) => {
     if (quitting) return;

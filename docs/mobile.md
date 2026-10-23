@@ -130,3 +130,9 @@ never sends a release to production. One-time setup:
 The version name is the root `package.json` version; the version code is the
 workflow run number × 10 plus the attempt, so every upload is new. Local and
 `mobile` workflow builds stay debug-signed.
+
+## Dubbing errors
+
+Android keeps a failed computer dubbing job visible while you stay on the Dub
+screen. Worker updates do not dismiss the error, and reopening the screen does
+not repeat an error already shown.

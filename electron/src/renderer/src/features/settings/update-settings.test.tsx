@@ -32,11 +32,9 @@ const mocks = vi.hoisted(() => ({
   activeWork: false,
 }));
 
-// One bridge object, like window.voicestudio. A fresh object per call changed the
-// component's `updates` dependency on every render, re-running its getState()
-// effect and letting a stale answer overwrite the state under test (the Beta
-// switch test timed out in ~1 of 5 runs on a loaded machine).
 vi.mock('@/components/bridge', () => {
+  // Electron exposes one stable bridge. Recreating it on every render reruns
+  // the state-subscription effect and can overwrite a completed update check.
   const bridge = {
     updates: {
       getState: mocks.getState,
@@ -146,6 +144,7 @@ describe('UpdateSettings', () => {
     await waitFor(() => expect(mocks.setChannel).toHaveBeenCalledWith('beta'));
     await waitFor(() => expect(mocks.check).toHaveBeenCalledOnce());
     expect(await screen.findByText('update.available')).toBeInTheDocument();
+    expect(mocks.getState).toHaveBeenCalledOnce();
   });
 
   test('does not check when the channel switch is refused', async () => {

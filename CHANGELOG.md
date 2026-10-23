@@ -26,6 +26,13 @@ metadata and the backend fallback mirror it.
 
 ### Fixed
 
+- Speed/quality changes finish as soon as they are saved, even while the clone controls are still loading (#3031)
+- Android dubbing errors remain visible when worker updates arrive while their receipt is being saved (#3031)
+- Speed / quality in the sidebar is a simple slider again; models and hardware fit open in a popover on hover, click or change, so the simplest view leaves the sidebar bottom free (#3031)
+- The Latest take panel is more compact: file details, render time and Check audio share one row (#3031)
+- The sidebar's Saved voices and Recent takes buttons both keep their labels instead of collapsing the inactive one to an icon (#3031)
+- On macOS full screen the sidebar logo moves into the freed corner, the compact rail drops its traffic-light gap (#3031)
+
 - Bug reports no longer risk freezing the app while looking for your tools: the Node-version folder scan now runs off the main thread (#3180)
 - Bug reports no longer freeze the app when the tool search or a drive stalls, and free disk is only borrowed from a parent folder when the install folder doesn't exist yet (#3179)
 - Model licence dialog is wider and scrolls as one area with the buttons pinned, and follows macOS, Windows and Linux dialog conventions (#3160)
@@ -50,6 +57,10 @@ metadata and the backend fallback mirror it.
 ### Fixed
 
 - The installed app now rebuilds a Python environment that antivirus or disk cleanup removed, once per launch with the usual setup progress, instead of stopping at a setup error; your voices and projects are untouched (#3032) — thanks @afraniohugo and @javalovelinux-cmd!
+
+### Changed
+
+- The sponsor footer is gone from the app; sponsored integrations keep a Featured badge on their card in Integrations (#3031)
 
 ### Docs
 
