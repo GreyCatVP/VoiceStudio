@@ -711,9 +711,14 @@ def _phase_a_build_inner() -> None:
         # if dependent DLLs or the VC++ runtime are missing. Audio I/O routes
         # through services.audio_io with soundfile/ffmpeg fallbacks, so an
         # extension failure must not abort backend startup.
+        try:
+            from core.scrub import scrub_text as _scrub
+            _ta_msg = _scrub(str(_ta_exc))
+        except Exception:
+            _ta_msg = type(_ta_exc).__name__
         logger.warning(
             "torchaudio import failed (%s); audio I/O will use soundfile/ffmpeg fallback (#3147)",
-            _ta_exc,
+            _ta_msg,
         )
     from utils import hf_progress
     # HF tqdm patch before any library import that can trigger

@@ -65,8 +65,13 @@ try:
     import torchaudio
 except (ImportError, OSError) as _ta_err:  # #3147: Windows libtorchaudio DLL dependency missing
     torchaudio = None  # type: ignore[assignment]
+    try:
+        from core.scrub import scrub_text as _scrub
+        _ta_msg = _scrub(str(_ta_err))
+    except Exception:
+        _ta_msg = type(_ta_err).__name__
     logging.getLogger("omnivoice.audio_io").debug(
-        "torchaudio extension unavailable (%s); using soundfile/ffmpeg fallback", _ta_err
+        "torchaudio extension unavailable (%s); using soundfile/ffmpeg fallback", _ta_msg
     )
 
 logger = logging.getLogger("omnivoice.audio_io")

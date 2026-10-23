@@ -16,7 +16,10 @@ extension must never crash backend startup.
 from __future__ import annotations
 
 import ast
+import builtins
+import importlib
 import io
+import logging
 import os
 import re
 from pathlib import Path
@@ -27,6 +30,7 @@ import torch
 _REPO = Path(__file__).resolve().parents[1]
 _MAIN = _REPO / "backend" / "main.py"
 _AUDIO_IO = _REPO / "backend" / "services" / "audio_io.py"
+_WATERMARK = _REPO / "backend" / "api" / "routers" / "watermark.py"
 _BACKEND_CRASH = _REPO / "electron" / "src" / "shared" / "utils" / "backendCrash.ts"
 
 
@@ -72,6 +76,49 @@ def test_main_registers_torch_lib_on_windows():
     source = _MAIN.read_text(encoding="utf-8")
     assert "add_dll_directory" in source
     assert "_dll_dir_cookies" in source
+
+
+def test_watermark_router_has_no_unused_torchaudio_import():
+    """`backend/api/routers/watermark.py` must not import torchaudio directly."""
+    source = _WATERMARK.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                assert alias.name != "torchaudio", (
+                    "watermark router must not carry an unused top-level import torchaudio (#3147)"
+                )
+        elif isinstance(node, ast.ImportFrom):
+            assert node.module != "torchaudio", (
+                "watermark router must not carry an unused import from torchaudio (#3147)"
+            )
+
+
+def test_audio_io_module_import_handles_oserror(monkeypatch, tmp_path):
+    """services.audio_io must set torchaudio=None when importing torchaudio raises OSError."""
+    import services.audio_io as aio
+
+    real_import = builtins.__import__
+
+    def failing_import(name, *args, **kwargs):
+        if name == "torchaudio":
+            raise OSError("Could not find module 'C:\\Users\\alice\\torchaudio\\lib\\libtorchaudio.pyd'")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", failing_import)
+    try:
+        importlib.reload(aio)
+        assert aio.torchaudio is None, "torchaudio must be None when import raises OSError"
+
+        # Verify fallback write works after simulated import failure
+        out_path = tmp_path / "saved_after_import_error.wav"
+        dummy_audio = torch.zeros(1, 16000, dtype=torch.float32)
+        aio._safe_torchaudio_save(out_path, dummy_audio, 16000, format="wav")
+        assert out_path.exists()
+        assert out_path.stat().st_size > 0
+    finally:
+        monkeypatch.undo()
+        importlib.reload(aio)
 
 
 def test_audio_io_handles_missing_or_failing_torchaudio(monkeypatch, tmp_path):
