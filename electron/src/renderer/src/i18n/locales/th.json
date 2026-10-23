@@ -1555,7 +1555,30 @@
     "ray_use_token": "ยืนยันตัวตนด้วย Ray token",
     "ray_use_token_hint": "เปิดเมื่อคลัสเตอร์กำหนดให้ใช้ Ray auth token (RAY_AUTH_MODE=token)",
     "ray_use_cf": "Cloudflare Access",
-    "ray_use_cf_hint": "เปิดเมื่อแดชบอร์ดอยู่หลัง Cloudflare Access แล้วใส่ client ID และ secret ของ service token"
+    "ray_use_cf_hint": "เปิดเมื่อแดชบอร์ดอยู่หลัง Cloudflare Access แล้วใส่ client ID และ secret ของ service token",
+    "hf_source_openbao_label": "OpenBao",
+    "openbao_title": "ที่เก็บความลับ OpenBao",
+    "openbao_enabled": "อ่านโทเค็น Hugging Face จาก OpenBao",
+    "openbao_desc": "ดึงโทเค็นจาก OpenBao หรือ Vault (KV v2) ของคุณเองทุกครั้งที่ต้องใช้ และเก็บไว้ในหน่วยความจำเท่านั้น จะไม่มีการส่งข้อมูลใดจนกว่าคุณจะเปิดตัวเลือกนี้",
+    "openbao_addr": "ที่อยู่",
+    "openbao_addr_help": "ต้องใช้ HTTPS เว้นแต่ OpenBao ทำงานอยู่บนคอมพิวเตอร์เครื่องนี้",
+    "openbao_mount": "จุดเมานต์ KV v2",
+    "openbao_path": "พาธของความลับ",
+    "openbao_field": "ฟิลด์",
+    "openbao_token": "โทเค็น OpenBao",
+    "openbao_token_help": "ใช้โทเค็นแบบ periodic หรือต่ออายุได้ ที่มีนโยบายให้อ่านได้เฉพาะพาธนี้ โทเค็นจะถูกเก็บแบบเข้ารหัสและจะไม่แสดงอีก",
+    "openbao_token_saved": "บันทึกโทเค็นแล้ว",
+    "openbao_token_remove": "ลบโทเค็น",
+    "openbao_env_pinned": "กำหนดโดยตัวแปรสภาพแวดล้อม",
+    "openbao_test": "ทดสอบ",
+    "openbao_test_ok": "อ่านความลับได้: {{masked}}",
+    "openbao_ttl": "โทเค็นหมดอายุใน {{hours}} ชม.",
+    "openbao_error_unreachable": "เชื่อมต่อ OpenBao ที่ที่อยู่นี้ไม่ได้",
+    "openbao_error_sealed": "OpenBao ถูกซีลอยู่ ให้ปลดซีลที่เซิร์ฟเวอร์ แนะนำให้ตั้งค่า auto-unseal",
+    "openbao_error_denied": "ไม่ได้รับอนุญาต: โทเค็นไม่ถูกต้องหรือหมดอายุ หรือนโยบายของโทเค็นอ่านพาธนี้ไม่ได้",
+    "openbao_error_not_found": "ไม่พบความลับหรือฟิลด์นี้ที่พาธนี้",
+    "openbao_error_not_configured": "กรอกที่อยู่ พาธของความลับ และโทเค็นก่อน",
+    "openbao_error_error": "OpenBao ตอบกลับด้วยข้อผิดพลาดที่ไม่คาดคิด"
   },
   "gallery": {
     "title": "แกลเลอรี VoiceStudio",
@@ -1680,7 +1703,9 @@
     "watch_started": "กำลังติดตาม {{folder}} — วิดีโอใหม่จะถูกเพิ่มเข้าคิวอัตโนมัติ",
     "watch_unsupported": "การติดตามโฟลเดอร์ต้องใช้แอปเดสก์ท็อปหรือเบราว์เซอร์ที่ใช้ Chromium — ใช้ เพิ่มวิดีโอ แทน",
     "watch_failed": "หยุดติดตามโฟลเดอร์แล้ว — อ่านโฟลเดอร์ไม่ได้แล้ว (ถูกย้าย ถูกลบ หรือสิทธิ์เปลี่ยน) เลือกโฟลเดอร์อีกครั้งเพื่อติดตามต่อ",
-    "watch_start_failed": "เริ่มติดตามโฟลเดอร์นั้นไม่ได้ — เลือกโฟลเดอร์อีกครั้งเพื่อลองใหม่"
+    "watch_start_failed": "เริ่มติดตามโฟลเดอร์นั้นไม่ได้ — เลือกโฟลเดอร์อีกครั้งเพื่อลองใหม่",
+    "stage_separate": "🎚️ กำลังแยกเสียงพูดออกจากเสียงพื้นหลัง…",
+    "warnings_title": "เสร็จแล้ว แต่มีคำเตือน"
   },
   "dictation": {
     "flag_smart_cleanup": "ตัดคำเติม (เอ่อ อืม)",
@@ -2055,7 +2080,9 @@
     "translator_unknown": "ไม่ทราบ",
     "watermark_subtitle": "เปิดอยู่โดยค่าเริ่มต้น ทำเครื่องหมายเสียงที่สร้างขึ้นว่าเป็นผลงานของ AI เพื่อให้ระบุได้ในภายหลัง มีผลกับเสียงที่สร้างจากนี้ไปเท่านั้น",
     "analytics_subtitle": "ปิดไว้โดยค่าเริ่มต้น ข้อมูลนิรนามเกี่ยวกับเอนจิน ภาษา ระยะเวลา จำนวนอักขระ และประเภทข้อผิดพลาด ไม่ส่งข้อความหรือเสียงของคุณ",
-    "watermark_title": "ลายน้ำที่มองไม่เห็น"
+    "watermark_title": "ลายน้ำที่มองไม่เห็น",
+    "persona_include_ref_title": "รวมคลิปอ้างอิงต้นฉบับเมื่อส่งออกชุดเสียง",
+    "persona_include_ref_subtitle": "ค่าเริ่มต้นของการส่งออกชุดเสียง ปิด = ไฟล์มีแค่ตัวอย่างที่ฝังลายน้ำ (แนะนำ) ยังเปลี่ยนได้ทุกครั้งที่ส่งออก"
   },
   "updates": {
     "tab": "อัปเดต",
@@ -2330,7 +2357,8 @@
     "attest_permission": "ฉันได้รับอนุญาตจากผู้พูด",
     "attested_own_voice": "ยืนยันแล้ว: นี่คือเสียงของฉัน",
     "attested_permission": "ยืนยันแล้ว: ฉันได้รับอนุญาตจากผู้พูด",
-    "attest_clear": "ลบการยืนยัน"
+    "attest_clear": "ลบการยืนยัน",
+    "persona_export_no_audio_fix": "สร้างเสียงตัวอย่างใน ลองเสียงนี้ แล้วล็อกไว้ หรือนำเข้าคลิปเสียงใหม่ จากนั้นส่งออกอีกครั้ง"
   },
   "nav": {
     "home": "หน้าหลัก",

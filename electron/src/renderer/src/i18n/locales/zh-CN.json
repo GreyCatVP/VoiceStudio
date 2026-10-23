@@ -1555,7 +1555,30 @@
     "ray_use_token": "Ray 令牌认证",
     "ray_use_token_hint": "集群要求 Ray 认证令牌时开启（RAY_AUTH_MODE=token）。",
     "ray_use_cf": "Cloudflare Access",
-    "ray_use_cf_hint": "控制台位于 Cloudflare Access 之后时开启，并填写服务令牌的客户端 ID 和密钥。"
+    "ray_use_cf_hint": "控制台位于 Cloudflare Access 之后时开启，并填写服务令牌的客户端 ID 和密钥。",
+    "hf_source_openbao_label": "OpenBao",
+    "openbao_title": "OpenBao 密钥存储",
+    "openbao_enabled": "从 OpenBao 读取 Hugging Face 令牌",
+    "openbao_desc": "每次需要时从你自己的 OpenBao 或 Vault (KV v2) 获取令牌，且仅保存在内存中。开启此选项前不会发送任何内容。",
+    "openbao_addr": "地址",
+    "openbao_addr_help": "除非 OpenBao 运行在本机上，否则必须使用 HTTPS。",
+    "openbao_mount": "KV v2 挂载点",
+    "openbao_path": "密钥路径",
+    "openbao_field": "字段",
+    "openbao_token": "OpenBao 令牌",
+    "openbao_token_help": "请使用策略仅能读取此路径的周期性或可续期令牌。令牌会加密保存，且不会再次显示。",
+    "openbao_token_saved": "令牌已保存",
+    "openbao_token_remove": "移除令牌",
+    "openbao_env_pinned": "由环境变量设置",
+    "openbao_test": "测试",
+    "openbao_test_ok": "已读取密钥：{{masked}}",
+    "openbao_ttl": "令牌将在 {{hours}} 小时后过期",
+    "openbao_error_unreachable": "无法连接到此地址的 OpenBao。",
+    "openbao_error_sealed": "OpenBao 已密封。请在服务器上解封；建议启用 auto-unseal。",
+    "openbao_error_denied": "权限被拒绝：令牌无效或已过期，或其策略无法读取此路径。",
+    "openbao_error_not_found": "此路径下没有密钥或没有该字段。",
+    "openbao_error_not_configured": "请先填写地址、密钥路径和令牌。",
+    "openbao_error_error": "OpenBao 返回了意外错误。"
   },
   "gallery": {
     "title": "VoiceStudio 音色库",
@@ -1680,7 +1703,9 @@
     "watch_started": "正在监视 {{folder}} — 新视频会自动加入队列",
     "watch_unsupported": "文件夹监视需要桌面应用或基于 Chromium 的浏览器 — 请改用“添加视频”。",
     "watch_failed": "监视已停止 — 文件夹无法再读取（已移动、删除或权限更改）。请重新选择该文件夹以继续。",
-    "watch_start_failed": "无法开始监视该文件夹 — 请重新选择以重试。"
+    "watch_start_failed": "无法开始监视该文件夹 — 请重新选择以重试。",
+    "stage_separate": "🎚️ 正在将人声与背景分离…",
+    "warnings_title": "已完成，但有警告"
   },
   "dictation": {
     "flag_smart_cleanup": "删除口头填充词",
@@ -2055,7 +2080,9 @@
     "translator_unknown": "未知",
     "watermark_subtitle": "默认开启。将生成的音频标记为 AI 制作，以便日后识别。仅影响从现在起生成的音频。",
     "analytics_subtitle": "默认关闭。引擎、语言、时长、字符数和错误类型的匿名统计。绝不发送您的文本或音频。",
-    "watermark_title": "不可见水印"
+    "watermark_title": "不可见水印",
+    "persona_include_ref_title": "导出角色时包含原始参考片段",
+    "persona_include_ref_subtitle": "“导出角色”的默认设置。关闭 = 文件仅包含带水印的预览（推荐）。每次导出时仍可更改。"
   },
   "updates": {
     "tab": "更新",
@@ -2330,7 +2357,8 @@
     "attest_permission": "我已获得说话人的许可",
     "attested_own_voice": "已确认：这是我的声音",
     "attested_permission": "已确认：我已获得说话人的许可",
-    "attest_clear": "移除确认"
+    "attest_clear": "移除确认",
+    "persona_export_no_audio_fix": "在“试试这个声音”中生成预览并锁定，或重新导入语音片段，然后再次导出。"
   },
   "nav": {
     "home": "主页",

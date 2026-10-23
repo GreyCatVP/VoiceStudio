@@ -1555,7 +1555,30 @@
     "ray_use_token": "Ray トークン認証",
     "ray_use_token_hint": "クラスターが Ray 認証トークンを要求する場合にオンにします（RAY_AUTH_MODE=token）。",
     "ray_use_cf": "Cloudflare Access",
-    "ray_use_cf_hint": "ダッシュボードが Cloudflare Access の背後にある場合にオンにし、サービストークンのクライアント ID とシークレットを入力します。"
+    "ray_use_cf_hint": "ダッシュボードが Cloudflare Access の背後にある場合にオンにし、サービストークンのクライアント ID とシークレットを入力します。",
+    "hf_source_openbao_label": "OpenBao",
+    "openbao_title": "OpenBao シークレットストア",
+    "openbao_enabled": "Hugging Face トークンを OpenBao から読み込む",
+    "openbao_desc": "必要になるたびに自分の OpenBao または Vault (KV v2) からトークンを取得し、メモリ上にのみ保持します。オンにするまで何も送信されません。",
+    "openbao_addr": "アドレス",
+    "openbao_addr_help": "OpenBao がこのコンピューター上で動作していない場合は HTTPS が必要です。",
+    "openbao_mount": "KV v2 マウント",
+    "openbao_path": "シークレットのパス",
+    "openbao_field": "フィールド",
+    "openbao_token": "OpenBao トークン",
+    "openbao_token_help": "このパスだけを読み取れるポリシーを持つ、定期または更新可能なトークンを使用してください。暗号化して保存され、再表示されることはありません。",
+    "openbao_token_saved": "トークンを保存しました",
+    "openbao_token_remove": "トークンを削除",
+    "openbao_env_pinned": "環境変数で設定済み",
+    "openbao_test": "テスト",
+    "openbao_test_ok": "シークレットを読み取りました: {{masked}}",
+    "openbao_ttl": "トークンの有効期限まで {{hours}} 時間",
+    "openbao_error_unreachable": "このアドレスの OpenBao に接続できません。",
+    "openbao_error_sealed": "OpenBao はシール状態です。サーバー側でアンシールしてください。auto-unseal を推奨します。",
+    "openbao_error_denied": "アクセスが拒否されました: トークンが無効か期限切れ、またはそのポリシーではこのパスを読み取れません。",
+    "openbao_error_not_found": "このパスにシークレット、または該当するフィールドがありません。",
+    "openbao_error_not_configured": "先にアドレス、シークレットのパス、トークンを入力してください。",
+    "openbao_error_error": "OpenBao が予期しないエラーを返しました。"
   },
   "gallery": {
     "title": "VoiceStudio ギャラリー",
@@ -1680,7 +1703,9 @@
     "watch_started": "{{folder}} を監視中 — 新しい動画は自動的にキューへ追加されます",
     "watch_unsupported": "フォルダー監視にはデスクトップアプリまたはChromiumベースのブラウザーが必要です。代わりに「動画を追加」をご利用ください。",
     "watch_failed": "フォルダー監視を停止しました — フォルダーを読み取れません（移動・削除・権限変更の可能性）。再開するにはフォルダーを選び直してください。",
-    "watch_start_failed": "そのフォルダーの監視を開始できませんでした。フォルダーを選び直して再試行してください。"
+    "watch_start_failed": "そのフォルダーの監視を開始できませんでした。フォルダーを選び直して再試行してください。",
+    "stage_separate": "🎚️ 声を背景音から分離中…",
+    "warnings_title": "警告ありで完了"
   },
   "dictation": {
     "flag_smart_cleanup": "つなぎ言葉を削除",
@@ -2055,7 +2080,9 @@
     "translator_unknown": "不明",
     "watermark_subtitle": "既定で有効。生成した音声を AI 生成として印付けし、後から識別できるようにします。今後生成する音声にのみ適用されます。",
     "analytics_subtitle": "初期設定では無効です。エンジン、言語、所要時間、文字数、エラーの種類を匿名で送信します。テキストや音声は送信しません。",
-    "watermark_title": "不可視の透かし"
+    "watermark_title": "不可視の透かし",
+    "persona_include_ref_title": "ペルソナのエクスポート時に元の参照クリップを含める",
+    "persona_include_ref_subtitle": "「ペルソナのエクスポート」の既定値です。オフ = ファイルには透かし入りのプレビューのみが含まれます (推奨)。エクスポートごとに変更することもできます。"
   },
   "updates": {
     "tab": "アップデート",
@@ -2330,7 +2357,8 @@
     "attest_permission": "話者の許可を得ています",
     "attested_own_voice": "確認済み：自分の声です",
     "attested_permission": "確認済み：話者の許可を得ています",
-    "attest_clear": "確認を取り消す"
+    "attest_clear": "確認を取り消す",
+    "persona_export_no_audio_fix": "「この声を試してみてください」でプレビューを生成してロックするか、音声クリップを再インポートしてから、もう一度エクスポートしてください。"
   },
   "nav": {
     "home": "ホーム",

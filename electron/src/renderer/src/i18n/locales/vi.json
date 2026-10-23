@@ -1555,7 +1555,30 @@
     "ray_use_token": "Xác thực bằng token Ray",
     "ray_use_token_hint": "Bật khi cụm yêu cầu token xác thực Ray (RAY_AUTH_MODE=token).",
     "ray_use_cf": "Cloudflare Access",
-    "ray_use_cf_hint": "Bật khi bảng điều khiển nằm sau Cloudflare Access; nhập client ID và secret của service token."
+    "ray_use_cf_hint": "Bật khi bảng điều khiển nằm sau Cloudflare Access; nhập client ID và secret của service token.",
+    "hf_source_openbao_label": "OpenBao",
+    "openbao_title": "Kho bí mật OpenBao",
+    "openbao_enabled": "Đọc token Hugging Face từ OpenBao",
+    "openbao_desc": "Lấy token từ OpenBao hoặc Vault (KV v2) của riêng bạn mỗi khi cần và chỉ giữ trong bộ nhớ. Không có gì được gửi đi cho đến khi bạn bật tùy chọn này.",
+    "openbao_addr": "Địa chỉ",
+    "openbao_addr_help": "Bắt buộc dùng HTTPS trừ khi OpenBao chạy trên máy tính này.",
+    "openbao_mount": "Điểm gắn KV v2",
+    "openbao_path": "Đường dẫn bí mật",
+    "openbao_field": "Trường",
+    "openbao_token": "Token OpenBao",
+    "openbao_token_help": "Dùng token định kỳ hoặc có thể gia hạn, với chính sách chỉ được đọc đường dẫn này. Token được lưu mã hóa và sẽ không hiển thị lại.",
+    "openbao_token_saved": "Đã lưu token",
+    "openbao_token_remove": "Xóa token",
+    "openbao_env_pinned": "Được đặt bởi biến môi trường",
+    "openbao_test": "Kiểm tra",
+    "openbao_test_ok": "Đã đọc bí mật: {{masked}}",
+    "openbao_ttl": "token hết hạn sau {{hours}} giờ",
+    "openbao_error_unreachable": "Không thể kết nối OpenBao tại địa chỉ này.",
+    "openbao_error_sealed": "OpenBao đang bị niêm phong. Hãy mở niêm phong trên máy chủ; khuyến nghị dùng auto-unseal.",
+    "openbao_error_denied": "Bị từ chối: token không hợp lệ hoặc đã hết hạn, hoặc chính sách của nó không đọc được đường dẫn này.",
+    "openbao_error_not_found": "Không có bí mật, hoặc không có trường này, tại đường dẫn này.",
+    "openbao_error_not_configured": "Hãy điền địa chỉ, đường dẫn bí mật và token trước.",
+    "openbao_error_error": "OpenBao trả về lỗi không mong đợi."
   },
   "gallery": {
     "title": "VoiceStudio Thư viện ảnh",
@@ -1680,7 +1703,9 @@
     "watch_started": "Đang theo dõi {{folder}} — video mới sẽ tự động được thêm vào hàng đợi",
     "watch_unsupported": "Theo dõi thư mục cần ứng dụng máy tính hoặc trình duyệt dựa trên Chromium — hãy dùng Thêm video thay thế.",
     "watch_failed": "Đã dừng theo dõi — không thể đọc thư mục nữa (đã di chuyển, bị xóa hoặc quyền đã thay đổi). Chọn lại thư mục để tiếp tục.",
-    "watch_start_failed": "Không thể bắt đầu theo dõi thư mục đó — hãy chọn lại để thử lại."
+    "watch_start_failed": "Không thể bắt đầu theo dõi thư mục đó — hãy chọn lại để thử lại.",
+    "stage_separate": "🎚️ Đang tách giọng nói khỏi nền…",
+    "warnings_title": "Hoàn tất với cảnh báo"
   },
   "dictation": {
     "flag_smart_cleanup": "Xóa từ đệm",
@@ -2055,7 +2080,9 @@
     "translator_unknown": "Không rõ",
     "watermark_subtitle": "Bật theo mặc định. Đánh dấu âm thanh được tạo là do AI tạo ra để có thể nhận biết về sau. Chỉ ảnh hưởng đến âm thanh được tạo từ giờ trở đi.",
     "analytics_subtitle": "Mặc định tắt. Dữ liệu ẩn danh về bộ máy, ngôn ngữ, thời lượng, số ký tự và loại lỗi. Không gửi văn bản hay âm thanh.",
-    "watermark_title": "Hình mờ vô hình"
+    "watermark_title": "Hình mờ vô hình",
+    "persona_include_ref_title": "Kèm clip tham chiếu gốc khi xuất nhân vật",
+    "persona_include_ref_subtitle": "Mặc định cho Xuất khẩu nhân vật. Tắt = tệp chỉ chứa bản xem trước có hình mờ (khuyến nghị). Bạn vẫn có thể thay đổi cho từng lần xuất."
   },
   "updates": {
     "tab": "Cập nhật",
@@ -2330,7 +2357,8 @@
     "attest_permission": "Tôi có sự cho phép của người nói",
     "attested_own_voice": "Đã xác nhận: đây là giọng của tôi",
     "attested_permission": "Đã xác nhận: tôi có sự cho phép của người nói",
-    "attest_clear": "Gỡ xác nhận"
+    "attest_clear": "Gỡ xác nhận",
+    "persona_export_no_audio_fix": "Tạo bản xem trước trong Hãy thử giọng nói này rồi khóa lại, hoặc nhập lại clip giọng nói, sau đó xuất lại."
   },
   "nav": {
     "home": "Trang chủ",

@@ -1555,7 +1555,30 @@
     "ray_use_token": "Autentikasi token Ray",
     "ray_use_token_hint": "Aktifkan bila kluster mewajibkan token autentikasi Ray (RAY_AUTH_MODE=token).",
     "ray_use_cf": "Cloudflare Access",
-    "ray_use_cf_hint": "Aktifkan bila dasbor berada di balik Cloudflare Access; masukkan client ID dan secret token layanan."
+    "ray_use_cf_hint": "Aktifkan bila dasbor berada di balik Cloudflare Access; masukkan client ID dan secret token layanan.",
+    "hf_source_openbao_label": "OpenBao",
+    "openbao_title": "Penyimpanan rahasia OpenBao",
+    "openbao_enabled": "Baca token Hugging Face dari OpenBao",
+    "openbao_desc": "Mengambil token dari OpenBao atau Vault (KV v2) milik Anda setiap kali dibutuhkan dan hanya menyimpannya di memori. Tidak ada yang dikirim sampai Anda mengaktifkan ini.",
+    "openbao_addr": "Alamat",
+    "openbao_addr_help": "HTTPS wajib, kecuali OpenBao berjalan di komputer ini.",
+    "openbao_mount": "Mount KV v2",
+    "openbao_path": "Jalur rahasia",
+    "openbao_field": "Kolom",
+    "openbao_token": "Token OpenBao",
+    "openbao_token_help": "Gunakan token periodik atau yang dapat diperpanjang dengan kebijakan yang hanya bisa membaca jalur ini. Token disimpan terenkripsi dan tidak akan ditampilkan lagi.",
+    "openbao_token_saved": "Token disimpan",
+    "openbao_token_remove": "Hapus token",
+    "openbao_env_pinned": "Disetel oleh variabel lingkungan",
+    "openbao_test": "Uji",
+    "openbao_test_ok": "Rahasia terbaca: {{masked}}",
+    "openbao_ttl": "token kedaluwarsa dalam {{hours}} jam",
+    "openbao_error_unreachable": "Tidak dapat menjangkau OpenBao di alamat ini.",
+    "openbao_error_sealed": "OpenBao tersegel. Buka segelnya di server; auto-unseal disarankan.",
+    "openbao_error_denied": "Izin ditolak: token tidak valid atau kedaluwarsa, atau kebijakannya tidak dapat membaca jalur ini.",
+    "openbao_error_not_found": "Tidak ada rahasia, atau kolom tersebut, di jalur ini.",
+    "openbao_error_not_configured": "Isi alamat, jalur rahasia, dan token terlebih dahulu.",
+    "openbao_error_error": "OpenBao mengembalikan kesalahan tak terduga."
   },
   "gallery": {
     "title": "VoiceStudio Galeri",
@@ -1680,7 +1703,9 @@
     "watch_started": "Memantau {{folder}} — video baru otomatis masuk ke antrean",
     "watch_unsupported": "Pemantauan folder memerlukan aplikasi desktop atau peramban berbasis Chromium — gunakan Tambah Video sebagai gantinya.",
     "watch_failed": "Pemantauan berhenti — folder tidak lagi dapat dibaca (dipindahkan, dihapus, atau izin berubah). Pilih lagi foldernya untuk melanjutkan.",
-    "watch_start_failed": "Tidak dapat mulai memantau folder itu — pilih lagi untuk mencoba ulang."
+    "watch_start_failed": "Tidak dapat mulai memantau folder itu — pilih lagi untuk mencoba ulang.",
+    "stage_separate": "🎚️ Memisahkan suara dari latar belakang…",
+    "warnings_title": "Selesai dengan peringatan"
   },
   "dictation": {
     "flag_smart_cleanup": "Hapus kata pengisi",
@@ -2055,7 +2080,9 @@
     "translator_unknown": "Tidak diketahui",
     "watermark_subtitle": "Aktif secara bawaan. Menandai audio hasil buatan sebagai dibuat AI agar dapat dikenali nanti. Hanya memengaruhi audio yang dibuat mulai sekarang.",
     "analytics_subtitle": "Nonaktif secara bawaan. Data anonim mesin, bahasa, durasi, jumlah karakter, dan jenis kesalahan. Bukan teks atau audio Anda.",
-    "watermark_title": "Tanda air tak terlihat"
+    "watermark_title": "Tanda air tak terlihat",
+    "persona_include_ref_title": "Sertakan klip referensi asli saat mengekspor persona",
+    "persona_include_ref_subtitle": "Bawaan untuk Ekspor kepribadian. Mati = file hanya berisi pratinjau bertanda air (disarankan). Anda tetap bisa mengubahnya di setiap ekspor."
   },
   "updates": {
     "tab": "Pembaruan",
@@ -2330,7 +2357,8 @@
     "attest_permission": "Saya punya izin dari pembicara",
     "attested_own_voice": "Dikonfirmasi: ini suara saya",
     "attested_permission": "Dikonfirmasi: saya punya izin dari pembicara",
-    "attest_clear": "Hapus konfirmasi"
+    "attest_clear": "Hapus konfirmasi",
+    "persona_export_no_audio_fix": "Buat pratinjau di Coba suara ini lalu kunci, atau impor ulang klip suara, kemudian ekspor lagi."
   },
   "nav": {
     "home": "Beranda",

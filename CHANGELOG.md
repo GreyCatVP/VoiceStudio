@@ -18,6 +18,7 @@ metadata and the backend fallback mirror it.
 - Smart Fit speed limits: set the fastest and slowest speed dubbing may apply to a line, from the Timing section (#3026) — thanks @MoonDragon-MD!
 - Remote GPU (opt-in): run selected engines on your own Ray cluster or Modal account, freeing the GPU after every run; offered when this computer has no GPU ([guide](docs/electron-ray-cluster.md)) (#1)
 - User guide in the app (English and Thai): how every workspace works, with diagrams and step-by-step annotated screenshots (#1)
+- OpenBao (opt-in): read the Hugging Face token from your own OpenBao or Vault KV v2 secret when needed instead of storing it, with a Test button ([guide](docs/setup/huggingface-token.md#reading-the-token-from-openbao)) (#1)
 - Typhoon Translate (Thai↔English) as a dubbing translator on your remote GPU, with glossary terms as translation rules ([guide](docs/electron-dubbing.md)) (#1)
 - Typhoon Whisper Turbo for Thai speech recognition (Thai only, about 5% character errors vs 13% for large-v3), locally or on your remote GPU; Thai word timings come back as whole words ([guide](docs/engines/faster-whisper.md)) (#1)
 - F5-TTS-THAI as a Thai + English voice-cloning engine on your remote GPU, using the best 8 s of your reference clip ([guide](docs/engines/f5-tts-thai.md)) (#1)
@@ -25,9 +26,12 @@ metadata and the backend fallback mirror it.
 
 ### Fixed
 
+- Saving a Hugging Face token no longer leaves a plaintext copy in the Hugging Face CLI token file; it stays encrypted in VoiceStudio, and an existing CLI login is still read (#1)
 - Thai books: correct word counts and running time, Thai chapter headings found, Thai prologues kept and contents/copyright pages skipped on EPUB import (#1)
 - Exported MP4/MKV audio tracks carry their language and name, so players can label them (#1)
 - Recent takes no longer go blank after switching tabs with many takes (#1)
+- Batch dubbing with "Preserve background audio" removes the original voices (Demucs, locally or on your remote GPU) and warns on the job when it cannot (#1)
+- Batch dubbing progress moves through every stage instead of sitting at 0% for single-language jobs (#1)
 - Thai interface rewritten: hundreds of mistranslations fixed, and story/audiobook script tags work in Thai again (#1)
 - Stories offer Resume after a stopped render again (#1)
 - Voice Design lists unmapped words such as "warm" even when the rest of the phrase was recognised, instead of dropping them silently (#1)

@@ -1557,7 +1557,30 @@
     "ray_use_token": "Authentification par jeton Ray",
     "ray_use_token_hint": "Activez-la si le cluster exige un jeton d’authentification Ray (RAY_AUTH_MODE=token).",
     "ray_use_cf": "Cloudflare Access",
-    "ray_use_cf_hint": "Activez-la si le tableau de bord est derrière Cloudflare Access ; saisissez l’ID client et le secret d’un jeton de service."
+    "ray_use_cf_hint": "Activez-la si le tableau de bord est derrière Cloudflare Access ; saisissez l’ID client et le secret d’un jeton de service.",
+    "hf_source_openbao_label": "OpenBao",
+    "openbao_title": "Coffre de secrets OpenBao",
+    "openbao_enabled": "Lire le jeton Hugging Face depuis OpenBao",
+    "openbao_desc": "Récupère le jeton depuis votre propre OpenBao ou Vault (KV v2) à chaque besoin et le conserve uniquement en mémoire. Rien n’est envoyé tant que vous n’activez pas cette option.",
+    "openbao_addr": "Adresse",
+    "openbao_addr_help": "HTTPS est requis, sauf si OpenBao s’exécute sur cet ordinateur.",
+    "openbao_mount": "Montage KV v2",
+    "openbao_path": "Chemin du secret",
+    "openbao_field": "Champ",
+    "openbao_token": "Jeton OpenBao",
+    "openbao_token_help": "Utilisez un jeton périodique ou renouvelable dont la stratégie ne peut lire que ce chemin. Il est stocké chiffré et ne sera plus jamais affiché.",
+    "openbao_token_saved": "Jeton enregistré",
+    "openbao_token_remove": "Supprimer le jeton",
+    "openbao_env_pinned": "Défini par une variable d’environnement",
+    "openbao_test": "Tester",
+    "openbao_test_ok": "Secret lu : {{masked}}",
+    "openbao_ttl": "le jeton expire dans {{hours}} h",
+    "openbao_error_unreachable": "Impossible de joindre OpenBao à cette adresse.",
+    "openbao_error_sealed": "OpenBao est scellé. Descellez-le sur le serveur ; l’auto-unseal est recommandé.",
+    "openbao_error_denied": "Accès refusé : le jeton est invalide ou expiré, ou sa stratégie ne peut pas lire ce chemin.",
+    "openbao_error_not_found": "Aucun secret, ou aucun champ de ce nom, à ce chemin.",
+    "openbao_error_not_configured": "Renseignez d’abord l’adresse, le chemin du secret et le jeton.",
+    "openbao_error_error": "OpenBao a renvoyé une erreur inattendue."
   },
   "gallery": {
     "title": "VoiceStudio Galerie",
@@ -1682,7 +1705,9 @@
     "watch_started": "Surveillance de {{folder}} — les nouvelles vidéos sont ajoutées à la file automatiquement",
     "watch_unsupported": "La surveillance de dossier nécessite l'application de bureau ou un navigateur basé sur Chromium — utilisez plutôt Ajouter des vidéos.",
     "watch_failed": "Surveillance arrêtée — le dossier n'est plus lisible (déplacé, supprimé ou permissions modifiées). Sélectionnez-le à nouveau pour reprendre.",
-    "watch_start_failed": "Impossible de commencer à surveiller ce dossier — sélectionnez-le à nouveau pour réessayer."
+    "watch_start_failed": "Impossible de commencer à surveiller ce dossier — sélectionnez-le à nouveau pour réessayer.",
+    "stage_separate": "🎚️ Séparation des voix et du fond…",
+    "warnings_title": "Terminé avec des avertissements"
   },
   "dictation": {
     "flag_smart_cleanup": "Supprimer les mots de remplissage",
@@ -2057,7 +2082,9 @@
     "translator_unknown": "Inconnu",
     "watermark_subtitle": "Activé par défaut. Marque l'audio généré comme créé par IA afin qu'il puisse être identifié plus tard. N'affecte que l'audio généré à partir de maintenant.",
     "analytics_subtitle": "Désactivé par défaut. Données anonymes : moteur, langue, durée, nombre de caractères et types d’erreur. Jamais votre texte ou audio.",
-    "watermark_title": "Filigrane invisible"
+    "watermark_title": "Filigrane invisible",
+    "persona_include_ref_title": "Inclure le clip de référence original lors de l’export d’un personnage",
+    "persona_include_ref_subtitle": "Valeur par défaut d’Exporter le personnage. Désactivé = le fichier ne contient qu’un aperçu tatoué (recommandé). Vous pouvez toujours la modifier à chaque export."
   },
   "updates": {
     "tab": "Mises à jour",
@@ -2332,7 +2359,8 @@
     "attest_permission": "J’ai l’autorisation de la personne",
     "attested_own_voice": "Confirmé : c’est ma voix",
     "attested_permission": "Confirmé : j’ai l’autorisation de la personne",
-    "attest_clear": "Retirer la confirmation"
+    "attest_clear": "Retirer la confirmation",
+    "persona_export_no_audio_fix": "Générez un aperçu dans Essayez cette voix et verrouillez-le, ou réimportez le clip vocal, puis exportez à nouveau."
   },
   "nav": {
     "home": "Accueil",

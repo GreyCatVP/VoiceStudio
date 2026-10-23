@@ -1563,7 +1563,30 @@
     "ray_use_token": "المصادقة برمز Ray",
     "ray_use_token_hint": "فعّله عندما يتطلب العنقود رمز مصادقة Ray (RAY_AUTH_MODE=token).",
     "ray_use_cf": "Cloudflare Access",
-    "ray_use_cf_hint": "فعّله عندما تكون لوحة التحكم خلف Cloudflare Access، ثم أدخل معرّف العميل والسر لرمز الخدمة."
+    "ray_use_cf_hint": "فعّله عندما تكون لوحة التحكم خلف Cloudflare Access، ثم أدخل معرّف العميل والسر لرمز الخدمة.",
+    "hf_source_openbao_label": "OpenBao",
+    "openbao_title": "مخزن أسرار OpenBao",
+    "openbao_enabled": "قراءة رمز Hugging Face المميز من OpenBao",
+    "openbao_desc": "يجلب الرمز المميز من خادم OpenBao أو Vault (KV v2) الخاص بك في كل مرة يلزم فيها، ويحتفظ به في الذاكرة فقط. لا يُرسل أي شيء حتى تفعّل هذا الخيار.",
+    "openbao_addr": "العنوان",
+    "openbao_addr_help": "يلزم استخدام HTTPS ما لم يكن OpenBao يعمل على هذا الكمبيوتر.",
+    "openbao_mount": "نقطة تركيب KV v2",
+    "openbao_path": "مسار السر",
+    "openbao_field": "الحقل",
+    "openbao_token": "رمز OpenBao المميز",
+    "openbao_token_help": "استخدم رمزًا دوريًا أو قابلًا للتجديد تسمح سياسته بقراءة هذا المسار فقط. يُخزَّن مشفرًا ولن يُعرض مرة أخرى.",
+    "openbao_token_saved": "تم حفظ الرمز",
+    "openbao_token_remove": "إزالة الرمز",
+    "openbao_env_pinned": "مضبوط عبر متغير بيئة",
+    "openbao_test": "اختبار",
+    "openbao_test_ok": "تمت قراءة السر: {{masked}}",
+    "openbao_ttl": "تنتهي صلاحية الرمز خلال {{hours}} ساعة",
+    "openbao_error_unreachable": "تعذّر الوصول إلى OpenBao على هذا العنوان.",
+    "openbao_error_sealed": "OpenBao مختوم. فك ختمه على الخادم؛ يُنصح باستخدام auto-unseal.",
+    "openbao_error_denied": "تم رفض الإذن: الرمز غير صالح أو منتهي الصلاحية، أو أن سياسته لا تسمح بقراءة هذا المسار.",
+    "openbao_error_not_found": "لا يوجد سر، أو لا يوجد هذا الحقل، في هذا المسار.",
+    "openbao_error_not_configured": "املأ العنوان ومسار السر والرمز أولًا.",
+    "openbao_error_error": "أعاد OpenBao خطأً غير متوقع."
   },
   "gallery": {
     "title": "VoiceStudio معرض",
@@ -1688,7 +1711,9 @@
     "watch_started": "تتم مراقبة {{folder}} — تُضاف مقاطع الفيديو الجديدة إلى قائمة الانتظار تلقائيًا",
     "watch_unsupported": "تتطلب مراقبة المجلدات تطبيق سطح المكتب أو متصفحًا يعتمد على Chromium — استخدم «إضافة مقاطع فيديو» بدلًا من ذلك.",
     "watch_failed": "توقفت المراقبة — لم يعد بالإمكان قراءة المجلد (نُقل أو حُذف أو تغيّرت الأذونات). اختره مجددًا للمتابعة.",
-    "watch_start_failed": "تعذّر بدء مراقبة هذا المجلد — اختره مجددًا لإعادة المحاولة."
+    "watch_start_failed": "تعذّر بدء مراقبة هذا المجلد — اختره مجددًا لإعادة المحاولة.",
+    "stage_separate": "🎚️ فصل الأصوات عن الخلفية…",
+    "warnings_title": "اكتمل مع تحذيرات"
   },
   "dictation": {
     "flag_smart_cleanup": "إزالة الكلمات الزائدة",
@@ -2063,7 +2088,9 @@
     "translator_unknown": "غير معروف",
     "watermark_subtitle": "مُفعّلة افتراضيًا. تُعلّم الصوت المُولَّد بأنه من صناعة الذكاء الاصطناعي ليُمكن التعرّف عليه لاحقًا. تؤثر فقط على الصوت المُولَّد من الآن.",
     "analytics_subtitle": "معطّل افتراضيًا. إحصاءات مجهولة: المحرك واللغة والمدة وعدد الأحرف وأنواع الأخطاء. لا يُرسل النص أو الصوت.",
-    "watermark_title": "علامة مائية غير مرئية"
+    "watermark_title": "علامة مائية غير مرئية",
+    "persona_include_ref_title": "تضمين مقطع المرجع الأصلي عند تصدير شخصية",
+    "persona_include_ref_subtitle": "الإعداد الافتراضي لـ تصدير الشخصية. إيقاف = يحتوي الملف على معاينة بعلامة مائية فقط (موصى به). لا يزال بإمكانك تغييره في كل تصدير."
   },
   "updates": {
     "tab": "التحديثات",
@@ -2338,7 +2365,8 @@
     "attest_permission": "لديّ إذن من صاحب الصوت",
     "attested_own_voice": "تم التأكيد: هذا صوتي",
     "attested_permission": "تم التأكيد: لديّ إذن من صاحب الصوت",
-    "attest_clear": "إزالة التأكيد"
+    "attest_clear": "إزالة التأكيد",
+    "persona_export_no_audio_fix": "أنشئ معاينة في جرب هذا الصوت وثبّتها، أو أعد استيراد المقطع الصوتي، ثم صدّر مرة أخرى."
   },
   "nav": {
     "home": "الرئيسية",

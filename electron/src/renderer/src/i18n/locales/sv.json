@@ -1555,7 +1555,30 @@
     "ray_use_token": "Autentisering med Ray-token",
     "ray_use_token_hint": "Slå på när klustret kräver en Ray-autentiseringstoken (RAY_AUTH_MODE=token).",
     "ray_use_cf": "Cloudflare Access",
-    "ray_use_cf_hint": "Slå på när instrumentpanelen ligger bakom Cloudflare Access; ange klient-ID och hemlighet för en tjänsttoken."
+    "ray_use_cf_hint": "Slå på när instrumentpanelen ligger bakom Cloudflare Access; ange klient-ID och hemlighet för en tjänsttoken.",
+    "hf_source_openbao_label": "OpenBao",
+    "openbao_title": "OpenBao-hemlighetslager",
+    "openbao_enabled": "Läs Hugging Face-token från OpenBao",
+    "openbao_desc": "Hämtar token från din egen OpenBao eller Vault (KV v2) varje gång den behövs och behåller den bara i minnet. Inget skickas förrän du slår på detta.",
+    "openbao_addr": "Adress",
+    "openbao_addr_help": "HTTPS krävs om inte OpenBao körs på den här datorn.",
+    "openbao_mount": "KV v2-montering",
+    "openbao_path": "Sökväg till hemlighet",
+    "openbao_field": "Fält",
+    "openbao_token": "OpenBao-token",
+    "openbao_token_help": "Använd en periodisk eller förnybar token vars policy bara kan läsa den här sökvägen. Den lagras krypterad och visas aldrig igen.",
+    "openbao_token_saved": "Token sparad",
+    "openbao_token_remove": "Ta bort token",
+    "openbao_env_pinned": "Inställd av en miljövariabel",
+    "openbao_test": "Testa",
+    "openbao_test_ok": "Hemlighet läst: {{masked}}",
+    "openbao_ttl": "token går ut om {{hours}} h",
+    "openbao_error_unreachable": "Kan inte nå OpenBao på den här adressen.",
+    "openbao_error_sealed": "OpenBao är förseglad. Lås upp den på servern; auto-unseal rekommenderas.",
+    "openbao_error_denied": "Åtkomst nekad: token är ogiltig eller har gått ut, eller så kan dess policy inte läsa den här sökvägen.",
+    "openbao_error_not_found": "Ingen hemlighet, eller inget sådant fält, på den här sökvägen.",
+    "openbao_error_not_configured": "Fyll i adress, sökväg till hemlighet och token först.",
+    "openbao_error_error": "OpenBao returnerade ett oväntat fel."
   },
   "gallery": {
     "title": "VoiceStudio Galleri",
@@ -1680,7 +1703,9 @@
     "watch_started": "Bevakar {{folder}} — nya videor läggs automatiskt i kön",
     "watch_unsupported": "Mappbevakning kräver skrivbordsappen eller en Chromium-baserad webbläsare — använd Lägg till videor i stället.",
     "watch_failed": "Bevakningen stoppades — mappen kan inte längre läsas (flyttad, borttagen eller ändrade behörigheter). Välj den igen för att fortsätta.",
-    "watch_start_failed": "Kunde inte börja bevaka mappen — välj den igen för att försöka på nytt."
+    "watch_start_failed": "Kunde inte börja bevaka mappen — välj den igen för att försöka på nytt.",
+    "stage_separate": "🎚️ Separerar röster från bakgrunden...",
+    "warnings_title": "Klar med varningar"
   },
   "dictation": {
     "flag_smart_cleanup": "Ta bort utfyllnadsord",
@@ -2055,7 +2080,9 @@
     "translator_unknown": "Okänd",
     "watermark_subtitle": "På som standard. Märker genererat ljud som AI-skapat så att det kan identifieras senare. Gäller bara ljud som genereras från och med nu.",
     "analytics_subtitle": "Av som standard. Anonyma uppgifter om motor, språk, varaktighet, antal tecken och feltyper. Aldrig din text eller ditt ljud.",
-    "watermark_title": "Osynlig vattenstämpel"
+    "watermark_title": "Osynlig vattenstämpel",
+    "persona_include_ref_title": "Ta med det ursprungliga referensklippet när en persona exporteras",
+    "persona_include_ref_subtitle": "Standard för Exportera persona. Av = filen innehåller bara en vattenmärkt förhandsvisning (rekommenderas). Du kan ändra det vid varje export."
   },
   "updates": {
     "tab": "Uppdateringar",
@@ -2330,7 +2357,8 @@
     "attest_permission": "Jag har talarens tillstånd",
     "attested_own_voice": "Bekräftat: det här är min röst",
     "attested_permission": "Bekräftat: jag har talarens tillstånd",
-    "attest_clear": "Ta bort bekräftelse"
+    "attest_clear": "Ta bort bekräftelse",
+    "persona_export_no_audio_fix": "Skapa en förhandsvisning under Prova den här rösten och lås den, eller importera röstklippet igen, och exportera sedan på nytt."
   },
   "nav": {
     "home": "Hem",

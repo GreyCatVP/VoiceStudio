@@ -1557,7 +1557,30 @@
     "ray_use_token": "Autenticazione con token Ray",
     "ray_use_token_hint": "Attivala se il cluster richiede un token di autenticazione Ray (RAY_AUTH_MODE=token).",
     "ray_use_cf": "Cloudflare Access",
-    "ray_use_cf_hint": "Attivala se la dashboard è dietro Cloudflare Access; inserisci client ID e secret di un token di servizio."
+    "ray_use_cf_hint": "Attivala se la dashboard è dietro Cloudflare Access; inserisci client ID e secret di un token di servizio.",
+    "hf_source_openbao_label": "OpenBao",
+    "openbao_title": "Archivio segreti OpenBao",
+    "openbao_enabled": "Leggi il token Hugging Face da OpenBao",
+    "openbao_desc": "Recupera il token dal tuo OpenBao o Vault (KV v2) ogni volta che serve e lo conserva solo in memoria. Non viene inviato nulla finché non attivi questa opzione.",
+    "openbao_addr": "Indirizzo",
+    "openbao_addr_help": "HTTPS è obbligatorio, a meno che OpenBao non sia in esecuzione su questo computer.",
+    "openbao_mount": "Mount KV v2",
+    "openbao_path": "Percorso del segreto",
+    "openbao_field": "Campo",
+    "openbao_token": "Token OpenBao",
+    "openbao_token_help": "Usa un token periodico o rinnovabile la cui policy possa leggere solo questo percorso. Viene salvato cifrato e non verrà più mostrato.",
+    "openbao_token_saved": "Token salvato",
+    "openbao_token_remove": "Rimuovi token",
+    "openbao_env_pinned": "Impostato da una variabile d’ambiente",
+    "openbao_test": "Testa",
+    "openbao_test_ok": "Segreto letto: {{masked}}",
+    "openbao_ttl": "il token scade tra {{hours}} h",
+    "openbao_error_unreachable": "Impossibile raggiungere OpenBao a questo indirizzo.",
+    "openbao_error_sealed": "OpenBao è sigillato. Rimuovi il sigillo sul server; si consiglia l’auto-unseal.",
+    "openbao_error_denied": "Permesso negato: il token non è valido o è scaduto, oppure la sua policy non può leggere questo percorso.",
+    "openbao_error_not_found": "Nessun segreto, o nessun campo con questo nome, in questo percorso.",
+    "openbao_error_not_configured": "Compila prima indirizzo, percorso del segreto e token.",
+    "openbao_error_error": "OpenBao ha restituito un errore imprevisto."
   },
   "gallery": {
     "title": "VoiceStudio Galleria",
@@ -1682,7 +1705,9 @@
     "watch_started": "Sorveglianza di {{folder}} — i nuovi video vengono aggiunti automaticamente alla coda",
     "watch_unsupported": "La sorveglianza delle cartelle richiede l'app desktop o un browser basato su Chromium — usa invece Aggiungi video.",
     "watch_failed": "Sorveglianza interrotta — la cartella non è più leggibile (spostata, eliminata o permessi cambiati). Selezionala di nuovo per riprendere.",
-    "watch_start_failed": "Impossibile avviare la sorveglianza di quella cartella — selezionala di nuovo per riprovare."
+    "watch_start_failed": "Impossibile avviare la sorveglianza di quella cartella — selezionala di nuovo per riprovare.",
+    "stage_separate": "🎚️ Separazione delle voci dallo sfondo…",
+    "warnings_title": "Completato con avvisi"
   },
   "dictation": {
     "flag_smart_cleanup": "Rimuovi intercalari",
@@ -2057,7 +2082,9 @@
     "translator_unknown": "Sconosciuto",
     "watermark_subtitle": "Attiva per impostazione predefinita. Contrassegna l'audio generato come creato dall'IA per poterlo identificare in seguito. Riguarda solo l'audio generato da ora in poi.",
     "analytics_subtitle": "Disattivato per impostazione predefinita. Dati anonimi su motore, lingua, durata, numero di caratteri e tipi di errore. Mai testo o audio.",
-    "watermark_title": "Filigrana invisibile"
+    "watermark_title": "Filigrana invisibile",
+    "persona_include_ref_title": "Includi la clip di riferimento originale quando esporti un personaggio",
+    "persona_include_ref_subtitle": "Predefinito per Esporta personaggio. Disattivato = il file contiene solo un’anteprima con filigrana (consigliato). Puoi comunque cambiarlo a ogni esportazione."
   },
   "updates": {
     "tab": "Aggiornamenti",
@@ -2332,7 +2359,8 @@
     "attest_permission": "Ho il permesso della persona che parla",
     "attested_own_voice": "Confermato: questa è la mia voce",
     "attested_permission": "Confermato: ho il permesso della persona che parla",
-    "attest_clear": "Rimuovi conferma"
+    "attest_clear": "Rimuovi conferma",
+    "persona_export_no_audio_fix": "Genera un’anteprima in Prova questa voce e bloccala, oppure reimporta la clip vocale, quindi esporta di nuovo."
   },
   "nav": {
     "home": "Home",

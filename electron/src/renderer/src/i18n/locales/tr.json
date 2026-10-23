@@ -1555,7 +1555,30 @@
     "ray_use_token": "Ray belirteciyle kimlik doğrulama",
     "ray_use_token_hint": "Küme bir Ray kimlik doğrulama belirteci istiyorsa açın (RAY_AUTH_MODE=token).",
     "ray_use_cf": "Cloudflare Access",
-    "ray_use_cf_hint": "Pano Cloudflare Access arkasındaysa açın; bir hizmet belirtecinin istemci kimliğini ve sırrını girin."
+    "ray_use_cf_hint": "Pano Cloudflare Access arkasındaysa açın; bir hizmet belirtecinin istemci kimliğini ve sırrını girin.",
+    "hf_source_openbao_label": "OpenBao",
+    "openbao_title": "OpenBao gizli anahtar deposu",
+    "openbao_enabled": "Hugging Face belirtecini OpenBao'dan oku",
+    "openbao_desc": "Belirteci her gerektiğinde kendi OpenBao veya Vault (KV v2) sunucunuzdan alır ve yalnızca bellekte tutar. Bunu açana kadar hiçbir şey gönderilmez.",
+    "openbao_addr": "Adres",
+    "openbao_addr_help": "OpenBao bu bilgisayarda çalışmıyorsa HTTPS gereklidir.",
+    "openbao_mount": "KV v2 bağlama noktası",
+    "openbao_path": "Gizli anahtar yolu",
+    "openbao_field": "Alan",
+    "openbao_token": "OpenBao belirteci",
+    "openbao_token_help": "İlkesi yalnızca bu yolu okuyabilen periyodik veya yenilenebilir bir belirteç kullanın. Şifrelenmiş olarak saklanır ve bir daha gösterilmez.",
+    "openbao_token_saved": "Belirteç kaydedildi",
+    "openbao_token_remove": "Belirteci kaldır",
+    "openbao_env_pinned": "Bir ortam değişkeniyle ayarlandı",
+    "openbao_test": "Test et",
+    "openbao_test_ok": "Gizli anahtar okundu: {{masked}}",
+    "openbao_ttl": "belirtecin süresi {{hours}} sa içinde doluyor",
+    "openbao_error_unreachable": "Bu adresteki OpenBao'ya ulaşılamıyor.",
+    "openbao_error_sealed": "OpenBao mühürlü. Sunucuda mührünü açın; auto-unseal önerilir.",
+    "openbao_error_denied": "İzin reddedildi: belirteç geçersiz veya süresi dolmuş ya da ilkesi bu yolu okuyamıyor.",
+    "openbao_error_not_found": "Bu yolda gizli anahtar veya böyle bir alan yok.",
+    "openbao_error_not_configured": "Önce adresi, gizli anahtar yolunu ve belirteci doldurun.",
+    "openbao_error_error": "OpenBao beklenmeyen bir hata döndürdü."
   },
   "gallery": {
     "title": "VoiceStudio Galeri",
@@ -1680,7 +1703,9 @@
     "watch_started": "{{folder}} izleniyor — yeni videolar kuyruğa otomatik olarak eklenir",
     "watch_unsupported": "Klasör izleme, masaüstü uygulaması veya Chromium tabanlı bir tarayıcı gerektirir — bunun yerine Video Ekle'yi kullanın.",
     "watch_failed": "İzleme durdu — klasör artık okunamıyor (taşındı, silindi veya izinler değişti). Devam etmek için klasörü yeniden seçin.",
-    "watch_start_failed": "Bu klasör izlenemedi — yeniden denemek için klasörü tekrar seçin."
+    "watch_start_failed": "Bu klasör izlenemedi — yeniden denemek için klasörü tekrar seçin.",
+    "stage_separate": "🎚️ Sesler arka plandan ayrılıyor…",
+    "warnings_title": "Uyarılarla tamamlandı"
   },
   "dictation": {
     "flag_smart_cleanup": "Dolgu sözcüklerini kaldır",
@@ -2055,7 +2080,9 @@
     "translator_unknown": "Bilinmiyor",
     "watermark_subtitle": "Varsayılan olarak açık. Üretilen sesi, sonradan tanınabilmesi için yapay zekâ üretimi olarak işaretler. Yalnızca bundan sonra üretilen sesi etkiler.",
     "analytics_subtitle": "Varsayılan olarak kapalıdır. Motor, dil, süre, karakter sayısı ve hata türlerine ilişkin anonim veriler. Metniniz veya sesiniz asla gönderilmez.",
-    "watermark_title": "Görünmez filigran"
+    "watermark_title": "Görünmez filigran",
+    "persona_include_ref_title": "Kişiyi dışa aktarırken orijinal referans klibini ekle",
+    "persona_include_ref_subtitle": "Kişiyi dışa aktar için varsayılan. Kapalı = dosya yalnızca filigranlı bir önizleme içerir (önerilir). Her dışa aktarmada yine değiştirebilirsiniz."
   },
   "updates": {
     "tab": "Güncellemeler",
@@ -2330,7 +2357,8 @@
     "attest_permission": "Konuşan kişinin iznine sahibim",
     "attested_own_voice": "Onaylandı: bu benim sesim",
     "attested_permission": "Onaylandı: konuşan kişinin iznine sahibim",
-    "attest_clear": "Onayı kaldır"
+    "attest_clear": "Onayı kaldır",
+    "persona_export_no_audio_fix": "Bu sesi dene altında bir önizleme oluşturup kilitleyin veya ses klibini yeniden içe aktarın, ardından tekrar dışa aktarın."
   },
   "nav": {
     "home": "Ana sayfa",

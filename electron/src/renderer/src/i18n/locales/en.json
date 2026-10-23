@@ -1683,7 +1683,30 @@
     "ray_use_token": "Ray token authentication",
     "ray_use_token_hint": "Turn on when the cluster requires a Ray auth token (RAY_AUTH_MODE=token).",
     "ray_use_cf": "Cloudflare Access",
-    "ray_use_cf_hint": "Turn on when the dashboard is behind Cloudflare Access; enter a service token's client ID and secret."
+    "ray_use_cf_hint": "Turn on when the dashboard is behind Cloudflare Access; enter a service token's client ID and secret.",
+    "hf_source_openbao_label": "OpenBao",
+    "openbao_title": "OpenBao secret store",
+    "openbao_enabled": "Read the Hugging Face token from OpenBao",
+    "openbao_desc": "Fetches the token from your own OpenBao or Vault (KV v2) each time it is needed and keeps it only in memory. Nothing is sent until you turn this on.",
+    "openbao_addr": "Address",
+    "openbao_addr_help": "HTTPS is required unless OpenBao runs on this computer.",
+    "openbao_mount": "KV v2 mount",
+    "openbao_path": "Secret path",
+    "openbao_field": "Field",
+    "openbao_token": "OpenBao token",
+    "openbao_token_help": "Use a periodic or renewable token whose policy can only read this path. It is stored encrypted and never shown again.",
+    "openbao_token_saved": "Token saved",
+    "openbao_token_remove": "Remove token",
+    "openbao_env_pinned": "Set by an environment variable",
+    "openbao_test": "Test",
+    "openbao_test_ok": "Secret read: {{masked}}",
+    "openbao_ttl": "token expires in {{hours}} h",
+    "openbao_error_unreachable": "Cannot reach OpenBao at this address.",
+    "openbao_error_sealed": "OpenBao is sealed. Unseal it on the server; auto-unseal is recommended.",
+    "openbao_error_denied": "Permission denied: the token is invalid or expired, or its policy cannot read this path.",
+    "openbao_error_not_found": "No secret, or no such field, at this path.",
+    "openbao_error_not_configured": "Fill in the address, secret path and token first.",
+    "openbao_error_error": "OpenBao returned an unexpected error."
   },
   "gallery": {
     "title": "VoiceStudio Gallery",
@@ -1808,7 +1831,9 @@
     "watch_started": "Watching {{folder}} — new videos are added to the queue automatically",
     "watch_unsupported": "Folder watching needs the desktop app or a Chromium-based browser — use Add Videos here instead.",
     "watch_failed": "Folder watching stopped — the folder is no longer readable (moved, deleted, or permissions changed). Pick it again to resume.",
-    "watch_start_failed": "Couldn't start watching that folder — pick it again to retry."
+    "watch_start_failed": "Couldn't start watching that folder — pick it again to retry.",
+    "stage_separate": "🎚️ Separating voices from background…",
+    "warnings_title": "Finished with warnings"
   },
   "dictation": {
     "flag_smart_cleanup": "Remove filler words",
@@ -2170,7 +2195,9 @@
     "translator_unknown": "Unknown",
     "watermark_subtitle": "On by default. Marks generated audio as AI-made so it can be identified later. Only affects audio generated from now on.",
     "analytics_subtitle": "Off by default. Anonymous engine, language, duration, character counts and error types. Never your text or audio.",
-    "watermark_title": "Invisible watermark"
+    "watermark_title": "Invisible watermark",
+    "persona_include_ref_title": "Include the original reference clip when exporting a persona",
+    "persona_include_ref_subtitle": "Default for Export persona. Off = the file carries only a watermarked preview (recommended). You can still change it for each export."
   },
   "updates": {
     "tab": "Updates",
@@ -2412,7 +2439,8 @@
     "attest_permission": "I have the speaker’s permission",
     "attested_own_voice": "Confirmed: this is my voice",
     "attested_permission": "Confirmed: I have the speaker’s permission",
-    "attest_clear": "Remove confirmation"
+    "attest_clear": "Remove confirmation",
+    "persona_export_no_audio_fix": "Generate a preview under Try this voice and lock it, or re-import the voice clip, then export again."
   },
   "profiles": {
     "locked": "Voice locked! Identity is now consistent across all generations.",

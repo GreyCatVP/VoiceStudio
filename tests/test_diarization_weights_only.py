@@ -66,6 +66,10 @@ def test_loads_pyannote_after_registering_safe_globals(reset_diar, monkeypatch):
 def test_no_token_short_circuits_without_loading(reset_diar, monkeypatch):
     mm = reset_diar
     monkeypatch.setattr("services.token_resolver.resolve", lambda: None)
+    # No installed bundle: a machine with pyannote cached would otherwise load it.
+    def _missing():
+        raise FileNotFoundError("pyannote/speaker-diarization-3.1 not installed")
+    monkeypatch.setattr("services.diarization_local.local_pipeline_config", _missing)
     pipe, err = mm.get_diarization_pipeline(return_error=True)
     assert pipe is None
     assert err == mm.DIARIZATION_ERR_NO_TOKEN

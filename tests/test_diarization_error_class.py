@@ -113,6 +113,10 @@ class TestGetDiarizationPipeline:
         # Force token_resolver.resolve() to return None.
         # Dotted-path setattr — identity-stable across sys.modules churn.
         monkeypatch.setattr("services.token_resolver.resolve", lambda skip=frozenset(): None)
+        # No installed bundle: a machine with pyannote cached would otherwise load it.
+        def _missing():
+            raise FileNotFoundError("pyannote/speaker-diarization-3.1 not installed")
+        monkeypatch.setattr("services.diarization_local.local_pipeline_config", _missing)
 
         pipe, err = model_manager.get_diarization_pipeline(return_error=True)
         assert pipe is None
@@ -124,6 +128,10 @@ class TestGetDiarizationPipeline:
         must NOT break that. Pin the backward-compatible shape."""
         # Dotted-path setattr — identity-stable across sys.modules churn.
         monkeypatch.setattr("services.token_resolver.resolve", lambda skip=frozenset(): None)
+        # No installed bundle: a machine with pyannote cached would otherwise load it.
+        def _missing():
+            raise FileNotFoundError("pyannote/speaker-diarization-3.1 not installed")
+        monkeypatch.setattr("services.diarization_local.local_pipeline_config", _missing)
 
         result = model_manager.get_diarization_pipeline()
         assert result is None  # bare None, not a tuple

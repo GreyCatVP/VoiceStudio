@@ -1555,7 +1555,30 @@
     "ray_use_token": "Authentifizierung per Ray-Token",
     "ray_use_token_hint": "Einschalten, wenn der Cluster ein Ray-Auth-Token verlangt (RAY_AUTH_MODE=token).",
     "ray_use_cf": "Cloudflare Access",
-    "ray_use_cf_hint": "Einschalten, wenn das Dashboard hinter Cloudflare Access liegt; Client-ID und Secret eines Service-Tokens eingeben."
+    "ray_use_cf_hint": "Einschalten, wenn das Dashboard hinter Cloudflare Access liegt; Client-ID und Secret eines Service-Tokens eingeben.",
+    "hf_source_openbao_label": "OpenBao",
+    "openbao_title": "OpenBao-Geheimnisspeicher",
+    "openbao_enabled": "Hugging Face-Token aus OpenBao lesen",
+    "openbao_desc": "Holt das Token bei Bedarf jedes Mal aus Ihrem eigenen OpenBao oder Vault (KV v2) und behält es nur im Arbeitsspeicher. Es wird nichts gesendet, bevor Sie dies aktivieren.",
+    "openbao_addr": "Adresse",
+    "openbao_addr_help": "HTTPS ist erforderlich, sofern OpenBao nicht auf diesem Computer läuft.",
+    "openbao_mount": "KV v2-Mount",
+    "openbao_path": "Geheimnispfad",
+    "openbao_field": "Feld",
+    "openbao_token": "OpenBao-Token",
+    "openbao_token_help": "Verwenden Sie ein periodisches oder erneuerbares Token, dessen Richtlinie nur diesen Pfad lesen darf. Es wird verschlüsselt gespeichert und nie wieder angezeigt.",
+    "openbao_token_saved": "Token gespeichert",
+    "openbao_token_remove": "Token entfernen",
+    "openbao_env_pinned": "Durch eine Umgebungsvariable festgelegt",
+    "openbao_test": "Testen",
+    "openbao_test_ok": "Geheimnis gelesen: {{masked}}",
+    "openbao_ttl": "Token läuft in {{hours}} h ab",
+    "openbao_error_unreachable": "OpenBao ist unter dieser Adresse nicht erreichbar.",
+    "openbao_error_sealed": "OpenBao ist versiegelt. Entsiegeln Sie es auf dem Server; Auto-Unseal wird empfohlen.",
+    "openbao_error_denied": "Zugriff verweigert: Das Token ist ungültig oder abgelaufen, oder seine Richtlinie darf diesen Pfad nicht lesen.",
+    "openbao_error_not_found": "Unter diesem Pfad gibt es kein Geheimnis oder kein solches Feld.",
+    "openbao_error_not_configured": "Geben Sie zuerst Adresse, Geheimnispfad und Token ein.",
+    "openbao_error_error": "OpenBao hat einen unerwarteten Fehler zurückgegeben."
   },
   "gallery": {
     "title": "VoiceStudio Galerie",
@@ -1680,7 +1703,9 @@
     "watch_started": "{{folder}} wird überwacht — neue Videos landen automatisch in der Warteschlange",
     "watch_unsupported": "Ordnerüberwachung erfordert die Desktop-App oder einen Chromium-basierten Browser — nutze stattdessen „Videos hinzufügen“.",
     "watch_failed": "Ordnerüberwachung gestoppt — der Ordner ist nicht mehr lesbar (verschoben, gelöscht oder Berechtigungen geändert). Wähle ihn erneut aus, um fortzufahren.",
-    "watch_start_failed": "Die Überwachung dieses Ordners konnte nicht gestartet werden — wähle ihn erneut aus, um es noch einmal zu versuchen."
+    "watch_start_failed": "Die Überwachung dieses Ordners konnte nicht gestartet werden — wähle ihn erneut aus, um es noch einmal zu versuchen.",
+    "stage_separate": "🎚️ Stimmen vom Hintergrund trennen…",
+    "warnings_title": "Mit Warnungen abgeschlossen"
   },
   "dictation": {
     "flag_smart_cleanup": "Füllwörter entfernen",
@@ -2055,7 +2080,9 @@
     "translator_unknown": "Unbekannt",
     "watermark_subtitle": "Standardmäßig aktiv. Kennzeichnet erzeugtes Audio als KI-generiert, damit es später erkannt werden kann. Gilt nur für ab jetzt erzeugtes Audio.",
     "analytics_subtitle": "Standardmäßig aus. Anonyme Daten zu Engine, Sprache, Dauer, Zeichenanzahl und Fehlertypen. Kein Text oder Audio.",
-    "watermark_title": "Unsichtbares Wasserzeichen"
+    "watermark_title": "Unsichtbares Wasserzeichen",
+    "persona_include_ref_title": "Beim Exportieren einer Persona den originalen Referenzclip einschließen",
+    "persona_include_ref_subtitle": "Standard für „Persona exportieren“. Aus = die Datei enthält nur eine Vorschau mit Wasserzeichen (empfohlen). Sie können es bei jedem Export ändern."
   },
   "updates": {
     "tab": "Aktualisierungen",
@@ -2330,7 +2357,8 @@
     "attest_permission": "Ich habe die Erlaubnis der sprechenden Person",
     "attested_own_voice": "Bestätigt: Das ist meine Stimme",
     "attested_permission": "Bestätigt: Ich habe die Erlaubnis der sprechenden Person",
-    "attest_clear": "Bestätigung entfernen"
+    "attest_clear": "Bestätigung entfernen",
+    "persona_export_no_audio_fix": "Erzeugen Sie unter „Versuchen Sie es mit dieser Stimme“ eine Vorschau und sperren Sie sie, oder importieren Sie den Stimmclip erneut, und exportieren Sie dann noch einmal."
   },
   "nav": {
     "home": "Start",

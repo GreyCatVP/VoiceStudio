@@ -1559,7 +1559,30 @@
     "ray_use_token": "Uwierzytelnianie tokenem Ray",
     "ray_use_token_hint": "Włącz, gdy klaster wymaga tokenu uwierzytelniania Ray (RAY_AUTH_MODE=token).",
     "ray_use_cf": "Cloudflare Access",
-    "ray_use_cf_hint": "Włącz, gdy panel jest za Cloudflare Access; podaj client ID i secret tokenu usługi."
+    "ray_use_cf_hint": "Włącz, gdy panel jest za Cloudflare Access; podaj client ID i secret tokenu usługi.",
+    "hf_source_openbao_label": "OpenBao",
+    "openbao_title": "Magazyn sekretów OpenBao",
+    "openbao_enabled": "Odczytuj token Hugging Face z OpenBao",
+    "openbao_desc": "Pobiera token z Twojego własnego OpenBao lub Vault (KV v2) za każdym razem, gdy jest potrzebny, i przechowuje go tylko w pamięci. Nic nie jest wysyłane, dopóki tego nie włączysz.",
+    "openbao_addr": "Adres",
+    "openbao_addr_help": "HTTPS jest wymagany, chyba że OpenBao działa na tym komputerze.",
+    "openbao_mount": "Punkt montowania KV v2",
+    "openbao_path": "Ścieżka sekretu",
+    "openbao_field": "Pole",
+    "openbao_token": "Token OpenBao",
+    "openbao_token_help": "Użyj tokenu okresowego lub odnawialnego, którego polityka pozwala odczytać tylko tę ścieżkę. Jest przechowywany w postaci zaszyfrowanej i nigdy więcej nie zostanie pokazany.",
+    "openbao_token_saved": "Token zapisany",
+    "openbao_token_remove": "Usuń token",
+    "openbao_env_pinned": "Ustawione przez zmienną środowiskową",
+    "openbao_test": "Testuj",
+    "openbao_test_ok": "Odczytano sekret: {{masked}}",
+    "openbao_ttl": "token wygasa za {{hours}} h",
+    "openbao_error_unreachable": "Nie można połączyć się z OpenBao pod tym adresem.",
+    "openbao_error_sealed": "OpenBao jest zapieczętowany. Odpieczętuj go na serwerze; zalecane jest auto-unseal.",
+    "openbao_error_denied": "Odmowa dostępu: token jest nieprawidłowy lub wygasł albo jego polityka nie pozwala odczytać tej ścieżki.",
+    "openbao_error_not_found": "Brak sekretu lub takiego pola pod tą ścieżką.",
+    "openbao_error_not_configured": "Najpierw uzupełnij adres, ścieżkę sekretu i token.",
+    "openbao_error_error": "OpenBao zwrócił nieoczekiwany błąd."
   },
   "gallery": {
     "title": "VoiceStudio Galeria",
@@ -1684,7 +1707,9 @@
     "watch_started": "Obserwowanie {{folder}} — nowe filmy trafiają do kolejki automatycznie",
     "watch_unsupported": "Obserwowanie folderów wymaga aplikacji desktopowej lub przeglądarki opartej na Chromium — użyj opcji Dodaj filmy.",
     "watch_failed": "Obserwowanie zatrzymane — folder nie jest już czytelny (przeniesiony, usunięty lub zmieniono uprawnienia). Wybierz go ponownie, aby wznowić.",
-    "watch_start_failed": "Nie udało się rozpocząć obserwowania tego folderu — wybierz go ponownie, aby spróbować jeszcze raz."
+    "watch_start_failed": "Nie udało się rozpocząć obserwowania tego folderu — wybierz go ponownie, aby spróbować jeszcze raz.",
+    "stage_separate": "🎚️ Oddzielanie głosów od tła…",
+    "warnings_title": "Zakończono z ostrzeżeniami"
   },
   "dictation": {
     "flag_smart_cleanup": "Usuń słowa wypełniające",
@@ -2059,7 +2084,9 @@
     "translator_unknown": "Nieznany",
     "watermark_subtitle": "Domyślnie włączony. Oznacza wygenerowany dźwięk jako utworzony przez AI, aby można go było później rozpoznać. Dotyczy tylko dźwięku wygenerowanego od teraz.",
     "analytics_subtitle": "Domyślnie wyłączone. Anonimowe dane o silniku, języku, czasie, liczbie znaków i typach błędów. Nigdy tekst ani dźwięk.",
-    "watermark_title": "Niewidoczny znak wodny"
+    "watermark_title": "Niewidoczny znak wodny",
+    "persona_include_ref_title": "Dołączaj oryginalny klip referencyjny przy eksporcie osoby",
+    "persona_include_ref_subtitle": "Domyślne dla Eksportuj osobę. Wyłączone = plik zawiera tylko podgląd ze znakiem wodnym (zalecane). Nadal możesz to zmienić przy każdym eksporcie."
   },
   "updates": {
     "tab": "Aktualizacje",
@@ -2334,7 +2361,8 @@
     "attest_permission": "Mam zgodę osoby mówiącej",
     "attested_own_voice": "Potwierdzono: to mój głos",
     "attested_permission": "Potwierdzono: mam zgodę osoby mówiącej",
-    "attest_clear": "Usuń potwierdzenie"
+    "attest_clear": "Usuń potwierdzenie",
+    "persona_export_no_audio_fix": "Wygeneruj podgląd w Spróbuj tego głosu i zablokuj go albo ponownie zaimportuj klip głosowy, a następnie wyeksportuj jeszcze raz."
   },
   "nav": {
     "home": "Strona główna",

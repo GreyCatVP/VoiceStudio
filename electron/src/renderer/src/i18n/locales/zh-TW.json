@@ -1555,7 +1555,30 @@
     "ray_use_token": "Ray 權杖驗證",
     "ray_use_token_hint": "叢集要求 Ray 驗證權杖時開啟（RAY_AUTH_MODE=token）。",
     "ray_use_cf": "Cloudflare Access",
-    "ray_use_cf_hint": "控制台位於 Cloudflare Access 之後時開啟，並填寫服務權杖的用戶端 ID 與密鑰。"
+    "ray_use_cf_hint": "控制台位於 Cloudflare Access 之後時開啟，並填寫服務權杖的用戶端 ID 與密鑰。",
+    "hf_source_openbao_label": "OpenBao",
+    "openbao_title": "OpenBao 機密儲存區",
+    "openbao_enabled": "從 OpenBao 讀取 Hugging Face 令牌",
+    "openbao_desc": "每次需要時從您自己的 OpenBao 或 Vault (KV v2) 取得令牌，且僅保存在記憶體中。開啟此選項前不會傳送任何內容。",
+    "openbao_addr": "位址",
+    "openbao_addr_help": "除非 OpenBao 在這台電腦上執行，否則必須使用 HTTPS。",
+    "openbao_mount": "KV v2 掛載點",
+    "openbao_path": "機密路徑",
+    "openbao_field": "欄位",
+    "openbao_token": "OpenBao 令牌",
+    "openbao_token_help": "請使用政策僅能讀取此路徑的週期性或可續期令牌。令牌會加密儲存，且不會再次顯示。",
+    "openbao_token_saved": "令牌已儲存",
+    "openbao_token_remove": "移除令牌",
+    "openbao_env_pinned": "由環境變數設定",
+    "openbao_test": "測試",
+    "openbao_test_ok": "已讀取機密：{{masked}}",
+    "openbao_ttl": "令牌將於 {{hours}} 小時後到期",
+    "openbao_error_unreachable": "無法連線到此位址的 OpenBao。",
+    "openbao_error_sealed": "OpenBao 已密封。請在伺服器上解封；建議啟用 auto-unseal。",
+    "openbao_error_denied": "權限遭拒：令牌無效或已過期，或其政策無法讀取此路徑。",
+    "openbao_error_not_found": "此路徑下沒有機密或沒有該欄位。",
+    "openbao_error_not_configured": "請先填寫位址、機密路徑和令牌。",
+    "openbao_error_error": "OpenBao 傳回了非預期的錯誤。"
   },
   "gallery": {
     "title": "VoiceStudio 畫廊",
@@ -1680,7 +1703,9 @@
     "watch_started": "正在監看 {{folder}} — 新影片會自動加入佇列",
     "watch_unsupported": "資料夾監看需要桌面應用程式或以 Chromium 為基礎的瀏覽器 — 請改用「新增影片」。",
     "watch_failed": "監看已停止 — 資料夾已無法讀取（已移動、刪除或權限變更）。請重新選擇資料夾以繼續。",
-    "watch_start_failed": "無法開始監看該資料夾 — 請重新選擇以重試。"
+    "watch_start_failed": "無法開始監看該資料夾 — 請重新選擇以重試。",
+    "stage_separate": "🎚️ 正在將人聲與背景分離…",
+    "warnings_title": "已完成，但有警告"
   },
   "dictation": {
     "flag_smart_cleanup": "刪除口頭填充詞",
@@ -2055,7 +2080,9 @@
     "translator_unknown": "未知",
     "watermark_subtitle": "預設開啟。將產生的音訊標記為 AI 製作，以便日後識別。僅影響從現在起產生的音訊。",
     "analytics_subtitle": "預設關閉。引擎、語言、時長、字元數和錯誤類型的匿名統計。絕不傳送您的文字或音訊。",
-    "watermark_title": "不可見浮水印"
+    "watermark_title": "不可見浮水印",
+    "persona_include_ref_title": "匯出角色時包含原始參考片段",
+    "persona_include_ref_subtitle": "「匯出角色」的預設值。關閉 = 檔案僅包含帶浮水印的預覽（建議）。每次匯出時仍可變更。"
   },
   "updates": {
     "tab": "更新",
@@ -2330,7 +2357,8 @@
     "attest_permission": "我已取得說話者的許可",
     "attested_own_voice": "已確認：這是我的聲音",
     "attested_permission": "已確認：我已取得說話者的許可",
-    "attest_clear": "移除確認"
+    "attest_clear": "移除確認",
+    "persona_export_no_audio_fix": "在「試試這個聲音」中產生預覽並鎖定，或重新匯入語音片段，然後再次匯出。"
   },
   "nav": {
     "home": "首頁",
