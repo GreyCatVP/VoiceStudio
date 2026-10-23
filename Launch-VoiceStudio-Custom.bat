@@ -21,11 +21,11 @@ if not errorlevel 1 (
   exit /b 1
 )
 
-rem GPU: this PC has two NVIDIA cards. In PCI-bus order GPU 0 = RTX 5080 (ComfyUI,
-rem LoRA training), GPU 1 = RTX 5060 Ti (always-on voice). VoiceStudio runs on GPU 1.
-rem Switch back: "set VS_GPU=0" before running this file (or edit the line below).
+rem GPU: since 2026-10-24 this PC (P1) has one NVIDIA card, the RTX 5060 Ti = GPU 0
+rem (always-on voice). The RTX 5080 moved to the Ubuntu server P2 "deep" (ComfyUI).
+rem Other index: "set VS_GPU=1" before running this file (or edit the line below).
 rem "set VS_GPU=auto" leaves the choice to Settings -> CUDA adapter in the app.
-if "%VS_GPU%"=="" set "VS_GPU=1"
+if "%VS_GPU%"=="" set "VS_GPU=0"
 if /i not "%VS_GPU%"=="auto" (
   set "CUDA_DEVICE_ORDER=PCI_BUS_ID"
   set "CUDA_VISIBLE_DEVICES=%VS_GPU%"
