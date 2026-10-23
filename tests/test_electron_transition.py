@@ -47,13 +47,17 @@ def test_snap_store_workflow_builds_strict_snap_and_uploads_only_tags_to_candida
     tag_guard = next(s for s in package["steps"] if s.get("name") == "Match the tag to the app version")
     assert '"v$version"' in tag_guard["run"]
     import os
+    import re
     import subprocess
 
     import json
 
     version = json.loads((ROOT / "package.json").read_text())["version"]
+    # A beta package version (X.Y.Z-beta.N) is never a Snap release: the job is
+    # skipped for beta tags and this guard rejects them if it ever runs.
+    is_final = re.fullmatch(r"\d+\.\d+\.\d+", version) is not None
     for tag, error in [
-        (f"v{version}", None),
+        (f"v{version}", None if is_final else "is not a final"),
         (f"v{version}-rc.1", "is not a final"),
         ("v0.5", "is not a final"),
         ("v999.0.0", "does not match package.json"),

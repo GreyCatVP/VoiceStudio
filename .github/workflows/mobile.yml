@@ -57,6 +57,14 @@ jobs:
       - name: Build, unit tests, lint
         run: ./gradlew --no-daemon assembleDebug assembleDebugAndroidTest testDebugUnitTest lint
 
+      # A Beta channel version (X.Y.Z-beta.N) must configure too, not only the checked-in one.
+      - name: Beta version configures
+        run: |
+          node -e 'const f="../../package.json",p=require(f);p.version=p.version.replace(/-.*/,"")+"-beta.1";require("fs").writeFileSync(f,JSON.stringify(p,null,2)+"\n")'
+          ./gradlew --no-daemon -q :app:printAppVersion | tee "$RUNNER_TEMP/version.txt"
+          grep -qE '^versionName=[0-9]+\.[0-9]+\.[0-9]+-beta\.1 versionCode=[0-9]+$' "$RUNNER_TEMP/version.txt"
+          git checkout -- ../../package.json
+
       - name: Upload reports on failure
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
