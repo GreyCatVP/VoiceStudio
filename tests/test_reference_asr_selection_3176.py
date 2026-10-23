@@ -193,3 +193,38 @@ def test_long_host_miss_without_cached_asr_explains_trim(monkeypatch):
     with pytest.raises(ValueError, match=r"\[clone_ref_too_long\].*27.0"):
         m.create_voice_clone_prompt(
             (torch.full((1, 27 * 24000), 0.1), 24000), None, preprocess_prompt=False)
+
+
+def test_asr_unload_refuses_active_transcription_without_blocking():
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+    entered, finish = threading.Event(), threading.Event()
+    m = _model_stub()
+    def pipeline(audio):
+        entered.set()
+        assert finish.wait(5)
+        return {'text': 'Still transcribing'}
+    m._asr_pipe = pipeline
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pending = pool.submit(m.transcribe, (torch.ones(1, 2400), 24000))
+        try:
+            assert entered.wait(5)
+            assert m.unload_asr_model() is False
+            assert m._asr_pipe is pipeline
+        finally:
+            finish.set()
+        assert pending.result(timeout=5) == 'Still transcribing'
+    assert m.unload_asr_model() is True
+
+
+@pytest.mark.parametrize('speech_first', [False, True])
+def test_silent_window_does_not_hide_speech_without_bundled_whisper(monkeypatch, speech_first):
+    monkeypatch.setattr(ov, '_find_cached_reference_asr', lambda: None)
+    def host(audio):
+        first = audio[0].shape[-1] == 15 * 24000
+        return 'Palabras de la referencia.' if first == speech_first else ''
+    ov.set_reference_transcriber(host)
+    m = _model_stub()
+    prompt = m.create_voice_clone_prompt(
+        (torch.full((1, 27 * 24000), 0.1), 24000), None, preprocess_prompt=False)
+    assert prompt.ref_text == 'Palabras de la referencia.'

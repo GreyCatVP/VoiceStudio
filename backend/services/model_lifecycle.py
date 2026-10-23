@@ -330,13 +330,12 @@ async def unload(model_id: str) -> dict:
         return {"unloaded": "tts", "success": False, "reason": "not loaded"}
 
     # The reference-transcription ASR pipeline (#3176). Dropped under the model
-    # lock so a generation that is mid-reference-transcription cannot use a
-    # pipeline that is being destroyed; ``free_vram()`` after the reference
-    # drop is what actually returns the memory. Never touches the TTS model.
+    # lock coordinates lifecycle changes; the model's own nonblocking guard
+    # refuses unload while an inference thread is using reference ASR.
+    # Never touches the TTS model.
     if model_id == "asr":
         async with mm._model_lock:
-            pipe = getattr(mm.model, "_asr_pipe", None) if mm.model is not None else None
-            if pipe is None:
+            if mm.model is None or getattr(mm.model, "_asr_pipe", None) is None:
                 return {"unloaded": model_id, "success": False, "reason": "not loaded"}
             try:
                 released = mm.model.unload_asr_model()
@@ -345,10 +344,9 @@ async def unload(model_id: str) -> dict:
                 mm.model._asr_pipe = None
                 released = True
             if not released:
-                return {"unloaded": model_id, "success": False, "reason": "not loaded"}
+                return {"unloaded": model_id, "success": False, "reason": "not loaded or busy"}
             # The host hook resolves the separately managed selected engine;
             # unloading bundled Whisper must not disconnect that route.
-            pipe = None  # Release the final local reference before empty_cache.
             mm.free_vram()
             return {"unloaded": model_id, "success": True}
 
@@ -424,7 +422,7 @@ async def unload(model_id: str) -> dict:
 async def unload_all() -> dict:
     """Release shared/alternate TTS, diarisation, sidecars, dictation and translation."""
     results = {}
-    model_ids = ["tts", "asr", "diarization", "sidecars", "capture-asr", "translation:nllb"]
+    model_ids = ["asr", "tts", "diarization", "sidecars", "capture-asr", "translation:nllb"]
     try:
         model_ids.extend(
             entry["id"]

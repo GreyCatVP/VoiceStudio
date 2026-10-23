@@ -145,7 +145,7 @@ def test_unload_all_includes_asr(monkeypatch):
     monkeypatch.setattr(ml, "unload", _fake_unload)
     result = asyncio.run(ml.unload_all())
     assert result["unloaded_all"] is True
-    assert "asr" in calls
+    assert calls.index("asr") < calls.index("tts")
 
 
 def test_unload_asr_preserves_host_transcriber(monkeypatch):
@@ -180,3 +180,14 @@ def test_unload_drops_last_pipeline_reference_before_allocator_cleanup(monkeypat
         assert ref() is None, "pipeline still alive during allocator cleanup"
     monkeypatch.setattr(mm, "free_vram", free)
     assert _locked_unload("asr")["success"] is True
+
+
+def test_busy_asr_unload_keeps_pipeline_and_skips_allocator_cleanup(monkeypatch):
+    model = type("Model", (), {"_asr_pipe": _Pipe(), "unload_asr_model": lambda self: False})()
+    _install_model(monkeypatch, model)
+    monkeypatch.setattr(mm, "_model_lock", asyncio.Lock())
+    def free():
+        pytest.fail("allocator cleanup must not run for a busy pipeline")
+    monkeypatch.setattr(mm, "free_vram", free)
+    assert _locked_unload("asr") == {"unloaded": "asr", "success": False, "reason": "not loaded or busy"}
+    assert model._asr_pipe is not None

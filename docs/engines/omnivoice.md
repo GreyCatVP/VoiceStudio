@@ -81,7 +81,9 @@ The env var overrides the persisted UI choice.
   transcript for a 27-second recording does not describe the shorter selected
   passage. Keep an installed recognizer available, or replace the reference with
   a 3–10 second passage and its matching transcript. Unloading the bundled
-  reference Whisper does not disconnect the separately selected recognizer.
+  reference Whisper does not disconnect the separately selected recognizer;
+  unload reports busy while reference transcription is active. Silent windows
+  do not prevent selection of another window containing speech.
   A transcript typed on the request for
   such a clip is rejected with `[clone_ref_too_long]`.
   Only that 15-second window is sent to the model. Clips longer than 75 seconds
