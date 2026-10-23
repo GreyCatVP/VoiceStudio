@@ -143,7 +143,7 @@ def find_uv() -> str:
         if target.exists():
             return str(target)
         proto.emit_progress(sys.stdout, "installing", None, f"downloading uv {UV_VERSION}")
-        with urllib.request.urlopen(url, timeout=120) as resp:
+        with urllib.request.urlopen(url, timeout=120) as resp:  # nosec B310 — fixed https GitHub URL
             blob = resp.read()
         if hashlib.sha256(blob).hexdigest() != UV_SHA256[arch]:
             raise TaskError("install", "downloaded uv failed its checksum")
@@ -353,7 +353,7 @@ def _download_and_extract(url: str, dest: Path, scratch_parent: Path) -> None:
     proto.emit_progress(sys.stdout, "installing", None, f"downloading {url.rsplit('/', 1)[-1]}")
     with tempfile.TemporaryDirectory(dir=scratch_parent) as tmp:
         archive = Path(tmp) / "src.tar.gz"
-        with urllib.request.urlopen(url, timeout=600) as resp, open(archive, "wb") as out:
+        with urllib.request.urlopen(url, timeout=600) as resp, open(archive, "wb") as out:  # nosec B310 — https hosts allowlisted above
             last = time.monotonic()
             while True:
                 block = resp.read(1 << 20)
@@ -376,9 +376,9 @@ def _download_and_extract(url: str, dest: Path, scratch_parent: Path) -> None:
                     raise TaskError("install", f"archive member escapes the extraction root: {m.name!r}")
                 members.append(m)
             try:
-                tf.extractall(root, members=members, filter="data")
+                tf.extractall(root, members=members, filter="data")  # nosec B202 — members validated above
             except TypeError:  # Python without extraction filters
-                tf.extractall(root, members=members)
+                tf.extractall(root, members=members)  # nosec B202 — members validated above
         tops = [p for p in root.iterdir()]
         if len(tops) != 1 or not tops[0].is_dir():
             raise TaskError("install", "source archive must hold exactly one top-level directory")
@@ -701,7 +701,7 @@ def _run_batch(sidecar: "Sidecar", params: Dict[str, Any], inputs: Dict[str, str
 
 def prune_old_job_logs(now: Optional[float] = None) -> int:
     """Delete our finished jobs' driver logs (they hold result audio)."""
-    logs = Path(os.environ.get("VS_RAY_LOG_DIR") or "/tmp/ray/session_latest/logs")
+    logs = Path(os.environ.get("VS_RAY_LOG_DIR") or "/tmp/ray/session_latest/logs")  # nosec B108 — Ray's own log directory
     if not logs.is_dir():
         return 0
     now = time.time() if now is None else now

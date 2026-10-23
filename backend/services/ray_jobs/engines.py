@@ -262,7 +262,7 @@ def _inline_local_file(arg: str, files: Dict[str, str]) -> str:
     from pathlib import Path  # noqa: PLC0415
 
     backend = Path(__file__).resolve().parents[2]
-    if "{" in arg or not arg.startswith("/"):
+    if "{" in arg or not Path(arg).is_absolute():
         return arg
     path = Path(arg).resolve()
     if backend not in path.parents or not path.is_file():

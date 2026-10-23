@@ -620,6 +620,25 @@ def load_align_model(language_code: str, device: str):
     return _ALIGN_CACHE[key]
 
 
+def aligner_installed(language_code: str) -> bool:
+    """Whether the default wav2vec2 aligner for a language is already on disk,
+    so loading it would not download anything."""
+    try:
+        import torch
+        import torchaudio
+        from huggingface_hub import try_to_load_from_cache
+        from whisperx.alignment import DEFAULT_ALIGN_MODELS_HF, DEFAULT_ALIGN_MODELS_TORCH
+    except Exception:  # noqa: BLE001 — no whisperx means no aligner
+        return False
+    name = DEFAULT_ALIGN_MODELS_TORCH.get(language_code)
+    if name:
+        bundle = torchaudio.pipelines.__dict__.get(name)
+        filename = os.path.basename(getattr(bundle, "_path", "") or "")
+        return bool(filename) and os.path.isfile(os.path.join(torch.hub.get_dir(), "checkpoints", filename))
+    repo = DEFAULT_ALIGN_MODELS_HF.get(language_code)
+    return bool(repo) and isinstance(try_to_load_from_cache(repo, "config.json"), str)
+
+
 def forced_align(segments: list, audio, language_code: str, device: str | None = None) -> list:
     """Snap word boundaries to the audio with wav2vec2 forced alignment.
 

@@ -80,5 +80,5 @@ def build_package(task: Mapping[str, Any], inputs: Mapping[str, bytes]) -> Tuple
     data = buf.getvalue()
     if len(data) > MAX_PACKAGE_BYTES:
         raise ValueError(f"job package is {len(data)} bytes; limit is {MAX_PACKAGE_BYTES}")
-    uri = f"gcs://_ray_pkg_{hashlib.sha1(data).hexdigest()}.zip"
+    uri = f"gcs://_ray_pkg_{hashlib.sha1(data, usedforsecurity=False).hexdigest()}.zip"
     return uri, data, task

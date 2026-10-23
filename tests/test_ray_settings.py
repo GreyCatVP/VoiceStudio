@@ -1005,6 +1005,7 @@ def test_ray_asr_results_get_local_forced_alignment(monkeypatch, tmp_path):
         return [{**s, "start": s["start"] + 0.01} for s in segments]
 
     monkeypatch.setattr(asr_backend, "forced_align", fake_align)
+    monkeypatch.setattr(asr_backend, "aligner_installed", lambda lang: True)
     result = {"segments": [{"start": 1.0, "end": 2.0, "text": "hi"}], "language": "th", "chunks": []}
     out = sa._align_locally(result, tmp_path / "x.wav")
     assert seen["args"] == ("AUDIO", "th") and out["segments"][0]["start"] == 1.01
@@ -1012,6 +1013,17 @@ def test_ray_asr_results_get_local_forced_alignment(monkeypatch, tmp_path):
     monkeypatch.setenv("OMNIVOICE_RAY_ASR_ALIGN", "0")
     assert sa._align_locally(result, tmp_path / "x.wav") is result
 
+
+
+def test_ray_asr_never_downloads_an_aligner(monkeypatch, tmp_path):
+    """A remote transcript keeps the cluster's word times when no aligner is
+    installed here, instead of fetching one (models download only on request)."""
+    from services import asr_backend, subprocess_asr as sa
+
+    monkeypatch.setattr(asr_backend, "aligner_installed", lambda lang: False)
+    monkeypatch.setattr(asr_backend, "forced_align", lambda *a: pytest.fail("aligner loaded"))
+    result = {"segments": [{"start": 1.0, "end": 2.0, "text": "hi"}], "language": "en", "chunks": []}
+    assert sa._align_locally(result, tmp_path / "x.wav") is result
 
 def test_omnivoice_routes_to_the_sidecar_class_and_sends_a_hub_checkpoint(rs, monkeypatch, tmp_path):
     from engines.omnivoice_subprocess import OmniVoiceMPSSubprocessBackend
@@ -1258,3 +1270,17 @@ def test_performance_profile_keeps_a_remotely_routed_engine(rs, monkeypatch, tmp
     rs.save({"engines": ["faster-whisper-isolated", "nllb"]})
     prefs.set_("translation_backend", "nllb")
     assert pp._activate_translation_model("balanced") is None and prefs.get("translation_backend") == "nllb"
+
+
+def test_aligner_installed_checks_the_local_caches(monkeypatch, tmp_path):
+    import torch
+    from services.asr_backend import aligner_installed
+
+    monkeypatch.setattr(torch.hub, "get_dir", lambda: str(tmp_path))
+    assert aligner_installed("en") is False  # torchaudio bundle, not downloaded
+    (tmp_path / "checkpoints").mkdir()
+    (tmp_path / "checkpoints" / "wav2vec2_fairseq_base_ls960_asr_ls960.pth").write_bytes(b"x")
+    assert aligner_installed("en") is True
+    monkeypatch.setattr("huggingface_hub.try_to_load_from_cache", lambda repo, name: None)
+    assert aligner_installed("ja") is False  # Hugging Face aligner, not cached
+    assert aligner_installed("xx") is False  # no aligner for the language

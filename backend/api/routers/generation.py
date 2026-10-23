@@ -2212,21 +2212,42 @@ async def generate_speech(
             and bool(getattr(_backend, "batches_render_chunks", False))
         )
 
+        def _stream_gen_kwargs() -> dict:
+            """Engine kwargs shared by every streamed chunk, single or batched,
+            so no chunk renders with different settings from the others."""
+            kwargs = dict(
+                language=None if (language and language.lower() == "auto") else language,
+                ref_audio=ref_audio_path, ref_text=ref_text, instruct=instruct,
+                num_step=num_step, guidance_scale=guidance_scale, speed=speed,
+                denoise=denoise, postprocess_output=postprocess_output,
+            )
+            if preset_voice:
+                kwargs["voice"] = preset_voice
+            if getattr(_backend, "supports_native_omnivoice_controls", False):
+                kwargs.update({
+                    key: value for key, value in {
+                        "t_shift": t_shift,
+                        "layer_penalty_factor": layer_penalty_factor,
+                        "position_temperature": position_temperature,
+                        "class_temperature": class_temperature,
+                    }.items() if value is not None
+                })
+            return kwargs
+
+        def _stream_seeded() -> bool:
+            return used_seed is not None and (
+                getattr(_backend, "supports_native_omnivoice_controls", False)
+                or getattr(_backend, "supports_generation_seed", False))
+
         def _render_stream_rest(start: int):
             """Chunks ``start..`` in ONE batched engine call (Ray-routed engines).
 
             Same kwargs and per-chunk seeds as _render_stream_chunk, so the
             concatenated take matches the non-streamed one."""
-            _lang = None if (language and language.lower() == "auto") else language
-            seeded = used_seed is not None and (
-                getattr(_backend, "supports_native_omnivoice_controls", False)
-                or getattr(_backend, "supports_generation_seed", False))
             texts = _text_chunks[start:]
             raws = trace_call("synthesis", _backend.generate_batch, texts,
-                duration=None, language=_lang, ref_audio=ref_audio_path, ref_text=ref_text,
-                instruct=instruct, num_step=num_step, guidance_scale=guidance_scale,
-                speed=speed, denoise=denoise, postprocess_output=postprocess_output,
-                **({"seed": [used_seed + start + k for k in range(len(texts))]} if seeded else {}))
+                duration=None, **_stream_gen_kwargs(),
+                **({"seed": [used_seed + start + k for k in range(len(texts))]} if _stream_seeded() else {}))
             sr = _backend.sample_rate
             skip = getattr(_backend, "applies_own_mastering", False)
             return [(raw, _apply_effect_chain(raw, sr, effect_preset, skip_mastering=skip), sr)
@@ -2247,27 +2268,9 @@ async def generate_speech(
                 if used_seed is not None:
                     torch.manual_seed(used_seed + i)
                 if _backend is not None:
-                    _lang = None if (language and language.lower() == "auto") else language
                     raw = trace_call("synthesis", _backend.generate,
-                        chunk_text, duration=None, language=_lang,
-                        ref_audio=ref_audio_path, ref_text=ref_text,
-                        instruct=instruct, num_step=num_step,
-                        guidance_scale=guidance_scale, speed=speed,
-                        denoise=denoise, postprocess_output=postprocess_output,
-                        **({
-                            key: value for key, value in {
-                                "t_shift": t_shift,
-                                "layer_penalty_factor": layer_penalty_factor,
-                                "position_temperature": position_temperature,
-                                "class_temperature": class_temperature,
-                            }.items() if value is not None
-                        } if getattr(
-                            _backend, "supports_native_omnivoice_controls", False
-                        ) else {}),
-                        **({"seed": used_seed + i} if used_seed is not None and (
-                            getattr(_backend, "supports_native_omnivoice_controls", False)
-                            or getattr(_backend, "supports_generation_seed", False)
-                        ) else {}),
+                        chunk_text, duration=None, **_stream_gen_kwargs(),
+                        **({"seed": used_seed + i} if _stream_seeded() else {}),
                     )
                     sr = _backend.sample_rate
                     skip = getattr(_backend, "applies_own_mastering", False)

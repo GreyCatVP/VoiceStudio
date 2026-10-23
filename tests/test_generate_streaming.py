@@ -495,3 +495,37 @@ def test_classic_generate_unaffected_by_stream_default(client, monkeypatch,
     assert res.status_code == 200, res.text
     assert res.headers.get("content-type") == "audio/wav"
     assert res.headers.get("x-audio-id")
+
+
+def test_batched_stream_chunks_keep_every_voice_setting(client, monkeypatch, no_omnivoice_model):
+    """A remote engine renders chunks 1..N in one batch; that batch must get the
+    same engine settings as chunk 0, or the take changes sound midway (#3207)."""
+    base = _make_deterministic_engine("stream-batched")
+    seen = []
+
+    class _Batched(base):
+        batches_render_chunks = True
+        supports_native_omnivoice_controls = True
+
+        def generate(self, text, **kw):
+            seen.append(("one", kw))
+            return super().generate(text, **kw)
+
+        def generate_batch(self, texts, **kw):
+            seen.append(("batch", kw))
+            return [super(_Batched, self).generate(t) for t in texts]
+
+    monkeypatch.setitem(_tts_mod()._REGISTRY, "stream-batched", _Batched)
+    events = _stream_events(client, {
+        "text": LONG_TEXT, "engine": "stream-batched", "seed": "7", "max_chunk_chars": "60",
+        "t_shift": "0.2", "layer_penalty_factor": "4.0",
+        "position_temperature": "3.0", "class_temperature": "0.5",
+    })
+    assert events[-1][0]["type"] == "done", events[-1]
+    kinds = [kind for kind, _ in seen]
+    assert kinds[0] == "one" and "batch" in kinds, kinds
+    first, batch = seen[0][1], next(kw for kind, kw in seen if kind == "batch")
+    for key in ("t_shift", "layer_penalty_factor", "position_temperature", "class_temperature",
+                "instruct", "num_step", "guidance_scale", "speed", "language"):
+        assert batch.get(key) == first.get(key), key
+    assert first["t_shift"] == 0.2

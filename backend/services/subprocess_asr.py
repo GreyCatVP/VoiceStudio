@@ -89,12 +89,17 @@ def _merge_pieces(results: list, offsets: list) -> dict:
 def _align_locally(result: dict, path) -> dict:
     """wav2vec2 forced alignment here, as WhisperX and the MLX backend do:
     the cluster's faster-whisper word times are +/-100-300 ms, the aligner's
-    +/-10-30 ms, and lip-sync depends on them. Never fails a transcript."""
+    +/-10-30 ms, and lip-sync depends on them. Never fails a transcript, and
+    only uses an aligner already installed: a remote run never downloads one."""
     if os.environ.get("OMNIVOICE_RAY_ASR_ALIGN", "1") == "0" or not result.get("segments"):
         return result
     try:
-        from services.asr_backend import _decode_audio_16k_mono, forced_align
-        aligned = forced_align(result["segments"], _decode_audio_16k_mono(str(path)), result.get("language") or "en")
+        from services.asr_backend import _decode_audio_16k_mono, aligner_installed, forced_align
+        language = result.get("language") or "en"
+        if not aligner_installed(language):
+            logger.info("local forced alignment skipped: no installed aligner for %r", language)
+            return result
+        aligned = forced_align(result["segments"], _decode_audio_16k_mono(str(path)), language)
     except Exception as exc:  # noqa: BLE001
         logger.info("local forced alignment skipped: %s", exc)
         return result
