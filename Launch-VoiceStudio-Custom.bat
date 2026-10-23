@@ -31,6 +31,10 @@ if /i not "%VS_GPU%"=="auto" (
   set "CUDA_VISIBLE_DEVICES=%VS_GPU%"
 )
 
+rem P1 (Core Ultra 5 245K): torch 2.11 in the VoxCPM2 sidecar crashes while building the model
+rem when OMP_NUM_THREADS is unset; any explicit value fixes it (2026-10-24).
+if "%OMP_NUM_THREADS%"=="" set "OMP_NUM_THREADS=8"
+
 set "OMNIVOICE_PORT=%VS_PORT%"
 set "OMNIVOICE_BACKEND_CMD=%VS_PY% -m uvicorn main:app --app-dir backend --host 127.0.0.1 --port %VS_PORT%"
 
