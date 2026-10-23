@@ -385,7 +385,8 @@ it('stops a running job through the stop endpoint', async () => {
     },
   );
 
-  const stop = await screen.findByRole('button', { name: 'settings.ray_job_stop' });
+  // The jobs list loads after the settings; under a full parallel run that can exceed 1 s.
+  const stop = await screen.findByRole('button', { name: 'settings.ray_job_stop' }, { timeout: 5000 });
   expect(screen.getAllByRole('button', { name: 'settings.ray_job_stop' })).toHaveLength(1);
   fireEvent.click(stop);
 
