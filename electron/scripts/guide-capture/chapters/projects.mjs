@@ -1,6 +1,6 @@
 // Chapter "projects": fill the library with real items (a transcript, a story project,
 // a saved dubbing project), then browse, open and delete from it.
-const CLIP = '/tmp/claude-0/-root-voicestudio/a001375f-0ebe-488d-b999-ba1df3548c39/scratchpad/h200_clip0.wav';
+const CLIP = process.env.GUIDE_SPEECH_CLIP; // a short speech WAV, see run.mjs
 // A dubbing job that already exists in the capture data dir; the app restores its
 // open dub from this draft key exactly as it does after a restart.
 const DUB_JOB = { jobId: '5f15fb2c-91c2-4429-bf42-1afaba136067', filename: 'dialogue.mp4', duration: 74.28, segments: [] };

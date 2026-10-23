@@ -8,9 +8,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const SAMPLE =
-  process.env.GUIDE_DUB_SAMPLE ||
-  '/tmp/claude-0/-root-voicestudio/a001375f-0ebe-488d-b999-ba1df3548c39/scratchpad/e2e/dialogue.mp4';
+const SAMPLE = process.env.GUIDE_DUB_SAMPLE; // a short two-speaker video, see run.mjs
 const LOCALES = join(dirname(fileURLToPath(import.meta.url)), '../../../src/renderer/src/i18n/locales');
 
 /** L('dub.translate_all') in the capture language; L.pattern() matches it with any {{values}}. */

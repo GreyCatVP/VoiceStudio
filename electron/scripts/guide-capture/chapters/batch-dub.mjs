@@ -6,9 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { labels } from './dub.mjs';
 
-const SAMPLE =
-  process.env.GUIDE_DUB_SAMPLE ||
-  '/tmp/claude-0/-root-voicestudio/a001375f-0ebe-488d-b999-ba1df3548c39/scratchpad/e2e/dialogue.mp4';
+const SAMPLE = process.env.GUIDE_DUB_SAMPLE; // a short two-speaker video, see run.mjs
 
 /** Two short, distinct clips cut from the sample video. */
 function clips(language) {

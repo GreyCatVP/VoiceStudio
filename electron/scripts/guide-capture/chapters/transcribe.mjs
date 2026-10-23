@@ -1,5 +1,5 @@
 // Chapter "transcribe": file transcription for real, plus the dictation and ASR settings.
-const CLIP = '/tmp/claude-0/-root-voicestudio/a001375f-0ebe-488d-b999-ba1df3548c39/scratchpad/h200_clip0.wav';
+const CLIP = process.env.GUIDE_SPEECH_CLIP; // a short speech WAV, see run.mjs
 
 export default async function capture({ page, goto, shot, t, L }) {
   await goto('/transcriptions');

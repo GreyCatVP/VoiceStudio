@@ -1,5 +1,5 @@
 // Chapter "tools": every tool of the Tools workspace, run for real.
-const SCRATCH = '/tmp/claude-0/-root-voicestudio/a001375f-0ebe-488d-b999-ba1df3548c39/scratchpad';
+const CLIP = process.env.GUIDE_SPEECH_CLIP; // a short speech WAV, see run.mjs
 
 export default async function capture({ page, goto, shot, t, L }) {
   const nav = (key) => page.getByRole('button', { name: L(key), exact: true });
@@ -32,7 +32,7 @@ export default async function capture({ page, goto, shot, t, L }) {
   // 3. Probe file
   await nav('tools.probe_file').click();
   const path = main.locator('input').first();
-  await path.fill(`${SCRATCH}/h200_clip0.wav`);
+  await path.fill(CLIP);
   const probe = main.getByRole('button', { name: L('tools.probe'), exact: true });
   await probe.click();
   await result.waitFor({ timeout: 60000 });
@@ -61,7 +61,7 @@ export default async function capture({ page, goto, shot, t, L }) {
 
   // 5–6. Convert voice: source clip + target voice, then the converted take
   await nav('convert.convert').click();
-  await main.locator('input[type="file"]').setInputFiles(`${SCRATCH}/h200_clip0.wav`);
+  await main.locator('input[type="file"]').setInputFiles(CLIP);
   const voice = main.getByRole('button', { name: 'Narrator', exact: true });
   await voice.click();
   const convert = main.getByRole('button', { name: L('clone.define_convert'), exact: true });

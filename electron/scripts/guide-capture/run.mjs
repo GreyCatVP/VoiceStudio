@@ -5,7 +5,8 @@
 // Each chapter's capture steps live in chapters/<chapter-id>.mjs and export
 // `default async function capture(ctx)`. Screenshots are written as WebP to
 // src/renderer/src/features/guide/assets/<lang>/<shot-id>.webp. Needs ffmpeg
-// (WebP encode) and Playwright's Chromium.
+// (WebP encode) and Playwright's Chromium. Sample media come from the environment:
+// GUIDE_DUB_SAMPLE (a short two-speaker video) and GUIDE_SPEECH_CLIP (a short speech WAV).
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
