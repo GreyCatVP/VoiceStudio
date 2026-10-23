@@ -6,6 +6,8 @@ import json
 import re
 from pathlib import Path
 
+from packaging.version import Version
+
 
 ROOT = Path(__file__).resolve().parents[1]
 CURRENT_VERSION = json.loads((ROOT / "package.json").read_text())["version"]
@@ -26,7 +28,8 @@ def test_current_version_is_in_lockstep_everywhere() -> None:
     lock_contracts = {"uv.lock": r'name = "omnivoice"\s+version = "([^"]+)"'}
     for path, pattern in lock_contracts.items():
         match = re.search(pattern, (ROOT / path).read_text())
-        assert match and match.group(1) == CURRENT_VERSION, path
+        # uv writes the PEP 440 form of a beta (0.5.9b1 for 0.5.9-beta.1).
+        assert match and Version(match.group(1)) == Version(CURRENT_VERSION), path
 
 
 def test_visible_brand_surfaces_say_voicestudio() -> None:

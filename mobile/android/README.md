@@ -24,7 +24,7 @@ printf 'sdk.dir=%s\n' "$ANDROID_HOME" > local.properties
 ./gradlew lint
 ./gradlew assembleDebugAndroidTest
 ./gradlew installDebug
-adb shell am start -n com.voicestudio.mobile/.MainActivity
+adb shell am start -n sh.voicestudio.mobile/com.voicestudio.mobile.MainActivity
 ```
 
 Windows: use `gradlew.bat` and equivalent JAVA_HOME / ANDROID_HOME settings.
