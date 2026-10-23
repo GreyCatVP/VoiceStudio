@@ -301,6 +301,26 @@ _UNSAFE_CONTROL_CODEPOINTS = frozenset(
 _UNSAFE_CONTROL_TRANSLATION = dict.fromkeys(_UNSAFE_CONTROL_CODEPOINTS)
 
 
+# Markdown emphasis delimiters (``**bold**``, ``__bold__``, ``*italic*``,
+# ``_italic_``) reach the engine as spoken words ("asterisk", #3197): a lone
+# ``*`` pair happens to survive as emphasis, but ``**`` is read aloud. Strip
+# paired delimiters only, so arithmetic (``2 * 3``) and intra-word
+# underscores (``snake_case``) survive. Idempotent: a second pass finds no
+# pairs. Runs inside _outside_brackets — the [bracket] grammar is untouched.
+_MD_BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
+_MD_BOLD_US_RE = re.compile(r"__(.+?)__")
+_MD_ITALIC_RE = re.compile(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)")
+_MD_ITALIC_US_RE = re.compile(r"(?<!\w)_(.+?)_(?!\w)")
+
+
+def _strip_markdown_emphasis(text: str) -> str:
+    out = _MD_BOLD_RE.sub(r"\1", text)
+    out = _MD_BOLD_US_RE.sub(r"\1", out)
+    out = _MD_ITALIC_RE.sub(r"\1", out)
+    out = _MD_ITALIC_US_RE.sub(r"\1", out)
+    return out
+
+
 def _strip_unsafe_controls(text: str) -> str:
     """Delete only the explicitly enumerated unsafe Unicode controls."""
     return text.translate(_UNSAFE_CONTROL_TRANSLATION)
@@ -663,6 +683,7 @@ def normalize_text(text: str, language: Optional[str] = None) -> str:
     if not text:
         return text or ""
     out = _safety_filters(text)
+    out = _outside_brackets(out, _strip_markdown_emphasis)
     # Runs outside the num2words gate below: ko/ja/zh keep their digits (that
     # gate returns None for them) but still need the range mark spoken.
     plain = _plain_lang_code(language)

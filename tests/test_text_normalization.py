@@ -113,6 +113,14 @@ _CHANGE_CASES = [
     (None, "a�b", "ab"),
     (None, "Tom &amp; Jerry", "Tom & Jerry"),
     (None, "one&nbsp;space", "one space"),
+    # Markdown emphasis delimiters are stripped, not spoken (#3197)
+    ("English", "Say **bold** word", "Say bold word"),
+    ("English", "Say __bold__ word", "Say bold word"),
+    ("English", "Say *italic* word", "Say italic word"),
+    ("English", "Say _italic_ word", "Say italic word"),
+    ("English", "**bold** and **more** here", "bold and more here"),
+    # Digits still verbalize around a surviving arithmetic asterisk
+    ("English", "2 * 3 = 6", "two * three = six"),
 ]
 
 
@@ -216,6 +224,10 @@ _UNCHANGED_CASES = [
     # Bracket grammar is never rewritten
     ("English", "[pause 300ms] then [rate 0.9] speech [voice:Alice]"),
     ("English", "[[term|5]] stays bracket-managed"),
+    # Unpaired markers and non-delimiter uses survive (#3197)
+    ("English", "use snake_case names"),
+    ("English", "a lone * stays"),
+    ("English", "[**bold**] markers inside brackets stay untouched"),
     # Plain text is byte-identical
     ("English", "The quick brown fox jumps."),
     (None, "already clean text"),

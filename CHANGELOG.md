@@ -25,6 +25,7 @@ metadata and the backend fallback mirror it.
 - Smart Fit speed limits: set the fastest and slowest speed dubbing may apply to a line, from the Timing section (#3026) — thanks @MoonDragon-MD!
 
 ### Fixed
+- Markdown bold and italic markers are stripped before synthesis instead of being read aloud as "asterisk" (#3197) — thanks @swadhinbiswas!
 
 - Bug reports no longer risk freezing the app while looking for your tools: the Node-version folder scan now runs off the main thread (#3180)
 - Bug reports no longer freeze the app when the tool search or a drive stalls, and free disk is only borrowed from a parent folder when the install folder doesn't exist yet (#3179)
