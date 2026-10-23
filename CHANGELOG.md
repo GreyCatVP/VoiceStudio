@@ -25,6 +25,9 @@ metadata and the backend fallback mirror it.
 
 ### Fixed
 
+- Thai books: correct word counts and running time, Thai chapter headings found, Thai prologues kept and contents/copyright pages skipped on EPUB import (#1)
+- Exported MP4/MKV audio tracks carry their language and name, so players can label them (#1)
+- Recent takes no longer go blank after switching tabs with many takes (#1)
 - Thai interface rewritten: hundreds of mistranslations fixed, and story/audiobook script tags work in Thai again (#1)
 - Stories offer Resume after a stopped render again (#1)
 - Voice Design lists unmapped words such as "warm" even when the rest of the phrase was recognised, instead of dropping them silently (#1)
