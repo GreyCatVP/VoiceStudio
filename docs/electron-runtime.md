@@ -137,3 +137,7 @@ waits up to 20 seconds for that boot's running reconciliation thread, including
 when its asyncio task was cancelled; a completed earlier boot cannot bypass the wait.
 Work not yet submitted is cancelled, and queued executor work remains tracked
 without requiring another executor thread to enforce the shutdown deadline.
+
+When setup retries a package download, progress clears that package’s previous
+bytes and rate estimate while retaining completed bytes from other packages.
+A new speed and remaining-time estimate appears after the retried transfer advances.
