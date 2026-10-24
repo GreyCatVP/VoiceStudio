@@ -24,8 +24,10 @@ from urllib.parse import urlsplit
 
 try:
     from core.app_config import DEFAULT_BACKEND_PORT
+    from core.path_security import portable_filename
 except ModuleNotFoundError:  # ``python -m backend.speech_client`` from the repo root
     from backend.core.app_config import DEFAULT_BACKEND_PORT
+    from backend.core.path_security import portable_filename
 
 DEFAULT_ENGINE_URL = f"http://127.0.0.1:{DEFAULT_BACKEND_PORT}"
 
@@ -122,16 +124,21 @@ def _encode_multipart(
     boundary = boundary or f"voicestudio-{secrets.token_hex(16)}"
     marker = boundary.encode("ascii")
     parts: list[bytes] = []
+    def _header_text(value: str) -> str:
+        # A field the caller typed must not close the quoted parameter or
+        # start a new header line.
+        return value.replace("\r", " ").replace("\n", " ").replace('"', "'")
+
     for name, value in fields.items():
         parts.extend(
             [
                 b"--" + marker + b"\r\n",
-                f'Content-Disposition: form-data; name="{name}"\r\n\r\n'.encode(),
-                value.encode("utf-8"),
+                f'Content-Disposition: form-data; name="{_header_text(name)}"\r\n\r\n'.encode(),
+                _header_text(value).encode("utf-8"),
                 b"\r\n",
             ]
         )
-    safe_filename = Path(filename).name.replace('"', "") or "audio.wav"
+    safe_filename = portable_filename(filename, default="audio.wav")
     content_type = mimetypes.guess_type(safe_filename)[0] or "application/octet-stream"
     if Path(safe_filename).suffix.lower() in {".wav", ".wave"}:
         content_type = "audio/wav"

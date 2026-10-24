@@ -30,6 +30,26 @@ def test_multipart_matches_openai_audio_contract():
     assert body.endswith(b"--fixed-boundary--\r\n")
 
 
+def test_multipart_fields_cannot_inject_a_header():
+    from speech_client.__main__ import _encode_multipart
+
+    body, _content_type = _encode_multipart(
+        filename='clip.wav"\r\nX-Injected: yes',
+        audio=b"RIFF",
+        fields={"model": "whisper\r\nX: 1"},
+        boundary="fixed-boundary",
+    )
+    assert b"\r\nX-Injected" not in body
+    assert b"\r\nX:" not in body
+    device, _content_type = _encode_multipart(
+        filename="CON.wav",
+        audio=b"RIFF",
+        fields={"model": "whisper"},
+        boundary="fixed-boundary",
+    )
+    assert b'filename="_CON.wav"' in device
+
+
 def test_client_rejects_non_http_url_handlers():
     from urllib import request
 
