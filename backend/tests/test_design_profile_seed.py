@@ -84,3 +84,31 @@ def test_save_without_a_seed_keeps_the_default(design_client, monkeypatch):
     _engine_loaded(monkeypatch, True)
     _save_design(client)
     assert seeds == [42]
+
+
+def test_lock_and_unlock_keep_a_design_voices_saved_seed(design_client, monkeypatch, tmp_path):
+    from api.routers import profiles
+    from core.db import db_conn
+
+    client, _seeds = design_client
+    _engine_loaded(monkeypatch, False)
+    outputs = tmp_path / "outputs"
+    outputs.mkdir()
+    (tmp_path / "voices").mkdir(exist_ok=True)
+    (outputs / "take.wav").write_bytes(_wav_bytes())
+    monkeypatch.setattr(profiles, "OUTPUTS_DIR", str(outputs))
+    profile_id = _save_design(client, seed="76785")
+    with db_conn() as conn:
+        conn.execute(
+            "INSERT INTO generation_history (id, text, audio_path) VALUES ('h1', 'hi', 'take.wav')"
+        )
+        conn.commit()
+
+    def stored_seed():
+        with db_conn() as conn:
+            return conn.execute("SELECT seed FROM voice_profiles WHERE id=?", (profile_id,)).fetchone()["seed"]
+
+    assert client.post(f"/profiles/{profile_id}/lock", data={"history_id": "h1", "seed": "5"}).status_code == 200
+    assert stored_seed() == 76785
+    assert client.post(f"/profiles/{profile_id}/unlock").status_code == 200
+    assert stored_seed() == 76785

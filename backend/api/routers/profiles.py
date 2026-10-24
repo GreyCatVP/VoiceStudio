@@ -966,10 +966,15 @@ async def lock_profile(
             restore, finalize = _install_staged(staged_path, locked_path)
 
             ref_text = history["text"][:100] if history["text"] else ""
+            # A design voice's saved seed is its identity (#3254): locking must
+            # not replace it with the take's seed, or unlocking would lose it.
+            lock_seed = seed
+            if profile["kind"] == "design" and profile["seed"] is not None:
+                lock_seed = profile["seed"]
 
             conn.execute(
                 "UPDATE voice_profiles SET locked_audio_path=?, seed=?, is_locked=1, ref_text=? WHERE id=?",
-                (locked_filename, seed, ref_text, profile_id)
+                (locked_filename, lock_seed, ref_text, profile_id)
             )
             conn.commit()
         except BaseException:
@@ -998,7 +1003,8 @@ async def unlock_profile(profile_id: str):
                 )
 
             conn.execute(
-                "UPDATE voice_profiles SET locked_audio_path='', seed=NULL, is_locked=0 WHERE id=?",
+                "UPDATE voice_profiles SET locked_audio_path='', "
+                "seed=CASE WHEN kind='design' THEN seed ELSE NULL END, is_locked=0 WHERE id=?",
                 (profile_id,)
             )
         # Retire only after the row change committed (a rolled-back unlock must
