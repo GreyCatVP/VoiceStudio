@@ -2964,7 +2964,14 @@ def _ctranslate2_cuda_ok() -> bool:
         # the #1529 crash. CPU always works.
         logger.warning("device probe failed — CTranslate2 taking the CPU path", exc_info=True)
         return False
-    return _cuda_reported_available() and not _rocm_torch()
+    # Availability checks are not a load-time guarantee: an already selected
+    # or directly constructed adapter can bypass them. Missing cuDNN aborts
+    # inside native CUDA code, so choose the supported CPU path before loading.
+    return (
+        _cuda_reported_available()
+        and not _rocm_torch()
+        and _ctranslate2_cudnn_ok()[0]
+    )
 
 
 def _auto_detect() -> str:
@@ -3102,8 +3109,8 @@ def _licence_repo(name: str | None, *, faster_whisper: bool = False) -> str | No
 
     A local directory outside the HF cache has no registry identity (it is a
     user-provided asset) and yields None. Local paths are recognised by syntax
-    (absolute, ``./``, ``../``, ``~``, drive letters), never by probing the
-    filesystem with a user-provided name.
+    (absolute, a leading separator, ``./``, ``../``, ``~``, drive letters),
+    never by probing the filesystem with a user-provided name.
     """
     name = str(name or "").strip()
     if not name:
@@ -3111,7 +3118,7 @@ def _licence_repo(name: str | None, *, faster_whisper: bool = False) -> str | No
     cached = _HF_CACHE_DIR.search(name)
     if cached:
         return f"{cached.group(1)}/{cached.group(2)}"
-    if os.path.isabs(name) or name.startswith((".", "~")) or "\\" in name or _DRIVE_PATH.match(name):
+    if os.path.isabs(name) or name.startswith(("/", ".", "~")) or "\\" in name or _DRIVE_PATH.match(name):
         return None
     if name.lower() in _MOONSHINE_REPOS:
         return _MOONSHINE_REPOS[name.lower()]
@@ -3488,6 +3495,27 @@ def transcribe_reference(audio_path: str, *, release_after: bool = False) -> str
             while len(_ref_transcript_cache) > _REF_TRANSCRIPT_CACHE_MAX:
                 _ref_transcript_cache.popitem(last=False)
     return text or None
+
+
+def reference_asr_installed() -> bool:
+    """True when :func:`transcribe_reference` has a local recognizer to try.
+
+    The selected offline engine, the selected dictation engine, or any
+    installed fallback counts: a user whose selection points at a model that
+    is not on disk, but who has another speech-to-text model installed, must
+    not be told that none exists (#2929/#2678). Never downloads, never raises.
+    """
+    try:
+        if asr_model_missing_error(
+            require_installed=active_backend_id() != "openai-compat-asr",
+        ) is None:
+            return True
+        if asr_model_missing_error(purpose="dictation", require_installed=True) is None:
+            return True
+        return bool(_installed_reference_fallbacks([]))
+    except Exception:  # noqa: BLE001 — a failed probe must not block typing a transcript
+        logger.warning("reference ASR availability probe failed", exc_info=True)
+        return False
 
 
 _capture_backend: ASRBackend | None = None

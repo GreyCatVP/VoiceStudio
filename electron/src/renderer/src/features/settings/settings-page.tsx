@@ -3,6 +3,8 @@ import { UpdateSettings } from './update-settings';
 import { MirrorSettings } from './mirror-settings';
 import { StorageSettings } from './storage-settings';
 import { PrivacySettings } from './privacy-settings';
+import { AccountSettings } from './account-settings';
+import { useAccount } from '@/features/account/use-account';
 import { PerformanceSettings } from './performance-settings';
 import { CredentialSettings } from './credential-settings';
 import { NetworkSettings } from './network-settings';
@@ -12,7 +14,6 @@ import { LogSettings } from './log-settings';
 import { PronunciationSettings } from './pronunciation-settings';
 import { PermissionsSettings } from './permissions-settings';
 import { UsageSettings } from './usage-settings';
-import { WorkersSettings } from './workers-settings';
 import { OpenApiSettings } from './openapi-settings';
 import { DiagnosticsSettings } from './diagnostics-settings';
 import { ModelSettings } from './model-settings';
@@ -27,6 +28,7 @@ import {
   Share2Icon,
   CpuIcon,
   ShieldCheckIcon,
+  UserRoundIcon,
   HardDriveIcon,
   KeyRoundIcon,
   FileTextIcon,
@@ -45,7 +47,6 @@ import {
   SpellCheckIcon,
   LockKeyholeIcon,
   BarChart3Icon,
-  ServerCogIcon,
   BracesIcon,
   StethoscopeIcon,
   HeartHandshakeIcon,
@@ -154,6 +155,14 @@ const extraSettings = [
     ],
   },
   {
+    to: '/settings/account',
+    label: 'account.title',
+    Icon: UserRoundIcon,
+    Component: AccountSettings,
+    fields: ['account.title', 'account.features', 'account.sync', 'account.sign_in'],
+    cloudAccountsOnly: true,
+  },
+  {
     to: '/settings/performance',
     label: 'settings.compute_device_title',
     Icon: CpuIcon,
@@ -174,18 +183,6 @@ const extraSettings = [
       'settings.usage_takes',
       'settings.usage_audio',
       'settings.usage_by_language',
-    ],
-  },
-  {
-    to: '/settings/workers',
-    label: 'settings.workers_title',
-    Icon: ServerCogIcon,
-    Component: WorkersSettings,
-    fields: [
-      'settings.workers_title',
-      'settings.workers_add',
-      'settings.worker_join_title',
-      'settings.worker_join_code',
     ],
   },
   {
@@ -235,12 +232,18 @@ const extraSettings = [
   },
 ] as const;
 
+/** Settings → Account is listed only when this build offers VoiceStudio Cloud accounts. */
+export function extraSettingsFor(cloudAccountsAvailable: boolean) {
+  return extraSettings.filter((item) => cloudAccountsAvailable || !('cloudAccountsOnly' in item));
+}
+
 export function SettingsPage() {
   const { t } = useTranslation();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-  const extra = extraSettings.find((item) => pathname === item.to);
+  const extras = extraSettingsFor(useAccount().state?.available === true);
+  const extra = extras.find((item) => pathname === item.to);
   const isOpenApi = pathname === '/settings/openapi';
   const isModels = pathname.includes('/models');
   const isMedia = pathname.endsWith('/media');
@@ -273,7 +276,7 @@ export function SettingsPage() {
     language: 'language-label',
     review_mode: 'review-mode-label',
   };
-  const extraMatches = extraSettings.filter((item) =>
+  const extraMatches = extras.filter((item) =>
     item.fields.some((key) =>
       t(key).toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()),
     ),
@@ -518,7 +521,7 @@ export function SettingsPage() {
         <header
           className={cn(
             'workspace-titlebar flex shrink-0 items-center gap-2 px-5 text-sm',
-            !isMac() && 'native-controls-right',
+            isMac() ? 'account-corner-safe' : 'native-controls-right',
           )}
         >
           <span className="text-muted-foreground">{t('nav.settings')}</span>
