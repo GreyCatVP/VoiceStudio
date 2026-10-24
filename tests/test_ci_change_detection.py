@@ -1,0 +1,227 @@
+"""CI skips the Electron-only jobs for pull requests that provably cannot affect them.
+
+The detection script is extracted from ci.yml and run for real (bash with the same
+flags Actions uses) against a fake `gh`, so the shipped regex and control flow are
+what is tested. The rule is fail-safe: an allowlist, and any doubt runs everything.
+An independent review found three ways a breaking PR could be skipped (a rename out
+of electron/, root files the packaging contract reads, and a swallowed grep error);
+each has a test below.
+"""
+from __future__ import annotations
+
+import json
+import os
+import re
+import shutil
+import stat
+import subprocess
+from pathlib import Path
+
+import pytest
+import yaml
+
+ROOT = Path(__file__).resolve().parents[1]
+WORKFLOW = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
+STEP = next(s for s in WORKFLOW["jobs"]["changes"]["steps"] if s.get("id") == "detect")
+SCRIPT = STEP["run"]
+HAS_GREP_P = subprocess.run(["grep", "-P", "x"], input=b"", capture_output=True).returncode != 2
+pytestmark = pytest.mark.skipif(not HAS_GREP_P, reason="needs GNU grep -P, as on the Actions runner")
+
+
+def _detect(tmp_path: Path, rows, *, event="pull_request", gh_exit=0, gh_output_then_fail=False, grep_exit=None):
+    """rows: iterable of (status, filename) as `gh api ... --jq` prints them (TSV)."""
+    listing = "\n".join(f"{status}\t{name}" for status, name in rows)
+    gh = tmp_path / "gh"
+    if gh_exit:
+        body = f"echo boom >&2; exit {gh_exit}"
+    else:
+        body = f"cat <<'LIST'\n{listing}\nLIST" + ("\nexit 1" if gh_output_then_fail else "")
+    gh.write_text(f"#!/bin/sh\n{body}\n", encoding="utf-8")
+    gh.chmod(gh.stat().st_mode | stat.S_IEXEC)
+    if grep_exit is not None:  # a grep that is broken on this runner (e.g. BSD grep without -P)
+        fake = tmp_path / "grep"
+        fake.write_text(f"#!/bin/sh\ncat >/dev/null\nexit {grep_exit}\n", encoding="utf-8")
+        fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
+    out = tmp_path / "output"
+    out.write_text("", encoding="utf-8")
+    env = dict(os.environ, PATH=f"{tmp_path}:{os.environ['PATH']}", GITHUB_OUTPUT=str(out),
+               EVENT=event, PR="1", REPO="o/r", GH_TOKEN="x")
+    # `shell: bash` in Actions is: bash --noprofile --norc -eo pipefail {0}
+    proc = subprocess.run(["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", SCRIPT],
+                          env=env, capture_output=True, text=True)
+    assert proc.returncode == 0, proc.stderr
+    return out.read_text(encoding="utf-8").strip(), proc.stdout
+
+
+def _mod(*names):
+    return [("modified", n) for n in names]
+
+
+def test_the_step_uses_the_pipefail_shell():
+    assert STEP.get("shell") == "bash"
+
+
+@pytest.mark.parametrize("files", [
+    ["backend/api/routers/dub_export.py", "tests/test_dub_export.py"],
+    ["CHANGELOG.md", "docs/RELEASING.md", "README.md", "LICENSE-NOTICE.md"],   # edits only
+    ["omnivoice/utils/text.py", "uv.lock"],
+    ["scripts/release.py", "tests/backend/api/test_x.py"],
+    ["mobile/android/app/build.gradle.kts", "mobile/contract/openapi.json"],
+    [".github/ISSUE_TEMPLATE/bug.yml", "Makefile"],
+    [".github/workflows/docker.yml", ".github/workflows/mobile.yml"],
+    [".github/scripts/scam_guard.py", ".github/CONTRIBUTING.md"],
+])
+def test_python_docs_and_mobile_edits_skip_the_electron_jobs(tmp_path, files):
+    assert _detect(tmp_path, _mod(*files))[0] == "electron=false"
+
+
+@pytest.mark.parametrize("files", [
+    ["electron/src/renderer/src/app.tsx"],
+    ["backend/x.py", "electron/src/main/updater.ts"],            # one Electron file is enough
+    ["native/desktop-bridge/src/lib.rs"],
+    ["package.json"], ["bun.lock"], ["config/app.json"],
+    ["pyproject.toml"],                                         # the contract parses its `readme =` key
+    ["tests/fixtures/longform_parser_cases.json"],              # shared with the JS suite
+    ["tests/frontend/ssml.test.mjs"],
+    [".github/workflows/ci.yml"], [".github/workflows/electron-release.yml"],
+    [".github/workflows/electron-build.yml"], ["backend/x.py", ".github/workflows/ci.yml"],
+    ["scripts/install.sh"], ["scripts/export-mobile-tokens.ts"],
+    ["something/unknown.txt"], ["LICENSE"], ["store/listing.json"],
+])
+def test_anything_else_runs_the_electron_jobs(tmp_path, files):
+    assert _detect(tmp_path, _mod(*files))[0] == "electron=true"
+
+
+# --- the three bypasses found in review -------------------------------------------
+
+def test_a_file_renamed_out_of_electron_runs_everything(tmp_path):
+    """`git mv electron/src/app.tsx docs/app.tsx` lists only the NEW path."""
+    assert _detect(tmp_path, [("renamed", "docs/app.tsx")])[0] == "electron=true"
+
+
+@pytest.mark.parametrize("name", ["LICENSE-NOTICE.md", "README.md", "uv.lock", "backend/__init__.py"])
+def test_deleting_a_file_the_packaging_contract_requires_runs_everything(tmp_path, name):
+    assert _detect(tmp_path, [("removed", name)])[0] == "electron=true"
+
+
+@pytest.mark.parametrize("grep_exit", [2, 127])
+def test_a_broken_grep_never_means_skip(tmp_path, grep_exit):
+    """grep exit 2 (bad pattern, no -P) was swallowed by `|| true` and gave false."""
+    rows = _mod("electron/src/main/updater.ts")
+    assert _detect(tmp_path, rows, grep_exit=grep_exit)[0] == "electron=true"
+
+
+# --- found by the second review: early-exit consumers under pipefail ------------------
+# `grep -q` / `head -5` close the pipe early; the producer dies of SIGPIPE, `pipefail`
+# reports the pipeline as failed, and on a list larger than the pipe buffer (64 KiB)
+# "a file was deleted" read as "no match". The lists below are well past that.
+
+def _bulk(prefix, n, status="modified"):
+    return [(status, f"{prefix}/module_{i:04}.py") for i in range(n)]
+
+
+@pytest.mark.parametrize("first", [("removed", "README.md"), ("removed", "LICENSE-NOTICE.md"),
+                                   ("renamed", "docs/app.tsx"), ("removed", "uv.lock")])
+@pytest.mark.parametrize("position", ["first", "last"])
+def test_a_deletion_or_rename_is_found_however_large_the_list_and_wherever_it_sits(tmp_path, first, position):
+    bulk = _bulk("backend/services", 2500) + [("modified", f"docs/page{i:04}.md") for i in range(400)]
+    rows = [first] + bulk if position == "first" else bulk + [first]
+    # well past the 64 KiB pipe buffer, but under the 3000-file cap (which would mask the bug)
+    assert 100_000 < sum(len(f"{a}\t{b}\n") for a, b in rows) and len(rows) < 3000
+    assert _detect(tmp_path, rows)[0] == "electron=true"
+
+
+def test_a_huge_electron_pr_does_not_crash_the_detection_step(tmp_path):
+    """`printf | head -5` exited 141 here and the step failed before writing its output."""
+    rows = [("modified", f"electron/src/renderer/file{i:04}.tsx") for i in range(2500)]
+    result, stdout = _detect(tmp_path, rows)    # _detect asserts the step itself exited 0
+    assert result == "electron=true"
+    assert stdout.count("    electron/") == 5
+
+
+def test_a_huge_but_safe_pr_still_skips(tmp_path):
+    rows = _bulk("backend/services", 2000) + [("modified", f"docs/page{i:04}.md") for i in range(900)]
+    assert _detect(tmp_path, rows)[0] == "electron=false"
+
+
+@pytest.mark.parametrize("status", ["copied", "changed", "unchanged", "removed", "renamed", "weird"])
+def test_only_added_and_modified_files_can_be_skipped(tmp_path, status):
+    """`changed` is a mode/type change (a file turned into a symlink); fail safe on any status."""
+    assert _detect(tmp_path, [(status, "backend/x.py")])[0] == "electron=true"
+
+
+def test_added_and_modified_mixed_is_still_skippable(tmp_path):
+    assert _detect(tmp_path, [("added", "backend/new.py"), ("modified", "docs/a.md")])[0] == "electron=false"
+
+
+@pytest.mark.parametrize("name", [
+    "backend/assets/samples/dictation/en_conversational.wav",   # played by the gallery smoke
+    "backend/assets/anything.bin",
+])
+def test_backend_assets_are_read_by_the_renderer_smokes_so_they_run_everything(tmp_path, name):
+    assert _detect(tmp_path, _mod(name))[0] == "electron=true"
+
+
+def test_the_rest_of_backend_is_still_skippable(tmp_path):
+    assert _detect(tmp_path, _mod("backend/assets_helper.py", "backend/api/x.py"))[0] == "electron=false"
+
+
+# --- other fail-safes --------------------------------------------------------------
+
+def test_3000_files_is_the_api_cap_so_it_runs_everything(tmp_path):
+    rows = _mod(*[f"docs/page{i}.md" for i in range(2999)] + ["electron/src/x.ts"])
+    assert _detect(tmp_path, rows)[0] == "electron=true"
+    assert _detect(tmp_path, _mod(*[f"docs/page{i}.md" for i in range(2999)]))[0] == "electron=false"
+
+
+def test_hostile_file_names_cannot_start_a_workflow_command(tmp_path):
+    rows = _mod("::set-output name=electron::false", "::add-mask::value", "electron/a.ts")
+    result, stdout = _detect(tmp_path, rows)
+    assert result == "electron=true"
+    assert not [line for line in stdout.splitlines() if line.startswith("::")], stdout
+
+
+@pytest.mark.parametrize("event", ["push", "workflow_dispatch"])
+def test_main_pushes_and_manual_runs_always_run_everything(tmp_path, event):
+    assert _detect(tmp_path, _mod("docs/only.md"), event=event)[0] == "electron=true"
+
+
+def test_a_failed_partial_or_empty_lookup_runs_everything(tmp_path):
+    assert _detect(tmp_path, [], gh_exit=1)[0] == "electron=true"
+    assert _detect(tmp_path, [])[0] == "electron=true"
+    # gh printed a page of safe files, then failed (partial pagination)
+    assert _detect(tmp_path, _mod("docs/a.md"), gh_output_then_fail=True)[0] == "electron=true"
+
+
+@pytest.mark.skipif(shutil.which("jq") is None, reason="jq not installed")
+def test_the_jq_expression_emits_status_and_filename_for_renames_too(tmp_path):
+    expr = re.search(r"--jq '([^']+)'", SCRIPT).group(1)
+    api = [{"status": "renamed", "filename": "docs/app.tsx", "previous_filename": "electron/app.tsx"},
+           {"status": "modified", "filename": "backend/x.py"}]
+    got = subprocess.run(["jq", "-r", expr], input=json.dumps(api), capture_output=True, text=True).stdout
+    assert got.splitlines() == ["renamed\tdocs/app.tsx", "modified\tbackend/x.py"]
+
+
+# --- structure ----------------------------------------------------------------------
+
+def test_the_electron_jobs_are_gated_on_the_detection_and_survive_its_failure():
+    jobs = WORKFLOW["jobs"]
+    for name in ("ui-crawler", "linux-native-package", "electron-ui"):
+        assert jobs[name]["needs"] == "changes", name
+        condition = jobs[name]["if"]
+        assert "!cancelled()" in condition and "outputs.electron != 'false'" in condition, name
+    # the merge gate always reports, even if detection broke
+    assert jobs["test"]["needs"] == "changes" and jobs["test"]["if"] == "${{ !cancelled() }}"
+    gated = {s["name"] for s in jobs["test"]["steps"] if "outputs.electron != 'false'" in str(s.get("if", ""))}
+    assert gated == {
+        "Frontend unit tests", "Electron typecheck, tests and production contract",
+        "Snap artifact repair regression", "Install Playwright chromium",
+        "Electron renderer workflow smokes",
+    }
+
+
+def test_required_check_names_are_unchanged():
+    names = {j["name"] for j in WORKFLOW["jobs"].values()}
+    assert {"Tests (backend + frontend)", "UI crawler", "Linux native package",
+            "Electron installer contracts"} <= names
+    assert any(n.startswith("Desktop UI (") for n in names)
