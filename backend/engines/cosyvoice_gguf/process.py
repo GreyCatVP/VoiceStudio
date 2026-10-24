@@ -78,6 +78,7 @@ class NativeServer:
             stdout=self.log_handle,
             stderr=subprocess.STDOUT,
             stdin=subprocess.DEVNULL,
+            cwd=str(server.parent),
         )
         self.prompt_key = key
         try:
@@ -96,7 +97,8 @@ class NativeServer:
         if payload is not None:
             req.add_header("Content-Type", "application/json")
             req.data = json.dumps(payload).encode("utf-8")
-        with urllib.request.urlopen(req, timeout=timeout) as response:  # nosec B310 loopback only
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        with opener.open(req, timeout=timeout) as response:  # nosec B310 loopback only
             result = json.loads(response.read().decode("utf-8"))
         if not isinstance(result, dict):
             raise TypeError("CosyVoice GGUF server returned malformed JSON")
@@ -145,7 +147,8 @@ class NativeServer:
         )
         request.add_header("Authorization", f"Bearer {self.api_key}")
         request.add_header("Content-Type", "application/json")
-        with urllib.request.urlopen(request, timeout=timeout) as response:  # nosec B310 loopback only
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        with opener.open(request, timeout=timeout) as response:  # nosec B310 loopback only
             return response.read()
 
     def stop(self):
