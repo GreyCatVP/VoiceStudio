@@ -2072,6 +2072,7 @@
     "original": "Original",
     "dub_suffix": "(Dub)",
     "bg_audio": "Background audio",
+    "background_volume": "Background volume",
     "mix_bg_video": "Mix music/FX under every dubbed track",
     "subs_in_video": "Subtitles in video",
     "hardsub": "Burn subtitles into picture (hardsub)",
