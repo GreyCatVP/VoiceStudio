@@ -106,6 +106,12 @@ uv run python scripts/export_openapi.py    # mobile/contract/openapi.json from t
 
 `tests/test_mobile_contract.py` fails when either is stale.
 
+**Reports in test builds.** Every build, debug included, sends reports to
+production. To test against the development API, copy `mobile/.env.example` to
+`mobile/.env` (git-ignored) and set
+`VOICESTUDIO_CONTENT_REPORTS_URL=https://dev-appapi.voicestudio.sh`, or export
+that variable; the environment wins over the file. Rebuild after changing it.
+
 **Try the iPhone app without Xcode.** Each `mobile` workflow run uploads an
 unsigned build, `VoiceStudio-ios-unsigned` (kept 7 days). Download it from the
 run's Artifacts, then install it with a sideloading tool that signs it with your

@@ -42,6 +42,7 @@ metadata and the backend fallback mirror it.
 - A runtime setup crash during the final import check now names the module that crashed, so reports stop ending at an unrelated log line (#3293)
 - Settings → Updates lists only desktop releases; phone app releases no longer appear there for Beta users (#3292)
 - Android release builds use version codes Google Play accepts for a first upload (#3311)
+- Phone reports go to the production server in every build; testers point a build at the dev server with `VOICESTUDIO_CONTENT_REPORTS_URL` (#3324)
 - One-click engine installs fall back to the `uv` on your PATH when the app has none of its own to offer, instead of failing on an empty `uv` setting (#3284)
 - iPhone Settings → About and licence receipts show the full app version (`0.5.7-beta.2`), like Android, instead of only `0.5.7` (#3273)
 - A voice with no transcript now offers a one-click speech-to-text model install instead of only an error (#3269)

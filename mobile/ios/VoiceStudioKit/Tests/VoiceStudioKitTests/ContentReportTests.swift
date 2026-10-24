@@ -174,8 +174,11 @@ private let speak = ContentReportSubject.phone(.speak, id: "take", repo: "k2-fsa
 }
 
 @Test func contentReportBaseURLAndAppVersionPerBuild() {
-    #expect(ContentReportClient.baseURL(debug: true).absoluteString == "https://dev-appapi.voicestudio.sh")
-    #expect(ContentReportClient.baseURL(debug: false).absoluteString == "https://appapi.voicestudio.sh")
+    // Production unless the build carries an https override; debug builds get no special default.
+    #expect(ContentReportClient.baseURL(info: nil).absoluteString == "https://appapi.voicestudio.sh")
+    #expect(ContentReportClient.baseURL(info: ["VoiceStudioContentReportsURL": " "]).absoluteString == "https://appapi.voicestudio.sh")
+    #expect(ContentReportClient.baseURL(info: ["VoiceStudioContentReportsURL": "http://dev-appapi.voicestudio.sh"]).absoluteString == "https://appapi.voicestudio.sh")
+    #expect(ContentReportClient.baseURL(info: ["VoiceStudioContentReportsURL": "https://dev-appapi.voicestudio.sh"]).absoluteString == "https://dev-appapi.voicestudio.sh")
     #expect(ContentReportClient.appVersion(info: ["VoiceStudioAppVersion": "0.5.7-beta.2", "CFBundleShortVersionString": "0.5.7"]) == "0.5.7-beta.2")
     #expect(ContentReportClient.appVersion(info: ["CFBundleShortVersionString": "0.5.7"]) == "0.5.7")
     #expect(ContentReportClient.appVersion(info: nil) == "unknown")

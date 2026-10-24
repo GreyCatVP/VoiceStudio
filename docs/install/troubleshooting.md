@@ -1344,6 +1344,18 @@ the message:
   blocked executable. Add VoiceStudio's runtime folder to your antivirus
   exclusions (Windows Security → Virus & threat protection → Manage settings →
   Exclusions) and make sure it is not inside OneDrive, then retry.
+- **`… spawn UNKNOWN. Windows Smart App Control blocked it.`** — Smart App
+  Control (Windows 11) blocks programs without a known reputation, including the
+  runtime's `python.exe`; Event Viewer → Applications and Services Logs →
+  Microsoft → Windows → CodeIntegrity → Operational shows event 3077 for it.
+  Unlike antivirus it has **no per-app exceptions**, so an exclusion cannot help.
+  Either turn it off (Windows Security → App & browser control → Smart App
+  Control settings; Windows cannot turn it back on without a reset) or connect
+  VoiceStudio to an engine running on another computer. The app says this only
+  when it reads Smart App Control as on or in evaluation
+  (`VerifiedAndReputablePolicyState` 1 or 2 under
+  `HKLM\SYSTEM\CurrentControlSet\Control\CI\Policy`); otherwise it shows the
+  antivirus advice above (#3224).
 - **`Backend did not answer on port 3900 within N s`** — the wait for the
   backend ran out. The budget (`OMNIVOICE_STARTUP_BUDGET_S`) now starts when the
   backend process is spawned, not when the launch began, defaults to 300 s (600 s

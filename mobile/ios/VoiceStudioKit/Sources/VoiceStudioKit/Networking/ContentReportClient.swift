@@ -11,11 +11,16 @@ public enum AppVersion {
 /// `POST /v1/content-reports` on VoiceStudio's app API. Deliberately separate from
 /// `APIClient`: it never carries the paired host's PIN, session or any `Authorization`.
 public struct ContentReportClient: Sendable {
-    public static let releaseBaseURL = URL(string: "https://appapi.voicestudio.sh")!
-    public static let debugBaseURL = URL(string: "https://dev-appapi.voicestudio.sh")!
+    public static let productionBaseURL = URL(string: "https://appapi.voicestudio.sh")!
     /// Info.plist key holding the root `package.json` version (written by prepare_resources.py).
     public static let appVersionInfoKey = "VoiceStudioAppVersion"
-    public static func baseURL(debug: Bool) -> URL { debug ? debugBaseURL : releaseBaseURL }
+    /// Info.plist key holding a build's `VOICESTUDIO_CONTENT_REPORTS_URL` override (written by prepare_resources.py).
+    public static let baseURLInfoKey = "VoiceStudioContentReportsURL"
+    /// Production for every build unless the build was pointed elsewhere, e.g. at the development API.
+    public static func baseURL(info: [String: Any]?) -> URL {
+        guard let raw = (info?[baseURLInfoKey] as? String)?.nilIfBlank, raw.hasPrefix("https://"), let url = URL(string: raw) else { return productionBaseURL }
+        return url
+    }
     /// The full app version (`X.Y.Z` or `X.Y.Z-beta.N`), limited to the server's `^[0-9A-Za-z.+_-]{1,32}$`.
     public static func appVersion(info: [String: Any]?) -> String {
         let raw = AppVersion.full(info: info) ?? ""

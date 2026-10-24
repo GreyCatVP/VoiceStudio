@@ -20,15 +20,7 @@ import BackgroundTasks
     /// A short confirmation key (e.g. `mobile.report.sent`) shown above the tabs.
     var notice: String?
     /// Content-report drafts per result, kept in memory until sent.
-    let reports = ContentReports(client: ContentReportClient(baseURL: AppModel.reportBaseURL), appVersion: ContentReportClient.appVersion(info: Bundle.main.infoDictionary))
-    /// Debug builds report to the development app API, release builds to production.
-    static var reportBaseURL: URL {
-        #if DEBUG
-        ContentReportClient.baseURL(debug: true)
-        #else
-        ContentReportClient.baseURL(debug: false)
-        #endif
-    }
+    let reports = ContentReports(client: ContentReportClient(baseURL: ContentReportClient.baseURL(info: Bundle.main.infoDictionary)), appVersion: ContentReportClient.appVersion(info: Bundle.main.infoDictionary))
     /// The engine each computer take was generated with, from the host's engine inventory (memory only).
     @ObservationIgnored var computerEngines: [String: String] = [:]
     var busy = false

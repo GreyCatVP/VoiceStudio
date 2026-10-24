@@ -38,6 +38,7 @@ import {
   resolveSpawnPlan,
   managedBackendSpawnOptions,
   setBackendOnlyEnv,
+  smartAppControlFromRegistry,
   spawnFailureMessage,
   startupTimeoutMessage,
 } from './backend';
@@ -170,6 +171,37 @@ it('names the program and runtime repair when the OS rejects a spawn', () => {
   expect(message).toContain(python);
   expect(message).toContain('spawn UNKNOWN');
   expect(message).toContain('repair the local runtime');
+});
+
+it('reads Smart App Control from the registry output', () => {
+  const reg = (value: string) =>
+    `\r\nHKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\CI\\Policy\r\n    VerifiedAndReputablePolicyState    REG_DWORD    ${value}\r\n`;
+  expect(smartAppControlFromRegistry(reg('0x1'))).toBe('on');
+  expect(smartAppControlFromRegistry(reg('0x2'))).toBe('evaluation');
+  expect(smartAppControlFromRegistry(reg('0x0'))).toBe('off');
+  expect(smartAppControlFromRegistry(reg('0x9'))).toBe('unknown');
+  expect(smartAppControlFromRegistry('ERROR: The system was unable to find the specified registry key')).toBe(
+    'unknown',
+  );
+});
+
+it('names Smart App Control when it blocked the runtime (#3224)', () => {
+  const python = String.raw`C:\Users\u\VoiceStudio\.venv\Scripts\python.exe`;
+  const blocked = Object.assign(new Error('spawn UNKNOWN'), { code: 'UNKNOWN' });
+  for (const smartAppControl of ['on', 'evaluation'] as const) {
+    const message = spawnFailureMessage(python, blocked, { smartAppControl });
+    expect(message).toContain(python);
+    expect(message).toContain('spawn UNKNOWN');
+    expect(message).toContain('Windows Smart App Control blocked it');
+    expect(message).not.toContain('repair the local runtime');
+  }
+  // Off or unreadable: the existing advice stays.
+  for (const smartAppControl of ['off', 'unknown'] as const) {
+    expect(spawnFailureMessage(python, blocked, { smartAppControl })).toContain('repair the local runtime');
+  }
+  // Only the bare Windows UNKNOWN is attributed to it, never a missing file.
+  const missing = Object.assign(new Error('spawn ENOENT'), { code: 'ENOENT' });
+  expect(spawnFailureMessage(python, missing, { smartAppControl: 'on' })).not.toContain('Smart App Control');
 });
 
 it('points a custom backend command at its own executable', () => {
