@@ -222,8 +222,16 @@ def format_cue_timestamp(seconds: float, ms_separator: str) -> str:
     which moved every such cue a millisecond early on export, and 59.9996
     carries to the next second instead of printing `,1000`. SRT separates
     the milliseconds with `,`; WebVTT with `.`.
+
+    A negative or non-finite time is clamped to zero. ``divmod`` of a negative
+    millisecond count wraps to ``-1:59:59,999``, which is not a cue timestamp.
     """
-    total_ms = int(round(seconds * 1000))
+    try:
+        total_ms = int(round(float(seconds) * 1000))
+    except (TypeError, ValueError, OverflowError):
+        total_ms = 0
+    if total_ms < 0:
+        total_ms = 0
     h, rem = divmod(total_ms, 3_600_000)
     m, rem = divmod(rem, 60_000)
     s, ms = divmod(rem, 1000)

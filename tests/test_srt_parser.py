@@ -5,7 +5,16 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
 
-from services.srt_parser import parse_srt  # noqa: E402
+from services.srt_parser import format_cue_timestamp, parse_srt  # noqa: E402
+
+
+def test_a_negative_or_non_finite_cue_time_exports_as_zero():
+    assert format_cue_timestamp(-0.001, ",") == "00:00:00,000"
+    assert format_cue_timestamp(-1.2, ",") == "00:00:00,000"
+    assert format_cue_timestamp(float("nan"), ".") == "00:00:00.000"
+    assert format_cue_timestamp(float("inf"), ".") == "00:00:00.000"
+    # The carry to the next second still happens for a genuine time.
+    assert format_cue_timestamp(59.9996, ",") == "00:01:00,000"
 
 
 def test_parses_a_well_formed_srt_file():
