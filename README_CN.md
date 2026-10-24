@@ -22,6 +22,8 @@
   </p>
 </div>
 
+> 📦 **完整中文版仓库**：[bayshier/voicestudio-zh](https://github.com/bayshier/voicestudio-zh) —— 贡献指南、行为准则等社区文档同样已中文化，应用源码与上游保持零改动同步。
+
 ![Electron 应用演示：声音克隆、声音设计、视频配音和模型管理](docs/media/electron/voicestudio.gif)
 
 ## 你的声音，你的工作流。
