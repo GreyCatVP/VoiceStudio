@@ -1658,7 +1658,7 @@ async def dub_qc_pass(job_id: str, lang: str = Query(None), drift_threshold: flo
     if fitted:
         scored_segments = _apply_fitted_times(scored_segments, fitted)
     else:
-        cues = _fitted_cue_times(job, track_lang)
+        cues = _track_stretch_cue_times(job, track_lang)
         if cues:
             scored_segments = [
                 dict(seg, start=s, end=e) for seg, (s, e) in zip(scored_segments, cues)
@@ -1952,6 +1952,25 @@ def _pick_subtitle_text(seg: dict, dual: bool, escape=lambda text: text) -> str:
 # bodies, so the Tauri side fetches them raw and writes the file itself via
 # the save_text_file command — the OS save dialog is the write authorization
 # (#309). The frontend's JSON-envelope save flow stays for binary exports.
+
+
+def _track_stretch_cue_times(job: dict, lang: str) -> list | None:
+    """Per-segment (start, end) on ``lang``'s stretched timeline, or None.
+
+    The strategy comes from that track, falling back to the job-level value
+    for jobs saved before tracks recorded it. A later render of another
+    language under a different strategy then neither drops this track's
+    stretch plan nor applies a retained plan to a track it no longer fits.
+    """
+    track = (job.get("dubbed_tracks") or {}).get(lang) or {}
+    strategy = (track.get("timing_strategy") or job.get("timing_strategy") or "").lower()
+    if strategy != "stretch_video":
+        return None
+    entry = (job.get("video_stretch_plans") or {}).get(lang) or {}
+    if not entry.get("plan"):
+        return None
+    from services.fitted_subtitles import fitted_cues
+    return fitted_cues(job.get("segments", []), entry["plan"])
 
 
 def _fitted_cue_times(job: dict, lang: str | None) -> list | None:

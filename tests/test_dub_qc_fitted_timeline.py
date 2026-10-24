@@ -124,3 +124,39 @@ def test_unfitted_track_keeps_original_windows(qc_env):
         {"id": key, "start": start, "end": end} for key, (start, end) in FITTED.items()
     ]}}
     assert _qc(qc_env)["flagged_count"] == 0
+
+
+def _stretch_plan(placement):
+    return {"plan": [
+        {"orig_start": ORIGINAL[key][0], "orig_end": ORIGINAL[key][1],
+         "new_start": start, "new_end": end}
+        for key, (start, end) in placement.items()
+    ]}
+
+
+STRETCHED = {"a": (0.0, 2.7), "b": (2.9, 5.4), "c": (5.6, 8.4)}
+
+
+def test_stretch_track_keeps_its_timeline_after_a_later_strict_slot_render(qc_env):
+    # German rendered under Stretch Video, then another language under Strict
+    # Slot: the job-level strategy now says strict_slot, but the German track
+    # still plays on its stretched timeline.
+    job = qc_env["job"]
+    job["dubbed_tracks"]["de"]["timing_strategy"] = "stretch_video"
+    job["timing_strategy"] = "strict_slot"
+    job["video_stretch_plans"] = {"de": _stretch_plan(STRETCHED)}
+    _hear_at(qc_env, STRETCHED)
+
+    assert _qc(qc_env)["flagged_count"] == 0
+
+
+def test_strict_slot_track_ignores_a_retained_stretch_plan(qc_env):
+    # Reverse order: German regenerated under Strict Slot after a Stretch
+    # Video render of another language left the job strategy and a German plan.
+    job = qc_env["job"]
+    job["dubbed_tracks"]["de"]["timing_strategy"] = "strict_slot"
+    job["timing_strategy"] = "stretch_video"
+    job["video_stretch_plans"] = {"de": _stretch_plan(STRETCHED)}
+    _hear_at(qc_env, ORIGINAL)
+
+    assert _qc(qc_env)["flagged_count"] == 0
