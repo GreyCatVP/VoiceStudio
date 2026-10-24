@@ -8,6 +8,7 @@ import {
   replaceDubSegmentTexts,
   uploadDub,
   setDubProduction,
+  setDubFitOptions,
   dubSession,
   generateDub,
   resumeDub,
@@ -697,6 +698,24 @@ it('uses saved Smart Fit overrides only for Smart Fit generation', async () => {
       strategy === 'smart_fit' ? { allow_video_retime: false, audio_rate_cap: 1.3 } : undefined,
     );
   }
+});
+
+it('sets and clears Smart Fit speed limits, keeping the rest of the overrides', () => {
+  dubSession.setState((current) => ({
+    ...current,
+    phase: 'editing',
+    recovery: null,
+    fitOptions: { allow_video_retime: false },
+  }));
+  setDubFitOptions({ min_audio_rate: 0.7 });
+  setDubFitOptions({ audio_rate_cap: 1.3 });
+  expect(dubSession.state.fitOptions).toEqual({
+    allow_video_retime: false,
+    min_audio_rate: 0.7,
+    audio_rate_cap: 1.3,
+  });
+  setDubFitOptions({ min_audio_rate: undefined, audio_rate_cap: undefined });
+  expect(dubSession.state.fitOptions).toEqual({ allow_video_retime: false });
 });
 
 it('does not recreate a cleared draft from a pending write or pagehide', async () => {
