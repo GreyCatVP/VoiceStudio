@@ -657,7 +657,13 @@ async def preview_upload(video: UploadFile = File(...)):
 
     def _write_and_extract() -> bool:
         # Previews are throwaway scratch copies that nothing else deletes.
-        sweep_stale_files(PREVIEW_DIR, PREVIEW_MAX_AGE_SECONDS)
+        removed = sweep_stale_files(PREVIEW_DIR, PREVIEW_MAX_AGE_SECONDS)
+        if removed:
+            logger.debug(
+                "Removed %d preview upload(s) older than %d hours",
+                removed,
+                PREVIEW_MAX_AGE_SECONDS // 3600,
+            )
         with open(vid_path, "wb") as f:
             f.write(payload)
         if ext in {".wav", ".mp3", ".m4a", ".aac"}:
