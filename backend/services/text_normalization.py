@@ -334,74 +334,64 @@ def _is_wordch(ch: str) -> bool:
     )
 
 
-def _delim_tokens(text: str, ch: str) -> list[tuple[int, int]]:
+def _delim_tokens(text: str, ch: str) -> list[tuple[int, int, int, int]]:
     """Split each maximal run of ch into ``**`` tokens then at most one ``*``.
 
     ``***`` → one ``**`` plus one ``*`` so bold+italic nests resolve across
-    the two passes instead of stranding the run.
+    the two passes instead of stranding the run. Each token carries its run's
+    bounds so flank checks are O(1) (rescanning a long run per token is
+    quadratic on ``"__**__**" * N``).
     """
-    toks: list[tuple[int, int]] = []
+    toks: list[tuple[int, int, int, int]] = []
     for m in re.finditer(re.escape(ch) + "+", text):
-        s, n = m.start(), m.end() - m.start()
+        rs, re_ = m.start(), m.end()
+        s, n = rs, re_ - rs
         while n > 3:
-            toks.append((s, 2))
+            toks.append((s, 2, rs, re_))
             s += 2
             n -= 2
         if n == 3:
-            toks.append((s, 2))
-            toks.append((s + 2, 1))
+            toks.append((s, 2, rs, re_))
+            toks.append((s + 2, 1, rs, re_))
         else:
-            toks.append((s, n))
+            toks.append((s, n, rs, re_))
     return toks
 
 
-def _outer_before(text: str, s: int, ch: str) -> str:
-    """Nearest character before position s that is not the run's own ch."""
-    i = s
-    while i > 0 and text[i - 1] == ch:
-        i -= 1
-    return text[i - 1] if i > 0 else ""
-
-
-def _outer_after(text: str, e: int, n: int, ch: str) -> str:
-    """Nearest character at/after e that is not the run's own ch."""
-    i = e
-    while i < n and text[i] == ch:
-        i += 1
-    return text[i] if i < n else ""
-
-
 def _open_ok(
-    text: str, s: int, L: int, n: int, ch: str, word_guarded: bool
+    text: str, tok: tuple[int, int, int, int], n: int, word_guarded: bool
 ) -> bool:
+    s, L, rs, _re = tok
     if s + L > n - 1 or text[s + L].isspace():
         return False
-    outer = _outer_before(text, s, ch)
-    return not outer or not word_guarded or not _is_wordch(outer)
+    return not word_guarded or rs == 0 or not _is_wordch(text[rs - 1])
 
 
 def _close_ok(
-    text: str, s: int, L: int, n: int, ch: str, word_guarded: bool
+    text: str, tok: tuple[int, int, int, int], n: int, word_guarded: bool
 ) -> bool:
+    s, _L, _rs, re_ = tok
     if s == 0 or text[s - 1].isspace():
         return False
-    outer = _outer_after(text, s + L, n, ch)
-    return not outer or not word_guarded or not _is_wordch(outer)
+    return not word_guarded or re_ >= n or not _is_wordch(text[re_])
 
 
 def _pair_spans(
-    text: str, tokens: list[tuple[int, int]], ch: str, word_guarded: bool
+    text: str, tokens: list[tuple[int, int, int, int]], word_guarded: bool
 ) -> list[tuple[int, int]]:
     drop: list[tuple[int, int]] = []
-    pending: tuple[int, int] | None = None
+    # Stack, not a single slot: ``**outer **inner** outer**`` must pair the
+    # inner span first and still close the outer one (idempotent output).
+    stack: list[tuple[int, int]] = []
     n = len(text)
-    for s, L in tokens:
-        if pending is not None and _close_ok(text, s, L, n, ch, word_guarded):
-            drop.append((pending[0], pending[0] + pending[1]))
+    for tok in tokens:
+        s, L = tok[0], tok[1]
+        if stack and _close_ok(text, tok, n, word_guarded):
+            os_, oL = stack.pop()
+            drop.append((os_, os_ + oL))
             drop.append((s, s + L))
-            pending = None
-        elif _open_ok(text, s, L, n, ch, word_guarded):
-            pending = (s, L)
+        elif _open_ok(text, tok, n, word_guarded):
+            stack.append((s, L))
     return drop
 
 
@@ -416,6 +406,9 @@ def _delete_spans(text: str, spans: list[tuple[int, int]]) -> str:
     return "".join(parts)
 
 
+_MASK_RE = re.compile("\x00(\\d+)\x00")
+
+
 def _strip_markdown_emphasis(text: str) -> str:
     spans: list[str] = []
 
@@ -426,11 +419,11 @@ def _strip_markdown_emphasis(text: str) -> str:
     out = _BRACKET_SPAN_RE.sub(_mask, text)
     for ch, guarded in (("*", False), ("_", True)):
         for L in (1, 2):
-            toks = [(s, ln) for s, ln in _delim_tokens(out, ch) if ln == L]
-            out = _delete_spans(out, sorted(_pair_spans(out, toks, ch, guarded)))
-    for i, span in enumerate(spans):
-        out = out.replace(f"\x00{i}\x00", span)
-    return out
+            toks = [t for t in _delim_tokens(out, ch) if t[1] == L]
+            out = _delete_spans(out, sorted(_pair_spans(out, toks, guarded)))
+    # One pass: a replace per span rescans the whole text (quadratic).
+    return _MASK_RE.sub(lambda m: spans[int(m.group(1))], out)
+
 
 def _strip_unsafe_controls(text: str) -> str:
     """Delete only the explicitly enumerated unsafe Unicode controls."""

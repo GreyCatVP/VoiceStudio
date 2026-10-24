@@ -130,6 +130,8 @@ _CHANGE_CASES = [
     ("English", "un**believ**able now", "unbelievable now"),
     ("English", "pre*fix* this", "prefix this"),
     ("English", "___bold___ here", "bold here"),
+    # Nested spans resolve fully, so a second pass is a no-op
+    ("English", "**outer **inner** outer**", "outer inner outer"),
 ]
 
 
@@ -343,6 +345,17 @@ def test_many_matched_pairs_stay_fast():
     raw = "**a** " * 300000
     start = time.perf_counter()
     assert _strip_markdown_emphasis(raw) == "a " * 300000
+    assert time.perf_counter() - start < 10
+
+
+@pytest.mark.parametrize("raw", ["__**__**" * 25000, "[pause 300ms] x " * 20000])
+def test_long_runs_and_many_controls_stay_fast(raw):
+    """Run bounds are saved at tokenization and bracket spans restore in one
+    pass; per-token run rescans and per-span replaces were quadratic (#3205)."""
+    import time
+    from services.text_normalization import _strip_markdown_emphasis
+    start = time.perf_counter()
+    _strip_markdown_emphasis(raw)
     assert time.perf_counter() - start < 10
 
 
