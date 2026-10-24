@@ -96,6 +96,7 @@
     "brand_by": "{{brand}} by",
     "all": "All",
     "allContributors": "All contributors",
+    "coreMaintainer": "Core maintainer",
     "title": "VoiceStudio.sh Open Source",
     "design": "Design a voice from a description.",
     "dub": "Translate and dub audio or video.",
@@ -335,6 +336,7 @@
     "download_apple_silicon": "Download the Apple Silicon build",
     "proxy_bypass_help": "Fully quit VoiceStudio, set HTTP_PROXY/HTTPS_PROXY to your proxy URL and NO_PROXY to excluded hosts in a terminal, then launch VoiceStudio from that terminal. Retrying in the current app cannot load new environment variables.",
     "hint_spawn_blocked": "Your operating system or security software refused to launch the local engine. Add VoiceStudio’s runtime folder to your antivirus exclusions (Windows: Windows Security → Virus & threat protection → Manage settings → Exclusions), make sure it is not inside a cloud-synced folder such as OneDrive, then retry.",
+    "hint_smart_app_control": "Windows Smart App Control blocked the local engine. It has no per-app exceptions, so an antivirus exclusion will not help. Turn it off in Windows Security → App & browser control → Smart App Control settings (Windows cannot turn it back on without a reset), or connect VoiceStudio to an engine running on another computer, then retry.",
     "hint_slow_start": "The engine was still starting when the wait ran out. Slow computers — especially ones without a dedicated GPU — and the first launch after an install (antivirus scans every new file) can need several minutes. Close memory-heavy apps and retry; later starts are much faster.",
     "hint_synced_folder": "This location is inside a cloud-synced folder (OneDrive, Dropbox, iCloud Drive, Google Drive). Online-only placeholders and file locking break the Python environment. Move VoiceStudio to a plain local folder (for example C:\\VoiceStudio on Windows or ~/VoiceStudio on macOS and Linux) and set it up again."
   },
@@ -2384,7 +2386,9 @@
     "not_included": "Not on your plan",
     "plan_ends": "until {{date}}",
     "details_failed": "Couldn’t load your account details ({{reason}}).",
-    "retry": "Retry"
+    "retry": "Retry",
+    "manage_profile": "Manage profile",
+    "manage_plan": "Manage plan"
   },
   "cloudsync": {
     "unavailable": "Sync is not available right now.",

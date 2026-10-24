@@ -72,13 +72,13 @@ internal class PhoneDictation(private val engine: LocalEngine, private val scope
     val holdStart=permissionAction(Manifest.permission.RECORD_AUDIO,"mobile.permissions.microphone",vm::fail) {if(holding&&ready&&model!=null) controller.start(model)}
     DictationLayout(content={
         ScreenTitle("mobile.tabs.dictate")
-        if(!ready) model?.let {MissingModelsCard(vm,"mobile.tabs.dictate",listOf(it))}
-        Text(text,modifier=Modifier.fillMaxWidth().heightIn(min=VSTheme.touchTarget*3).semantics {liveRegion=LiveRegionMode.Polite})
+        DictationTranscript(text)
     }, controls={
-        MicControl(active,ready,tap={holding=false;if(active) controller.finish() else start()},hold={holding=true;holdStart()},release={if(holding) {holding=false;controller.finish()}})
-        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(VSTheme.gap,androidx.compose.ui.Alignment.CenterHorizontally)) {
-            IconAction("mobile.dictate.copy",VSIcons.Copy,text.isNotBlank()) {context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(null,text))}
-            IconAction("mobile.speak.share",androidx.compose.material.icons.Icons.Default.Share,text.isNotBlank()) {shareText(context,text)}
-        }
+        if(!ready) model?.let {MissingModelsCard(vm,"mobile.tabs.dictate",listOf(it))}
+        DictationControls(text,active,ready,
+            copy={context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(null,text))},
+            share={shareText(context,text)},
+            tap={holding=false;if(active) controller.finish() else start()},hold={holding=true;holdStart()},
+            release={if(holding) {holding=false;controller.finish()}})
     })
 }

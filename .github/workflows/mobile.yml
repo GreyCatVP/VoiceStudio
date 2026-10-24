@@ -1,19 +1,22 @@
 # Mobile — native iOS and Android companion apps (mobile/contract/SPEC.md).
 #
 # Both apps build from generated inputs (theme tokens, OpenAPI, Electron locale
-# catalogs), so a change to any of those re-runs this workflow too. Contract
-# drift itself is caught by tests/test_mobile_contract.py in ci.yml.
+# catalogs), so a change to any of those re-runs this workflow on `main`. Contract
+# drift itself is caught by tests/test_mobile_contract.py in ci.yml, which is why a
+# pull request only starts these builds when it changes the apps.
 
 name: mobile
 
 on:
+  # A pull request builds both apps only when it changes them. Locale, language and
+  # package.json edits reach the apps through generated files under mobile/, so
+  # tests/test_mobile_contract.py (run by ci.yml) fails such a PR until the
+  # regenerated files are committed, and that commit triggers this workflow.
+  # `main` below still builds on those paths.
   pull_request:
     paths:
       - "mobile/**"
       - "docs/logo.svg"
-      - "electron/src/renderer/src/i18n/locales/**"
-      - "electron/src/shared/languages.json"
-      - "package.json"
       - ".github/workflows/mobile.yml"
   push:
     branches: [main]

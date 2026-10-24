@@ -315,9 +315,11 @@ repository). It needs no sign-in and accepts no audio or identifiers.
   | `runs_on` | `phone` / `computer` |
 
 - **Request:** `POST <base>/v1/content-reports`, `Content-Type:
-  application/json`, `Idempotency-Key` and no `Authorization`. Release builds
-  use `https://appapi.voicestudio.sh`; debug builds use
-  `https://dev-appapi.voicestudio.sh`. The key (32 characters of
+  application/json`, `Idempotency-Key` and no `Authorization`. Every build,
+  debug included, uses `https://appapi.voicestudio.sh` unless
+  `VOICESTUDIO_CONTENT_REPORTS_URL` (an https URL, from the environment or the
+  git-ignored `mobile/.env`; see `mobile/.env.example`) points it elsewhere, such
+  as `https://dev-appapi.voicestudio.sh` for testing. The key (32 characters of
   `A-Za-z0-9`) is made when the sheet opens and reused when the user retries,
   so a retried report is stored once.
 - **Responses:**
@@ -335,4 +337,4 @@ repository). It needs no sign-in and accepts no audio or identifiers.
 - **Tests:** against a mock server: exact body (no extra fields, prompt text
   only when ticked, optional fields omitted when empty), headers (key format,
   no `Authorization`), the same key on Retry, a new key after 409, 429 and 400
-  handling, and the base URL per build type.
+  handling, and the production base URL unless a build overrides it.

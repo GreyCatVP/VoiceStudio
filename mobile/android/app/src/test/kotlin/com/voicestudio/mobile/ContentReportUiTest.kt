@@ -58,14 +58,16 @@ class ContentReportUiTest {
         compose.onNodeWithText("Report this result").assertExists()
         compose.onNodeWithText("Include the text I entered").assertDoesNotExist()
     }
-    @Test fun debugBuildsUseTheDevServerAndReleaseBuildsProduction() {
+    @Test fun everyBuildReportsToProductionUnlessOverridden() {
+        val root=File(requireNotNull(System.getProperty("androidRoot")))
+        val overridden=!System.getenv("VOICESTUDIO_CONTENT_REPORTS_URL").isNullOrBlank()||
+            File(root,"../.env").let {it.isFile&&it.readText().contains("VOICESTUDIO_CONTENT_REPORTS_URL")}
+        // Debug builds default to production too; only a deliberate override changes it.
+        org.junit.Assume.assumeFalse(overridden)
         assertTrue(BuildConfig.DEBUG)
-        assertEquals("https://dev-appapi.voicestudio.sh",BuildConfig.CONTENT_REPORTS_URL)
-        assertEquals("https://dev-appapi.voicestudio.sh/v1/content-reports",contentReportClient().endpoint.toString())
-        // Unit tests run the debug variant; the release value is checked where it is declared.
-        val script=File(requireNotNull(System.getProperty("androidRoot")),"app/build.gradle.kts").readText()
-        val declared=Regex("""getByName\("(debug|release)"\) \{ buildConfigField\("String", "CONTENT_REPORTS_URL", "\\"([^"\\]+)\\""\) \}""")
-            .findAll(script).associate {it.groupValues[1] to it.groupValues[2]}
-        assertEquals(mapOf("debug" to "https://dev-appapi.voicestudio.sh","release" to "https://appapi.voicestudio.sh"),declared)
+        assertEquals("https://appapi.voicestudio.sh",BuildConfig.CONTENT_REPORTS_URL)
+        assertEquals("https://appapi.voicestudio.sh/v1/content-reports",contentReportClient().endpoint.toString())
+        val script=File(root,"app/build.gradle.kts").readText()
+        assertTrue("one URL for every build type",Regex("""buildConfigField\("String", "CONTENT_REPORTS_URL"""").findAll(script).count()==1)
     }
 }

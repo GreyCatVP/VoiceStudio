@@ -77,13 +77,23 @@ Settings opens optional Connect and Models. Resuming a download counts only miss
 bytes plus a small reserve, skipping verified completed files. Model choices use product names and
 localized capabilities; licence details stay inside the acceptance sheet.
 
-Speak has a large editor with placeholder-only copy, three compact picker chips,
-Generate, a player and compact recent rows. Switching speech models resets any
-preset speaker outside the new model's range; Generate requires a valid speaker. Dictate keeps the microphone and
-copy/share controls above the tab bar while the transcript scrolls: tap
+Android follows the iOS workspace hierarchy: compact inline headers, a rounded icon
+dock with localized accessibility labels, native mobile card radii and a two-column
+Home task grid (one column at larger font scales). Home keeps its brand banner short,
+puts the privacy explanation behind its info action, and shows contributors in one
+scrollable row with a fixed All link; the six task cards fit above the dock at
+360 × 800 dp with the default text size.
+
+[Home screenshot](../../docs/media/mobile/android-home.png) · [Speak screenshot](../../docs/media/mobile/android-speak.png) Settings groups related rows;
+Empty voice and dictation screens show a centered explanation and their primary action.
+
+Speak has a large editor with placeholder-only copy, grouped voice/model/language
+rows, a fixed Generate action above the dock, a compact player and recent rows. Switching speech models resets any
+preset speaker outside the new model's range; Generate requires a valid speaker. Dictate places Copy and Share beside the microphone above the dock while the transcript scrolls: tap
 starts/stops; hold records until release. Connect keeps URL/PIN
 under Enter address and the optional API key under More. Model licences open in
 a sheet with complete inert terms, a rights confirmation and Accept / Decline.
+Microphone permission explains both local processing and optional computer routing using the same translated copy as iOS.
 Screens use short labels and icons; hints live behind one info action. Settings
 uses distinct row icons without explanatory paragraphs. Pickers mark the current
 selection, use normal text colors, and show palette color swatches. Errors show a short title, the localized cause and recovery step, and a recovery action.
@@ -429,7 +439,8 @@ into the app's own model store with the same explicit `downloadSmokeModels` and
 reference clip spoken by that model) through `PhoneVoiceStore`, declines
 analytics, generates one take on the phone (and fails if its player never gets a
 duration), picks two dub target languages and saves `01-home.png` … `07-settings.png` to the app's external files
-directory (`play-screenshots/`). It asserts Play's size rules, so use a 16:9
+directory (`play-screenshots/`). It checks the fixed Generate action directly and scrolls the form content rather
+than the fixed workspace headers. It asserts Play's size rules, so use a 16:9
 device; the `android-screenshots` job uses the Nexus 5X profile and uploads the
 `android-play-screenshots` artifact.
 
@@ -468,8 +479,9 @@ Desktop-only workspaces are not advertised as available mobile features.
 
 ## Home, Dub and dock
 
+Home marks debpalash and velixio with a small core-maintainer star; TalkBack announces the role.
 Home shows Electron's contributor avatars (`HomeContributors.kt`; the Gradle catalog task copies the
 images from `electron/.../home/contributors` into the APK assets, nothing is fetched at runtime and
 `tests/test_mobile_contract.py` guards the list). Dub opens with a dashed source card and the animated
-`DubGlyph`. The Material navigation bar keeps its labels: its height is fixed, so removing them would not make it more compact.
+`DubGlyph`. The compact dock uses an accessible icon for each workspace, with 48 dp touch targets and native Tab selection semantics.
 

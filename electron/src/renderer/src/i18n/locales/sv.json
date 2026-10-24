@@ -96,6 +96,7 @@
     "brand_by": "{{brand}} av",
     "all": "Alla",
     "allContributors": "Alla bidragsgivare",
+    "coreMaintainer": "Huvudansvarig",
     "title": "VoiceStudio.sh Öppen källkod",
     "design": "Skapa en röst utifrån en beskrivning.",
     "dub": "Översätt och dubba ljud eller video.",
@@ -2074,6 +2075,7 @@
     "port_in_use_short": "Port {{port}} används",
     "proxy_bypass_help": "Avsluta VoiceStudio helt, ange proxyadressen i HTTP_PROXY/HTTPS_PROXY och undantagna värdar i NO_PROXY i en terminal och starta sedan VoiceStudio därifrån. Ett nytt försök i den öppna appen läser inte in nya miljövariabler.",
     "hint_spawn_blocked": "Operativsystemet eller säkerhetsprogramvaran vägrade starta den lokala motorn. Lägg till VoiceStudios körtidsmapp bland undantagen i ditt antivirusprogram (Windows: Windows-säkerhet → Virus- och hotskydd → Hantera inställningar → Undantag), kontrollera att den inte ligger i en molnsynkad mapp som OneDrive och försök igen.",
+    "hint_smart_app_control": "Windows Smart appkontroll blockerade den lokala motorn. Den saknar undantag per app, så ett undantag i antivirusprogrammet hjälper inte. Stäng av den i Windows-säkerhet → App- och webbläsarkontroll → Inställningar för Smart appkontroll (Windows kan inte slå på den igen utan en återställning), eller anslut VoiceStudio till en motor på en annan dator och försök igen.",
     "hint_slow_start": "Motorn höll fortfarande på att starta när väntetiden tog slut. Långsamma datorer, särskilt utan dedikerat grafikkort, och den första starten efter en installation (antivirusprogrammet skannar varje ny fil) kan ta flera minuter. Stäng minneskrävande appar och försök igen; senare starter går mycket snabbare.",
     "hint_synced_folder": "Den här platsen ligger i en molnsynkad mapp (OneDrive, Dropbox, iCloud Drive, Google Drive). Platshållare som bara finns online och fillåsning förstör Python-miljön. Flytta VoiceStudio till en vanlig lokal mapp (till exempel C:\\VoiceStudio i Windows eller ~/VoiceStudio i macOS och Linux) och konfigurera den på nytt."
   },
@@ -2320,7 +2322,9 @@
     "not_included": "Ingår inte i ditt abonnemang",
     "plan_ends": "till {{date}}",
     "details_failed": "Det gick inte att läsa in dina kontouppgifter ({{reason}}).",
-    "retry": "Försök igen"
+    "retry": "Försök igen",
+    "manage_profile": "Hantera profil",
+    "manage_plan": "Hantera abonnemang"
   },
   "cloudsync": {
     "unavailable": "Synkning är inte tillgänglig just nu.",

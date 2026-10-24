@@ -296,3 +296,17 @@ published release.
 Clients only accept newer versions. To roll back, fix or revert the code, choose
 a higher patch version with owner approval, test it, and publish that version.
 Do not move or recreate an existing tag.
+
+## Merge queue (maintainers)
+
+With "Require branches to be up to date" on, every merge to `main` puts every other open PR behind, and each needs an update plus a full CI run. The merge queue replaces that: a PR that passes its checks joins the queue, GitHub builds a temporary commit of `main` plus the queued PRs, runs CI once on it, and merges.
+
+The workflows are ready: `ci.yml` runs on `merge_group`, and `merge-queue-checks.yml` reports the PR-level required checks ("CLA gate", "Commit identities", "CLA", "Commit identity policy") on the queue's commit, because they cannot run there. `tests/test_merge_queue.py` keeps those names equal to the ruleset's required list; change both together.
+
+To turn it on (Settings → Rules → Rulesets → `main`):
+
+1. Add **Require merge queue**: method *Merge commit*, build concurrency 1–3, minimum group size 1, wait time 0–5 minutes, status check timeout 60 minutes.
+2. Under **Require status checks to pass**, untick **Require branches to be up to date before merging**; the queue makes it unnecessary.
+3. Merge PRs with **Merge when ready** (the queue button) instead of **Merge**. `gh pr merge N --merge` joins the queue once it is on.
+
+Try it on one PR first. If a queued PR stalls, a required check name in the ruleset no longer matches a job or status the queue commit reports: compare the ruleset with `tests/test_merge_queue.py`.
