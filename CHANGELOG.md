@@ -104,10 +104,6 @@ metadata and the backend fallback mirror it.
 
 - The sponsor footer is gone from the app; sponsored integrations keep a Featured badge on their card in Integrations (#3031)
 
-### Fixed
-
-- Smart Fit keeps overlapping speakers and captions on one timeline without replaying shared video — thanks @jonathanwxh-cell! (#3008)
-
 ### Docs
 
 - `funding.json` at the repository root publishes how to fund VoiceStudio in the [funding.json](https://fundingjson.org) format, matching the tiers in SPONSORS.md (#3294)
