@@ -19,6 +19,7 @@ metadata and the backend fallback mirror it.
 
 ### Added
 
+- Optional native CosyVoice 3 GGUF engine with verified Vulkan routing on AMD RX 6700 XT; Python CosyVoice and the default remain unchanged ([setup](docs/engines/cosyvoice-gguf.md))
 - Beta update channel: choose Stable or Beta under Settings → Updates; betas are `-beta.N` prereleases that never reach Stable users, and Docker gets matching `:beta` tags ([guide](docs/update-channels.md)) (#3175)
 
 - Preview iOS and Android companion apps: drive your own VoiceStudio from your phone (speak, voices and cloning, dubbing, dictation) after pairing by QR code; build from source for now ([guide](docs/mobile.md)) (#2965)
