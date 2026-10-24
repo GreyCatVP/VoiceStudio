@@ -569,6 +569,41 @@ def test_next_window_tries_the_resident_recognizer_first(monkeypatch):
     assert events == ["fallback transcribes", "fallback unloaded"]  # unloaded once, at the end
 
 
+def test_winner_that_fails_a_window_is_not_reloaded_for_the_same_window(monkeypatch):
+    """The resident recognizer is tried first; when it finds nothing on this
+    window it is unloaded and must not be retried through the other lists."""
+    from services import asr_backend as ab
+
+    events = []
+    fallback_answers = iter(["Words.", ""])  # window 1 words, window 2 nothing
+
+    selected = SimpleNamespace(
+        id="selected",
+        transcribe=Mock(side_effect=lambda *_a, **_k: events.append("selected transcribes") or {"text": ""}),
+        unload=Mock(side_effect=lambda: events.append("selected unloaded")),
+    )
+    fallback = SimpleNamespace(
+        id="fallback",
+        transcribe=Mock(side_effect=lambda *_a, **_k: events.append("fallback transcribes") or {"text": next(fallback_answers)}),
+        unload=Mock(side_effect=lambda: events.append("fallback unloaded")),
+    )
+    monkeypatch.setattr(ab, "_ref_audio_fingerprint", lambda _: None)
+    monkeypatch.setattr(ab, "active_backend_id", lambda: "faster-whisper")
+    monkeypatch.setattr(
+        ab, "asr_model_missing_error",
+        lambda **kw: "missing" if kw.get("purpose") == "dictation" else None,
+    )
+    monkeypatch.setattr(ab, "load_active_asr_backend", lambda **_kw: selected)
+    monkeypatch.setattr(ab, "_installed_reference_fallbacks", lambda _: [fallback])
+    with ab.release_reference_asr_after():
+        assert ab.transcribe_reference("w1.wav") == "Words."
+        events.clear()
+        assert ab.transcribe_reference("w2.wav") is None  # nobody finds words on window 2
+    # fallback ran once (winner-first) and was unloaded; neither list retried it
+    assert events.count("fallback transcribes") == 1
+    assert events.count("fallback unloaded") == 1
+
+
 def test_release_now_outside_a_pass_is_a_noop():
     from services import asr_backend as ab
 

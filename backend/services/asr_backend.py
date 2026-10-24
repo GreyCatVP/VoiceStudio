@@ -3575,9 +3575,11 @@ def transcribe_reference(audio_path: str, *, release_after: bool = False) -> str
     # resident: try it first, so later windows never reload an unhelpful
     # recognizer beside it.
     text = ""
+    tried = None  # the resident winner, once it has had its turn on this window
     if deferred is not None and deferred.winner is not None:
+        tried = deferred.winner
         text = _transcribe_reference_candidates(
-            [deferred.winner], audio_path, release_after=release_after,
+            [tried], audio_path, release_after=release_after,
         )
     if deferred is not None and deferred.candidates is not None:
         candidates = deferred.candidates
@@ -3588,7 +3590,11 @@ def transcribe_reference(audio_path: str, *, release_after: bool = False) -> str
         if deferred is not None:
             deferred.candidates = candidates
     if not text:
-        text = _transcribe_reference_candidates(candidates, audio_path, release_after=release_after)
+        # Never retry the winner that just failed on this window: it was already
+        # unloaded, and trying it again would reload its weights for nothing.
+        text = _transcribe_reference_candidates(
+            [c for c in candidates if c is not tried], audio_path, release_after=release_after,
+        )
     fallbacks: list[ASRBackend] = []
     if not text:
         if deferred is not None and deferred.fallbacks is not None:
@@ -3597,7 +3603,9 @@ def transcribe_reference(audio_path: str, *, release_after: bool = False) -> str
             fallbacks = _installed_reference_fallbacks(candidates)
             if deferred is not None:
                 deferred.fallbacks = fallbacks
-        text = _transcribe_reference_candidates(fallbacks, audio_path, release_after=release_after)
+        text = _transcribe_reference_candidates(
+            [f for f in fallbacks if f is not tried], audio_path, release_after=release_after,
+        )
 
     if not text and not candidates and not fallbacks:
         logger.info(
