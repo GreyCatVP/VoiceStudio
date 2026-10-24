@@ -75,6 +75,7 @@ import {
   isExpectedPipeClose,
   isUnsupportedPlatform,
   managedBackendSpawnOptions,
+  bundledUvEnv,
   platformSetupIssue,
 } from './backend';
 import { app } from 'electron';
@@ -697,6 +698,14 @@ it('never overrides a uv the user pinned themselves', () => {
   const { env } = managedBackendSpawnOptions(3900);
 
   expect(env.OMNIVOICE_BUNDLED_UV).toBe('/pinned/uv');
+});
+
+it('drops a blank uv pin when this host has no uv to offer', () => {
+  // Failed on CI runners without uv: the blank pin went to the backend as-is.
+  expect(bundledUvEnv('', () => null)).toBeUndefined();
+  expect(bundledUvEnv('  ', () => '/found/uv')).toBe('/found/uv');
+  expect(bundledUvEnv('/pinned/uv', () => '/found/uv')).toBe('/pinned/uv');
+  expect(bundledUvEnv(undefined, () => null)).toBeUndefined();
 });
 
 it('only ever names a uv that is really there', () => {

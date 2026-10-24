@@ -14,6 +14,7 @@ import {
   ROCM_TORCH_PINS,
   rocmTorchOptIn,
   RUNTIME_IMPORT_PROBE,
+  lastImportAttempted,
   RUNTIME_NATIVE_IMPORT_PROBE,
   RUNTIME_REPAIR_PACKAGES,
   clearCtranslate2ExecutableStack,
@@ -108,6 +109,32 @@ describe('packaged runtime setup', () => {
       expect(await runtimeReady(bundle, project)).toBe(true);
     },
   );
+  it('names the module whose native import crashed the final verification (#3293)', async () => {
+    forcePlatform('win32');
+    vi.spyOn(process, 'arch', 'get').mockReturnValue('x64');
+    vi.stubEnv('OMNIVOICE_TORCH_VARIANT', 'cpu');
+    const { bundle, project } = await fixture();
+    const sitePackages = join(project, '.venv', 'Lib', 'site-packages');
+    const run = vi.fn(async (_command: string, args: string[]) => {
+      if (args[0] === 'sync') await interpreter(project);
+      if (args[1]?.includes('VOICESTUDIO_CUDNN8_PROBE=')) {
+        return `VOICESTUDIO_CUDNN8_PROBE=${JSON.stringify({ device: 'none', sitePackages })}\n`;
+      }
+      if (args[1] === RUNTIME_IMPORT_PROBE) {
+        throw Object.assign(new Error('Runtime setup exited with code 3221225477'), {
+          code: 3221225477,
+          stdout: 'VOICESTUDIO_IMPORT=fastapi\nVOICESTUDIO_IMPORT=faster_whisper\n',
+        });
+      }
+      return undefined;
+    });
+    await expect(
+      installRuntime(bundle, project, 'uv', run, new AbortController().signal, undefined, 'global'),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining('while importing "faster_whisper"'),
+      code: 3221225477,
+    });
+  });
   it.each([
     ['after printing its result', true],
     ['before printing anything', false],
@@ -782,4 +809,35 @@ it('hands explicit download proxies and loopback bypasses to uv', async () => {
   expect(env?.HTTPS_PROXY).toBe('socks5h://127.0.0.1:10808');
   expect(env?.NO_PROXY).toContain('localhost,127.0.0.1,::1');
   expect(env?.PYTHONPATH).toBeUndefined();
+});
+
+describe('import verification names the module that crashed (#3293)', () => {
+  it('announces each runtime module before importing it', () => {
+    expect(RUNTIME_IMPORT_PROBE.split('\n')).toEqual([
+      "print('VOICESTUDIO_IMPORT=fastapi', flush=True)",
+      'import fastapi',
+      "print('VOICESTUDIO_IMPORT=uvicorn', flush=True)",
+      'import uvicorn',
+      "print('VOICESTUDIO_IMPORT=omnivoice', flush=True)",
+      'import omnivoice',
+      "print('VOICESTUDIO_IMPORT=faster_whisper', flush=True)",
+      'import faster_whisper',
+      "print('VOICESTUDIO_IMPORT=sentencepiece', flush=True)",
+      'import sentencepiece',
+      "print('VOICESTUDIO_IMPORT=torch', flush=True)",
+      'import torch',
+      "print('VOICESTUDIO_IMPORT=torchaudio', flush=True)",
+      'import torchaudio',
+      "print('VOICESTUDIO_IMPORT=torchvision', flush=True)",
+      'import torchvision',
+    ]);
+  });
+
+  it('reads the last announced module from partial output', () => {
+    expect(lastImportAttempted('VOICESTUDIO_IMPORT=fastapi\nVOICESTUDIO_IMPORT=torch\n')).toBe(
+      'torch',
+    );
+    expect(lastImportAttempted('no markers here')).toBeNull();
+    expect(lastImportAttempted(undefined)).toBeNull();
+  });
 });

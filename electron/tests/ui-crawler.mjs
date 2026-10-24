@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { startHealthBackend } from './fake-health-backend.mjs';
+import { routesForShard } from './crawler-shards.mjs';
 
 /**
  * Clicks every enabled button on every static route, once per backend fault mode, and fails on
@@ -29,8 +30,8 @@ import { startHealthBackend } from './fake-health-backend.mjs';
  * port from the shared fake backend itself.
  *
  * Env: VOICESTUDIO_UI_URL, VOICESTUDIO_CRAWL_MODES (comma list), VOICESTUDIO_CRAWL_ROUTES
- * (comma list of path substrings), VOICESTUDIO_CRAWL_SHARD (`i/n`: every n-th route from the
- * i-th, for parallel CI jobs), VOICESTUDIO_CRAWL_VERBOSE=1 to log every click.
+ * (comma list of path substrings), VOICESTUDIO_CRAWL_SHARD (`i/n`: the i-th of n cost-balanced
+ * route sets, for parallel CI jobs; see crawler-shards.mjs), VOICESTUDIO_CRAWL_VERBOSE=1 to log every click.
  */
 
 const BASE = process.env.VOICESTUDIO_UI_URL || 'http://localhost:3912';
@@ -463,7 +464,7 @@ try {
   await probe.addInitScript(() => localStorage.setItem('voicestudio.setup.complete.v1', '1'));
   await probe.goto(`${BASE}/#/settings/usage`);
   await probe.locator('main').first().waitFor();
-  const routes = [
+  const allRoutes = [
     ...new Set(
       await probe.evaluate(async () => {
         const { router } = await import('/src/router.tsx');
@@ -473,8 +474,8 @@ try {
   ]
     .filter((path) => path !== '/' && !path.includes('$'))
     .filter((path) => !routeFilter.length || routeFilter.some((part) => path.includes(part)))
-    .sort()
-    .filter((_, index) => index % shards === shard - 1);
+    .sort();
+  const routes = routesForShard(allRoutes, shard, shards);
   await probe.close();
 
   // Settle every mode before reporting: one mode's harness error must not close the shared
