@@ -127,7 +127,7 @@ final class WifiState: @unchecked Sendable {
         guard let store else { return false }
         if !accepted { downloads[model.id]?.cancel() }
         do {
-            guard let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String else { throw ClientError("mobile.local.model_incompatible") }
+            guard let version = AppVersion.full(info: Bundle.main.infoDictionary) else { throw ClientError("mobile.local.model_incompatible") }
             try await store.accept(model, fingerprint: model.licence.terms_fingerprint, appVersion: version, accepted: accepted)
             await refresh()
             return true

@@ -3801,7 +3801,7 @@
       "capture_slow": "Ce téléphone n'a pas pu traiter l'audio du micro assez vite. Fermez d'autres applications ou utilisez votre ordinateur.",
       "preset_voice": "Voix {{number}}",
       "transfer": "{{received}} sur {{total}}",
-      "privacy": "Les tâches sur l'appareil restent sur ce téléphone. Seuls les téléchargements de modèles et votre ordinateur associé utilisent le réseau.",
+      "privacy": "Les tâches sur l'appareil restent sur ce téléphone. Seuls les téléchargements de modèles, les signalements que vous choisissez d'envoyer et votre ordinateur associé utilisent le réseau.",
       "computer_feature": "Cette fonction s'exécute actuellement sur votre ordinateur. Parler et Dictée fonctionnent sur ce téléphone sans association.",
       "accepted": "Licence acceptée",
       "not_accepted": "Licence non acceptée",

@@ -3801,7 +3801,7 @@
       "capture_slow": "Este teléfono no pudo procesar el audio del micrófono con la rapidez necesaria. Cierra otras apps o usa tu ordenador.",
       "preset_voice": "Voz {{number}}",
       "transfer": "{{received}} de {{total}}",
-      "privacy": "Las tareas en el dispositivo se quedan en este teléfono. Solo las descargas de modelos y tu ordenador emparejado usan la red.",
+      "privacy": "Las tareas en el dispositivo se quedan en este teléfono. Solo las descargas de modelos, las denuncias que decidas enviar y tu ordenador emparejado usan la red.",
       "computer_feature": "Esta función se ejecuta ahora en tu ordenador. Hablar y Dictado funcionan en este teléfono sin emparejar.",
       "accepted": "Licencia aceptada",
       "not_accepted": "Licencia no aceptada",

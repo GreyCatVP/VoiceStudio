@@ -9,8 +9,13 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.voicestudio.mobile.l10n.L10n
+import com.voicestudio.mobile.local.LocalAudio
+import com.voicestudio.mobile.local.LocalEngine
 import com.voicestudio.mobile.local.ModelCatalog
+import com.voicestudio.mobile.local.PhoneModel
 import com.voicestudio.mobile.local.PhoneRuntime
+import com.voicestudio.mobile.local.PhoneVoiceStore
+import com.voicestudio.mobile.local.markSynthetic
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
@@ -25,9 +30,10 @@ import java.util.Locale
 
 /**
  * Provisions the smallest speech model in the app's own model store before the
- * activity starts, so the tour shows a phone that already has it. Skips the
- * whole test (before launch) unless `playScreenshots=true`; downloads only with
- * the same explicit flags as LocalInferenceTest.
+ * activity starts, so the tour shows a phone that already has it, and saves one
+ * phone voice in the app's own voice store. Skips the whole test (before launch)
+ * unless `playScreenshots=true`; downloads only with the same explicit flags as
+ * LocalInferenceTest.
  */
 class SmallestSpeechModel: TestRule {
     override fun apply(base: Statement, description: Description): Statement = object: Statement() {
@@ -44,8 +50,34 @@ class SmallestSpeechModel: TestRule {
             }
             if(args.getString("downloadSmokeModels")=="true"&&!runtime.downloads.installed(tts)) runBlocking {runtime.downloads.download(tts,true)}
             assertTrue("Explicitly provision the smallest speech model first",runtime.downloads.installed(tts))
+            runBlocking {seedVoice(context,runtime,tts)}
             base.evaluate()
         }
+    }
+
+    /**
+     * The same store and create() the Voices screen uses (PhoneStudio), fed real
+     * speech from the installed model. The transcript is the scripted line that
+     * speech was made from, so the much larger ASR model is not needed; create()
+     * still decodes the clip, writes the reference and records consent time.
+     */
+    private suspend fun seedVoice(context: android.content.Context, runtime: PhoneRuntime, tts: PhoneModel) {
+        val voices=PhoneVoiceStore(File(context.noBackupFilesDir,"voices"))
+        if(voices.list().any {it.name==VOICE_NAME}) return
+        val source=File(context.cacheDir,"play-voice.wav")
+        try {
+            markSynthetic(runtime.engine.synthesize(tts,VOICE_LINE,language="en"),source)
+            val scripted=object: LocalEngine by runtime.engine {
+                override suspend fun transcribe(model: PhoneModel, audio: LocalAudio, progress: (Float)->Unit): String = VOICE_LINE
+            }
+            voices.create(VOICE_NAME,source,true,tts,scripted)
+        } finally {source.delete()}
+        assertTrue("The seeded phone voice must be listed",voices.list().any {it.name==VOICE_NAME})
+    }
+
+    companion object {
+        const val VOICE_NAME="Narrator"
+        const val VOICE_LINE="Hello, I am the narrator. Every word you hear was spoken on this phone."
     }
 }
 
@@ -84,11 +116,20 @@ class PlayScreenshotTour {
             compose.onNode(generate).performScrollTo().performClick()
             val share=hasText(l.t("mobile.speak.share")) and hasClickAction()
             compose.waitUntil(180_000) {exists(share)&&!exists(hasText(l.t("common.cancel")))}
+            // The player polls ExoPlayer's duration; a take that never gets one is a real playback regression.
+            val playable=playableTake()
+            compose.waitUntil(10_000) {exists(playable)}
             compose.onNode(hasText(l.t("mobile.tabs.speak")) and isHeading()).performScrollTo()
             shot("02-speak")
 
-            tab("mobile.tabs.voices");shot("03-voices")
-            tab("mobile.tabs.dub");shot("04-dub")
+            tab("mobile.tabs.voices")
+            compose.waitUntil(15_000) {exists(hasText(SmallestSpeechModel.VOICE_NAME))}
+            shot("03-voices")
+
+            tab("mobile.tabs.dub")
+            pickDubLanguages("Spanish","French")
+            compose.onNode(hasText(l.t("mobile.tabs.dub")) and isHeading()).performScrollTo()
+            shot("04-dub")
             tab("mobile.tabs.dictate");shot("05-dictate")
             tab("mobile.tabs.settings");shot("07-settings")
 
@@ -102,6 +143,37 @@ class PlayScreenshotTour {
     }
 
     private fun exists(matcher: SemanticsMatcher)=compose.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty()
+
+    /** The player's "position of duration" line once the duration is past 0:00. */
+    private fun playableTake(): SemanticsMatcher {
+        val clock="\\d+:\\d{2}"
+        val time=Regex(Regex.escape(l.t("mobile.android.playback_time",mapOf("position" to "\u0001","duration" to "\u0002")))
+            .replace("\u0001","\\E$clock\\Q").replace("\u0002","\\E($clock)\\Q"))
+        return SemanticsMatcher("playback time with a duration") {node ->
+            SemanticsProperties.Text in node.config&&node.config[SemanticsProperties.Text].any {
+                time.matchEntire(it.text)?.groupValues?.get(1).let {duration -> duration!=null&&duration!="0:00"}
+            }
+        }
+    }
+
+    /** Target languages through the real picker: search, tick each, confirm. */
+    private fun pickDubLanguages(vararg names: String) {
+        val picker=hasText(l.t("mobile.dub.target_languages")) and hasClickAction() and isEnabled()
+        // The picker enables once the bundled language catalogue has loaded.
+        compose.waitUntil(15_000) {exists(picker)}
+        compose.onNode(picker).performScrollTo().performClick()
+        val search=hasText(l.t("mobile.android.search")) and hasSetTextAction() and hasAnyAncestor(isDialog())
+        compose.waitUntil(5_000) {exists(search)}
+        names.forEach {name ->
+            compose.onNode(search).performTextClearance()
+            compose.onNode(search).performTextInput(name)
+            val row=hasText(name) and !hasSetTextAction() and hasClickAction() and hasAnyAncestor(isDialog())
+            compose.waitUntil(5_000) {exists(row)}
+            compose.onNode(row).performClick()
+        }
+        compose.onNode(hasText(l.t("common.confirm")) and hasClickAction() and hasAnyAncestor(isDialog())).performClick()
+        compose.waitUntil(5_000) {!exists(isDialog())&&names.all {exists(hasContentDescription(l.t("mobile.android.remove_selection",mapOf("name" to it))))}}
+    }
 
     private fun tab(key: String) {
         compose.onNode(hasText(l.t(key)) and SemanticsMatcher.expectValue(SemanticsProperties.Role,Role.Tab)).performClick()
