@@ -23,13 +23,15 @@ const artifactLabel =
     'mac-app-store': 'MacAppStore',
   }[DISTRIBUTION_TARGET] ?? 'Electron';
 const artifactPrefix = `${PRODUCT_NAME.replace(/[^A-Za-z0-9]+/g, '-')}-${artifactLabel}`;
-// Stable is the only Electron update feed: there is no `preview` release to
-// point at. Packaging rehearsals from main are stamped stable too; they are
-// review artifacts and are never published.
+// Stable and Beta are the Electron update feeds (Beta = `-beta.N` prereleases,
+// stamped by electron-release.yml). Packaging rehearsals from main are stamped
+// stable; they are review artifacts and are never published.
 const updateChannel =
   process.env.VOICESTUDIO_UPDATE_CHANNEL || `electron-stable-${process.platform}-${process.arch}`;
 if (
-  !/^electron-(?:microsoft-store-)?stable-(?:win32|darwin|linux)-(?:x64|arm64)$/.test(updateChannel)
+  !/^electron-(?:(?:microsoft-store-)?stable|beta)-(?:win32|darwin|linux)-(?:x64|arm64)$/.test(
+    updateChannel,
+  )
 ) {
   throw new Error(`Unsupported Electron update channel: ${updateChannel}`);
 }

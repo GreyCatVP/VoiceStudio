@@ -19,6 +19,7 @@ dub generator consumes whole segments today.
 from __future__ import annotations
 
 import functools
+import inspect
 import logging
 import os
 import re
@@ -2570,6 +2571,7 @@ class MLXAudioBackend(TTSBackend):
         "chatterbox":  "mlx-community/Chatterbox-TTS-4bit",
         "melotts":     "mlx-community/MeloTTS-English-v3-MLX",
         "outetts":     "mlx-community/Llama-OuteTTS-1.0-1B-4bit",
+        "voxcpm2":     "mlx-community/VoxCPM2-8bit",
     }
     DEFAULT_MODEL_KEY = "kokoro"
 
@@ -2587,6 +2589,8 @@ class MLXAudioBackend(TTSBackend):
     #   melotts     huggingface.co/mlx-community/MeloTTS-English-v3-MLX
     #   outetts     huggingface.co/OuteAI/Llama-OuteTTS-1.0-1B (high + moderate
     #               training-data tiers)
+    #   voxcpm2     huggingface.co/mlx-community/VoxCPM2-8bit (30 languages,
+    #               the same set as VoxCPM2Backend)
     CURATED_MODEL_LANGUAGES: dict[str, tuple[str, ...]] = {
         "kokoro": ("en", "es", "fr", "hi", "it", "pt", "ja", "zh"),
         "csm": ("en",),
@@ -2597,6 +2601,11 @@ class MLXAudioBackend(TTSBackend):
         "outetts": (
             "en", "ar", "zh", "nl", "fr", "de", "it", "ja", "ko", "lt", "ru", "es",
             "pt", "be", "bn", "ka", "hu", "lv", "fa", "pl", "sw", "ta", "uk",
+        ),
+        "voxcpm2": (
+            "ar", "my", "zh", "da", "nl", "en", "fi", "fr", "de", "el",
+            "he", "hi", "id", "it", "ja", "km", "ko", "lo", "ms", "no",
+            "pl", "pt", "ru", "es", "sw", "sv", "tl", "th", "tr", "vi",
         ),
     }
 
@@ -2676,10 +2685,8 @@ class MLXAudioBackend(TTSBackend):
     @property
     def supports_cloning(self) -> bool:
         """Model-dependent — this adapter multiplexes 7+ curated models and
-        only some take a reference-audio speaker prompt. `generate()` passes
-        `ref_audio` through when present (~kwargs below) but silently retries
-        without it on a TypeError, so an engine picked for cloning that's
-        actually running Kokoro/Qwen3-TTS/etc. would clone nothing. Of the
+        only some take a reference-audio speaker prompt. Other models may
+        ignore reference audio even when their signatures accept it. Of the
         curated set, only CSM (`mlx-community/csm-1b-8bit`) is confirmed to
         accept a reference prompt — default False for every other model,
         curated or user-supplied, until positively confirmed."""
@@ -2737,8 +2744,7 @@ class MLXAudioBackend(TTSBackend):
 
         # mlx-audio's generate(...) returns an iterator of result objects,
         # each with a .audio attribute. Different engines accept different
-        # kwargs (voice for Kokoro, ref_audio for CSM, instruct for Qwen3)
-        # — we pass them all and let the engine ignore what it doesn't use.
+        # kwargs (voice for Kokoro, ref_audio for CSM, instruct for Qwen3).
         kwargs = {"text": text, "speed": speed}
         if voice:     kwargs["voice"] = voice
         if ref_audio: kwargs["ref_audio"] = ref_audio
@@ -2811,6 +2817,24 @@ class MLXAudioBackend(TTSBackend):
                 elif code is not None:
                     kwargs["lang_code"] = code
 
+        # Filter only keywords the signature proves unsupported. A TypeError
+        # from generation (including iterator consumption) is a model failure,
+        # not a reason to rerun synthesis without the requested voice context.
+        generate = self._model.generate
+        try:
+            params = inspect.signature(generate).parameters
+        except (TypeError, ValueError):
+            pass  # Unknown signature: invoke unchanged and let errors propagate.
+        else:
+            if not any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()):
+                kwargs = {
+                    key: value for key, value in kwargs.items()
+                    if key in params and params[key].kind in (
+                        inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                        inspect.Parameter.KEYWORD_ONLY,
+                    )
+                }
+
         def collect(results):
             groups = []
             rate = None
@@ -2840,11 +2864,7 @@ class MLXAudioBackend(TTSBackend):
             flush()
             return groups
 
-        try:
-            pieces = collect(self._model.generate(**kwargs))
-        except TypeError:
-            # Retry engines that accept only the universal arguments.
-            pieces = collect(self._model.generate(text=text, speed=speed))
+        pieces = collect(generate(**kwargs))
 
         if not pieces:
             raise RuntimeError(f"mlx-audio ({self._model_id}) produced no audio")
@@ -3557,6 +3577,7 @@ _MLX_AUDIO_MODEL_LABELS: dict[str, str] = {
     "chatterbox": "Chatterbox",
     "melotts":    "MeloTTS (lightweight)",
     "outetts":    "OuteTTS",
+    "voxcpm2":    "VoxCPM2 8-bit (30 languages, 48 kHz)",
 }
 
 
