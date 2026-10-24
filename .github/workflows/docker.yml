@@ -69,6 +69,13 @@ permissions:
   contents: read
   packages: write
 
+# Only the newest main push needs to build the rolling :latest/:main images, so a
+# newer push cancels an older one. Releases and manual backfills never cancel
+# anything: each gets its own group.
+concurrency:
+  group: docker-${{ github.event_name == 'push' && 'main-push' || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
+
 env:
   REGISTRY: ghcr.io
   # Keep registry coordinates explicit. VoiceStudio is the canonical GHCR

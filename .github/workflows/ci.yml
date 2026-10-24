@@ -13,11 +13,81 @@ on:
 permissions:
   contents: read
 
+# A new push to a PR cancels that PR's older run (a mass rebase of ~65 branches
+# once queued 360 runs, most of them for commits already replaced). Pushes to main
+# and manual runs are keyed by commit, so every main commit still gets its own CI.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   # Run all JavaScript actions on Node 24 (GH deprecates Node 20 in Sep 2026).
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # A pull request whose every changed file is on this allowlist cannot affect the
+  # Electron jobs: they run against fake JavaScript backends, not the Python one.
+  # Those jobs (UI crawler, Desktop UI, native package, and the Electron steps of
+  # the test job) are skipped for such PRs; they take ~45 runner-minutes. Anything
+  # else, every push to main and every manual run still runs the full matrix, and
+  # if detection fails for any reason everything runs (`!= 'false'` below).
+  # Other workflow files are on the allowlist (they cannot change what these jobs
+  # do); ci.yml and electron-*.yml are not. pyproject.toml is not either (the
+  # packaging contract parses its `readme =` key), and neither is backend/assets/
+  # (the renderer smokes play its sample WAV).
+  changes:
+    name: Changed paths
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      electron: ${{ steps.detect.outputs.electron }}
+    steps:
+      - id: detect
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Any doubt means "true". Only an explicit "nothing outside the allowlist"
+          # from grep (exit 1) produces "false". Every pipe below ends in a command
+          # that reads ALL its input: an early-exit consumer (grep -q, head) makes the
+          # producer die of SIGPIPE, which `pipefail` reports as a failure and, on a
+          # large file list, silently turned "a file was deleted" into "no match".
+          electron=true
+          if [ "$EVENT" = pull_request ]; then
+            if rows=$(gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[] | [.status, .filename] | @tsv') && [ -n "$rows" ]; then
+              total=$(printf '%s\n' "$rows" | wc -l)
+              status_rc=0
+              printf '%s\n' "$rows" | cut -f1 | sort -u | grep -v -x -E 'added|modified' > /dev/null || status_rc=$?
+              if [ "$total" -ge 3000 ]; then
+                echo "3000+ files (the API truncates here): running everything"
+              elif [ "$status_rc" -ne 1 ]; then
+                # Only plain edits and additions are safe. Electron checks assert that some
+                # root files exist, and a rename out of electron/ lists only the new path.
+                echo "a file was deleted, renamed, copied or changed type (status check rc=$status_rc): running everything"
+              else
+                rc=0
+                outside=$(printf '%s\n' "$rows" | cut -f2 | grep -v -P '^(backend/(?!assets/)|omnivoice/|docs/|mobile/|\.github/ISSUE_TEMPLATE/|\.github/scripts/|\.github/[^/]+\.md$|tests/.*\.py$|scripts/[^/]+\.py$|[^/]+\.md$|Makefile$|uv\.lock$|\.github/workflows/(?!(ci|electron-[a-z-]+)\.yml$)[^/]+\.yml$)') || rc=$?
+                if [ "$rc" -eq 1 ]; then
+                  electron=false
+                elif [ "$rc" -eq 0 ]; then
+                  echo "Electron jobs run because of (first 5):"
+                  # Indented so a hostile file name can never start a workflow command.
+                  printf '%s\n' "$outside" | sed -n '1,5s/^/    /p'
+                else
+                  echo "path matching failed (grep exit $rc): running everything"
+                fi
+              fi
+            fi
+          fi
+          echo "electron=$electron" >> "$GITHUB_OUTPUT"
+          echo "electron jobs: $electron"
+
   installer:
     name: Electron installer contracts
     runs-on: ubuntu-24.04
@@ -47,6 +117,9 @@ jobs:
 
   test:
     name: Tests (backend + frontend)
+    needs: changes
+    # Must report even if `changes` failed, so a detection error never skips the gate.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-22.04
     env:
       # Same restricted-network resilience the smoke matrix already sets. This
@@ -110,8 +183,12 @@ jobs:
       # networked empty-cache run before it was caught). All legitimate HF
       # interactions in tests are stubbed; anything that trips this is a
       # test-isolation bug.
+      # `-n auto` runs tests/ in parallel (one worker per CPU; 10 min serial ->
+      # ~3 min on a 4-core runner, with identical results). backend/tests/ below
+      # stays serial: one test there depends on another's leftover state and
+      # fails when run in isolation, which parallel scheduling exposes.
       - name: Run pytest
-        run: uv run --no-sync pytest tests/ -q --tb=short
+        run: uv run --no-sync pytest tests/ -q --tb=short -n auto
         env:
           HF_HUB_OFFLINE: "1"
 
@@ -148,22 +225,27 @@ jobs:
       # node:test suites for shared renderer modules (tests/frontend/*.test.mjs).
       # Node 22 strips TypeScript types natively; imports need explicit `.ts`.
       - name: Frontend unit tests
+        if: ${{ needs.changes.outputs.electron != 'false' }}
         run: bun run test:frontend
 
       # Electron used to be built only after a release started, so renderer,
       # preload and packaging regressions could pass the required PR gate.
       # Keep this command shared with electron-release.yml through the root script.
       - name: Electron typecheck, tests and production contract
+        if: ${{ needs.changes.outputs.electron != 'false' }}
         run: bun run check:electron
 
       - name: Snap artifact repair regression
+        if: ${{ needs.changes.outputs.electron != 'false' }}
         run: node --test electron/tests/snap-artifact-verification.test.mjs electron/tests/snap-launcher.test.mjs electron/tests/snap-store-packaging.test.mjs
 
       # Browser workflow smokes exercise the maintained Electron renderer after
       # the production build/typecheck/test contract above succeeds.
       - name: Install Playwright chromium
+        if: ${{ needs.changes.outputs.electron != 'false' }}
         run: bunx playwright install --with-deps chromium
       - name: Electron renderer workflow smokes
+        if: ${{ needs.changes.outputs.electron != 'false' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -198,6 +280,8 @@ jobs:
   # twelve jobs per push queued behind the runner limit for hours.
   ui-crawler:
     name: UI crawler
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.electron != 'false' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -249,6 +333,8 @@ jobs:
 
   linux-native-package:
     name: Linux native package
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.electron != 'false' }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -278,6 +364,8 @@ jobs:
   # installers are covered separately by packaged-smoke.mjs on release paths.
   electron-ui:
     name: Desktop UI (${{ matrix.label }})
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.electron != 'false' }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
@@ -495,7 +583,7 @@ jobs:
       - name: Run smoke tests
         # Exercise credential paths and the Windows accept guard natively.
         if: matrix.backend_supported
-        run: uv run --no-sync pytest tests/smoke/ tests/test_hf_token_cache_paths.py tests/test_win_accept_guard.py -q --tb=short
+        run: uv run --no-sync pytest tests/smoke/ tests/test_hf_token_cache_paths.py tests/test_win_accept_guard.py tests/test_ios_testflight.py -q --tb=short
         env:
           HF_HUB_OFFLINE: "1"  # same no-silent-downloads guard as the main pytest job
           HF_HUB_CACHE: ${{ runner.temp }}/pockettts-empty-hf-cache
