@@ -7,7 +7,7 @@ Every folder has a single job. Every file at the root earns its place.
 ```
 VoiceStudio/
 │
-├── README.md / README_CN.md / README_JA.md ⟵ user-facing overview (English / Chinese / Japanese)
+├── README.md ⟵ user-facing overview (translations: docs/readme/README_CN.md, README_JA.md)
 ├── CHANGELOG.md                 ⟵ release history; Electron releases use the tagged section
 ├── CLAUDE.md / AGENTS.md        ⟵ the working contract for AI agents — keep the two in sync
 ├── LICENSE, LICENSE-NOTICE.md, SPONSORS.md
@@ -39,14 +39,12 @@ VoiceStudio/
 │   │   └── setup/               first-run wizard, model download
 │   ├── core/                    config, db, job queue, event bus, auth/CSRF, path security,
 │   │                            opt-in analytics, version, diagnostics
-│   ├── services/                101 modules of business logic — TTS, dubbing pipeline,
+│   ├── services/                102 modules of business logic — TTS, dubbing pipeline,
 │   │                            audio DSP, GPU gateway, engine routing, model lifecycle
 │   ├── engines/                 per-engine adapters: indextts, supertonic3, confucius4,
 │   │                            dots_tts, moss_tts_v15, pockettts, audiocpp,
 │   │                            omnivoice_gguf, omnivoice_subprocess, _asr_sidecar, _echo,
 │   │                            voxcpm2_subprocess, moss_tts_nano_subprocess, cosyvoice_subprocess
-│   ├── worker/                  remote / distributed workers — scheduler, pool, routing,
-│   │                            breaker, capacity, plus protocol/ and inbound/
 │   ├── mcp_shim/                MCP server entry point (docs/mcp.md)
 │   ├── speech_client/           speech sidecar client entry point
 │   ├── schemas/                 pydantic request/response shapes

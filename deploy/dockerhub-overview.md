@@ -107,9 +107,8 @@ Podman users: same two `--device` flags (Quadlet: `AddDevice=/dev/kfd` +
 `-e HSA_OVERRIDE_GFX_VERSION=11.0.0` if the GPU isn't detected — details in
 the [Docker install guide](https://github.com/debpalash/VoiceStudio/blob/main/docs/install/docker.md).
 
-There's also a Compose file in the repo with `cpu` / `gpu` / `rocm` profiles,
-plus `worker-gpu` / `worker-rocm` profiles that lend a headless GPU without
-publishing the web UI — see the [Docker install guide](https://github.com/debpalash/VoiceStudio/blob/main/docs/install/docker.md).
+There's also a Compose file in the repo with `cpu` / `gpu` / `rocm` profiles;
+see the [Docker install guide](https://github.com/debpalash/VoiceStudio/blob/main/docs/install/docker.md).
 
 ---
 
@@ -125,6 +124,7 @@ publishing the web UI — see the [Docker install guide](https://github.com/debp
 | `:sha-xxxxxxx` | Exact commit — produced by every image build (main, releases, manual runs) |
 | `:rocm` | **AMD GPU (ROCm) build** of the rolling preview — the ROCm analogue of `:latest` |
 | `:stable-rocm`, `:0.5.6-rocm`, `:0.5-rocm`, `:sha-xxxxxxx-rocm` | ROCm builds of the corresponding tags above |
+| `:beta`, `:0.5.9-beta.1` | Newest beta prerelease and its exact version. A beta never moves `:stable` or `:0.5`; `-rocm` forms exist too (`:beta-rocm`) |
 
 Release tags are published only when the GitHub Release is published.
 Preview builds always come from `main` and never version-sort below `:stable`,

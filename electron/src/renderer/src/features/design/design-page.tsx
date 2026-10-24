@@ -1,3 +1,4 @@
+import { VoicesSidebar } from '@/features/clone/voices-sidebar';
 import { WandSparklesIcon } from 'lucide-react';
 import { SecondarySidebar } from '@/components/workspace-sidebar';
 import { WorkspaceHeader } from '@/components/app-shell/workspace-header';
@@ -179,6 +180,8 @@ export function DesignPage() {
           icon={WandSparklesIcon}
           size="wide"
           variant="controls"
+          library={<VoicesSidebar />}
+          libraryLabel={t('clone.saved_profiles')}
           className="space-y-3"
         >
           <section className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">
@@ -510,28 +513,35 @@ export function DesignPage() {
               }
             />
           </div>
+          <OutputPanel />
           <div className="mx-auto w-full max-w-4xl shrink-0 px-6 pb-4">
             {designBlocker === 'engine' && !generation.isGenerating && (
               <div className="mb-3">
                 <EngineNotice operation="design" compact />
               </div>
             )}
-            {(designBlocker === 'design' || designBlocker === 'cloning') && !generation.isGenerating && (
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1 text-sm text-muted-foreground">
-                <p role="status">
-                  {t(designBlocker === 'cloning' ? 'designWorkspace.engine_cannot_reuse_sample' : 'designWorkspace.engine_cannot_design', {
-                    engine: activeEngine?.display_name ?? '',
-                  })}
-                </p>
-                <Link
-                  to="/settings/models/$family"
-                  params={{ family: 'tts' }}
-                  className={buttonVariants({ variant: 'ghost', size: 'xs' })}
-                >
-                  {t('engineSidebar.tts')}
-                </Link>
-              </div>
-            )}
+            {(designBlocker === 'design' || designBlocker === 'cloning') &&
+              !generation.isGenerating && (
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1 text-sm text-muted-foreground">
+                  <p role="status">
+                    {t(
+                      designBlocker === 'cloning'
+                        ? 'designWorkspace.engine_cannot_reuse_sample'
+                        : 'designWorkspace.engine_cannot_design',
+                      {
+                        engine: activeEngine?.display_name ?? '',
+                      },
+                    )}
+                  </p>
+                  <Link
+                    to="/settings/models/$family"
+                    params={{ family: 'tts' }}
+                    className={buttonVariants({ variant: 'ghost', size: 'xs' })}
+                  >
+                    {t('engineSidebar.tts')}
+                  </Link>
+                </div>
+              )}
             {designBlocker === 'loading' && !generation.isGenerating && (
               <p className="mb-3 px-1 text-sm text-muted-foreground" role="status">
                 {t('preferences.loading')}
@@ -616,7 +626,6 @@ export function DesignPage() {
               )}
             </div>
           </div>
-          <OutputPanel />
         </section>
         {editingProfile && (
           <WorkspacePane

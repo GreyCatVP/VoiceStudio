@@ -139,6 +139,7 @@ export function toGenerateForm(input: CloneGenerateInput): FormData {
   form.append('num_step', String(input.steps));
   form.append('wav_bits', String(input.wavBits ?? 16));
   form.append('effect_preset', input.effectPreset ?? 'broadcast');
+  if (input.presetVoice) form.append('preset_voice', input.presetVoice);
   form.append('guidance_scale', String(input.cfg));
   form.append('speed', String(input.speed));
   form.append('denoise', String(input.denoise));
@@ -253,16 +254,6 @@ export class StreamingPreviewError extends Error {
 
 export function shouldFallbackToClassic(error: unknown): boolean {
   return error instanceof StreamingPreviewError && !error.retryable && !error.terminal;
-}
-
-export async function resolveRemoteTtsTarget(signal?: AbortSignal): Promise<boolean> {
-  try {
-    const response = await apiFetch('/workers/target?op=tts', { signal });
-    const payload = (await response.json()) as { active?: { remote?: boolean } };
-    return payload.active?.remote === true;
-  } catch {
-    return false;
-  }
 }
 
 interface StreamEvent {

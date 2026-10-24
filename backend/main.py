@@ -1,3 +1,4 @@
+import importlib
 import os
 import sys
 
@@ -13,6 +14,7 @@ if _backend_dir not in sys.path:
 # native crash inside torch/CUDA leaves a named frame in backend_err.log
 # instead of a silently vanished process. See core/crash_diagnostics.py.
 from core.crash_diagnostics import enable_fault_handler  # noqa: E402
+from core.app_config import PRODUCT_NAME  # noqa: E402
 
 enable_fault_handler()
 
@@ -31,6 +33,13 @@ if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "--supervise"
 from core.contained_subprocess import secure_backend_drain_fd  # noqa: E402
 
 secure_backend_drain_fd()
+
+# The shell reads our stdout/stderr through pipes; a reader that falls behind
+# would otherwise block uvicorn's access-log write on the event loop and freeze
+# /health (#2970 class). Producers get a bounded buffer instead.
+from core.nonblocking_stdio import install as _install_nonblocking_stdio  # noqa: E402
+
+_install_nonblocking_stdio()
 
 import math  # noqa: E402
 
@@ -141,6 +150,10 @@ except ImportError:
 from services.hf_auth import apply_process_token_policy as _apply_hf_token_policy  # noqa: E402
 
 _apply_hf_token_policy()
+
+# Importing it removes Electron's account-bridge capability from os.environ, so
+# engine and tool subprocesses never inherit it.
+importlib.import_module("services.cloud_account")
 
 # ── cuDNN 8 library preload ─────────────────────────────────────────────
 # Moved into _phase_a_build (`native_preload` step, early-bind refactor): the
@@ -747,9 +760,9 @@ def _phase_a_build_inner() -> None:
         voice_convert,  # Studio Convert: speech-to-speech via ASR → TTS
     )
     from api.routers import mcp_bindings as _mcp_bindings_router  # noqa: E402
-    from api.routers import workers as workers_router  # noqa: E402
     from api.routers import telephony_twilio as _telephony_twilio_router  # noqa: E402
     from api.routers import calls as _calls_router  # noqa: E402
+    from api.routers import cloud_sync as _cloud_sync_router  # noqa: E402
     _router_modules.extend([
         system, profiles, profile_images, exports, generation, voice_convert, dub_core, dub_generate,
         dub_export, dub_translate, projects, glossary, engines, tools,
@@ -757,8 +770,8 @@ def _phase_a_build_inner() -> None:
         batch, watermark, events, capture, capture_ws, speech_platform, dictation,
         openai_compat, tts_stream, marketplace, personas, sonitranslate,
         audiobook, longform_jobs, pronunciation, settings_router,
-        media_tools_router, auth_router, _mcp_bindings_router, workers_router,
-        _telephony_twilio_router, _calls_router,
+        media_tools_router, auth_router, _mcp_bindings_router,
+        _telephony_twilio_router, _calls_router, _cloud_sync_router,
     ])
     # Download-acceleration state, once, for triage-from-logs (FDL-03).
     try:
@@ -919,6 +932,58 @@ async def _deferred_startup(app: FastAPI) -> None:
         os._exit(1)
 
 
+def _reconcile_profile_blocking():
+    from services.performance_profiles import reconcile_active_profile
+
+    return reconcile_active_profile()
+
+
+async def _reconcile_profile_in_background(app: FastAPI) -> None:
+    """Reapply the saved performance profile off the startup critical path."""
+    try:
+        # Store only successfully submitted work. Shielding keeps cancellation
+        # of the asyncio wrapper from cancelling queued executor work, so the
+        # shutdown wait can track its actual completion (#2861).
+        worker = asyncio.get_running_loop().run_in_executor(None, _reconcile_profile_blocking)
+        app.state.profile_reconcile_worker = worker
+        recovered = await asyncio.shield(worker)
+        if recovered:
+            logger.info("Startup performance selections reconciled: %s", recovered)
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        logger.exception("Performance-profile reconciliation failed (non-fatal).")
+
+
+def _start_profile_reconcile(app: FastAPI) -> None:
+    """Schedule reconciliation with a worker handle owned by this lifespan."""
+    app.state.profile_reconcile_worker = None
+    app.state.profile_reconcile_task = asyncio.create_task(_reconcile_profile_in_background(app))
+
+
+async def _wait_for_profile_reconcile_thread(app: FastAPI) -> None:
+    """Stop new submissions and bound waiting for this boot's executor work."""
+    task = getattr(app.state, "profile_reconcile_task", None)
+    if task is not None and not task.done():
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+    worker = getattr(app.state, "profile_reconcile_worker", None)
+    if worker is not None and not worker.done():
+        # asyncio.wait neither cancels the executor future on timeout nor
+        # needs a free executor thread to enforce the shutdown deadline.
+        await asyncio.wait({worker}, timeout=20.0)
+
+
+async def _await_profile_reconcile(app: FastAPI) -> None:
+    """Let model warm-ups wait for reconciliation without inheriting its failure."""
+    task = getattr(app.state, "profile_reconcile_task", None)
+    if task is not None:
+        if not task.done():
+            await asyncio.wait({task})
+        if task.cancelled():
+            raise asyncio.CancelledError
+
+
 async def _phase_b(app: FastAPI) -> None:
     """The old lifespan startup body: DB init + background services. Handles
     land on app.state so the shutdown block (which may run after a startup
@@ -958,18 +1023,6 @@ async def _phase_b(app: FastAPI) -> None:
     record_startup_voices_root()
 
     _startup_progress.begin_step("services_start")
-    # Reapply an explicitly saved speed/quality profile after the local model
-    # inventory is available. Older builds saved the slider but could leave
-    # ASR/Dictation pointing at missing models even when compatible weights
-    # were already installed. This path is local-cache-only and download-free.
-    try:
-        from services.performance_profiles import reconcile_active_profile
-
-        recovered = reconcile_active_profile()
-        if recovered:
-            logger.info("Startup performance selections reconciled: %s", recovered)
-    except Exception:
-        logger.exception("Performance-profile reconciliation failed (non-fatal).")
     # Phase 1 Wave 3 — macOS Gatekeeper quarantine probe (#54). Informational
     # only; we never auto-run `xattr -cr`.
     try:
@@ -996,16 +1049,36 @@ async def _phase_b(app: FastAPI) -> None:
     model_loads_reset_shutdown()
     from services.model_manager import begin_watermark_pool_lifecycle
     begin_watermark_pool_lifecycle()
+    # Reapply an explicitly saved speed/quality profile after the local model
+    # inventory is available. Older builds saved the slider but could leave
+    # ASR/Dictation pointing at missing models even when compatible weights
+    # were already installed. This path is local-cache-only and download-free.
+    # The inventory probes import translation/ASR/TTS runtimes (tens of seconds
+    # on a cold disk), and nothing the first screen shows depends on the result,
+    # so it runs in the background instead of holding /health at 503. The model
+    # warm-ups below await it, so they still load the reconciled selections.
+    _start_profile_reconcile(app)
+    if _EAGER:
+        # Eager boots (pytest, OMNIVOICE_EAGER_INIT=1) promise the classic
+        # synchronous startup: callers read engines the moment the lifespan
+        # opens, and a reconcile importing runtimes beside them races those
+        # imports. The deferral is for the served app.
+        await _await_profile_reconcile(app)
     app.state.idle_task = asyncio.create_task(idle_worker())
     app.state.worker_task = asyncio.create_task(task_manager.worker())
     # Warm the TTS model in the background so first /generate is instant.
-    app.state.preload_task = asyncio.create_task(preload_model())
+    async def _preload_after_reconcile():
+        await _await_profile_reconcile(app)
+        await preload_model()
+
+    app.state.preload_task = asyncio.create_task(_preload_after_reconcile())
     # Dictation v2: capture ASR warms in the background BY DEFAULT (~30s
     # post-boot, skipped under 4 GB free RAM at warm time).
     app.state.capture_preload_task = None  # only assigned when it runs (#1000 class)
     if _env_flag("OMNIVOICE_PRELOAD_CAPTURE_ASR", default=True):
         async def _preload_capture_asr():
             await asyncio.sleep(_capture_preload_delay_s())
+            await _await_profile_reconcile(app)
             if not _capture_preload_ram_ok():
                 logger.info(
                     "Capture ASR preload skipped: <4GB free RAM; "
@@ -1091,22 +1164,20 @@ async def _phase_b(app: FastAPI) -> None:
     )
     app.state.mcp_task = mcp_task
     app.state.mcp_stop = mcp_stop
+
+    # VoiceStudio Cloud settings sync: idles (no Cloud call) unless main hands
+    # out a token, i.e. the user is signed in with sync switched on.
+    from services.cloud_sync.service import get_service as _cloud_sync
+
+    async def _start_cloud_sync() -> None:
+        try:
+            await _cloud_sync().start()
+        except Exception:  # noqa: BLE001 — optional feature: never blocks start-up
+            logger.exception("cloud sync did not start")
+
+    app.state.cloud_sync_task = asyncio.create_task(_start_cloud_sync())
     if mcp_mounted:
         logger.info("MCP server mounted at /mcp")
-    # Remote GPU workers (opt-in). Starts nothing unless enabled.
-    try:
-        from worker import service as worker_service
-        await worker_service.start_if_enabled()
-    except Exception:
-        logger.exception("Remote worker startup failed (continuing without it)")
-
-    # The other side of the same feature: worker mode connects out.
-    try:
-        from worker import agent as worker_agent
-        await worker_agent.start_if_worker_mode()
-    except Exception:
-        logger.exception("Worker agent startup failed (continuing without it)")
-
     # Phone calls (opt-in): the separate loopback telephony listener resumes
     # only when the user left the Twilio integration enabled.
     try:
@@ -1179,7 +1250,15 @@ async def lifespan(app: FastAPI):
         # StartupGate. The watchdog stays armed until the deferred task
         # disarms it, so a hang inside Phase A/B still gets its thread dump.
         app.state.startup_task = asyncio.create_task(_deferred_startup(app))
+    try:
+        from core.loop_stall_monitor import start_loop_stall_monitor
+
+        _loop_stall_stop = start_loop_stall_monitor()
+    except Exception:
+        _loop_stall_stop = None  # diagnostics-only
     yield
+    if _loop_stall_stop is not None:
+        _loop_stall_stop.set()
     # ── Graceful shutdown (SIGTERM from Tauri, Ctrl+C, etc.) ────────────
     # Retire the run sentinel FIRST, before any bounded wait below (#1895):
     # once uvicorn has begun graceful shutdown the exit is deliberate by
@@ -1229,19 +1308,7 @@ async def lifespan(app: FastAPI):
     # before Phase A began pays nothing.
     if _phase_a_started.is_set() and not _phase_a_finished.is_set():
         await asyncio.to_thread(_phase_a_finished.wait, 20.0)
-    # Stop accepting remote work early in shutdown: a worker that reconnects
-    # to a half-torn-down control plane is worse than one that simply finds it
-    # gone and backs off.
-    try:
-        from worker import agent as worker_agent
-        await worker_agent.stop()
-    except Exception:
-        logger.exception("Worker agent shutdown failed")
-    try:
-        from worker import service as worker_service
-        await worker_service.stop()
-    except Exception:
-        logger.exception("Remote worker shutdown failed")
+    await _wait_for_profile_reconcile_thread(app)
     try:
         from services.telephony import gateway as telephony_gateway
         await telephony_gateway.stop()
@@ -1256,6 +1323,13 @@ async def lifespan(app: FastAPI):
         model_loads_begin_shutdown()
     # Stop MCP first — signal its task to exit its own anyio context (correct
     # task-affinity), then bound the wait so a wedged manager can't hang exit.
+    if getattr(app.state, "cloud_sync_task", None) is not None:
+        from services.cloud_sync.service import get_service as _cloud_sync
+
+        try:
+            await asyncio.wait_for(_cloud_sync().stop(), timeout=5.0)
+        except Exception:  # noqa: BLE001
+            pass
     mcp_stop = getattr(app.state, "mcp_stop", None)
     mcp_task = getattr(app.state, "mcp_task", None)
     if mcp_stop is not None:
@@ -1294,6 +1368,7 @@ async def lifespan(app: FastAPI):
     await _cancel_and_await_tasks(
         getattr(app.state, "idle_task", None),
         getattr(app.state, "worker_task", None),
+        getattr(app.state, "profile_reconcile_task", None),
         getattr(app.state, "preload_task", None),
         getattr(app.state, "capture_preload_task", None),
         getattr(app.state, "watermark_preload_task", None),
@@ -1354,7 +1429,7 @@ async def lifespan(app: FastAPI):
 from core.version import APP_VERSION  # single source of truth (pyproject metadata)
 
 app = FastAPI(
-    title="VoiceStudio API",
+    title=f"{PRODUCT_NAME} API",
     version=APP_VERSION,
     lifespan=lifespan,
     docs_url=None,       # Disabled — replaced by Scalar at /docs
@@ -1604,6 +1679,12 @@ async def global_exception_handler(request: Request, exc: Exception):
         fallback="VoiceStudio hit an internal error; check the backend log for details.",
     )
     content["error_class"] = _entry.get("error_class")
+    # The Python exception TYPE rides along with the taxonomy class. The class
+    # is "UNKNOWN" for most failures, which made every such 500 render the same
+    # fixed sentence AND the same report (#2917/#2916/#2688); the type name is
+    # VoiceStudio-safe (a type, never user text) and is what tells a
+    # RuntimeError from a KeyError. No substring of the message is copied.
+    content["error_type"] = type(exc).__name__
     return JSONResponse(
         content,
         status_code=500,

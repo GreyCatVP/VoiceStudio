@@ -118,8 +118,5 @@ def test_dub_retry_recognises_xpu_oom_and_releases_it(mm, monkeypatch):
     released = []
     monkeypatch.setattr(mm, "release_after_oom", released.append)
     err = RuntimeError(_XPU_OOMS[0])
-    assert dub._prepare_oom_retry(err, execution_target="local") is True
+    assert dub._prepare_oom_retry(err) is True
     assert released == [err]
-    with pytest.raises(RuntimeError):
-        dub._prepare_oom_retry(err, execution_target="remote")
-    assert released == [err], "a remote OOM is the worker's to recover"
