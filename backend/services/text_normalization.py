@@ -473,7 +473,13 @@ def _expand_abbreviations(text: str, lang: str) -> str:
 # zeros ("007") or 7+ digits (IDs, phone numbers) are all left alone.
 
 # EN-only clock time: H:MM, 0-23 hours. Rejects H:MM:SS (durations).
-_TIME_RE = re.compile(r"(?<![\w:.,/$%+-])([01]?\d|2[0-3]):([0-5]\d)(?![\w:/%+-])(?![.,]\d)")
+# Optional glued or dotted meridiem: "9:30pm", "9:30 p.m.". A trailing sentence
+# period is not part of "pm", so "9:30pm." keeps its stop.
+_TIME_RE = re.compile(
+    r"(?<![\w:.,/$%+-])([01]?\d|2[0-3]):([0-5]\d)"
+    r"(?:\s*((?:[ap]\.m\.)|(?:[ap]m)))?(?![\w:/%+-])(?![.,]\d)",
+    re.IGNORECASE,
+)
 
 # EN-only ordinal, suffix verified in the callback ("2th" stays as-is).
 _ORDINAL_RE = re.compile(r"(?<![\w.,:/$%+-])(\d{1,4})(st|nd|rd|th)(?![\w:/%+-])(?![.,]\d)")
@@ -540,12 +546,24 @@ def _numbers_to_words(text: str, lang: str) -> str:
     if lang == "en":
         def _time(m: re.Match) -> str:
             h, mm = int(m.group(1)), int(m.group(2))
+            # "0:15" is twelve fifteen, not zero fifteen.
+            if h == 0:
+                h = 12
             hw = num2words(h, lang="en")
             if mm == 0:
-                return f"{hw} o'clock"
-            if mm < 10:
-                return f"{hw} oh {num2words(mm, lang='en')}"
-            return f"{hw} {num2words(mm, lang='en')}"
+                spoken = f"{hw} o'clock"
+            elif mm < 10:
+                spoken = f"{hw} oh {num2words(mm, lang='en')}"
+            else:
+                spoken = f"{hw} {num2words(mm, lang='en')}"
+            mer = m.group(3)
+            if mer:
+                dotted = "." in mer
+                suffix = "a.m." if mer.lower().startswith("a") else "p.m."
+                if not dotted:
+                    suffix = suffix.replace(".", "")
+                spoken = f"{spoken} {suffix}"
+            return spoken
 
         text = _TIME_RE.sub(lambda m: _safe(m, _time, clock=True), text)
 
