@@ -25,6 +25,11 @@ const WEBVTT_TAG = /<[^<>\n]*>/g;
 const ASS_OVERRIDE = /\{\\[^{}\n]*\}/g;
 // `<br>` is a rendered line break, so it separates words instead of vanishing.
 const LINE_BREAK = /<br[ \t]*\/?>/gi;
+// Ruby pronunciation annotations (<rt>...</rt>, <rtc>...</rtc>).
+// An <rtc> block is matched through its own closer first, so a nested <rt>
+// inside it cannot end the match early and leak the rest of the block.
+const RUBY_ANNOTATION =
+  /<rtc(?=[\s.>])[^<>\n]*>.*?(?:<\/rtc>|(?=<\/ruby>)|$)|<rt(?=[\s.>])[^<>\n]*>.*?(?:<\/rt>|(?=<\/ruby>)|$)/gis;
 const TIMESTAMP = /^(?:\d+:)?[0-5]?\d:[0-5]?\d[,.]\d{1,3}$/;
 const TIMESTAMP_START = /^(?:\d+:)?[0-5]?\d:[0-5]?\d[,.]\d{1,3}(?:[ \t]|$)/;
 
@@ -67,7 +72,8 @@ function isWebVttMetadata(first) {
 /** Caption markup is not speech: karaoke spans, italics, `<br>`, `{\an8}` alignment. */
 function spokenCueText(text, webvtt = false) {
   const spaced = dropMatches(dropMatches(String(text || ''), ASS_OVERRIDE), LINE_BREAK, ' ');
-  const stripped = dropMatches(spaced, webvtt ? WEBVTT_TAG : CUE_MARKUP);
+  const noruby = dropMatches(spaced, RUBY_ANNOTATION);
+  const stripped = dropMatches(noruby, webvtt ? WEBVTT_TAG : CUE_MARKUP);
   const spoken = webvtt ? unescapeWebVtt(stripped) : stripped;
   return spoken.replace(/[^\S\n]+/g, ' ').trim();
 }
