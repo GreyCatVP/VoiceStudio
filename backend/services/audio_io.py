@@ -68,7 +68,7 @@ except (ImportError, OSError) as _ta_err:  # #3147: Windows libtorchaudio DLL de
     try:
         from core.scrub import scrub_text as _scrub
         _ta_msg = _scrub(str(_ta_err))
-    except Exception:
+    except ImportError:
         _ta_msg = type(_ta_err).__name__
     logging.getLogger("omnivoice.audio_io").debug(
         "torchaudio extension unavailable (%s); using soundfile/ffmpeg fallback", _ta_msg
@@ -459,7 +459,7 @@ def _safe_torchaudio_save(
         try:
             from core.scrub import scrub_text as _scrub
             _save_err_msg = _scrub(str(e))
-        except Exception:
+        except ImportError:
             _save_err_msg = type(e).__name__
         logger.warning(
             "torchaudio.save unavailable (%s); writing via soundfile", _save_err_msg

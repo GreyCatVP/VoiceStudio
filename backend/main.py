@@ -714,7 +714,7 @@ def _phase_a_build_inner() -> None:
         try:
             from core.scrub import scrub_text as _scrub
             _ta_msg = _scrub(str(_ta_exc))
-        except Exception:
+        except ImportError:
             _ta_msg = type(_ta_exc).__name__
         logger.warning(
             "torchaudio import failed (%s); audio I/O will use soundfile/ffmpeg fallback (#3147)",

@@ -27,6 +27,11 @@ It renders `docs/logo.svg` to the README PNGs and every PNG, ICO and ICNS under
 the Electron packaging contract. Keep `fill="none"` on the waveform path in every
 SVG copy of the mark; without it the curve fills black.
 
+Android generates its vectors from the same SVG with
+`mobile/android/scripts/generate_brand_resources.py`. SVG paint `none` becomes
+transparent Android color before applying the monochrome treatment, so the
+waveform stays unfilled in both standard and themed icons.
+
 Do not redraw the waveform per screen. Use `VoiceStudioMark` in React and the
 canonical SVG elsewhere so the silhouette stays recognizable at 16–512 px.
 

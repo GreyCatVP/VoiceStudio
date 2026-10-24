@@ -174,15 +174,16 @@ def test_audio_io_handles_torchaudio_oserror_during_save(monkeypatch, tmp_path, 
 
 
 def test_backend_crash_classifier_matches_windows_dll_load_error():
-    """backendCrash.ts must recognize 'could not find module' and 'filenotfounderror'."""
+    """backendCrash.ts must recognize 'could not find module' but not bare 'filenotfounderror'."""
     src = _BACKEND_CRASH.read_text(encoding="utf-8")
     assert "'could not find module'" in src
-    assert "'filenotfounderror'" in src
+    # Bare FileNotFoundError is too broad (a missing user audio file would match)
+    assert "'filenotfounderror'" not in src
 
     # Simulate regex / logic check from isBrokenEnvironmentCrash
     markers = [m.strip("'\"") for m in re.findall(r"'([^']+)'", src.split("const _IMPORT_FAILURE_MARKERS = [")[1].split("];")[0])]
     assert "could not find module" in markers
-    assert "filenotfounderror" in markers
+    assert "filenotfounderror" not in markers
 
     # Verify that the exact #3147 traceback matches the markers and core dependencies
     sample_traceback = (

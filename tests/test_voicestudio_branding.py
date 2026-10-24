@@ -7,6 +7,7 @@ import re
 import subprocess
 from pathlib import Path
 
+import pytest
 from packaging.version import Version
 
 
@@ -91,6 +92,33 @@ def test_raster_icons_have_no_black_band() -> None:
         icon = Image.open(ROOT / name).convert("RGBA")
         width, height = icon.size
         assert icon.getpixel((width // 2, int(height * 0.53)))[:3] != (0, 0, 0), name
+
+
+@pytest.mark.parametrize("name", ("vs_logo", "vs_launcher_foreground", "vs_launcher_monochrome"))
+def test_android_vectors_keep_unpainted_waveform_transparent(tmp_path: Path, name: str) -> None:
+    import runpy
+    import xml.etree.ElementTree as ET
+
+    generator = runpy.run_path(str(ROOT / "mobile/android/scripts/generate_brand_resources.py"))
+    generator["generate"](ROOT, tmp_path)
+    android = "{http://schemas.android.com/apk/res/android}"
+    vector = ET.parse(tmp_path / f"drawable/{name}.xml").getroot()
+    waveform = next(p for p in vector.iter("path") if p.get(android + "pathData", "").startswith("M6 34c4 0 5-7 9-7"))
+    # SVG's `none` is not an Android color; monochrome must preserve unpainted areas too.
+    assert waveform.get(android + "fillColor") in (None, "#00000000", "@android:color/transparent")
+    assert waveform.get(android + "strokeColor") or any(
+        attr.get("name") == "android:strokeColor" for attr in waveform
+    )
+
+
+@pytest.mark.parametrize("event", ("push", "pull_request"))
+def test_canonical_logo_changes_run_mobile_builds(event: str) -> None:
+    from fnmatch import fnmatchcase
+
+    import yaml
+
+    workflow = yaml.load((ROOT / ".github/workflows/mobile.yml").read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+    assert any(fnmatchcase("docs/logo.svg", pattern) for pattern in workflow["on"][event]["paths"])
 
 
 def test_python_package_metadata_points_to_voicestudio() -> None:

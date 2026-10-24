@@ -9,7 +9,7 @@
 Design proposal: [installer plans and recovery review](specs/installer-redesign/readme.md).
 This proposal does not change the implemented behavior described below.
 
-The top bar places a GitHub Star button immediately right of Get Pro, showing the exact star count from GitHub's small public endpoint. It refreshes when shown and every 20 minutes while visible; browser caching keeps repeat requests small. A bundled count remains visible if GitHub is unavailable. Requests send no credentials or referrer, and clicking the shortcut opens GitHub in the external browser. Community, donation and follow links live on the Support page (Settings → Support). Get Pro remains in the top bar.
+The top bar places a GitHub Star button immediately right of Get Pro: one star icon and label, then the exact star count in a divided segment (the star fills on hover), taken from GitHub's small public endpoint. It refreshes when shown and every 20 minutes while visible; browser caching keeps repeat requests small. A bundled count remains visible if GitHub is unavailable. Requests send no credentials or referrer, and clicking the shortcut opens GitHub in the external browser. Community, donation and follow links live on the Support page (Settings → Support). Get Pro remains in the top bar.
 
 Low-disk warnings in the notification menu open Settings > Storage, where users can inspect disk use and clear temporary files.
 

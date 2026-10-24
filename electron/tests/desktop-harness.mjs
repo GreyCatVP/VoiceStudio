@@ -81,7 +81,7 @@ const slug = (name) =>
     .replace(/^-|-$/g, '')
     .toLowerCase();
 
-async function launch({ profile, backendPort, proxyPort, seed }) {
+async function launch({ profile, backendPort, seed }) {
   // VS Code terminals export ELECTRON_RUN_AS_NODE=1, which makes Electron boot as plain Node.
   const { ELECTRON_RUN_AS_NODE: _runAsNode, ...inherited } = process.env;
   const app = await electron.launch({
@@ -100,7 +100,8 @@ async function launch({ profile, backendPort, proxyPort, seed }) {
       VOICESTUDIO_SKIP_BACKEND: '1',
       VOICESTUDIO_ALLOW_MULTIPLE_INSTANCES: '1',
       VOICESTUDIO_DISABLE_UPDATER: '1',
-      VOICESTUDIO_ELECTRON_PROXY_PORT: String(proxyPort),
+      // The OS assigns it at bind time; a pre-picked port can be taken before the app binds it.
+      VOICESTUDIO_ELECTRON_PROXY_PORT: '0',
     },
     timeout: 60000,
   });
@@ -182,16 +183,17 @@ export async function withApp(t, options, body) {
         })
       : null;
   let backendPort = backend ? backend.port : await freePort();
-  let proxyPort = await freePort();
   const live = [];
   const session = { profile, backend, relaunch: null };
   const start = async () => {
+    // With the dev proxy on an OS-assigned port, the backend port is the only one
+    // picked ahead of time, so it is the only one worth re-picking on a collision.
     const started = await launchWithFreshPorts(
-      () => launch({ profile, backendPort, proxyPort, seed }),
+      () => launch({ profile, backendPort, seed }),
       async () => {
-        proxyPort = await freePort();
-        if (!backend) backendPort = await freePort();
+        backendPort = await freePort();
       },
+      backend ? 1 : 3,
     );
     live.push(started);
     Object.assign(session, started);
