@@ -147,6 +147,7 @@ def test_backend_registry_exposes_opt_in_engine_and_docs():
     assert engine.id == "cosyvoice-gguf"
     assert engine.supports_cloning is True
     assert engine.supports_voice_design is False
+    assert engine.supports_generation_seed is True
     assert tts_backend._engine_docs_url(engine.id).endswith(
         "/docs/engines/cosyvoice-gguf.md"
     )
