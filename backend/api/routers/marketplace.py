@@ -152,6 +152,14 @@ def _insert_bundle_profile(
 ) -> bool:
     """Store bundle metadata identically for uploads and marketplace installs."""
     is_locked = bool(metadata.get("is_locked") and locked_audio_filename)
+    # Bundles are untrusted: only the two known kinds are stored, and design
+    # settings are stored as JSON text whatever shape the bundle carried.
+    kind = metadata.get("kind")
+    if kind not in ("clone", "design"):
+        kind = "clone"
+    vd_states = metadata.get("vd_states")
+    if vd_states is not None and not isinstance(vd_states, str):
+        vd_states = json.dumps(vd_states) if isinstance(vd_states, (dict, list)) else None
     with db_conn() as conn:
         conn.execute(
             """INSERT INTO voice_profiles
@@ -171,8 +179,8 @@ def _insert_bundle_profile(
                 1 if is_locked else 0,
                 locked_audio_filename or "",
                 time.time(),
-                metadata.get("kind") or "clone",
-                metadata.get("vd_states"),
+                kind,
+                vd_states,
             ),
         )
     return is_locked

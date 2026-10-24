@@ -166,3 +166,21 @@ def test_import_legacy_bundle_defaults_to_clone(iso):
         ).fetchone()
     assert row["kind"] == "clone"
     assert row["vd_states"] is None
+
+
+def test_import_sanitises_untrusted_kind_and_design_settings(iso):
+    cfg, db, mk = iso
+    from fastapi import UploadFile
+
+    data = _make_bundle({
+        "bundle_version": 1, "profile_name": "Odd",
+        "kind": "admin", "vd_states": {"Gender": "female"},
+    })
+    result = asyncio.run(mk.import_profile(UploadFile(filename="odd.omnivoice", file=io.BytesIO(data))))
+
+    with db.db_conn() as conn:
+        row = conn.execute(
+            "SELECT kind, vd_states FROM voice_profiles WHERE id=?", (result["profile_id"],),
+        ).fetchone()
+    assert row["kind"] == "clone"
+    assert json.loads(row["vd_states"]) == {"Gender": "female"}
