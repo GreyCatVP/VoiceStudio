@@ -440,6 +440,13 @@ describe('DesktopUpdater', () => {
             body: 'Ready',
           },
           { name: 'missing tag' },
+          {
+            tag_name: 'mobile-v0.5.7-beta.2',
+            name: 'mobile-v0.5.7-beta.2 — VoiceStudio mobile',
+            published_at: '2026-10-24T14:00:00Z',
+            prerelease: true,
+            body: 'Phone apps',
+          },
         ]),
         { status: 200, headers: { 'Content-Type': 'application/json' } },
       ),

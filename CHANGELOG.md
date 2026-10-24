@@ -37,6 +37,7 @@ metadata and the backend fallback mirror it.
 
 ### Fixed
 
+- Settings → Updates lists only desktop releases; phone app releases no longer appear there for Beta users (#3292)
 - One-click engine installs fall back to the `uv` on your PATH when the app has none of its own to offer, instead of failing on an empty `uv` setting (#3284)
 - iPhone Settings → About and licence receipts show the full app version (`0.5.7-beta.2`), like Android, instead of only `0.5.7` (#3273)
 - A voice with no transcript now offers a one-click speech-to-text model install instead of only an error (#3269)
@@ -99,6 +100,7 @@ metadata and the backend fallback mirror it.
 
 ### Docs
 
+- `funding.json` at the repository root publishes how to fund VoiceStudio in the [funding.json](https://fundingjson.org) format, matching the tiers in SPONSORS.md (#3294)
 - Google Play store listing, graphics and Play Console answers for the Android app are ready for the owner to submit (#3257, #3258)
 - `SPONSORS.md` now states what each sponsorship tier gives, when recognition starts, and what sponsorship does not buy, and the README and inquiry form point to it (#3172)
 - OmniVoice GGUF docs state that the installers do not ship its native binary yet (#3026) — thanks @DestinyQJY!

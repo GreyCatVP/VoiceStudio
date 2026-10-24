@@ -164,6 +164,7 @@ Open an [issue](https://github.com/debpalash/VoiceStudio/issues/new) with:
    bun run check:electron
    ```
 4. **Write a clear PR title** — it becomes the squash-merge commit message
+5. **Add a changelog fragment** if users will notice the change: one line in `changelog.d/<PR#>.<type>.md` (see [`changelog.d/README.md`](../changelog.d/README.md)). Don't edit `CHANGELOG.md` directly, so your PR never conflicts with others
 5. **Don't include** local machine stats, file paths, or private system info in PR descriptions
 
 ### Adding a New TTS Engine
@@ -327,6 +328,18 @@ OMNIVOICE_PORT=3999 VOICESTUDIO_UI_URL=http://localhost:3912 \
 
 # Shared native helper, when changed
 cargo check --manifest-path native/desktop-bridge/Cargo.toml
+```
+
+### Cached local checks (Dagger, optional)
+
+[Dagger](https://docs.dagger.io/install) runs the frontend tests, the mobile
+token check and both backend pytest suites in containers whose steps are cached
+by content, so a re-run after an unrelated edit takes seconds. It needs Docker
+and nothing leaves your machine. CI is unchanged: `ci.yml` stays the gate.
+
+```bash
+dagger call check             # all of the above, in parallel
+dagger call frontend-tests    # or: mobile-tokens, python-tests
 ```
 
 ---
