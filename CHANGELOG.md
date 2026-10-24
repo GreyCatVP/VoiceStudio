@@ -104,10 +104,6 @@ metadata and the backend fallback mirror it.
 
 - The sponsor footer is gone from the app; sponsored integrations keep a Featured badge on their card in Integrations (#3031)
 
-### Fixed
-
-- Space-grouped thousands ("1 234", "10 000") in French, German, Russian and the other comma-decimal languages keep their digits instead of the leading group being spoken on its own ("un 234,5") (#3039) — thanks @NishchayMahor!
-
 ### Docs
 
 - `funding.json` at the repository root publishes how to fund VoiceStudio in the [funding.json](https://fundingjson.org) format, matching the tiers in SPONSORS.md (#3294)
