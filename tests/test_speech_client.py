@@ -64,6 +64,16 @@ def test_audio_read_errors_hide_parent_directories(monkeypatch, path):
     assert "users" not in message.lower()
 
 
+def test_numeric_loopback_spellings_count_as_local():
+    from speech_client.__main__ import _is_loopback_host
+
+    assert _is_loopback_host("2130706433")
+    assert _is_loopback_host("0x7f000001")
+    assert _is_loopback_host("127.1")
+    assert not _is_loopback_host("8.8.8.8")
+    assert not _is_loopback_host("example.com")
+
+
 def test_remote_bearer_rejects_plain_http_before_network():
     from urllib import request
 

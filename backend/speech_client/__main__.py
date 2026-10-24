@@ -17,6 +17,7 @@ import mimetypes
 import os
 from pathlib import Path
 import secrets
+import socket
 import sys
 from typing import Any
 from urllib import error, request
@@ -75,7 +76,25 @@ def _is_loopback_host(host: str | None) -> bool:
     try:
         return ipaddress.ip_address(host).is_loopback
     except ValueError:
+        pass
+    # 2130706433, 0x7f000001 and 127.1 are loopback to the OS resolver and are
+    # not ip_address() literals. Only a numeric spelling is resolved, so a
+    # hostname is never treated as local because it currently points here.
+    lowered = host.lower()
+    numeric = lowered.startswith("0x") or all(ch.isdigit() or ch == "." for ch in host)
+    if not numeric:
         return False
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except OSError:
+        return False
+    addresses: list[ipaddress.IPv4Address | ipaddress.IPv6Address] = []
+    for info in infos:
+        try:
+            addresses.append(ipaddress.ip_address(info[4][0]))
+        except ValueError:
+            return False
+    return bool(addresses) and all(addr.is_loopback for addr in addresses)
 
 
 def _open(req: request.Request, timeout: float = 300.0) -> tuple[bytes, str]:
