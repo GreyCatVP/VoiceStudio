@@ -78,6 +78,21 @@ def test_an_entirely_non_ascii_name_still_yields_a_usable_filename():
     assert stem and stem.strip("_ "), f"no usable stem in {safe!r}"
 
 
+def test_windows_device_names_are_saveable():
+    assert ascii_filename("CON.wav") == "_CON.wav"
+    assert ascii_filename("nul.mp3") == "_nul.mp3"
+    header = content_disposition("CON.wav")
+    header.encode("latin-1")
+    assert 'filename="_CON.wav"' in header
+    assert "filename*=UTF-8''_CON.wav" in header
+
+
+def test_a_disposition_cannot_split_the_header():
+    header = content_disposition("speech.mp3", disposition="inline\r\nX-Evil: 1")
+    assert header.startswith("attachment;")
+    assert "\r" not in header and "\n" not in header
+
+
 def test_ascii_names_are_left_alone():
     assert ascii_filename("dubbed_output_en.mp4") == "dubbed_output_en.mp4"
     header = content_disposition("dubbed_output_en.mp4")

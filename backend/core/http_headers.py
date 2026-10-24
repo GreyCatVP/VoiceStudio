@@ -27,6 +27,8 @@ import re
 import unicodedata
 from urllib.parse import quote
 
+from core.path_security import portable_filename
+
 __all__ = ["ascii_filename", "content_disposition"]
 
 #: Characters Windows forbids in a filename, plus the quoting/injection risks
@@ -64,7 +66,10 @@ def ascii_filename(filename: str, fallback: str = "download") -> str:
     stem, suffix = _fold(stem), _fold(suffix)
     if not stem.strip("_ ."):
         stem = fallback
-    return f"{stem}.{suffix}" if suffix else stem
+    folded = f"{stem}.{suffix}" if suffix else stem
+    # Folding leaves Windows device names (CON.wav, NUL) saveable-looking and
+    # unsavable. portable_filename is what every other export already uses.
+    return portable_filename(folded, default=fallback or "download")
 
 
 def content_disposition(
@@ -85,6 +90,10 @@ def content_disposition(
     # treatment as the name itself — otherwise a non-ASCII or quote/CRLF
     # fallback walks straight past every guard here (#1262 review).
     safe_fallback = _fold(fallback) or "download"
-    safe = ascii_filename(filename, fallback=safe_fallback)
-    encoded = quote(_UNSAFE.sub("_", filename or safe_fallback), safe="")
-    return f"{disposition}; filename=\"{safe}\"; filename*=UTF-8''{encoded}"
+    # Repair the name the browser will actually save, including filename*,
+    # so a profile called CON is not handed to Windows as a device name.
+    portable = portable_filename(filename or safe_fallback, default=safe_fallback)
+    safe = ascii_filename(portable, fallback=safe_fallback)
+    encoded = quote(portable, safe="")
+    kind = disposition if re.fullmatch(r"[A-Za-z]+", disposition or "") else "attachment"
+    return f"{kind}; filename=\"{safe}\"; filename*=UTF-8''{encoded}"
