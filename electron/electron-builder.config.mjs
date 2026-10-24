@@ -8,6 +8,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packageNativeHelper } from './native-helper-build.mjs';
+import { repairSnapArtifacts } from './snap-template-payload.mjs';
 import { APP_ID, PRODUCT_NAME } from '../config/app-config.mjs';
 import { DISTRIBUTION_PROFILE, DISTRIBUTION_TARGET } from '../config/distributions.mjs';
 
@@ -22,13 +23,15 @@ const artifactLabel =
     'mac-app-store': 'MacAppStore',
   }[DISTRIBUTION_TARGET] ?? 'Electron';
 const artifactPrefix = `${PRODUCT_NAME.replace(/[^A-Za-z0-9]+/g, '-')}-${artifactLabel}`;
-// Stable is the only Electron update feed: there is no `preview` release to
-// point at. Packaging rehearsals from main are stamped stable too; they are
-// review artifacts and are never published.
+// Stable and Beta are the Electron update feeds (Beta = `-beta.N` prereleases,
+// stamped by electron-release.yml). Packaging rehearsals from main are stamped
+// stable; they are review artifacts and are never published.
 const updateChannel =
   process.env.VOICESTUDIO_UPDATE_CHANNEL || `electron-stable-${process.platform}-${process.arch}`;
 if (
-  !/^electron-(?:microsoft-store-)?stable-(?:win32|darwin|linux)-(?:x64|arm64)$/.test(updateChannel)
+  !/^electron-(?:(?:microsoft-store-)?stable|beta)-(?:win32|darwin|linux)-(?:x64|arm64)$/.test(
+    updateChannel,
+  )
 ) {
   throw new Error(`Unsupported Electron update channel: ${updateChannel}`);
 }
@@ -51,7 +54,7 @@ export function distributionPackaging(target = DISTRIBUTION_TARGET) {
           description: storeMetadata.listing.description,
           allowNativeWayland: true,
           plugs: [
-            { 'browser-support': { interface: 'browser-support', 'allow-sandbox': true } },
+            { 'browser-support': { interface: 'browser-support', 'allow-sandbox': false } },
             'desktop',
             'desktop-legacy',
             'home',
@@ -114,6 +117,12 @@ const notarizeMac =
     process.env.APPLE_TEAM_ID,
   );
 
+// electron-builder never signs ad hoc on its own when no certificate exists, so
+// the bundle keeps Electron's original signature while its contents change. That
+// signature is invalid, and quarantined downloads then fail as "damaged"
+// (#2763, #2829, #2681). Sign ad hoc explicitly when no Developer ID is supplied.
+const adhocSignMac = !isMacAppStore && !process.env.CSC_LINK;
+
 /** @type {import('electron-builder').Configuration} */
 export default {
   appId: APP_ID,
@@ -170,6 +179,9 @@ export default {
   ],
   asar: true,
   afterPack: packageNativeHelper,
+  ...(DISTRIBUTION_TARGET === 'snap-store'
+    ? { afterAllArtifactBuild: ({ artifactPaths }) => repairSnapArtifacts(artifactPaths) }
+    : {}),
   win: {
     icon: 'build/icons/icon.ico',
     // The CLI matrix selects one architecture per runner and updater feed
@@ -190,6 +202,7 @@ export default {
     // Keep unsigned artifact rehearsals at their existing signing defaults;
     // a Developer ID certificate and Apple credentials enable both together.
     hardenedRuntime: isMacAppStore ? false : notarizeMac,
+    ...(adhocSignMac ? { identity: '-' } : {}),
     notarize: notarizeMac,
     extendInfo: {
       NSMicrophoneUsageDescription: readFileSync(resolve(here, 'build/Info.plist'), 'utf8')
