@@ -72,6 +72,7 @@ metadata and the backend fallback mirror it.
 - Generation-complete notifications appear above the workspace instead of covering synthesis controls (#3102)
 - Generated speech no longer starts and ends with silence, and `[pause]` markers give exactly the pause you asked for (Raw preset and explicit durations untouched) (#3080)
 - Engine sidecars no longer load PyTorch just to answer the Test Engine ping, and a failed test logs its reason locally (#3026) — thanks @tekay-de!
+- Cancelled queued tasks skip execution and retain cancelled status in the task stream and job history (#2800) — thanks @rudycelekli!
 
 ### Fixed
 
