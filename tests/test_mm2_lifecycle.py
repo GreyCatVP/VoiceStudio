@@ -110,6 +110,16 @@ def test_omnivoice_unload_idempotent_and_preload_safe():
 def test_list_loaded_empty(monkeypatch):
     monkeypatch.setattr(mm, "model", None)
     monkeypatch.setattr(mm, "_diar_pipeline", None)
+    # list_loaded() also reads these process-wide registries (sidecars, engines,
+    # the active backend, the dictation ASR and the offline translator); an earlier test on
+    # the same pytest-xdist worker can leave an engine or sidecar behind, which
+    # made this test pass serially and fail depending on worker placement.
+    monkeypatch.setattr("services.subprocess_backend.list_live_sidecars", lambda: [])
+    monkeypatch.setattr("services.asr_backend._capture_backend", None)
+    monkeypatch.setattr("api.routers.dub_translate._nllb_model", None)
+    monkeypatch.setattr("api.routers.engines._ENGINE_INSTANCES", {})
+    monkeypatch.setattr("services.tts_backend._active_instance", None)
+    monkeypatch.setattr("services.tts_backend._active_instance_id", None)
     out = ml.list_loaded()
     assert out == {"models": [], "count": 0} or out["count"] == 0
 

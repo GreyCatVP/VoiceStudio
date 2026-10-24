@@ -104,7 +104,14 @@ version only after validation.
 4. Rename `## [Unreleased]` in `CHANGELOG.md` to `## [X.Y.Z] — YYYY-MM-DD`.
    Lead with the largest user-visible change, keep Highlights to 3–5 bullets,
    include migration steps and real screenshots when relevant, and verify human
-   contributors and bug reporters from the tag comparison and included PRs.
+   contributors and bug reporters from the tag comparison and included PRs. The
+   release workflow adds a `### Contributors` block to the GitHub Release notes
+   by itself: everyone who committed since the latest stable release, plus the
+   authors of PRs merged in that span (ranked by commits; bots, AI agents and
+   unlinked placeholders are never listed). It does **not** find bug reporters,
+   and it skips the block when the changelog section already has a
+   `### Contributors` heading, so write one by hand when you want roles or
+   reporters credited.
 5. Run `uv run pytest tests/test_app_version.py tests/test_changelog_style.py -q`.
 6. Audit contributor agreements: `git fetch origin cla-signatures`, then
    `GH_TOKEN=... python scripts/cla_audit.py`. Follow up with each unsigned
@@ -146,8 +153,17 @@ only the workflow definition comes from `main`.
 
 Dispatch `electron-release.yml` for the exact tag with `publish=true`. Signing
 and notarization are required by default. The owner may explicitly set
-`allow_unsigned=true`; the workflow then adds the installer-trust disclosure to
-the release notes. Never select that exception without the owner's decision.
+`allow_unsigned=true`. Never select that exception without the owner's decision.
+Every build, published or not, verifies what each platform leg actually ships
+and the release notes open with an **Installer signing** table built from those
+checks (✅ signed and notarized, ⚠️ unsigned or ad hoc, with what users will
+see). A macOS bundle with an invalid signature always fails, and a platform
+whose signing credentials are configured fails if its installers are not signed
+with them, even with `allow_unsigned=true`.
+The owner can delegate it: accounts listed in the `UNSIGNED_RELEASE_PUBLISHERS`
+Actions variable (comma-separated logins, Settings → Secrets and variables →
+Actions → Variables; only admins can edit it) may also dispatch or re-run an
+unsigned publish. Remove a login to revoke it; an empty variable means owner only.
 
 Publishing the GitHub Release triggers the Docker workflow for that tag. Docker
 release tags are never built from a tag push, and `:latest` only ever tracks
@@ -187,13 +203,26 @@ type the tag name.
   beta copies it), runs the version guards, commits, pushes `main` and the tag.
   The tag push builds a draft release; nothing is public.
 - **Publish:** the same, then dispatches `electron-release.yml` with
-  `publish=true`. If the Mac/Windows signing secrets are missing or unreadable it
-  stops unless you explicitly accept unsigned installers.
+  `publish=true`. It lists which platforms have signing secrets (macOS needs the
+  Developer ID and notarization set, Windows needs `ELECTRON_WINDOWS_CSC_LINK` and
+  its password) and, for any platform without them, stops unless you explicitly
+  accept shipping that platform unsigned. The dispatch's `allow_unsigned` flag
+  only accepts platforms without credentials: a platform with signing configured
+  must still produce signed installers, and the notes' **Installer signing**
+  table shows each platform's measured result.
 - `--publish vX.Y.Z[-beta.N]` (`make release-publish TAG=…`) publishes an existing
   draft build later.
 - `--dry-run` (`make release-dry`) prints the plan and changes nothing.
 
 It does not replace the post-release verification below; run it every time.
+
+## Mobile apps
+
+Phone apps ship on their own `mobile-v*` tags through the `mobile-release`
+workflow (a draft GitHub prerelease with the APK, AAB and IPAs; store uploads use
+the TestFlight and Play internal workflows). The version is the root `package.json` version and each run's
+number is the store build number. Setup, secrets and sideloading: `docs/mobile.md`
+→ Releasing. Publishing the draft and promoting the store builds are manual.
 
 ## Beta channel
 

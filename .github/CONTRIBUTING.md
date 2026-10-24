@@ -155,8 +155,9 @@ Open an [issue](https://github.com/debpalash/VoiceStudio/issues/new) with:
 2. **Keep PRs focused** — one feature or fix per PR
 3. **Run tests** before pushing:
    ```bash
-   # Backend tests (the same two runs as CI)
-   uv run pytest tests/ -q
+   # Backend tests (the same two runs as CI; -n auto runs tests/ in parallel,
+   # optional locally, it is about 4x faster on 4 cores)
+   uv run pytest tests/ -q -n auto
    uv run pytest backend/tests/ -q
 
    # Frontend build check
@@ -380,6 +381,16 @@ hard rules from the first prompt.
 
 ## Quality gates your PR must pass
 
+- **CI scope:** the Electron-only jobs (UI crawler, Desktop UI, Linux native
+  package, and the Electron steps of `Tests (backend + frontend)`) are skipped on a
+  pull request whose every changed file is an *edit or addition* under `backend/`
+  (except `backend/assets/`), `omnivoice/`, `docs/` or `mobile/`, a Python file under `tests/` or `scripts/`,
+  a root `*.md`, `Makefile`, `uv.lock`, or a workflow other than `ci.yml` and
+  `electron-*.yml`. Any other path (including `pyproject.toml`, `package.json`,
+  `bun.lock` and shared test fixtures), any file that is not a plain edit or addition (**deleted, renamed**, copied or type-changed), 3,000 or
+  more files, and every push to `main` run the full matrix; so does a failed
+  detection. Skipped jobs show as skipped in the PR. The rule is the `changes`
+  job in `.github/workflows/ci.yml`.
 - **Cross-platform parity (hard rule):** anything that ships in default mode
   must behave identically on macOS, Windows, and Linux. Platform-specific
   *implementation* is fine; platform-divergent *default behavior* is a P0.
@@ -426,6 +437,11 @@ hard rules from the first prompt.
     account features off sends one best-effort token revocation. Hidden in
     packaged builds until VoiceStudio Cloud launches.
   - Bug reports as prefilled GitHub Issue URLs opened in the user's browser.
+  - **Phone content reports, only when the user taps Send** in a generated
+    result's Report sheet: `appapi.voicestudio.sh/v1/content-reports` with the
+    reason, optional note and typed text, app version and model; no audio,
+    account or device identifier (`mobile/contract/SPEC.md` → Reporting
+    generated content; required by Google Play's AI-generated content policy).
   - PostHog analytics only after a yes at the first-run consent prompt
     (`backend/core/analytics.py`, allowlisted content-free metadata).
   - The GitHub star count (no credentials or referrer, refreshed every 20
