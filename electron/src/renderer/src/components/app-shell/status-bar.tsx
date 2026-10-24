@@ -4,7 +4,11 @@ import {
   type PerformanceProfileState,
 } from '@/hooks/use-performance-profile';
 import { presetEngineFeedback } from './preset-engine-feedback';
-import { engineDetailLevels, useEngineDetailLevel } from './use-engine-detail-level';
+import {
+  engineDetailLevels,
+  useEngineDetailLevel,
+  type EngineDetailLevel,
+} from './use-engine-detail-level';
 import { EngineRow } from './engine-row';
 import { useTranslationEngines } from '@/features/settings/translation-settings';
 import {
@@ -524,6 +528,22 @@ export function StatusBar({
       applicable,
     ),
   );
+  const engineRows = (rowLevel: EngineDetailLevel) =>
+    displayEngines
+      .filter(({ family }) => rowLevel !== 'simple' || family === 'tts')
+      .map((row) => (
+        <EngineRow
+          key={row.family}
+          row={row}
+          level={rowLevel}
+          online={isBackendReachable(status.stage)}
+          dotClass={engineStateClass(row.state)}
+          open={selectedDetail === row.family}
+          onToggle={() =>
+            setSelectedDetail((current) => (current === row.family ? null : row.family))
+          }
+        />
+      ));
   const viewControl = (
     <div
       role="radiogroup"
@@ -625,39 +645,23 @@ export function StatusBar({
         )}
         {isBackendReachable(status.stage) && (
           <PerformanceProfile
+            showHardware={level !== 'simple'}
+            extra={level === 'simple' ? engineRows('models') : undefined}
             onApplied={(applied) => {
               appliedRefreshStarted.current = presetRefreshing;
               setAppliedProfile(applied);
-              if (level === 'simple') chooseLevel('models');
             }}
           />
         )}
-        <div
-          id="sidebar-engine-details"
-          data-detail-level={level}
-          className={cn(
-            'min-w-0',
-            level === 'simple'
-              ? 'rounded-lg bg-sidebar-accent/20'
-              : 'max-h-[32dvh] space-y-0.5 overflow-y-auto overscroll-contain',
-          )}
-        >
-          {displayEngines
-            .filter(({ family }) => level !== 'simple' || family === 'tts')
-            .map((row) => (
-              <EngineRow
-                key={row.family}
-                row={row}
-                level={level}
-                online={isBackendReachable(status.stage)}
-                dotClass={engineStateClass(row.state)}
-                open={selectedDetail === row.family}
-                onToggle={() =>
-                  setSelectedDetail((current) => (current === row.family ? null : row.family))
-                }
-              />
-            ))}
-        </div>
+        {level !== 'simple' && (
+          <div
+            id="sidebar-engine-details"
+            data-detail-level={level}
+            className="max-h-[32dvh] min-w-0 space-y-0.5 overflow-y-auto overscroll-contain"
+          >
+            {engineRows(level)}
+          </div>
+        )}
 
         {footerLeading && (
           <div className="sticky bottom-0 mt-1.5 flex items-center gap-1 border-t border-border/50 bg-sidebar pt-1.5">

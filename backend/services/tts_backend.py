@@ -2570,6 +2570,7 @@ class MLXAudioBackend(TTSBackend):
         "chatterbox":  "mlx-community/Chatterbox-TTS-4bit",
         "melotts":     "mlx-community/MeloTTS-English-v3-MLX",
         "outetts":     "mlx-community/Llama-OuteTTS-1.0-1B-4bit",
+        "voxcpm2":     "mlx-community/VoxCPM2-8bit",
     }
     DEFAULT_MODEL_KEY = "kokoro"
 
@@ -2587,6 +2588,8 @@ class MLXAudioBackend(TTSBackend):
     #   melotts     huggingface.co/mlx-community/MeloTTS-English-v3-MLX
     #   outetts     huggingface.co/OuteAI/Llama-OuteTTS-1.0-1B (high + moderate
     #               training-data tiers)
+    #   voxcpm2     huggingface.co/mlx-community/VoxCPM2-8bit (30 languages,
+    #               the same set as VoxCPM2Backend)
     CURATED_MODEL_LANGUAGES: dict[str, tuple[str, ...]] = {
         "kokoro": ("en", "es", "fr", "hi", "it", "pt", "ja", "zh"),
         "csm": ("en",),
@@ -2597,6 +2600,11 @@ class MLXAudioBackend(TTSBackend):
         "outetts": (
             "en", "ar", "zh", "nl", "fr", "de", "it", "ja", "ko", "lt", "ru", "es",
             "pt", "be", "bn", "ka", "hu", "lv", "fa", "pl", "sw", "ta", "uk",
+        ),
+        "voxcpm2": (
+            "ar", "my", "zh", "da", "nl", "en", "fi", "fr", "de", "el",
+            "he", "hi", "id", "it", "ja", "km", "ko", "lo", "ms", "no",
+            "pl", "pt", "ru", "es", "sw", "sv", "tl", "th", "tr", "vi",
         ),
     }
 
@@ -3557,6 +3565,7 @@ _MLX_AUDIO_MODEL_LABELS: dict[str, str] = {
     "chatterbox": "Chatterbox",
     "melotts":    "MeloTTS (lightweight)",
     "outetts":    "OuteTTS",
+    "voxcpm2":    "VoxCPM2 8-bit (30 languages, 48 kHz)",
 }
 
 

@@ -48,6 +48,15 @@ Electron publication uses these GitHub Actions secrets:
   and `APPLE_TEAM_ID` for macOS notarization and stapling.
 - `ELECTRON_WINDOWS_CSC_LINK` and `ELECTRON_WINDOWS_CSC_KEY_PASSWORD` for
   Windows Authenticode signing. The macOS certificate cannot sign Windows apps.
+- `APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID` and
+  `APP_STORE_CONNECT_API_KEY` in the `app-store-connect` environment for the
+  iOS TestFlight upload ([`mobile.md`](mobile.md#testflight-maintainers)).
+  TestFlight is not a release channel.
+- `ANDROID_UPLOAD_KEYSTORE`, `ANDROID_UPLOAD_KEYSTORE_PASSWORD`,
+  `ANDROID_UPLOAD_KEY_ALIAS`, `ANDROID_UPLOAD_KEY_PASSWORD` and
+  `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` in the `google-play` environment for the
+  Play internal testing upload ([`mobile.md`](mobile.md#play-internal-testing-maintainers)).
+  Play internal testing is not a release channel either.
 - The repository `GITHUB_TOKEN` for draft creation and asset uploads.
 - `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` for the Docker Hub mirror.
 - `POSTHOG_PROJECT_TOKEN` (secret) and `POSTHOG_HOST` (repository variable),
@@ -155,9 +164,68 @@ After publication, verify each maintained channel:
 | Docker Hub overview | `docker.yml`                       | Read the `Update Docker Hub description` step log; the step may continue after a 403                                                                         |
 | Rolling containers  | `docker.yml` on `main` pushes only | `:latest`, `:main`, and `:rocm` timestamps move; a release never moves them                                                                                  |
 
-A missing channel is a release bug. There are no RC tags and no preview update
-channel; previews are builds from `main` (the `electron-build.yml` artifacts or
-Docker `:latest`), never a side branch. No Tauri build is maintained.
+A missing channel is a release bug. There are no RC tags; the one prerelease is
+the opt-in **Beta** channel (below). Previews between betas are builds from
+`main` (the `electron-build.yml` artifacts or Docker `:latest`), never a side
+branch. No Tauri build is maintained.
+
+## Release helper
+
+`make release` (or `uv run python scripts/release.py`) cuts a release from any
+branch. It shows the last release and the version on `main`, then asks **stable
+or beta** and suggests the new tag (`v0.5.7`, or `v0.5.7-beta.1`, `-beta.2`, ...
+for a beta; the beta suffix is always `-beta.N`). If `package.json` already names
+the upcoming release it uses that version; if that version is already tagged it
+moves to the next patch. Choices are arrow-key menus (up/down or `j`/`k`,
+Enter; Esc cancels) that fall back to typed answers when there is no terminal.
+It then asks **draft or publish**, prints the plan
+(including switching to `main` and fast-forwarding it), and only proceeds when you
+type the tag name.
+
+- **Draft:** bumps the three version files in lockstep, runs `uv lock`, writes
+  the `CHANGELOG.md` section from `[Unreleased]` (a stable release renames it; a
+  beta copies it), runs the version guards, commits, pushes `main` and the tag.
+  The tag push builds a draft release; nothing is public.
+- **Publish:** the same, then dispatches `electron-release.yml` with
+  `publish=true`. If the Mac/Windows signing secrets are missing or unreadable it
+  stops unless you explicitly accept unsigned installers.
+- `--publish vX.Y.Z[-beta.N]` (`make release-publish TAG=…`) publishes an existing
+  draft build later.
+- `--dry-run` (`make release-dry`) prints the plan and changes nothing.
+
+It does not replace the post-release verification below; run it every time.
+
+## Beta channel
+
+Beta is a second release channel cut from `main`, for testers who opt in under
+**Settings → Updates → Update channel** ([user guide](update-channels.md)). It
+has no soak period, no side branch and no cherry-picks.
+
+| | Stable | Beta |
+|---|---|---|
+| Tag and `package.json` version | `vX.Y.Z` | `vX.Y.Z-beta.N` |
+| GitHub Release | full release, becomes `latest` | **prerelease**, never `latest` |
+| Update feed | `electron-stable-<os>-<arch>` | `electron-beta-<os>-<arch>` |
+| Docker | `:X.Y.Z`, `:X.Y`, `:stable` | `:beta`, `:X.Y.Z-beta.N` (and `-rocm`) |
+| Snap / Microsoft Store / Mac App Store | yes | no (Stable-only) |
+| Tauri sunset feeds | copied into the release | not copied |
+
+Cutting a beta: with owner approval of the version, bump `package.json`,
+`pyproject.toml` and `_FALLBACK_VERSION` to `X.Y.Z-beta.N` together, run `uv lock`
+(it records the PEP 440 form `X.Y.ZbN`; the lockstep test compares versions, not
+strings), add a
+`## [X.Y.Z-beta.N]` section to `CHANGELOG.md`, tag from `main`, then run
+`electron-release.yml` with `publish`. The workflow derives the channel from
+the version (`prepare_electron_release.py --print-channel`), stamps it into every
+platform feed, publishes with `--prerelease --latest=false`, and dispatches
+Docker with `promote_stable=false`. Any other prerelease shape (`-rc`, `-alpha`)
+is rejected.
+
+Promoting to Stable is a normal `vX.Y.Z` release from `main`. Beta users roll
+onto it automatically because the updater compares semver (`X.Y.Z-beta.N` sorts
+below `X.Y.Z`). The verification table above applies to Stable; for a beta also
+confirm the GitHub Release is flagged *Pre-release*, `releases/latest` still
+points at the last stable, and `:stable` and `:X.Y` did not move.
 
 ## Package requirements
 

@@ -4135,7 +4135,7 @@ wheels = [
 
 [[package]]
 name = "omnivoice"
-version = "0.5.7"
+version = "0.5.7b1"
 source = { editable = "." }
 dependencies = [
     { name = "accelerate" },
@@ -4274,7 +4274,7 @@ requires-dist = [
     { name = "lightning", specifier = ">=2.6.6" },
     { name = "litellm", specifier = ">=1.103.0,<2" },
     { name = "mcp", specifier = ">=1.28.1,<2" },
-    { name = "mlx-audio", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'", specifier = ">=0.3.0" },
+    { name = "mlx-audio", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'", specifier = ">=0.4.4" },
     { name = "mlx-whisper", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'", specifier = ">=0.2.1" },
     { name = "num2words", specifier = ">=0.5.14" },
     { name = "numpy" },
