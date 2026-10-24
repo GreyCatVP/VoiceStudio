@@ -54,7 +54,8 @@ def _isolated_env(data_dir: str) -> dict[str, str]:
       process environment, and that file can redirect the data folder. Point it
       at a file that does not exist so the run stays inside ``data_dir`` and
       never touches the user's real database or jobs.
-    - ``HF_HOME`` and ``AUDIOSEAL_CACHE_DIR``: results must not depend on which
+    - ``HF_HOME``, ``HF_HUB_CACHE``, ``OMNIVOICE_CACHE_DIR``, ``TORCH_HOME`` and
+      ``AUDIOSEAL_CACHE_DIR``: results must not depend on which
       models this machine has cached. The startup warm-ups load a model only
       when its weights are already on disk, so an installed one would change
       the memory numbers.
@@ -64,6 +65,9 @@ def _isolated_env(data_dir: str) -> dict[str, str]:
         "OMNIVOICE_DATA_DIR": data_dir,
         "OMNIVOICE_ENV_FILE": os.path.join(data_dir, "isolated.env"),
         "HF_HOME": os.path.join(data_dir, "hf"),
+        "HF_HUB_CACHE": os.path.join(data_dir, "hf", "hub"),
+        "OMNIVOICE_CACHE_DIR": os.path.join(data_dir, "omnivoice-cache"),
+        "TORCH_HOME": os.path.join(data_dir, "torch"),
         "AUDIOSEAL_CACHE_DIR": os.path.join(data_dir, "audioseal-cache"),
     }
 
