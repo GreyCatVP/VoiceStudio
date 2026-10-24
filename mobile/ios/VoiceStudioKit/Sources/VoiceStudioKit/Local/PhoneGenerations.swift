@@ -4,6 +4,9 @@ public struct PhoneGeneration: Codable, Sendable, Identifiable {
     public let id: UUID
     public let text: String
     public let createdAt: Date
+    /// The catalogue model that made this take, for content reports. Absent on takes saved before it was recorded.
+    public let modelRepo: String?
+    public let modelRevision: String?
 }
 public actor PhoneGenerationStore {
     private let root: URL
@@ -11,8 +14,8 @@ public actor PhoneGenerationStore {
     public func list() throws -> [PhoneGeneration] {
         try FileManager.default.contentsOfDirectory(at: root,includingPropertiesForKeys: nil).filter { $0.pathExtension == "json" }.compactMap { try? PrivateFiles.read(PhoneGeneration.self,from: PrivateFiles.child(root,$0.lastPathComponent)) }.sorted { $0.createdAt > $1.createdAt }
     }
-    public func save(text: String, audio: LocalAudio) throws -> PhoneGeneration {
-        let item = PhoneGeneration(id: UUID(),text: text,createdAt: Date())
+    public func save(text: String, audio: LocalAudio, model: PhoneModel? = nil) throws -> PhoneGeneration {
+        let item = PhoneGeneration(id: UUID(),text: text,createdAt: Date(),modelRepo: model?.repo,modelRevision: model?.revision)
         let url = try file(item)
         do {
             try audio.markSynthetic().write(to: url,options: .atomic)

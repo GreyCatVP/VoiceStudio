@@ -56,3 +56,13 @@ def test_store_languages_match_the_phone_models():
     assert languages("asr-stream") == {"en"}, "phone dictation gained languages; update the listing"
     assert "Dictation on the phone is English" in description
     assert languages("tts") == {"en", "zh"} and "Preset voices are English and Chinese" in description
+
+
+def test_data_safety_declares_the_report_the_app_sends():
+    # The Report sheet sends user-written text to VoiceStudio (mobile/contract/SPEC.md).
+    spec = (ROOT / "mobile/contract/SPEC.md").read_text()
+    assert "## Reporting generated content" in spec
+    safety = LISTING["dataSafety"]
+    assert safety["collectsData"] and not safety["sharesData"] and safety["encryptedInTransit"]
+    assert [item["optional"] for item in safety["collected"]] == [True]
+    assert "reports you choose to send" in "\n".join(LISTING["listing"]["fullDescription"])

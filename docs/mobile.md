@@ -65,6 +65,15 @@ run are shown greyed out with the reason.
 Plain `http://` works only for addresses on your own network (home Wi-Fi,
 `.local`, Tailscale); everything else must be `https://`.
 
+## Report a result
+
+Every generated result (a Speak take, a cloned voice, a finished dub) has a
+**Report** action. Pick what's wrong, optionally add a note or the text you
+typed, and tap **Send report**. It sends only the reason, your note, that text
+if you ticked it, the app version and the model that made the result to the
+VoiceStudio team; no audio, account or device ID. Nothing is sent until you tap
+Send, and reports are deleted after 180 days.
+
 ## If something doesn't work
 
 - **"Accept the licence on your computer"**: some models need their licence

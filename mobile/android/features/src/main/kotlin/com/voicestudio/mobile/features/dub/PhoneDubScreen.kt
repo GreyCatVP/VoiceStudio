@@ -143,6 +143,7 @@ import java.io.File
                 IconAction("player.play",Icons.Default.PlayArrow) {playing=file.path}
                 IconAction("mobile.speak.share",Icons.Default.Share) {scope.launch {try {shareLocalFile(context,file,if(file.extension=="mp4") "video/mp4" else "audio/wav")} catch(e:Exception) {vm.fail(e)}}}
                 IconAction("common.save",VSIcons.Download) {savePath=file.path;save.launch(record.request.title.substringBeforeLast('.').ifBlank {record.request.id}+"-${output.language}.${file.extension}")}
+                ReportAction(vm) {ReportSubjects.phoneDub(record.request,phone.models)}
                 if(record.checkpoint.done) IconAction("mobile.simple.remove_job",Icons.Default.Delete) {vm.run {if(playing==file.path) playing=null;vm.phone.dubs.delete(record.request.id);vm.phone.refreshDubs()}}
             }
         }}

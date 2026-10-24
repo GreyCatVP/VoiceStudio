@@ -257,6 +257,7 @@ fun languageName(code: String, locale: String): String = Locale.forLanguageTag(c
 }
 
 fun actionIcon(key: String): ImageVector = when {
+    key=="mobile.report.action" -> Icons.Default.Warning
     key.contains("scan_qr") -> VSIcons.Qr
     key.contains("clone")||key.contains("pick") -> Icons.Default.Add
     key.contains("cancel")||key.contains("abort")||key.contains("stop") -> Icons.Default.Close

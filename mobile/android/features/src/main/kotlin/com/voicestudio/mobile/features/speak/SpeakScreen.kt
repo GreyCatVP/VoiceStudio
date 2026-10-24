@@ -58,6 +58,7 @@ import kotlinx.coroutines.*
             HostPlayer(api,audio,vm::fail)
             Secondary("mobile.speak.share",!state.busy) {vm.run {shareFile(context,sharedDownload(context,api,audio,"wav"),"audio/wav")}}
             Secondary("common.save",!state.busy) {savePath=audio;save.launch("${java.util.UUID.randomUUID()}.wav")}
+            ReportButton(vm) {vm.computerSpeakSubject(audio)}
         }
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) {Heading("mobile.speak.recent")}
@@ -72,6 +73,7 @@ import kotlinx.coroutines.*
                     IconAction("player.play",Icons.Default.PlayArrow) {vm.play(vm.api!!.audioPath(item.audioPath))}
                     IconAction(if(item.isStarred) "mobile.speak.unstar" else "mobile.speak.star",Icons.Default.Star,!state.busy) {vm.star(item)}
                     IconAction("common.delete",Icons.Default.Delete,!state.busy) {vm.deleteHistory(item)}
+                    ReportAction(vm) {vm.computerSpeakSubject(vm.api?.audioPath(item.audioPath) ?: item.audioPath,item.text)}
                 }
                 HorizontalDivider()
             }
@@ -132,6 +134,7 @@ internal fun chooseSpeakModel(models: List<PhoneModel>,installed: Set<String>,ch
                     LocalAudioPlayer(file,vm::fail)
                     Secondary("mobile.speak.share") {scope.launch {try {shareLocalFile(context,file,"audio/wav")} catch(e:Exception) {vm.fail(e)}}}
                     Secondary("common.save") {save.launch(file.name)}
+                    phone.recent.firstOrNull {vm.phone.generationFile(it)==file}?.let {take -> ReportButton(vm) {ReportSubjects.phoneSpeak(take)}}
                 }
                 Heading("mobile.speak.recent")
                 if(phone.recent.isEmpty()) EmptyState("mobile.simple.empty_recent")
@@ -140,6 +143,7 @@ internal fun chooseSpeakModel(models: List<PhoneModel>,installed: Set<String>,ch
                         Text(item.text,Modifier.weight(1f),maxLines=1,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                         IconAction("player.play",Icons.Default.PlayArrow) {vm.phone.play(item)}
                         IconAction("common.delete",Icons.Default.Delete) {vm.phone.deleteGeneration(item)}
+                        ReportAction(vm) {ReportSubjects.phoneSpeak(item)}
                     }
                 }
 

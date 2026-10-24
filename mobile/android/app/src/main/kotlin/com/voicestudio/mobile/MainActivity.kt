@@ -34,6 +34,7 @@ import com.voicestudio.mobile.features.voices.VoicesScreen
 import com.voicestudio.mobile.features.dub.DubScreen
 import com.voicestudio.mobile.features.dictate.DictateScreen
 import com.voicestudio.mobile.features.settings.SettingsScreen
+import com.voicestudio.mobile.network.ContentReportClient
 import java.util.Locale
 
 class VoiceStudioApplication:Application()
@@ -45,7 +46,10 @@ class MainActivity:ComponentActivity() {
     }
 }
 
-@Composable fun StudioApp(vm:StudioViewModel = viewModel()) {
+/** Reports go to VoiceStudio's app API: the dev server for debug builds, production for release. */
+fun contentReportClient()=ContentReportClient(BuildConfig.CONTENT_REPORTS_URL,BuildConfig.VERSION_NAME)
+
+@Composable fun StudioApp(vm:StudioViewModel = viewModel(), reportClient:ContentReportClient? = remember {contentReportClient()}) {
     val prefs by vm.preferences.collectAsStateWithLifecycle()
     val state by vm.state.collectAsStateWithLifecycle()
     val context=LocalContext.current
@@ -62,7 +66,8 @@ class MainActivity:ComponentActivity() {
         }
     }
     val direction=if(Locale.forLanguageTag(locale).language=="ar") LayoutDirection.Rtl else LayoutDirection.Ltr
-    CompositionLocalProvider(LocalL10n provides l,LocalLayoutDirection provides direction) {
+    val snackbars=remember {SnackbarHostState()}
+    CompositionLocalProvider(LocalL10n provides l,LocalLayoutDirection provides direction,LocalContentReportClient provides reportClient) {
         VoiceStudioTheme(ThemePreferences(prefs.mode,prefs.lightPalette,prefs.darkPalette)) {
             key(state.connectionId) {
             val initialRoute=remember {if(state.error?.key=="mobile.connect.error_session_expired") "connect" else "home"}
@@ -70,7 +75,7 @@ class MainActivity:ComponentActivity() {
             val back by nav.currentBackStackEntryAsState()
             val route=back?.destination?.route ?: "home"
             val dismissKeyboard=rememberKeyboardDismiss()
-            Scaffold(containerColor=role("canvas"),bottomBar={
+            Scaffold(containerColor=role("canvas"),snackbarHost={SnackbarHost(snackbars)},bottomBar={
                 NavigationBar(containerColor=role("chrome"),contentColor=role("toolbarForeground")) {
                     val tabs=listOf("home","voices","dub","dictate","settings")
                     tabs.forEach {tab ->
@@ -134,6 +139,7 @@ class MainActivity:ComponentActivity() {
                 text={Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(VSTheme.gap)) {Text(tr("consent.body"));Text(tr("mobile.consent.phone_note"))}},
                 confirmButton={TextButton(shape=MaterialTheme.shapes.small,onClick={vm.consent(true)}) {Text(tr("consent.yes"))}},
                 dismissButton={TextButton(shape=MaterialTheme.shapes.small,onClick={vm.consent(false)}) {Text(tr("consent.no"))}})
+            ContentReportHost(vm,snackbars)
         }
     }
 }

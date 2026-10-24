@@ -8,6 +8,11 @@ private struct VoiceEntry: Identifiable {
     let phone: PhoneVoice?
     init(_ voice: PhoneVoice) { id = "phone:"+voice.id.uuidString; name = voice.name; phone = voice }
     init(_ voice: Profile) { id = voice.id; name = voice.name; phone = nil }
+    /// A phone voice reports the catalogue model that made it; the computer reports no engine for a clone.
+    var reportSubject: ContentReportSubject {
+        if let phone { return .phone(.clone, id: phone.id.uuidString, repo: phone.modelRepo, revision: phone.modelRevision) }
+        return .computer(.clone, id: id, engine: nil)
+    }
 }
 struct VoicesView: View {
     @Environment(AppModel.self) private var model
@@ -19,6 +24,7 @@ struct VoicesView: View {
     @State private var deleting: VoiceEntry?
     @State private var name = ""
     @State private var hostScope: UUID?
+    @State private var reporting: ContentReportSubject?
     private var entries: [VoiceEntry] { model.phone.voices.map(VoiceEntry.init) + model.profiles.map(VoiceEntry.init) }
     private var filtered: [VoiceEntry] { entries.filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) } }
     var body: some View {
@@ -52,6 +58,7 @@ struct VoicesView: View {
                             }.labelStyle(.iconOnly).studioButton(.tertiary)
                             Menu {
                                 Button(model.t("mobile.voices.rename"),systemImage: "pencil") { name = entry.name; renamed = entry }
+                                ReportButton(subject: entry.reportSubject, reporting: $reporting, context: entry.name)
                                 Button(model.t("common.delete"),systemImage: "trash",role: .destructive) { deleting = entry }
                             } label: { Label(model.t("mobile.ios.more_actions"),systemImage: "ellipsis") }
                                 .labelStyle(.iconOnly).studioButton(.tertiary).frame(minWidth: 44,minHeight: 44).accessibilityIdentifier("voices.actions."+entry.id)
@@ -77,6 +84,7 @@ struct VoicesView: View {
         }
         .task { await model.phone.refresh() }
         .refreshable { await model.phone.refresh(); if model.connection.client != nil { await model.perform { model.profiles = try await model.api().profiles() } } }
+        .contentReportSheet($reporting)
         .fullScreenCover(isPresented: $creating) { NavigationStack { CloneView() }.environment(model) }
         .sheet(item: $renamed) { entry in
             NavigationStack {

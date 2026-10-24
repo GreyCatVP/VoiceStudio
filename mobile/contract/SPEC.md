@@ -265,7 +265,8 @@ progress visible and resumes from a saved checkpoint after interruption).
 ### Privacy
 
 On-device tasks send nothing anywhere. The only network requests are the model
-downloads the user starts and, when paired, requests to their own computer.
+downloads the user starts, content reports the user sends (see Reporting
+generated content) and, when paired, requests to their own computer.
 Settings → Privacy states this.
 
 ### Tests (in addition to M1)
@@ -281,3 +282,57 @@ Settings → Privacy states this.
   VoiceStudioKit; Android on an `x86_64` emulator).
 - Routing: phone / computer / download prompt choices, and offline use with no
   computer paired.
+
+## Reporting generated content
+
+Google Play's AI-generated content policy requires an in-app way to report
+offensive output; both apps ship it. The server is VoiceStudio's app API
+(`POST /v1/content-reports`, spec `api/openapi/v1.yaml` in the vssaas
+repository). It needs no sign-in and accepts no audio or identifiers.
+
+- **Where:** every generated result the app shows has a **Report** action,
+  whether it ran on the phone or the paired computer: a Speak result and its
+  recent takes (`task: speak`), the cloned-voice result on Voices
+  (`task: clone`) and a finished dub (`task: dub`).
+- **Sheet:** title, a required reason chosen from five (`sexual`, `hateful`,
+  `impersonation`, `misleading`, `other`; none preselected, Send disabled until
+  one is picked), an optional note (at most 1000 characters), an **Include the
+  text I entered** checkbox (unchecked, shown only when the result has text the
+  user typed), the disclosure of what is sent, and Send / Cancel.
+- **Nothing is sent until Send.** The request carries only the fields below; an
+  unticked checkbox omits `prompt_text`, and empty optional fields are omitted.
+
+  | Field | Value |
+  |---|---|
+  | `reason` | the chosen reason |
+  | `note` | trimmed note, if any |
+  | `prompt_text` | the typed text (first 5000 characters), only when ticked |
+  | `platform` | `android` / `ios` |
+  | `app_version` | root `package.json` version |
+  | `task` | `speak` / `clone` / `dub` |
+  | `model_id` | phone: the `repo` from `models.json` of the model that made it (Speak: the TTS or clone model; a cloned voice: the `asr` model that transcribed its reference; a dub: its pinned `clone` model; results saved before this feature: `unknown`); computer: the engine id the host reported, else `unknown` (characters outside `0-9A-Za-z._/:-` removed, at most 128) |
+  | `model_revision` | phone only: the model's `revision` |
+  | `runs_on` | `phone` / `computer` |
+
+- **Request:** `POST <base>/v1/content-reports`, `Content-Type:
+  application/json`, `Idempotency-Key` and no `Authorization`. Release builds
+  use `https://appapi.voicestudio.sh`; debug builds use
+  `https://dev-appapi.voicestudio.sh`. The key (32 characters of
+  `A-Za-z0-9`) is made when the sheet opens and reused when the user retries,
+  so a retried report is stored once.
+- **Responses:**
+
+  | Status | App |
+  |---|---|
+  | 201 | Close the sheet, show `mobile.report.sent`, discard the draft |
+  | 409 | Make a new key and send once more automatically |
+  | 429 | Keep the sheet and draft, show `mobile.report.rate_limited` |
+  | 400 | Show `mobile.report.invalid`; no retry (an app bug) |
+  | anything else, or no connection | Keep the draft, show `mobile.report.failed` with Retry |
+
+- **Draft:** kept in memory per result until it is sent, so closing and
+  reopening the sheet keeps the reason, note and checkbox.
+- **Tests:** against a mock server: exact body (no extra fields, prompt text
+  only when ticked, optional fields omitted when empty), headers (key format,
+  no `Authorization`), the same key on Retry, a new key after 409, 429 and 400
+  handling, and the base URL per build type.

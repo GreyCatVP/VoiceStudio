@@ -176,6 +176,18 @@ struct RootView: View {
                     }
                 }.padding(Theme.compactInset).background(theme.color("errorSurface"))
                     .environment(\.vsTheme,theme).studioButton(.tertiary)
+            } else if let notice = model.notice {
+                HStack(spacing: VSTokens.spacingGap) {
+                    Label(model.t(notice), systemImage: "checkmark.circle").frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("notice")
+                    Button(model.t("common.close")) { model.notice = nil }
+                }.padding(Theme.compactInset).background(theme.color("surfaceRaised"))
+                    .environment(\.vsTheme,theme).studioButton(.tertiary)
+                    .task(id: notice) {
+                        AccessibilityNotification.Announcement(model.t(notice)).post()
+                        try? await Task.sleep(for: .seconds(5))
+                        if model.notice == notice { model.notice = nil }
+                    }
             }
 
         }

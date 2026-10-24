@@ -111,6 +111,9 @@ import java.io.File
                         DropdownMenu(expanded=menu,onDismissRequest={menu=false},shape=MaterialTheme.shapes.large,containerColor=role("surfaceOverlay")) {
                             DropdownMenuItem(text={Text(tr("mobile.voices.rename"))},onClick={menu=false;edit=profile;editName=profile.name})
                             DropdownMenuItem(text={Text(tr("common.delete"))},onClick={menu=false;delete=profile})
+                            if(LocalContentReportClient.current!=null) DropdownMenuItem(text={Text(tr("mobile.report.action"))},
+                                leadingIcon={Icon(Icons.Default.Warning,contentDescription=null)},modifier=Modifier.heightIn(min=VSTheme.touchTarget),
+                                onClick={menu=false;val voice=local(profile);vm.reports.open(if(voice!=null) ReportSubjects.phoneClone(voice) else ReportSubjects.computerClone(profile))})
                         }
                     }
                 }

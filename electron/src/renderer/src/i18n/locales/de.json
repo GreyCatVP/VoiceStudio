@@ -2906,6 +2906,7 @@
     "host_memory_exhausted": "Dem Computer ist der Arbeitsspeicher ausgegangen. Schließe andere speicherintensive Apps und Browser-Tabs, entlade nicht benötigte Modelle, erzeuge einen kürzeren Abschnitt oder wähle eine leichtere TTS-Engine.",
     "engine_dependency_missing": "Ein Python-Paket, das diese Engine benötigt, ist nicht installiert, daher konnte sie nicht starten. Öffne den Modellkatalog, wähle die Engine und nutze Installieren/Reparieren, und starte VoiceStudio dann neu.",
     "reference_stt_missing": "Diese Stimme hat kein Transkript, und es ist kein Spracherkennungsmodell installiert, um eines zu erstellen. Gib ein, was der Referenzclip sagt (Clips bis 20 Sekunden), oder installiere im Modellkatalog ein Spracherkennungsmodell, wähle es aus und erzeuge erneut.",
+    "install_speech_model": "Spracherkennungsmodell installieren",
     "proxy_gateway_error": "Ein Proxy oder Gateway zwischen dir und VoiceStudio hat statt des Backends HTTP {{status}} geantwortet. Das Backend arbeitet möglicherweise noch. Erhöhe für lange Erzeugungen das Lese-Timeout des Proxys (bei nginx proxy_read_timeout) und prüfe dann Einstellungen → Protokolle → Backend.",
     "route_not_found": "Das laufende VoiceStudio-Backend kennt den Endpunkt {{route}} nicht. Starte VoiceStudio neu, damit App und Backend zusammenpassen; bleibt das Problem, aktualisiere beide auf dieselbe Version."
   },
@@ -3862,6 +3863,28 @@
     },
     "consent": {
       "phone_note": "Gespeichert auf diesem Telefon. Es wird nichts gesendet."
+    },
+    "report": {
+      "action": "Melden",
+      "title": "Dieses Ergebnis melden",
+      "reason": "Was stimmt damit nicht?",
+      "reasons": {
+        "sexual": "Sexuelle Inhalte",
+        "hateful": "Hasserfüllt oder beleidigend",
+        "impersonation": "Identitätsdiebstahl oder ohne Einwilligung geklonte Stimme",
+        "misleading": "Irreführend oder schädlich",
+        "other": "Etwas anderes"
+      },
+      "note": "Details (optional)",
+      "include_text": "Den eingegebenen Text mitsenden",
+      "disclosure": "Sendet deinen Grund, deine Notiz, die App-Version und das verwendete Modell an das VoiceStudio-Team. Es werden kein Audio, kein Konto und keine Geräte-ID gesendet.",
+      "send": "Meldung senden",
+      "sending": "Wird gesendet…",
+      "sent": "Meldung gesendet. Danke.",
+      "failed": "Die Meldung konnte nicht gesendet werden. Prüfe deine Verbindung und versuche es erneut.",
+      "retry": "Erneut versuchen",
+      "rate_limited": "Zu viele Meldungen aus diesem Netzwerk. Versuche es später erneut.",
+      "invalid": "Diese Meldung konnte nicht gesendet werden. Aktualisiere die App und versuche es erneut."
     }
   }
 }

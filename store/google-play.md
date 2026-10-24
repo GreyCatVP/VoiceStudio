@@ -30,9 +30,15 @@ every permission in the Android manifest has a declaration here.
 
 ## Before production
 
-- **AI-generated content:** Play requires an in-app way to report or flag
-  offensive generated content. The app does not have one yet; it ships on both
-  phone apps or neither (`mobile/contract/SPEC.md`).
+- **Report endpoint live:** the in-app Report action posts to
+  `appapi.voicestudio.sh/v1/content-reports`; it must be deployed before the
+  first Play review, or reviewers' test reports fail.
 - **Privacy policy:** `https://voicestudio.sh/privacy` should describe the phone
-  apps (what leaves the phone: model downloads and requests to the paired computer).
-- **Screenshots:** capture from a release build on a phone or emulator.
+  apps: what leaves the phone (model downloads, reports the user sends and
+  requests to the paired computer) and that reports are kept 180 days.
+- **Screenshots:** the `android-screenshots` job in the `mobile` workflow
+  captures Home, Speak (with a take made on the phone), Voices, Dub, Dictate,
+  Models and Settings from the debug app in English on a 1080×1920 emulator,
+  phone-only with the smallest speech model. It runs on pushes to `main` that
+  touch the mobile app, or via Actions → `mobile` → Run workflow. Download the
+  `android-play-screenshots` artifact (kept 30 days) from that run's summary page.

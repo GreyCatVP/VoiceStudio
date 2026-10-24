@@ -24,6 +24,9 @@ class StudioViewModel @JvmOverloads constructor(application: Application, val st
     private var operation: Job? = null
     private var retryAction: (() ->Unit)? = null
     val phone = PhoneStudio(application,viewModelScope,::fail) {error,retry -> fail(error,retry)}
+    val reports = ContentReports(viewModelScope)
+    // Host takes made in this session: playback path -> engine id and full typed text, for reports.
+    private val computerTakes = mutableMapOf<String,Pair<String,String>>()
     init {
         viewModelScope.launch {
             val prefs = store.preferences.first()
@@ -46,6 +49,7 @@ class StudioViewModel @JvmOverloads constructor(application: Application, val st
         }
     }
     private fun clearHostState(host: String? = null, profiles: List<Profile> = emptyList(), error: ClientFailure? = null) {
+        computerTakes.clear()
         mutable.value = StudioState(connectionId = mutable.value.connectionId + 1, hostUrl = host,
             loading = false, connected = host != null, busy = mutable.value.busy, catalogLoading = host != null, profiles = profiles, error = error)
     }
@@ -134,11 +138,18 @@ class StudioViewModel @JvmOverloads constructor(application: Application, val st
         val current = api ?: return@run
         val result = current.generate(text, voice, engine, language)
         if(api !== current) return@run
-        mutable.update { it.copy(audio = current.audioPath(result.audioPath)) }
+        val audio = current.audioPath(result.audioPath)
+        computerTakes[audio] = engine to text
+        mutable.update { it.copy(audio = audio) }
         val history = current.history()
         if(api === current) mutable.update { it.copy(history = history) }
     }
     fun play(path: String) { mutable.update { it.copy(audio = path) } }
+    /** A host take: the engine this app asked for when it made it, else unknown. */
+    fun computerSpeakSubject(audioPath: String, fallbackText: String = ""): com.voicestudio.mobile.network.ReportSubject {
+        val take = computerTakes[audioPath]
+        return ReportSubjects.computerSpeak(audioPath, take?.second ?: fallbackText, take?.first)
+    }
     fun star(item: HistoryItem) = run { api?.star(item.id, !item.isStarred); reload() }
     fun deleteHistory(item: HistoryItem) = run { api?.deleteHistory(item.id); reload() }
     fun clone(name: String, file: File) = run { api?.clone(name, file); file.delete(); reload() }

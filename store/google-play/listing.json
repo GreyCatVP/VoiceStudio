@@ -24,7 +24,7 @@
       "If you run VoiceStudio on your computer, scan its QR code to pair. Heavy jobs can then run on your computer's engines, chosen per task. The phone talks only to your own computer; there is no cloud relay.",
       "",
       "PRIVACY",
-      "On-device tasks send nothing anywhere. The only network requests are model downloads you start and, if you pair, requests to your own computer. Analytics are off unless you say yes, and this version sends none.",
+      "On-device tasks send nothing anywhere. The only network requests are model downloads you start, reports you choose to send about a result and, if you pair, requests to your own computer. Analytics are off unless you say yes, and this version sends none.",
       "",
       "OPEN SOURCE",
       "VoiceStudio is free and open source (AGPL-3.0): https://github.com/debpalash/VoiceStudio",
@@ -45,9 +45,21 @@
     "phoneScreenshots": "Capture 2 to 8 from a release build (Home, Speak, Voices, Dub, Dictate, Models); 9:16, 1080x1920 or larger"
   },
   "dataSafety": {
-    "collectsData": false,
+    "collectsData": true,
     "sharesData": false,
-    "rationale": "Models run on the device. Model downloads are user-started requests to Hugging Face, and pairing sends requests only to the user's own computer; neither reaches the developer. The first-run analytics choice is stored on the device and this version transmits no analytics.",
+    "collected": [
+      {
+        "type": "App activity → Other user-generated content",
+        "what": "A content report the user chooses to send: reason, optional note, optionally the text they entered, app version and the model that made the result",
+        "optional": true,
+        "purposes": ["Fraud prevention, security, and compliance"],
+        "ephemeral": false,
+        "linkedToIdentity": false
+      }
+    ],
+    "encryptedInTransit": true,
+    "deletionRequests": "Not offered: reports carry no account, device or install identifier to match a request to, and the server deletes them after 180 days.",
+    "rationale": "Models run on the device. Model downloads are user-started requests to Hugging Face, and pairing sends requests only to the user's own computer; neither reaches the developer. Reports reach VoiceStudio only when the user taps Send, and the server stores no IP address with them. The first-run analytics choice is stored on the device and this version transmits no analytics.",
     "reviewWhen": "Re-answer before shipping phone analytics or any new network destination (mobile/contract/SPEC.md → Privacy)."
   },
   "permissions": {
@@ -80,7 +92,7 @@
       "generatesContent": true,
       "kinds": ["Synthetic speech", "Voice clones", "Translated dubbing"],
       "consentBeforeCloning": true,
-      "inAppReporting": "Required by Play's AI-generated content policy; not in the app yet (see store/google-play.md)."
+      "inAppReporting": "Report action on every generated result sends a report inside the app (mobile/contract/SPEC.md → Reporting generated content)."
     },
     "newsApp": false,
     "healthApp": false,
