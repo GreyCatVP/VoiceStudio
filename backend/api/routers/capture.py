@@ -121,6 +121,15 @@ async def transcribe_audio(
             if transcribe_missing is None:
                 missing = None
                 use_active_asr = True
+        # The selected offline engine's weights are absent, but a reference
+        # transcript does not need that engine: generate transcribes through
+        # any installed recognizer, so the preview must too (#2929/#2678).
+        reference_fallback = False
+        if missing is not None and requested_mode == "reference":
+            from services.asr_backend import reference_asr_installed
+            reference_fallback = await asyncio.to_thread(reference_asr_installed)
+            if reference_fallback:
+                missing = None
         if missing is not None:
             raise HTTPException(
                 status_code=409,
@@ -137,6 +146,9 @@ async def transcribe_audio(
             return dictation_transcribe_kwargs(backend)
 
         def _run():
+            if reference_fallback:
+                from services.asr_backend import transcribe_reference
+                return {"text": transcribe_reference(tmp.name) or ""}, "reference", None
             if use_active_asr:
                 # Accurate mode: full WhisperX with forced alignment —
                 # for when the user explicitly wants word-level timing.
@@ -167,6 +179,7 @@ async def transcribe_audio(
             ASRTimeoutError,
             run_transcribe_guarded,
         )
+        from services.model_acceptance import ModelLicenceNotAccepted
         t0 = time.perf_counter()
         try:
             result, engine_id, sherpa_model_id = await run_transcribe_guarded(
@@ -185,6 +198,8 @@ async def transcribe_audio(
                 status_code=409,
                 detail={**e.payload, "message": asr_model_missing_detail(e.payload)},
             )
+        except ModelLicenceNotAccepted:
+            raise  # typed 403 via the app handler (#2689)
         except Exception as e:
             # Each ASR engine decodes the upload its own way (ffmpeg, PyAV,
             # libsndfile), so a video with no audio stream fails with a

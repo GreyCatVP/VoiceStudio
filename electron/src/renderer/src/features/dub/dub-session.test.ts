@@ -7,6 +7,7 @@ import {
   applyDubTranslationRows,
   uploadDub,
   setDubProduction,
+  setDubFitOptions,
   dubSession,
   generateDub,
   resumeDub,
@@ -605,6 +606,24 @@ it('uses saved Smart Fit overrides only for Smart Fit generation', async () => {
   }
 });
 
+it('sets and clears Smart Fit speed limits, keeping the rest of the overrides', () => {
+  dubSession.setState((current) => ({
+    ...current,
+    phase: 'editing',
+    recovery: null,
+    fitOptions: { allow_video_retime: false },
+  }));
+  setDubFitOptions({ min_audio_rate: 0.7 });
+  setDubFitOptions({ audio_rate_cap: 1.3 });
+  expect(dubSession.state.fitOptions).toEqual({
+    allow_video_retime: false,
+    min_audio_rate: 0.7,
+    audio_rate_cap: 1.3,
+  });
+  setDubFitOptions({ min_audio_rate: undefined, audio_rate_cap: undefined });
+  expect(dubSession.state.fitOptions).toEqual({ allow_video_retime: false });
+});
+
 it('does not recreate a cleared draft from a pending write or pagehide', async () => {
   localStorage.setItem('voicestudio.dub.session.v1', 'old');
   dubSession.setState((current) => ({ ...current, speed: 1.1 }));
@@ -816,7 +835,6 @@ it.each([
   'validates only requested dub regeneration languages: $regenOnly',
   async ({ regenOnly, allowed, silent }) => {
     const { queryClient } = await import('@/lib/query');
-    queryClient.setQueryData(['workers', 'target', 'dub'], { active: { remote: false } });
     queryClient.setQueryData(['engines'], {
       tts: { active: 'test', backends: [{ id: 'test', supported_language_names: ['English'] }] },
     });
@@ -862,7 +880,6 @@ it.each([
         expect(apiJson).not.toHaveBeenCalled();
       }
     } finally {
-      queryClient.removeQueries({ queryKey: ['workers', 'target', 'dub'], exact: true });
       queryClient.removeQueries({ queryKey: ['engines'], exact: true });
       resetDubSession();
     }

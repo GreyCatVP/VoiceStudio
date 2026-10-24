@@ -32,6 +32,22 @@ On an ARM64 host, pulling without an explicit platform can fail with
   below. This is an emulated CPU option, not native
   ARM64 support; inference can be much slower and is not a GPU workaround.
   Without emulation, use an AMD64 server for this Docker deployment.
+- **ARM64 + NVIDIA GPU (DGX Spark / GB10, GH200):** no image is published, but
+  `deploy/Dockerfile` builds natively. Prepare a base image from `ubuntu:24.04`
+  with `python3`, `torch==2.8.0` from the `cu129` PyTorch index (`cu128` has no
+  aarch64 2.8.0), `torchaudio==2.8.0` and `torchvision==0.23.0` installed with
+  `--no-deps`, plus apt `build-essential pkg-config cmake libopus-dev` (`sphn`
+  has no aarch64 wheel and builds against Opus). Then:
+
+  ```bash
+  docker build -f deploy/Dockerfile --build-arg BASE_IMAGE=<your-base> -t voicestudio:arm64-cuda .
+  ```
+
+  The Dockerfile skips the cuDNN 8 compatibility step on aarch64 because NVIDIA
+  ships no aarch64 wheel for it, so CTranslate2-based ASR engines (faster-whisper,
+  WhisperX) report unavailable; PyTorch engines such as OmniVoice, CosyVoice and
+  `pytorch-whisper` use the GPU. This recipe is community-validated on v0.5.6,
+  not a supported or CI-tested image.
 
 ## Image tags
 
@@ -47,6 +63,7 @@ On an ARM64 host, pulling without an explicit platform can fail with
 > | `:sha-xxxxxxx` | Exact commit — produced by every image build (main, releases, manual runs) |
 > | `:rocm` | **AMD GPU (ROCm) build** of the rolling preview — the ROCm analogue of `:latest` |
 > | `:stable-rocm`, `:0.5.6-rocm`, `:0.5-rocm`, `:sha-xxxxxxx-rocm` | ROCm builds of the corresponding CUDA tags above |
+> | `:beta`, `:0.5.9-beta.1` | Newest beta prerelease and its exact version. A beta never moves `:stable` or `:0.5`; `-rocm` forms exist too (`:beta-rocm`) |
 >
 > Release tags (`:X.Y.Z`, `:X.Y`, `:stable` and their `-rocm` forms) are
 > published only when the GitHub Release is published. Previews come only from
@@ -308,31 +325,6 @@ The `docker-compose.yml` shipped in `deploy/` defaults to `127.0.0.1:3900`
 on the host. The backend inside the container binds to `0.0.0.0` so the
 host port mapping can forward — the host-side `127.0.0.1` binding is what
 enforces loopback-only.
-
-### Worker-only GPU container
-
-To lend a headless GPU to VoiceStudio running on another machine, generate a
-join code on that control plane and start one of the worker profiles:
-
-```bash
-# NVIDIA
-OMNIVOICE_WORKER_TOKEN='ovw_…' docker compose \
-  -f deploy/docker-compose.yml --profile worker-gpu up -d
-
-# AMD / ROCm
-OMNIVOICE_WORKER_TOKEN='ovw_…' docker compose \
-  -f deploy/docker-compose.yml --profile worker-rocm up -d
-```
-
-These profiles publish no HTTP port and require no browser UI. The join code
-must advertise a LAN or private-overlay address the container can reach, not
-the control plane's `127.0.0.1`. Enrollment state persists in a dedicated
-volume, so the container reconnects after a restart even though the join code
-is single-use. Container health becomes green only after the control plane
-accepts that registration; a missing or invalid token stays unhealthy instead
-of reporting the generic web backend as ready. See [Remote GPU
-workers](../remote-workers.md) for enrollment, approval, routing, and security
-details.
 
 ## LAN access
 

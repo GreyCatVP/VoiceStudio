@@ -583,10 +583,15 @@ def _typed_speech_http_error(e: Exception) -> Optional[HTTPException]:
 
 def _run_tts(backend, text: str, kw: dict):
     """Run TTS inference in the GPU thread pool."""
-    from services.audio_dsp import apply_mastering, normalize_audio
+    import torch
+    from services.audio_dsp import apply_mastering, normalize_audio, trim_speech_padding
     from services.watermark import mark_synthetic
     wav = backend.generate(text, **kw)
     sr = backend.sample_rate
+    # Strip the engine's lead-in/tail silence, as /generate does — unless the
+    # caller asked for an exact `duration`, which a trim would shorten.
+    if not kw.get("duration") and torch.is_tensor(wav):
+        wav = trim_speech_padding(wav, sr)
     # Engines that already emit mastered, studio-grade audio (e.g. VoxCPM2's
     # native 48 kHz) opt out of apply_mastering via `applies_own_mastering`.
     # That chain's highpass + Compressor is tuned for VoiceStudio's 24 kHz clone
@@ -646,7 +651,12 @@ def _audio_chunks(audio: bytes):
 @router.post("/audio/speech")
 async def create_speech(req: SpeechRequest):
     """Generate audio from text. Compatible with OpenAI's POST /v1/audio/speech."""
-    backend = _resolve_engine(req.model)
+    from services.model_acceptance import ModelLicenceNotAccepted
+    try:
+        backend = _resolve_engine(req.model)
+    except ModelLicenceNotAccepted as exc:
+        # OpenAI's error shape; `detail` keeps the models for VoiceStudio clients.
+        raise OpenAIError(403, exc.detail(), param="model", code=exc.detail()["code"]) from exc
 
     # Compressed formats need ffmpeg: fail fast, before any model load or GPU
     # work, and never fall back to a body that doesn't match the format.
@@ -961,6 +971,7 @@ async def _transcribe_request(
         asr_model_missing_error,
         load_active_asr_backend,
     )
+    from services.model_acceptance import ModelLicenceNotAccepted
 
     if response_format not in _TRANSCRIPT_FORMATS:
         raise OpenAIError(
@@ -1135,6 +1146,9 @@ async def _transcribe_request(
             status_code=409,
             detail={**e.payload, "message": asr_model_missing_detail(e.payload)},
         )
+    except ModelLicenceNotAccepted as e:
+        # The active engine's model licence needs acceptance in the app (#2689).
+        raise OpenAIError(403, e.detail(), param="model", code=e.detail()["code"]) from e
     except TimeoutError as e:
         # ASRTimeoutError (subclass): backend alive, ASR too heavy for compute.
         logger.warning("OpenAI transcription timed out: %s", e)
@@ -1320,6 +1334,11 @@ def list_voices():
             })
     except Exception:
         logger.warning("Voice profiles could not be loaded; returning built-in aliases only")
+
+    # OpenAI-compatible clients such as Open WebUI read each voice's `id`
+    # (#2679); `voice_id` stays for existing callers.
+    for voice in voices:
+        voice["id"] = voice["voice_id"]
 
     return {"voices": voices, "engines": backends}
 

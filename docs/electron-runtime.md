@@ -9,7 +9,7 @@
 Design proposal: [installer plans and recovery review](specs/installer-redesign/readme.md).
 This proposal does not change the implemented behavior described below.
 
-The top bar places a GitHub Star button immediately right of Get Pro, showing the exact star count from GitHub's small public endpoint. It refreshes when shown and every 20 minutes while visible; browser caching keeps repeat requests small. A bundled count remains visible if GitHub is unavailable. Requests send no credentials or referrer, and clicking the shortcut opens GitHub in the external browser. The footer shows the project website icon, then Join Discord immediately left of X. Discord opens the community invite in the external browser. The footer includes one X button with a hover popup of follow cards for @idebpalash and @voicestudiosh, plus a heart shortcut to donation options, immediately left of the footer collapse control. The profile popup also opens by click or keyboard; follow links open in the external browser. Profile cards span the popup and bundle their images locally for offline display. The heart opens compact cards with locally bundled brand icons for Ko-fi, PayPal, and GitHub stars, plus the full Support page. Both popups support click and keyboard access. Icons have localized accessible labels. The footer chevron collapses the bar; a slim expand control restores it. Get Pro remains in the top bar.
+The top bar places a GitHub Star button immediately right of Get Pro: one star icon and label, then the exact star count in a divided segment (the star fills on hover), taken from GitHub's small public endpoint. It refreshes when shown and every 20 minutes while visible; browser caching keeps repeat requests small. A bundled count remains visible if GitHub is unavailable. Requests send no credentials or referrer, and clicking the shortcut opens GitHub in the external browser. Community, donation and follow links live on the Support page (Settings → Support). Get Pro remains in the top bar.
 
 Low-disk warnings in the notification menu open Settings > Storage, where users can inspect disk use and clear temporary files.
 
@@ -130,3 +130,10 @@ The VoiceStudio title links to `https://voicestudio.sh`. Hover or keyboard focus
 Website requests begin only after clicking. Remote pages use a sandboxed Electron WebContentsView with no preload, Node access, app bridge, or device permissions. Links and redirects stay restricted to HTTP(S); popup links reuse the same view. The browsing session is temporary and separate from app storage. The sidebar and workspace remain visible behind the modal. Its native page follows the modal bounds on resize and zoom, leaving the toolbar and surrounding workspace uncovered. **Back to Studio**, Escape, or clicking outside the modal disposes the embedded web contents, clears its session data, and restores the existing workspace and keyboard focus without navigating or remounting it. The browser can be reused for future cloud signup and other web flows; authentication callbacks are not implemented yet. Sites requiring device permissions or external authentication may need **Open in browser**. The browser list passes URLs as arguments to detected executables, never to a command shell.
 
 The Dubbing workspace keeps its existing `/dub` route and saved project format; the name change affects visible feature labels only.
+
+Backend embedders that restart the application lifespan in one Python process
+receive a fresh performance-profile reconciliation worker handle on every boot. Shutdown
+waits up to 20 seconds for that boot's running reconciliation thread, including
+when its asyncio task was cancelled; a completed earlier boot cannot bypass the wait.
+Work not yet submitted is cancelled, and queued executor work remains tracked
+without requiring another executor thread to enforce the shutdown deadline.

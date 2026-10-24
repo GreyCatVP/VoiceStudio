@@ -8,6 +8,7 @@ import type {
   UpdateReleaseInfo,
   VoiceStudioBridge,
   RepairAgentEvent,
+  AccountPublicState,
 } from './index.d';
 
 function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
@@ -30,11 +31,6 @@ const bridge: VoiceStudioBridge = {
     openExternal: (id) => ipcRenderer.invoke('site-browser:openExternal', id),
     onState: (callback) => subscribe('site-browser:changed', callback),
   },
-  pro: {
-    status: () => ipcRenderer.invoke('pro:status'),
-    activate: (key) => ipcRenderer.invoke('pro:activate', key),
-    deactivate: () => ipcRenderer.invoke('pro:deactivate'),
-  },
   repair: {
     list: (options) => ipcRenderer.invoke('repair:list', options),
     getState: () => ipcRenderer.invoke('repair:getState'),
@@ -55,9 +51,10 @@ const bridge: VoiceStudioBridge = {
     check: () => ipcRenderer.invoke('updates:check') as Promise<UpdateState>,
     download: () => ipcRenderer.invoke('updates:download') as Promise<UpdateState>,
     dismiss: () => ipcRenderer.invoke('updates:dismiss') as Promise<UpdateState>,
+    setChannel: (channel) =>
+      ipcRenderer.invoke('updates:setChannel', channel) as Promise<UpdateState>,
     install: () => ipcRenderer.invoke('updates:install') as Promise<void>,
-    listReleases: () =>
-      ipcRenderer.invoke('updates:listReleases') as Promise<UpdateReleaseInfo[]>,
+    listReleases: () => ipcRenderer.invoke('updates:listReleases') as Promise<UpdateReleaseInfo[]>,
     onState: (cb) => subscribe<UpdateState>('updates:state', cb),
   },
   watch: {
@@ -71,6 +68,8 @@ const bridge: VoiceStudioBridge = {
     platform: process.platform,
     isDev: process.env.NODE_ENV === 'development' || !!process.env.ELECTRON_RENDERER_URL,
     onNavigate: (callback) => subscribe<string>('app:navigate', callback),
+    isFullScreen: () => ipcRenderer.invoke('app:is-fullscreen'),
+    onFullScreen: (callback) => subscribe<boolean>('app:fullscreen', callback),
     onPersistenceFlush: (callback) => {
       const listener = (_event: IpcRendererEvent, token: string) => {
         void (async () => {
@@ -85,6 +84,17 @@ const bridge: VoiceStudioBridge = {
       return () => ipcRenderer.removeListener('app:flush-persistence', listener);
     },
   },
+  account: {
+    get: () => ipcRenderer.invoke('account:get') as Promise<AccountPublicState>,
+    signIn: () => ipcRenderer.invoke('account:sign-in') as Promise<void>,
+    cancelSignIn: () => ipcRenderer.invoke('account:cancel-sign-in') as Promise<void>,
+    signOut: () => ipcRenderer.invoke('account:sign-out') as Promise<void>,
+    setSwitches: (patch) =>
+      ipcRenderer.invoke('account:set-switches', patch) as Promise<AccountPublicState>,
+    updateProfile: (patch) =>
+      ipcRenderer.invoke('account:update-profile', patch) as Promise<AccountPublicState>,
+    onState: (cb) => subscribe<AccountPublicState>('account:state', cb),
+  },
   backend: {
     getStatus: () => ipcRenderer.invoke('backend:getStatus') as Promise<BackendStatus>,
     acknowledgeCrash: () => ipcRenderer.invoke('backend:acknowledgeCrash'),
@@ -96,6 +106,7 @@ const bridge: VoiceStudioBridge = {
     useDefaultRuntimeLocation: () => ipcRenderer.invoke('backend:useDefaultRuntimeLocation'),
     restart: () => ipcRenderer.invoke('backend:restart') as Promise<void>,
     getConnection: () => ipcRenderer.invoke('backend:getConnection'),
+    getHostSnapshot: () => ipcRenderer.invoke('backend:hostSnapshot'),
     testRemote: (input) => ipcRenderer.invoke('backend:testRemote', input),
     useRemote: (input) => ipcRenderer.invoke('backend:useRemote', input),
     useLocal: () => ipcRenderer.invoke('backend:useLocal'),

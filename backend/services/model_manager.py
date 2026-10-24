@@ -2175,6 +2175,39 @@ def _selfheal_broken_snapshot_links(checkpoint: str) -> bool:
     return False
 
 
+def _preflight_truncated_weights(checkpoint: str) -> None:
+    """Refuse to memory-map a cut-off ``.safetensors`` file (#3015, #2382).
+
+    Reading past the end of a truncated mapped file is an access violation on
+    Windows that kills the backend with no Python traceback. A header check
+    first turns that into a re-download (hub cache) or a clear error (local
+    directory). Never raises for healthy caches.
+    """
+    from services import hf_cache_repair as repair
+
+    if os.path.isdir(checkpoint):
+        bad = repair.find_truncated_weights(checkpoint)
+        if bad:
+            raise RuntimeError(
+                "These model weight files are incomplete (a cut-off download): "
+                + ", ".join(bad)
+                + ". Delete them and download the model again."
+            )
+        return
+    if not repair.find_truncated_weights(
+        os.path.join(repair.repo_cache_dir(checkpoint), "snapshots")
+    ):
+        return
+    logger.warning("Model cache for %s has a truncated weight file; re-downloading it.", checkpoint)
+    summary = repair.repair_repo_cache(checkpoint)
+    if not summary.get("ok"):
+        raise RuntimeError(
+            f"The model weights for {checkpoint} are incomplete and could not be "
+            f"re-downloaded ({summary.get('error') or 'unknown'})."
+            + _manual_cache_delete_hint(checkpoint)
+        )
+
+
 def _manual_cache_delete_hint(checkpoint: str) -> str:
     """Names the exact on-disk folder to delete when every auto-repair rung
     failed — "delete the model" is only actionable if the user can find it.
@@ -2583,6 +2616,8 @@ def _load_model_sync():
             logger.info("Preloading PyTorch Whisper after TTS model load.")
         else:
             logger.info("Skipping PyTorch Whisper preload; ASR will load on demand.")
+        _preflight_truncated_weights(checkpoint)
+
         def _load():
             return VoiceStudio.from_pretrained(
                 checkpoint, device_map=device,
@@ -3164,8 +3199,20 @@ async def _load_model_with_timeout():
         ) from exc
 
 
+def _ensure_omnivoice_licence() -> None:
+    """Raise ``ModelLicenceNotAccepted`` while OmniVoice's licence is unaccepted.
+
+    Checked on every ``get_model()``, warm or cold, so a revoked acceptance
+    stops a model that is already resident, not only the next load.
+    """
+    from services.model_acceptance import ensure_engine_accepted
+
+    ensure_engine_accepted("omnivoice")
+
+
 async def get_model(*, allow_load: bool = True):
     global model, _last_used
+    _ensure_omnivoice_licence()
     _last_used = time.time()
     if model is not None:
         # Placement self-heal (#1191). The ASR offload/restore pair below is a
@@ -3340,15 +3387,6 @@ def _checkpoint_in_local_cache(checkpoint: str) -> bool:
         return False
 
 
-def _headless_worker() -> bool:
-    """True when this process serves remote work and has no local UI."""
-    try:
-        from worker.agent import worker_mode_enabled  # noqa: PLC0415
-    except Exception:
-        return False
-    return worker_mode_enabled()
-
-
 async def preload_model():
     """Background model warm-up — call from lifespan startup.
 
@@ -3375,21 +3413,14 @@ async def preload_model():
     except Exception:  # noqa: BLE001 -- preload selection must stay best-effort
         logger.debug("effective TTS preload selection failed", exc_info=True)
 
-    # A machine lending its GPU has no local user to warm the model FOR. This
-    # preload exists to make the first /generate feel instant for the person
-    # sitting in front of the app; on a headless node there is nobody sitting
-    # there, so it is several GB of VRAM held from boot against a request that
-    # may never come — and the idle sweep cannot reclaim it, because the sweep
-    # owns the worker executor's engines and this is the default local model.
-    # Observed on hardware: a node that had run nothing still sat at 2.4 GB.
-    #
-    # A machine that is BOTH a desktop app and a worker keeps the warm-up:
-    # there is a real user there, and the whole point stands.
-    if _headless_worker():
-        logger.info(
-            "Preload skipped: this process is running as a remote worker, so the "
-            "model loads on first request and is released when it goes idle."
-        )
+    # Installed but not accepted: nothing to warm. The user is asked when they
+    # first generate, so a boot-time error here would only be noise.
+    from services.model_acceptance import ModelLicenceNotAccepted
+
+    try:
+        _ensure_omnivoice_licence()
+    except ModelLicenceNotAccepted:
+        logger.info("Preload skipped: the OmniVoice model licence is not accepted yet.")
         return
     try:
         # Warm-up is gated on LOCAL availability only — never a Hub API
@@ -3721,9 +3752,9 @@ def unload_shared_model() -> bool:
     registry, and ``nvidia-smi`` does not move.
 
     Six call sites open-coded this pair and one of them had it inverted — the
-    one the engine-registry sweep reaches, which is the sweep a headless worker
-    node runs. A worker therefore sat on 3.6 GB indefinitely while reporting
-    the engine released, and every other path looked fine (#1495). One helper,
+    one the engine-registry sweep reaches. The backend therefore sat on 3.6 GB
+    indefinitely while reporting the engine released, and every other path
+    looked fine (#1495). One helper,
     so there is one ordering and nowhere left to get it wrong.
 
     Takes no lock of its own: the sync engine-registry path

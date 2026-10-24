@@ -19,6 +19,7 @@ dub generator consumes whole segments today.
 from __future__ import annotations
 
 import functools
+import inspect
 import logging
 import os
 import re
@@ -1231,6 +1232,41 @@ def _reuse_or_rank_passage(ref_audio: str) -> Optional[tuple[str, str]]:
     return _omnivoice_installed_passage(ref_audio)
 
 
+def prepare_reference_passage(ref_audio) -> bool:
+    """Rank a long reference's best 15 s window NOW, off the generate clock.
+
+    Picking the window runs the installed recognizer over up to five 15 s
+    windows. On a CPU that is minutes, and when it ran inside the engine call
+    it was charged to the generate budget: the job was then abandoned with
+    "TTS generate exceeded 300s" before a single sample was synthesized
+    (#2764's log shows a CPU Whisper large-v3 transcribing the voice just
+    before). The choice is remembered per recognizer and file version
+    (``_recall_passage``), so the engine call that follows recalls it for free.
+
+    Returns True when a passage was chosen or remembered. Never raises, and a
+    clip that needs no window (<= the transcript limit) is a no-op.
+    """
+    if not isinstance(ref_audio, str):
+        return False
+    try:
+        from omnivoice.utils.audio import CLONE_REF_TEXT_MAX_SECONDS
+
+        duration = reference_duration_s(ref_audio)
+        if duration is None or duration <= CLONE_REF_TEXT_MAX_SECONDS:
+            return False
+        selected = _reuse_or_rank_passage(ref_audio)
+    except Exception:  # noqa: BLE001 — the engine ranks inline as before
+        logger.debug("reference passage pre-ranking failed", exc_info=True)
+        return False
+    if selected is None:
+        return False
+    try:
+        os.remove(selected[0])
+    except OSError:
+        logger.debug("failed to remove reference window")
+    return True
+
+
 def omnivoice_inline_reference(ref_audio, ref_text):
     """``(ref_audio, ref_text, owned_path)`` for a direct ``model.generate()``.
 
@@ -1700,7 +1736,7 @@ class OmniVoiceBackend(TTSBackend):
         Delegates to ``model_manager.unload_shared_model`` rather than clearing
         the singleton here: this path used to free the device caches *before*
         dropping the shared reference, which frees nothing, and it is the path
-        the idle sweep on a headless worker node runs (#1495)."""
+        used by the idle engine sweep (#1495)."""
         self._model = None
         clear_clone_prompt_cache()  # #427: drop cached prompts so VRAM is freed
         try:
@@ -2535,6 +2571,7 @@ class MLXAudioBackend(TTSBackend):
         "chatterbox":  "mlx-community/Chatterbox-TTS-4bit",
         "melotts":     "mlx-community/MeloTTS-English-v3-MLX",
         "outetts":     "mlx-community/Llama-OuteTTS-1.0-1B-4bit",
+        "voxcpm2":     "mlx-community/VoxCPM2-8bit",
     }
     DEFAULT_MODEL_KEY = "kokoro"
 
@@ -2552,6 +2589,8 @@ class MLXAudioBackend(TTSBackend):
     #   melotts     huggingface.co/mlx-community/MeloTTS-English-v3-MLX
     #   outetts     huggingface.co/OuteAI/Llama-OuteTTS-1.0-1B (high + moderate
     #               training-data tiers)
+    #   voxcpm2     huggingface.co/mlx-community/VoxCPM2-8bit (30 languages,
+    #               the same set as VoxCPM2Backend)
     CURATED_MODEL_LANGUAGES: dict[str, tuple[str, ...]] = {
         "kokoro": ("en", "es", "fr", "hi", "it", "pt", "ja", "zh"),
         "csm": ("en",),
@@ -2562,6 +2601,11 @@ class MLXAudioBackend(TTSBackend):
         "outetts": (
             "en", "ar", "zh", "nl", "fr", "de", "it", "ja", "ko", "lt", "ru", "es",
             "pt", "be", "bn", "ka", "hu", "lv", "fa", "pl", "sw", "ta", "uk",
+        ),
+        "voxcpm2": (
+            "ar", "my", "zh", "da", "nl", "en", "fi", "fr", "de", "el",
+            "he", "hi", "id", "it", "ja", "km", "ko", "lo", "ms", "no",
+            "pl", "pt", "ru", "es", "sw", "sv", "tl", "th", "tr", "vi",
         ),
     }
 
@@ -2641,10 +2685,8 @@ class MLXAudioBackend(TTSBackend):
     @property
     def supports_cloning(self) -> bool:
         """Model-dependent — this adapter multiplexes 7+ curated models and
-        only some take a reference-audio speaker prompt. `generate()` passes
-        `ref_audio` through when present (~kwargs below) but silently retries
-        without it on a TypeError, so an engine picked for cloning that's
-        actually running Kokoro/Qwen3-TTS/etc. would clone nothing. Of the
+        only some take a reference-audio speaker prompt. Other models may
+        ignore reference audio even when their signatures accept it. Of the
         curated set, only CSM (`mlx-community/csm-1b-8bit`) is confirmed to
         accept a reference prompt — default False for every other model,
         curated or user-supplied, until positively confirmed."""
@@ -2702,8 +2744,7 @@ class MLXAudioBackend(TTSBackend):
 
         # mlx-audio's generate(...) returns an iterator of result objects,
         # each with a .audio attribute. Different engines accept different
-        # kwargs (voice for Kokoro, ref_audio for CSM, instruct for Qwen3)
-        # — we pass them all and let the engine ignore what it doesn't use.
+        # kwargs (voice for Kokoro, ref_audio for CSM, instruct for Qwen3).
         kwargs = {"text": text, "speed": speed}
         if voice:     kwargs["voice"] = voice
         if ref_audio: kwargs["ref_audio"] = ref_audio
@@ -2776,6 +2817,24 @@ class MLXAudioBackend(TTSBackend):
                 elif code is not None:
                     kwargs["lang_code"] = code
 
+        # Filter only keywords the signature proves unsupported. A TypeError
+        # from generation (including iterator consumption) is a model failure,
+        # not a reason to rerun synthesis without the requested voice context.
+        generate = self._model.generate
+        try:
+            params = inspect.signature(generate).parameters
+        except (TypeError, ValueError):
+            pass  # Unknown signature: invoke unchanged and let errors propagate.
+        else:
+            if not any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()):
+                kwargs = {
+                    key: value for key, value in kwargs.items()
+                    if key in params and params[key].kind in (
+                        inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                        inspect.Parameter.KEYWORD_ONLY,
+                    )
+                }
+
         def collect(results):
             groups = []
             rate = None
@@ -2805,11 +2864,7 @@ class MLXAudioBackend(TTSBackend):
             flush()
             return groups
 
-        try:
-            pieces = collect(self._model.generate(**kwargs))
-        except TypeError:
-            # Retry engines that accept only the universal arguments.
-            pieces = collect(self._model.generate(text=text, speed=speed))
+        pieces = collect(generate(**kwargs))
 
         if not pieces:
             raise RuntimeError(f"mlx-audio ({self._model_id}) produced no audio")
@@ -3522,6 +3577,7 @@ _MLX_AUDIO_MODEL_LABELS: dict[str, str] = {
     "chatterbox": "Chatterbox",
     "melotts":    "MeloTTS (lightweight)",
     "outetts":    "OuteTTS",
+    "voxcpm2":    "VoxCPM2 8-bit (30 languages, 48 kHz)",
 }
 
 
@@ -3550,6 +3606,14 @@ def voice_design_support(cls) -> Optional[bool]:
     None when the engine never declared it (or it depends on the model)."""
     value = getattr(cls, "supports_voice_design", None)
     return value if isinstance(value, bool) else None
+
+
+def preset_voices_of(cls) -> list[str]:
+    """Built-in voice ids an engine class exposes for selection (empty if none)."""
+    voices = getattr(cls, "PRESET_VOICES", None)
+    if not isinstance(voices, (list, tuple)):
+        return []
+    return [v for v in voices if isinstance(v, str)]
 
 
 def list_backends(*, include_hidden: bool = False) -> list[dict]:
@@ -3584,6 +3648,8 @@ def list_backends(*, include_hidden: bool = False) -> list[dict]:
           "instruct_vocabulary": "tags" | "freeform",  # OmniVoice tag set vs model-native text
           "supports_voice_design": Optional[bool],  # False = needs a reference clip;
                                                     #   None = undeclared (design allowed)
+          "preset_voices":  list[str],              # built-in voice ids a request may pick (``voice``); [] = none
+          "default_voice":  Optional[str],          # preset used when none is picked
           "max_ref_seconds": Optional[float],       # seconds of a clone clip the engine uses
           "ref_strategy": Optional[str],            # "best_window" | "head" | "full"; None = unverified
           "effective_device": str,                  # device this engine uses on THIS host
@@ -3715,6 +3781,8 @@ def list_backends(*, include_hidden: bool = False) -> list[dict]:
             # Reference-length truth (#2281): how much of a clone clip the
             # engine really uses and how it picks it. None = not verified.
             "max_ref_seconds": getattr(cls, "max_ref_seconds", None),
+            "preset_voices": preset_voices_of(cls),
+            "default_voice": getattr(cls, "DEFAULT_VOICE", None) if preset_voices_of(cls) else None,
             "ref_strategy": getattr(cls, "ref_strategy", None),
             "install_hint": _INSTALL_HINTS.get(bid),
             # Exact `export VAR=...` line for path-gated opt-in engines, or None.
@@ -4075,6 +4143,38 @@ def reset_active_backend() -> None:
                            type(inst).__name__, exc)
 
 
+def ensure_engine_licence(cls) -> None:
+    """Refuse a TTS engine whose gated model licences the user has not accepted.
+
+    Checked on every resolution, not only at construction, so revoking
+    acceptance also stops an already-cached instance. Raises
+    ``ModelLicenceNotAccepted`` before any weights load or sidecar starts.
+    """
+    from services.model_acceptance import ensure_engine_accepted
+
+    engine_id = getattr(cls, "id", None)
+    if not engine_id:
+        return
+    try:
+        identity = cls.configured_identity()
+    except Exception:  # noqa: BLE001 — unknown model: gate every model the engine ships
+        identity = None
+    ensure_engine_accepted(engine_id, identity)
+
+
+def ensure_active_engine_licence() -> None:
+    """:func:`ensure_engine_licence` for the configured engine, before any routing.
+
+    For job entry points that may render remotely and so never reach the local
+    instance cache. An unknown engine id is left to the caller's own error.
+    """
+    try:
+        cls = get_backend_class(active_backend_id())
+    except ValueError:
+        return
+    ensure_engine_licence(cls)
+
+
 def get_active_tts_backend(*, model=None) -> TTSBackend:
     """Return the configured backend, reusing a cached instance and releasing
     the previous engine on a switch (MM2-01).
@@ -4092,6 +4192,9 @@ def get_active_tts_backend(*, model=None) -> TTSBackend:
     """
     global _active_instance, _active_instance_id, _active_mlx_model_key
     bid = active_backend_id()
+    cls = get_backend_class(bid)
+    # Before the switch below: a refused engine must not unload the working one.
+    ensure_engine_licence(cls)
 
     mlx_model_key = None
     if bid == "mlx-audio":
@@ -4119,7 +4222,6 @@ def get_active_tts_backend(*, model=None) -> TTSBackend:
         _active_instance_id = None
         _active_mlx_model_key = None
 
-    cls = get_backend_class(bid)
     if cls is OmniVoiceBackend and model is not None:
         # Per-call view over the already-loaded shared singleton; don't cache it
         # (the model lifecycle is owned by model_manager), but the switch above
@@ -4240,6 +4342,7 @@ def get_engine_instance(cls, *, now: Optional[float] = None):
     an extra sidecar process the first time the lock is acquired. One instance
     per process is the right move.
     """
+    ensure_engine_licence(cls)
     stale = None
     with _ENGINE_CACHE_LOCK:
         inst = _ENGINE_INSTANCES.get(cls)
@@ -4272,11 +4375,8 @@ def _built_for_other_model(cls, inst) -> bool:
 def get_engine_instance_for(engine_id: str, *, now: Optional[float] = None):
     """Cached instance of the TTS engine registered under ``engine_id``.
 
-    Deliberately NOT :func:`get_active_tts_backend`: that resolves
-    ``active_backend_id()``, i.e. *this machine's* Settings preference. On a
-    remote worker that would run whatever the worker's owner happens to prefer
-    while the control plane's slots, breaker history and result metadata are
-    keyed to the engine it believes ran — wrong audio, silently.
+    Deliberately NOT :func:`get_active_tts_backend`: callers provide the exact
+    engine identity instead of resolving the current Settings preference.
     """
     return get_engine_instance(get_backend_class(engine_id), now=now)
 
@@ -4366,6 +4466,7 @@ async def resolve_generation_backend(
             "Check Model Catalogue or the OMNIVOICE_TTS_BACKEND env var."
         ) from e
 
+    ensure_engine_licence(backend_cls)
     try:
         ok, msg = backend_cls.is_available()
     except Exception as exc:  # noqa: BLE001 — surface as an actionable ValueError

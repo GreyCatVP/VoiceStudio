@@ -1,5 +1,4 @@
 import os
-import io
 import re
 import uuid
 import time
@@ -26,13 +25,14 @@ from core.config import OUTPUTS_DIR, VOICES_DIR
 from core.path_security import contained_join
 import functools
 from services.model_manager import (
-    get_model, _gpu_pool, run_on_gpu_pool_guarded, GpuJobTimeoutError,
+    get_model, run_on_gpu_pool_guarded, GpuJobTimeoutError,
     GpuPoolBusyError,
 )
 from services.generation_audio import save_generation_wav
 # Compatibility export used by archetype previews and the gallery renderer.
 from services.audio_io import _safe_torchaudio_save
 from services.binary_preflight import InvalidBinaryError
+from services.model_acceptance import ModelLicenceNotAccepted
 from core import event_bus
 from core.render_trace import call as trace_call
 from core.logging_utils import log_safe
@@ -511,9 +511,34 @@ def _note_generate_progress() -> None:
         pass
 
 
-def _render_with_pauses(gen_span, segments, sample_rate):
+def _trim_output_edges(audio_out, sample_rate):
+    """Strip the engine's own lead-in/tail silence from a finished take.
+
+    Engines pad every render with near-silence at both ends, so a plain
+    Generate used to start and end with an audible blank. Same helper and
+    floor as the dub path (50 ms of context kept; internal pauses and dead
+    renders untouched). Non-tensor output passes through unchanged.
+    """
+    import torch
+    from services.audio_dsp import trim_speech_padding
+
+    if not torch.is_tensor(audio_out):
+        return audio_out
+    return trim_speech_padding(audio_out, sample_rate)
+
+
+def _wants_edge_trim(effect_preset, duration=None):
+    """Edge trim applies unless the user asked for raw model output or an
+    explicit target duration (trimming would shorten what they asked for)."""
+    return (effect_preset or "broadcast") != "raw" and not duration
+
+
+def _render_with_pauses(gen_span, segments, sample_rate, *, trim_spans=False):
     """Synthesize ``[(text, pause_ms), ...]`` spans and stitch silence between
     them (issue #276).
+
+    ``trim_spans`` strips each span's engine padding first, so a requested
+    pause is the pause the user hears, not pause + the engine's own silence.
 
     ``gen_span(text) -> torch.Tensor`` synthesizes one text span (raw model
     output). A silence buffer of ``pause_ms`` is inserted after a span when
@@ -526,7 +551,10 @@ def _render_with_pauses(gen_span, segments, sample_rate):
     items = []  # ('a', tensor) for audio, ('s', n_samples) for silence
     for span_text, pause_ms in segments:
         if span_text and span_text.strip():
-            items.append(("a", gen_span(span_text)))
+            audio = gen_span(span_text)
+            if trim_spans:
+                audio = _trim_output_edges(audio, sample_rate)
+            items.append(("a", audio))
             _note_generate_progress()
         if pause_ms > 0:
             n = int(round(sample_rate * pause_ms / 1000.0))
@@ -572,9 +600,13 @@ def _sanitize_audio(audio_out):
 
 
 @_render_timed('effects')
-def _apply_effect_chain(audio_out, sample_rate, effect_preset, *, skip_mastering=False):
-    """Shared post-DSP for /generate: preset validation → mastering →
-    effect chain → loudness normalization.
+def _apply_effect_chain(audio_out, sample_rate, effect_preset, *, skip_mastering=False,
+                        trim_edges=False):
+    """Shared post-DSP for /generate: preset validation → edge trim →
+    mastering → effect chain → loudness normalization.
+
+    ``trim_edges`` is for a finished whole take only: streamed preview chunks
+    leave it off so they keep the same timing as the assembled take.
 
     ``skip_mastering`` honors a backend's ``applies_own_mastering`` flag
     (issue #312): studio engines (e.g. VoxCPM2's native 48 kHz output)
@@ -605,6 +637,9 @@ def _apply_effect_chain(audio_out, sample_rate, effect_preset, *, skip_mastering
     if preset == "raw":
         # Raw: skip all DSP — return raw model output
         return audio_out
+
+    if trim_edges:
+        audio_out = _trim_output_edges(audio_out, sample_rate)
 
     if not skip_mastering:
         audio_out = apply_mastering(audio_out, sample_rate=sample_rate)
@@ -1173,7 +1208,8 @@ def _run_inference(
                 # Per-span duration is left to the model; an explicit overall
                 # `duration` can't be meaningfully split across spans.
                 return _gen(span_text, None)[0]
-            audio_out = _render_with_pauses(_gen_span, segments, sr)
+            audio_out = _render_with_pauses(_gen_span, segments, sr,
+                                            trim_spans=_wants_edge_trim(effect_preset))
         else:
             # Wave 1.2: long text is split at sentence boundaries and the
             # per-chunk audio crossfaded — removes the length ceiling. Short
@@ -1203,7 +1239,12 @@ def _run_inference(
 
         # Apply DSP effect preset. The VoiceStudio model never masters its own
         # output, so mastering always runs here (unchanged behavior).
-        return _apply_effect_chain(audio_out, sr, effect_preset)
+        # Pause renders were trimmed per span above; trimming the whole take
+        # would also eat a deliberate leading/trailing [pause].
+        return _apply_effect_chain(
+            audio_out, sr, effect_preset,
+            trim_edges=not has_pause and _wants_edge_trim(effect_preset, duration),
+        )
 
     except ValueError as e:
         # Don't wrap validation errors in OOM message
@@ -1218,7 +1259,7 @@ def _run_backend_inference(
     used_seed, effect_preset="broadcast",
     max_chunk_chars=None, crossfade_ms=None, *, t_shift=None,
     layer_penalty_factor=None, position_temperature=None,
-    class_temperature=None, dropped_sink=None,
+    class_temperature=None, dropped_sink=None, preset_voice=None,
 ):
     """Engine-aware twin of :func:`_run_inference` (issue #312).
 
@@ -1241,6 +1282,8 @@ def _run_backend_inference(
             instruct=instruct, num_step=num_step, guidance_scale=guidance_scale,
             speed=speed, denoise=denoise, postprocess_output=postprocess_output,
         )
+        if preset_voice:
+            gen_kwargs["voice"] = preset_voice
         native_proxy = bool(
             getattr(backend, "supports_native_omnivoice_controls", False)
         )
@@ -1274,7 +1317,8 @@ def _run_backend_inference(
                     span_kwargs["seed"] = used_seed
                 first_span = False
                 return trace_call("synthesis", backend.generate, span_text, duration=None, **span_kwargs)
-            audio_out = _render_with_pauses(_gen_span, segments, sr)
+            audio_out = _render_with_pauses(_gen_span, segments, sr,
+                                            trim_spans=_wants_edge_trim(effect_preset))
         else:
             # Wave 1.2: sentence-boundary chunking for long text (see
             # _run_inference for the rationale; behavior is identical here).
@@ -1308,6 +1352,7 @@ def _run_backend_inference(
         return _apply_effect_chain(
             audio_out, sr, effect_preset,
             skip_mastering=getattr(backend, "applies_own_mastering", False),
+            trim_edges=not has_pause and _wants_edge_trim(effect_preset, duration),
         )
 
     except ValueError as e:
@@ -1410,12 +1455,9 @@ def _language_rejection_payload(exc, language, *, from_profile):
 def _language_rejection_http_error(exc: BaseException, language, *, from_profile):
     """The 400 a refused language deserves, wherever the refusal was raised.
 
-    A language an engine cannot speak is never retryable — not by waiting, and
-    not by re-running the same request on another machine. Built here so the
-    local (`ValueError`) and remote (`RemoteJobFailed`) handlers cannot drift:
-    #2156 shipped the profile-aware branch on the local path only, and a remote
-    render kept answering with a retryable 503 that offered "run it on this
-    machine instead", which cannot help.
+    A language an engine cannot speak is never retryable. This keeps the
+    profile-aware error construction in one place for classic and streaming
+    responses.
     """
     root = _root_language_error(exc)
     detail = (
@@ -1653,143 +1695,16 @@ def _pcm16_b64(wav_tensor) -> str:
     return base64.b64encode(pcm.cpu().numpy().tobytes()).decode("ascii")
 
 
-# ── Remote GPU: this route is the producer the scheduler never had ─────────
-#
-# Picking a remote worker used to change a badge and nothing else — every
-# render still ran on this machine, which is the whole reported bug. The
-# decision is taken ONCE per request, through `services/gpu_gateway.py`, and
-# BEFORE anything local is loaded — for two reasons that are not
-# interchangeable: a render bound for the user's 4090 must not first pull a
-# multi-GB model into this machine's RAM, and it must not be refused by a gate
-# that asked whether THIS host has the accelerator the engine needs (a
-# CUDA-only engine on a Mac control plane is exactly the case remote workers
-# exist for).
-
-_REMOTE_OP = "tts"
-
-# The gateway's coarse phase → the sentence a user reads while someone else's
-# GPU works. A five-minute remote render otherwise shows the same bare spinner
-# as a local one, with no way to tell "queued behind another task" from
-# "downloading 5 GB of weights" from "actually generating".
-_REMOTE_PHASE_LABELS = {
-    "queued": "queued on {target}",
-    "loading": "loading model on {target}",
-    "running": "generating on {target}",
-    "uploading": "receiving audio from {target}",
-}
-
-
-class _LocalDecision:
-    """Stand-in for ``worker.routing.Decision`` meaning "run here".
-
-    Used only when the gateway cannot be imported at all, so a build without
-    it still renders instead of 500-ing.
-    """
-
-    remote = False
-    worker_id = None
-    label = "Local"
-    reason = ""
-
-
-_LOCAL_DECISION = _LocalDecision()
-
-
-def _routing_decision():
-    """Local or remote for this request — resolved once, never re-asked.
-
-    Asked once because the target is user-settable at any moment: a decision
-    that flipped between prewarm and dispatch would either warm an engine
-    nothing will use or dispatch remotely after paying a local cold load.
-    """
-    try:
-        from services import gpu_gateway
-
-        return gpu_gateway.decide(_REMOTE_OP)
-    except Exception:  # noqa: BLE001 — routing is advisory; local always works
-        logger.debug("remote routing unavailable; running locally", exc_info=True)
-        return _LOCAL_DECISION
-
-
-def _remote_only_local_call(target_label, reason=""):
-    """The local branch of a render whose local half was deliberately skipped.
-
-    ``gpu_gateway.run`` always takes a local callable — it is where rule 1
-    (pre-dispatch unavailability) lands. But this route skips every local
-    preparation step once the decision is remote, precisely so a job bound for
-    the 4090 does not first load gigabytes here, so there is no local render
-    left to fall back to.
-
-    The causes rule 1 actually covers — worker offline, disabled, not
-    approved, breaker open, remote workers switched off — are already answered
-    by ``decide()`` BEFORE that skip, and come back as a local decision with a
-    named reason. What is left is the narrow window where dispatch itself is
-    refused (a full queue, a task dropped between submit and wait). Saying so
-    and offering the local re-run is honest; silently returning nothing is not.
-    """
-    from services.gpu_gateway import RemoteJobFailed
-
-    def _refuse():
-        raise RemoteJobFailed(
-            reason or f"{target_label} could not take this render",
-            worker_label=target_label,
-            code="REMOTE_NOT_DISPATCHED",
-            hint="Run it on this machine instead, or pick another GPU.",
-        )
-
-    return _refuse
-
-
-def _remote_progress_frame(state, target):
-    """One gateway ``on_state`` payload → the NDJSON event the UI renders."""
-    phase = str((state or {}).get("phase") or "running")
-    try:
-        pct = max(0, min(100, round(float((state or {}).get("progress") or 0.0) * 100)))
-    except (TypeError, ValueError):
-        pct = 0
-    detail = _REMOTE_PHASE_LABELS.get(phase, _REMOTE_PHASE_LABELS["running"])
-    detail = detail.format(target=target)
-    if phase == "running" and pct:
-        detail = f"{detail} ({pct}%)"
-    return {
-        "type": "progress", "stage": phase, "percent": pct,
-        "target": target, "detail": detail,
-    }
-
-
-def _apply_routing_headers(headers, engine_notice, decision):
-    """Say where this render ran, on the notice channel that already exists.
-
-    ``X-OmniVoice-Routing`` / ``-Routing-Reason`` are already set for the #21
-    engine routing gate and already consumed as a de-duped one-time toast, so
-    "this ran on gpu2" and "your 4090 was asleep, this ran here" travel the
-    same wire rather than inventing a second one.
-
-    The engine notice wins on a local render: "the engine fell back to CPU"
-    explains the slowness the user is looking at, while the worker notice for
-    a local render is the quieter of the two. A remote render has no engine
-    notice at all — that gate answers for THIS host, and this host did nothing.
-    """
-    from services.engine_routing import header_safe_reason
-
-    notice = engine_notice
-    if decision is not None:
-        try:
-            from services.gpu_gateway import notice_for
-
-            worker_notice = notice_for(decision)
-        except Exception:  # noqa: BLE001 — a notice must never fail a render
-            worker_notice = None
-        if worker_notice and (getattr(decision, "remote", False) or not notice):
-            notice = worker_notice
-    if not notice:
+def _apply_routing_headers(headers, engine_notice):
+    """Attach the local engine-routing notice to a response."""
+    if not engine_notice:
         return headers
-    headers["X-OmniVoice-Routing"] = notice[0]
-    safe = header_safe_reason(notice[1]) if notice[1] else ""
+    from services.engine_routing import header_safe_reason
+    headers["X-OmniVoice-Routing"] = engine_notice[0]
+    safe = header_safe_reason(engine_notice[1]) if engine_notice[1] else ""
     if safe:
         headers["X-OmniVoice-Routing-Reason"] = safe
     return headers
-
 
 @router.get("/generate/budget")
 def generate_budget(engine: Optional[str] = None):
@@ -1827,6 +1742,9 @@ async def generate_speech(
     effect_preset: str = Form("broadcast"),
     wav_bits: Literal["16", "24", "32"] = Form("16"),
     engine: Optional[str] = Form(None),
+    # #2938: one of the engine's built-in voices (``preset_voices`` in the engine
+    # list). Only for engines that ship presets and no cloning reference.
+    preset_voice: Optional[str] = Form(None),
     # Wave 1.2 — unlimited-length generation: long text is split at sentence
     # boundaries and crossfaded. 0 disables chunking (whole text to engine).
     max_chunk_chars: int = Form(800, ge=0),
@@ -1882,6 +1800,10 @@ async def generate_speech(
                 "See GET /engines/tts for the list of valid engine ids."
             ),
         )
+    # Before any routing, eviction or load, and for remote renders too: the
+    # licence is accepted by the user asking for the audio. Raises the 403.
+    from services.tts_backend import ensure_engine_licence
+    ensure_engine_licence(backend_cls)
 
     # A design request on an engine that needs a reference clip would only
     # fail inside the engine, after a model load, and a reference on an
@@ -1899,96 +1821,90 @@ async def generate_speech(
     from core.run_sentinel import touch_activity
     touch_activity("generate", engine_id)
 
-    # ── Where does this render run? Asked once, here, because every line
-    # between this point and the dispatch below is preparation of THIS
-    # machine's GPU — model eviction, a multi-GB load, a host-capability gate.
-    # None of it applies to a render that belongs on the user's other box, and
-    # running it anyway is how "I selected gpu2" ended up meaning "the Mac did
-    # the work after loading the model twice".
-    _decision = _routing_decision()
-    _remote = bool(getattr(_decision, "remote", False))
-    _target_label = getattr(_decision, "label", "") or "the chosen worker"
-
     _model = None
     _backend = None
     _engine_min_vram_gb = getattr(backend_cls, "min_vram_gb", 0.0)
     _routing_notice = None
-    # Remote renders deliberately skip this host's capability gate. Keep the
-    # local fallback call's timeout device-neutral so the closure is valid
-    # without pretending the control plane describes the remote worker.
     _routing = {"effective_device": None}
     _routing_hardware_family = None
     _routing_vram_gb = None
 
-    if not _remote:
-        # Single-active-engine memory discipline: hand back any OTHER resident
-        # TTS engine's model before loading this one, so switching engines (or
-        # a per-request engine= override, which bypasses /engines/select
-        # entirely) doesn't stack two multi-GB models in memory — the
-        # accumulation behind the 16 GB-Mac OOM deaths. No-op when nothing else
-        # is resident, so steady-state single-engine use pays nothing. Opt out:
-        # OMNIVOICE_SINGLE_ENGINE_RESIDENT=0.
-        from services.engine_memory import evict_other_tts_engines
-        await evict_other_tts_engines(engine_id)
+    # Single-active-engine memory discipline: hand back any OTHER resident
+    # TTS engine's model before loading this one, so switching engines (or
+    # a per-request engine= override, which bypasses /engines/select
+    # entirely) doesn't stack two multi-GB models in memory — the
+    # accumulation behind the 16 GB-Mac OOM deaths. No-op when nothing else
+    # is resident, so steady-state single-engine use pays nothing. Opt out:
+    # OMNIVOICE_SINGLE_ENGINE_RESIDENT=0.
+    from services.engine_memory import evict_other_tts_engines
+    await evict_other_tts_engines(engine_id)
 
-        # Non-blocking breadcrumb: if free memory is already low before this
-        # load, log it. A later OOM kill (the 16 GB-Mac class) then has a trail
-        # pointing at the load that tipped it, instead of a silent process
-        # death. Never blocks — the OS can reclaim cache, and a hard refuse
-        # would brick legitimate loads.
+    # Non-blocking breadcrumb: if free memory is already low before this
+    # load, log it. A later OOM kill (the 16 GB-Mac class) then has a trail
+    # pointing at the load that tipped it, instead of a silent process
+    # death. Never blocks — the OS can reclaim cache, and a hard refuse
+    # would brick legitimate loads.
+    try:
+        from services.memory_budget import log_if_low
+
+        log_if_low(f"TTS load ({engine_id})")
+    except Exception:
+        pass
+
+    # VRAM eviction runs in get_model()'s warm-return path now, so every
+    # native TTS generate (this route, WS TTS, dub, batch, audiobook) is
+    # covered.
+    if backend_cls is OmniVoiceBackend:
+        # VoiceStudio keeps its native path: it carries the full advanced
+        # parameter surface (t_shift, layer/position/class controls) that
+        # the generic adapter protocol doesn't. Byte-identical behavior.
+        _model = await get_model()
+    else:
         try:
-            from services.memory_budget import log_if_low
+            ok, msg = backend_cls.is_available()
+        except Exception as exc:
+            ok, msg = False, f"{type(exc).__name__}: {exc}"
+        if not ok:
+            raise HTTPException(
+                status_code=400,
+                detail=f"TTS engine '{engine_id}' is not available: {_mask_hf_tokens(msg)}",
+            )
+        # Reuse the per-process instance cache shared with the engine
+        # health-check route so weights load once, not per request.
+        from api.routers.engines import _get_engine_instance
+        _backend = _get_engine_instance(backend_cls)
 
-            log_if_low(f"TTS load ({engine_id})")
-        except Exception:
-            pass
+    preset_voice = (preset_voice or "").strip() or None
+    if preset_voice:
+        from services.tts_backend import preset_voices_of
+        _presets = preset_voices_of(backend_cls)
+        if not _presets:
+            preset_voice = None  # engine has no presets: ignore, like other engine-specific fields
+        elif preset_voice not in _presets:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unknown preset voice {preset_voice!r}. Valid: {', '.join(_presets)}",
+            )
 
-        # VRAM eviction runs in get_model()'s warm-return path now, so every
-        # native TTS generate (this route, WS TTS, dub, batch, audiobook) is
-        # covered.
-        if backend_cls is OmniVoiceBackend:
-            # VoiceStudio keeps its native path: it carries the full advanced
-            # parameter surface (t_shift, layer/position/class controls) that
-            # the generic adapter protocol doesn't. Byte-identical behavior.
-            _model = await get_model()
-        else:
-            try:
-                ok, msg = backend_cls.is_available()
-            except Exception as exc:
-                ok, msg = False, f"{type(exc).__name__}: {exc}"
-            if not ok:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"TTS engine '{engine_id}' is not available: {_mask_hf_tokens(msg)}",
-                )
-            # Reuse the per-process instance cache shared with the engine
-            # health-check route so weights load once, not per request.
-            from api.routers.engines import _get_engine_instance
-            _backend = _get_engine_instance(backend_cls)
-
-        # ── Routing gate (#21 — no silent CPU fallback). Computed ONCE per
-        # request (host caps are constant; the per-request engine= override
-        # bypasses the /engines/select gate, so this is the only place it's
-        # enforced for synth). Local only, and deliberately: it asks what THIS
-        # host can accelerate, and a remote render is precisely the case where
-        # that answer is none of the question — a CUDA-only engine sent to a
-        # 4090 from a Mac control plane would be refused by a gate describing
-        # a machine that is about to do nothing.
-        from core.device_caps import detect_host_caps
-        from services.engine_routing import (
-            routing_notice,
-            runtime_compute_profile_async,
-        )
-        _routing = await runtime_compute_profile_async(
-            backend_cls, detect_host_caps()
-        )
-        _engine_min_vram_gb = _routing["min_vram_gb"]
-        _routing_hardware_family = _routing.get("runtime_hardware_family")
-        _routing_vram_gb = _routing.get("runtime_vram_gb")
-        if _routing["routing_status"] == "unavailable":
-            # The engine needs an accelerator this host lacks and has no CPU path.
-            raise HTTPException(status_code=400, detail=_routing["routing_reason"])
-        _routing_notice = routing_notice(_routing)  # (status, reason) or None
+    # ── Routing gate (#21 — no silent CPU fallback). Computed ONCE per
+    # request (host caps are constant; the per-request engine= override
+    # bypasses the /engines/select gate, so this is the only place it's
+    # enforced for synth).
+    from core.device_caps import detect_host_caps
+    from services.engine_routing import (
+        routing_notice,
+        runtime_compute_profile_async,
+    )
+    _routing = await runtime_compute_profile_async(
+        backend_cls, detect_host_caps()
+    )
+    _engine_min_vram_gb = _routing["min_vram_gb"]
+    _routing_hardware_family = _routing.get("runtime_hardware_family")
+    _routing_vram_gb = _routing.get("runtime_vram_gb")
+    if _routing["routing_status"] == "unavailable":
+        # The engine needs an accelerator this host lacks and has no CPU path.
+        raise HTTPException(status_code=400, detail=_routing["routing_reason"])
+    _routing_notice = routing_notice(_routing)  # (status, reason) or None
 
     # ── #1033/#1037: warm the engine under the LOAD budget, not the generate
     # budget. A cold adapter lazily loads (and possibly downloads multi-GB
@@ -1998,14 +1914,11 @@ async def generate_speech(
     # measured it: 0% GPU util for the full 300s). Model loading gets its own,
     # larger budget (OMNIVOICE_MODEL_LOAD_TIMEOUT, default 1200s) — the same
     # split get_model() already has for the native engine. Once warm, this is
-    # a no-op per request. A remote render gets the same two-phase split from
-    # the worker, under the assignment's own model-load deadline.
+    # a no-op per request.
     if _backend is not None:
         from services import gpu_gateway
         try:
-            await gpu_gateway.prewarm(
-                _REMOTE_OP, backend=_backend, engine=engine_id, decision=_decision,
-            )
+            await gpu_gateway.prewarm(backend=_backend, engine=engine_id)
         # Builtin TimeoutError base, not GpuJobTimeoutError — reload-proof
         # class identity (see the twin catch in openai_compat.py).
         except (TimeoutError, gpu_gateway.ModelLoadTimeout) as exc:
@@ -2160,6 +2073,32 @@ async def generate_speech(
         if ref_text and persist_ref_text_profile_id:
             _persist_profile_ref_text(persist_ref_text_profile_id, ref_text)
 
+    # #2764: choosing the best 15 s window of a long reference runs the
+    # installed recognizer over several windows — minutes on a CPU. Inside the
+    # engine call that time was billed to the generate budget and the job was
+    # abandoned ("exceeded 300s") before synthesis began. Do it here, on its own
+    # floor-scaled budget; the engine then recalls the remembered choice. Best
+    # effort: a timeout leaves the engine to rank inline exactly as before.
+    if ref_audio_path and ref_picks_own_passage and backend_cls is OmniVoiceBackend:
+        from services.tts_backend import prepare_reference_passage
+
+        try:
+            from omnivoice.utils.audio import CLONE_REF_MAX_WINDOWS
+
+            await _run_with_reference_lease(
+                ref_lease,
+                lambda release: run_on_gpu_pool_guarded(
+                    functools.partial(prepare_reference_passage, ref_audio_path),
+                    what="Reference passage selection",
+                    timeout=CLONE_REF_MAX_WINDOWS * _generate_timeout_s(
+                        "", execution_device=_routing["effective_device"]
+                    ),
+                    on_abandon=release,
+                )
+            )
+        except TimeoutError as e:
+            logger.warning("reference passage selection hung (%s); engine will rank inline", e)
+
     # #526: materialize a concrete seed when none was supplied (and no profile
     # pinned one) so the take is reproducible and we can hand it back via the
     # X-Seed header for the "keep this seed" control. An explicit request seed
@@ -2168,7 +2107,7 @@ async def generate_speech(
     if used_seed is None:
         used_seed = random.randint(0, 2**31 - 1)
 
-    # Auto is a UI/API choice, not a language token for engines or workers.
+    # Auto is a UI/API choice, not a language token for engines.
     if isinstance(language, str) and language.strip().lower() == "auto":
         language = None
 
@@ -2206,81 +2145,7 @@ async def generate_speech(
 
     start_time = time.time()
 
-    # ── The remote assignment ───────────────────────────────────────────────
-    # Built even for a local render (it costs a dict) so the gateway owns the
-    # branch rather than this route owning two of them.
-    #
-    # The worker runs the ENTIRE render as one op — sentence split, per-chunk
-    # generate at ``seed + i``, crossfaded concat, effect chain, provenance
-    # mark — because dispatching a chunk at a time would pay a round trip, a
-    # progress lease and a slot per sentence against a worker whose
-    # concurrency defaults to 1. So every knob that shapes the local render has
-    # to be on the wire: a missing one is not an error, it is remote audio that
-    # quietly differs from local audio (no sentence splitting, no per-chunk
-    # seed variation, no crossfade).
     from services import gpu_gateway
-    from services.watermark import is_enabled as _watermark_enabled
-
-    _remote_params = {
-        "text": text,
-        "language": None if (language and language.lower() == "auto") else language,
-        "ref_audio": ref_audio_path,
-        "ref_text": ref_text,
-        "instruct": instruct,
-        "duration": duration,
-        "speed": speed,
-        "num_step": num_step,
-        "guidance_scale": guidance_scale,
-        "denoise": denoise,
-        "postprocess_output": postprocess_output,
-        "t_shift": t_shift,
-        "layer_penalty_factor": layer_penalty_factor,
-        "position_temperature": position_temperature,
-        "class_temperature": class_temperature,
-        "seed": used_seed,
-        "max_chunk_chars": max_chunk_chars,
-        "crossfade_ms": crossfade_ms,
-        "effect_preset": effect_preset,
-        "wav_bits": int(wav_bits),
-        # The requesting user's provenance preference, not the GPU owner's.
-        "watermark": bool(_watermark_enabled()),
-    }
-    _remote_call = gpu_gateway.RemoteCall(
-        engine=engine_id, operation=_REMOTE_OP, params=_remote_params,
-    )
-
-    async def _render_on_worker(on_state=None):
-        """One whole render on the chosen worker → ``(tensor, sample_rate)``.
-
-        The audio comes back already effect-chained and provenance-marked: the
-        worker mirrors the local order (split → generate → concat → effects →
-        mark) so a remote take and a local take of the same request differ
-        only in which GPU produced them.
-        """
-        waveform, sample_rate = await gpu_gateway.run(
-            _REMOTE_OP,
-            local=gpu_gateway.LocalCall(
-                _remote_only_local_call(_target_label),
-                what="TTS generate",
-                timeout=_generate_timeout_s(
-                    text,
-                    engine=_backend,
-                    execution_device=_routing["effective_device"],
-                    min_vram_gb=_engine_min_vram_gb,
-                    hardware_family=_routing_hardware_family,
-                    vram_gb=_routing_vram_gb,
-                ),
-                min_vram_gb=_engine_min_vram_gb,
-            ),
-            remote=_remote_call,
-            decision=_decision,
-            on_state=on_state,
-        )
-        if getattr(waveform, "ndim", 2) == 1:
-            # The canonical WAV writer and local paths deal in
-            # (channels, samples); a mono artifact reads back flat.
-            waveform = waveform.unsqueeze(0)
-        return waveform, sample_rate
 
     # ── Streaming preview (feat: streaming-tts-preview) ─────────────────────
     # Long scripts used to mean staring at a spinner until the ENTIRE render
@@ -2296,157 +2161,6 @@ async def generate_speech(
     # seed / normalization) already ran, so per-chunk jobs spend the generate
     # budget on generation only — and each chunk gets its own budget, so a
     # long script can't time out merely for being long.
-    if stream and _remote:
-        # ── Remote: the streaming PREVIEW is off, the render still streams ──
-        # Progressive playback needs per-chunk dispatch, and per-chunk dispatch
-        # to a worker means a round trip, a progress lease and a slot for every
-        # sentence, serialised by a default concurrency of 1. So the render
-        # goes as ONE op and there is no first chunk to play early.
-        #
-        # The NDJSON channel stays open anyway, because the desktop UI asks for
-        # it whenever auto-play is on — which is the default. Answering with
-        # the classic WAV shape here would make the client fall back to a
-        # LOCAL re-render, i.e. exactly the bug this phase exists to fix: the
-        # user picks gpu2, clicks Synthesize, and their laptop does the work.
-        # What flows down it instead is coarse progress from the worker, then
-        # the finished take as a single chunk.
-        _remote_headers = _apply_routing_headers(
-            {"X-Seed": str(used_seed) if used_seed is not None else "",
-             "Cache-Control": "no-cache"},
-            None, _decision,
-        )
-
-        _progress_q: asyncio.Queue = asyncio.Queue()
-
-        def _push_progress(event):
-            # Called from the control plane's own loop; never let a progress
-            # frame break a render that is otherwise going fine.
-            try:
-                _progress_q.put_nowait(dict(event or {}))
-            except Exception:  # noqa: BLE001
-                logger.debug("dropped a remote progress frame", exc_info=True)
-
-        async def _remote_stream_events():
-            import json
-
-            def _line(obj) -> bytes:
-                return (json.dumps(obj, separators=(",", ":")) + "\n").encode("utf-8")
-
-            render = asyncio.ensure_future(_render_on_worker(_push_progress))
-            try:
-                # Relay progress until the render settles, then flush whatever
-                # arrived in the gap so the last "generating (98%)" is not lost.
-                while not render.done():
-                    getter = asyncio.ensure_future(_progress_q.get())
-                    done, _pending = await asyncio.wait(
-                        {render, getter}, return_when=asyncio.FIRST_COMPLETED
-                    )
-                    if getter in done:
-                        yield _line(_remote_progress_frame(getter.result(), _target_label))
-                        continue
-                    getter.cancel()
-                while not _progress_q.empty():
-                    yield _line(_remote_progress_frame(_progress_q.get_nowait(),
-                                                       _target_label))
-                audio_tensor, sample_rate = await render
-
-                yield _line({
-                    "type": "start", "sample_rate": sample_rate, "channels": 1,
-                    "format": "pcm16", "total_chunks": 1, "crossfade_ms": 0,
-                    "seed": used_seed,
-                })
-                # No second provenance mark: the worker marked at the tensor
-                # stage before encoding, with the requesting user's preference
-                # forced, and stacking a second AudioSeal payload over the
-                # first degrades detection of both.
-                yield _line({"type": "chunk", "seq": 0, "pcm": _pcm16_b64(audio_tensor)})
-
-                _, meta = await _finalize_generation(
-                    audio_tensor, sample_rate, text=text, history_mode=history_mode,
-                    ref_audio_path=ref_audio_path, language=language,
-                    instruct=instruct, resolved_profile_id=resolved_profile_id,
-                    used_seed=used_seed, start_time=start_time, already_marked=True, wav_bits=int(wav_bits),
-                    design_recipe=stored_design_recipe,
-                )
-                # #1330's dropped-chunk warning has no remote carrier yet: the
-                # gateway hands back audio, not the worker's render metadata.
-                # Reported as a cross-stream gap rather than faked as zero.
-                yield _line({
-                    "type": "done", "id": meta["id"], "audio_path": meta["filename"],
-                    "duration": meta["duration"], "gen_time": meta["gen_time"],
-                    "seed": used_seed, "sample_rate": sample_rate,
-                })
-            except (asyncio.CancelledError, GeneratorExit):
-                # The user hit stop, or the request was abandoned. Cancelling
-                # the render is what tells the worker to release its slot —
-                # otherwise the 4090 keeps rendering audio nobody will hear,
-                # holding what is often its only slot until the lease lapses.
-                render.cancel()
-                raise
-            except ValueError as e:
-                logger.error("Remote generation request rejected")
-                from core.public_errors import stream_failure
-                failure = (
-                    _language_rejection_payload(e, language, from_profile=language_from_profile)
-                    if _is_language_rejection(str(e)) else stream_failure("invalid_request")
-                )
-                yield _line({"type": "error", **failure})
-            except gpu_gateway.ModelNotDownloaded as e:
-                logger.warning("Remote model missing on %s", _target_label)
-                from core.public_errors import stream_failure
-                yield _line({
-                    "type": "error",
-                    **stream_failure("model_not_downloaded"),
-                    "engine": e.engine,
-                    "repo_ids": e.repo_ids,
-                    "target": e.target,
-                    "target_label": e.target_label,
-                    "downloadable": e.downloadable,
-                })
-            except gpu_gateway.RemoteJobFailed as e:
-                logger.error("Remote generate failed on %s", _target_label)
-                from core.public_errors import stream_failure
-                if _is_language_rejection(str(e)):
-                    yield _line({"type": "error", **_language_rejection_payload(
-                        e, language, from_profile=language_from_profile,
-                    )})
-                else:
-                    yield _line({
-                        "type": "error", **stream_failure("generation_failed"),
-                        "retryable": True, "target_label": e.worker_label or _target_label,
-                        "hint": e.hint,
-                    })
-            except Exception as exc:
-                # Mid-job remote failure is NOT quietly redone here: the client
-                # treats a retryable error as "surface it", so the user decides
-                # whether to spend the same minutes again on this machine. Like
-                # the local streaming path, this in-band frame stands in for the
-                # global 500 handler, so it journals the scrubbed failure and
-                # names a recognized cause instead of the bare generic string
-                # (#1607).
-                logger.error(
-                    "Remote generation failed (class=%s)",
-                    type(exc).__name__,
-                )
-                from core.public_errors import stream_generation_failure
-                from core import error_journal
-
-                error_journal.record(
-                    exc, route="/generate", trace=traceback.format_exc()
-                )
-                yield _line({"type": "error", **stream_generation_failure(exc)})
-            finally:
-                if not render.done():
-                    render.cancel()
-                if cleanup_ref and ref_lease is not None:
-                    ref_lease.finish_request()
-
-        return StreamingResponse(
-            _remote_stream_events(),
-            media_type="application/x-ndjson",
-            headers=_remote_headers,
-        )
-
     if stream:
         from omnivoice.utils.text import parse_pause_markers
         from services.chunked_tts import split_text_into_chunks
@@ -2542,7 +2256,8 @@ async def generate_speech(
                                                      sink=_dropped_sink)
                 skip = (getattr(_backend, "applies_own_mastering", False)
                         if _backend is not None else False)
-                return _apply_effect_chain(audio_out, sr, effect_preset, skip_mastering=skip)
+                return _apply_effect_chain(audio_out, sr, effect_preset, skip_mastering=skip,
+                                           trim_edges=_wants_edge_trim(effect_preset))
             except ValueError:
                 raise
             except Exception as e:
@@ -2571,6 +2286,7 @@ async def generate_speech(
                                     position_temperature=position_temperature,
                                     class_temperature=class_temperature,
                                     dropped_sink=_dropped_sink,
+                                    preset_voice=preset_voice,
                                 ),
                                 what="TTS generate",
                                 min_vram_gb=_engine_min_vram_gb,
@@ -2749,11 +2465,13 @@ async def generate_speech(
                 # diagnostic bundle and opaque to the user (#1607). The raw
                 # exception is NOT logged: it can carry a reference-clip path or
                 # a provider secret, and only the journal scrubs before storing.
+                from core.public_errors import exception_origin, stream_generation_failure
+
+                _origin = exception_origin(exc)
                 logger.error(
-                    "Streaming generation failed unexpectedly (class=%s)",
-                    type(exc).__name__,
+                    "Streaming generation failed unexpectedly (class=%s%s)",
+                    type(exc).__name__, f"; {_origin}" if _origin else "",
                 )
-                from core.public_errors import stream_generation_failure
                 from core import error_journal
 
                 error_journal.record(
@@ -2766,13 +2484,11 @@ async def generate_speech(
                 if cleanup_ref and ref_lease is not None:
                     ref_lease.finish_request()
 
-        # Routing notice (#21): known before the stream starts, so it rides the
-        # same headers the classic path uses — and now also carries "your
-        # chosen worker was unavailable, this ran here".
+        # Routing notice (#21): known before the stream starts.
         _stream_headers = _apply_routing_headers({
             "X-Seed": str(used_seed) if used_seed is not None else "",
             "Cache-Control": "no-cache",
-        }, _routing_notice, _decision)
+        }, _routing_notice)
         return StreamingResponse(
             _stream_events(),
             media_type="application/x-ndjson",
@@ -2785,69 +2501,62 @@ async def generate_speech(
     # so. A warning in a log the user never opens is a record of the bug, not a
     # fix for it.
     _dropped_text: list = []
-    _already_marked = False
     try:
-        if _remote:
-            # One op, one worker, the whole render — including the chunk loop.
-            audio_tensor, sample_rate = await _render_on_worker()
-            _already_marked = True
-        else:
-            # The gateway owns the dispatch on both branches. Locally it still
-            # lands in run_on_gpu_pool_guarded, so the #730 bound + pool reset
-            # that keeps a wedged generate from bricking the backend is
-            # unchanged.
-            if _backend is not None:
-                _local_render = functools.partial(
-                    _run_backend_inference,
-                    _backend, text, language, ref_audio_path, ref_text, instruct,
-                    duration, num_step, guidance_scale, speed, denoise,
-                    postprocess_output, used_seed, effect_preset,
-                    max_chunk_chars, crossfade_ms, t_shift=t_shift,
-                    layer_penalty_factor=layer_penalty_factor,
-                    position_temperature=position_temperature,
-                    class_temperature=class_temperature,
-                    dropped_sink=_dropped_text,
-                )
-            else:
-                _local_render = functools.partial(
-                    _run_inference,
-                    _model, text, language, ref_audio_path, ref_text, instruct, duration,
-                    num_step, guidance_scale, speed, t_shift, denoise,
-                    postprocess_output, layer_penalty_factor, position_temperature,
-                    class_temperature, used_seed, effect_preset,
-                    max_chunk_chars, crossfade_ms, dropped_sink=_dropped_text,
-                )
-            audio_tensor = await _run_with_reference_lease(
-                ref_lease,
-                lambda release: gpu_gateway.run(
-                    _REMOTE_OP,
-                    local=gpu_gateway.LocalCall(
-                        _local_render, what="TTS generate",
-                        timeout=_generate_timeout_s(
-                            text,
-                            engine=_backend,
-                            execution_device=_routing["effective_device"],
-                            min_vram_gb=_engine_min_vram_gb,
-                            hardware_family=_routing_hardware_family,
-                            vram_gb=_routing_vram_gb,
-                        ),
-                        min_vram_gb=_engine_min_vram_gb,
-                        on_abandon=release,
-                    ),
-                    decision=_decision,
-                )
+        # The gateway owns the dispatch on both branches. Locally it still
+        # lands in run_on_gpu_pool_guarded, so the #730 bound + pool reset
+        # that keeps a wedged generate from bricking the backend is
+        # unchanged.
+        if _backend is not None:
+            _local_render = functools.partial(
+                _run_backend_inference,
+                _backend, text, language, ref_audio_path, ref_text, instruct,
+                duration, num_step, guidance_scale, speed, denoise,
+                postprocess_output, used_seed, effect_preset,
+                max_chunk_chars, crossfade_ms, t_shift=t_shift,
+                layer_penalty_factor=layer_penalty_factor,
+                position_temperature=position_temperature,
+                class_temperature=class_temperature,
+                dropped_sink=_dropped_text,
+                preset_voice=preset_voice,
             )
-            # Read after generation: engines with lazy model loading report
-            # their real rate only once weights are up.
-            sample_rate = (_backend.sample_rate if _backend is not None
-                           else _model.sampling_rate)
+        else:
+            _local_render = functools.partial(
+                _run_inference,
+                _model, text, language, ref_audio_path, ref_text, instruct, duration,
+                num_step, guidance_scale, speed, t_shift, denoise,
+                postprocess_output, layer_penalty_factor, position_temperature,
+                class_temperature, used_seed, effect_preset,
+                max_chunk_chars, crossfade_ms, dropped_sink=_dropped_text,
+            )
+        audio_tensor = await _run_with_reference_lease(
+            ref_lease,
+                lambda release: gpu_gateway.run(
+                local=gpu_gateway.LocalCall(
+                    _local_render, what="TTS generate",
+                    timeout=_generate_timeout_s(
+                        text,
+                        engine=_backend,
+                        execution_device=_routing["effective_device"],
+                        min_vram_gb=_engine_min_vram_gb,
+                        hardware_family=_routing_hardware_family,
+                        vram_gb=_routing_vram_gb,
+                    ),
+                    min_vram_gb=_engine_min_vram_gb,
+                    on_abandon=release,
+                    ),
+            )
+        )
+        # Read after generation: engines with lazy model loading report
+        # their real rate only once weights are up.
+        sample_rate = (_backend.sample_rate if _backend is not None
+                       else _model.sampling_rate)
         # Watermark → save → history → prune → emit, shared with the streaming
         # path (see _finalize_generation) so both flows produce identical takes.
         audio_tensor, _meta = await _finalize_generation(
             audio_tensor, sample_rate, text=text, history_mode=history_mode,
             ref_audio_path=ref_audio_path, language=language, instruct=instruct,
             resolved_profile_id=resolved_profile_id, used_seed=used_seed,
-            start_time=start_time, already_marked=_already_marked, wav_bits=int(wav_bits), include_wav_bytes=True,
+            start_time=start_time, already_marked=False, wav_bits=int(wav_bits), include_wav_bytes=True,
             design_recipe=stored_design_recipe,
         )
         audio_id = _meta["id"]
@@ -2883,59 +2592,14 @@ async def generate_speech(
         # Routing notice (#21): cpu_fallback, accelerated-with-caveat, or the
         # machine this render ran on. The WAV body is binary so the header
         # channel is the carrier.
-        _apply_routing_headers(_resp_headers, _routing_notice, _decision)
+        _apply_routing_headers(_resp_headers, _routing_notice)
         return StreamingResponse(
             _stream_wav(),
             media_type="audio/wav",
             headers=_resp_headers,
         )
-    except HTTPException:
+    except (HTTPException, ModelLicenceNotAccepted):
         raise
-    except gpu_gateway.ModelNotDownloaded as e:
-        size_bytes = None
-        try:
-            from api.routers.setup.models import KNOWN_MODELS
-
-            sizes = [m.get("size_gb") for m in KNOWN_MODELS if m.get("repo_id") in e.repo_ids]
-            if sizes and all(size is not None for size in sizes):
-                size_bytes = int(sum(float(size) for size in sizes) * 1024**3)
-        except Exception:
-            pass
-        raise HTTPException(status_code=409, detail={
-            "error": "model_not_downloaded",
-            "message": str(e),
-            "engine": e.engine,
-            "repo_ids": e.repo_ids,
-            "size_bytes": size_bytes,
-            "target": e.target,
-            "target_label": e.target_label,
-            "downloadable": e.downloadable,
-        }) from e
-    except gpu_gateway.RemoteJobFailed as e:
-        # Rule 2 of the fallback policy: a single-shot interactive render that
-        # failed ON the worker is reported, not silently redone here. Minutes
-        # already went somewhere else, the user is watching, and quietly
-        # re-rendering on the slower machine turns a 20-second wait into a
-        # four-minute one with no explanation. The header names the target so
-        # the client can offer "run it on this machine instead" — a resubmit
-        # the user chose, with a wait they were told about.
-        logger.error("Remote generate failed on %s: %s", _target_label, e)
-        # #2156: a language the engine can't speak is a request problem, not a
-        # worker problem. It travels home as RemoteJobFailed — caught here,
-        # ahead of the ValueError branch below — so without this the user is
-        # told to retry on this machine, where the same engine refuses the same
-        # language. Answer it as the 400 it is, on either path.
-        if _is_language_rejection(str(e)):
-            raise _language_rejection_http_error(
-                e, language, from_profile=language_from_profile
-            ) from e
-        raise HTTPException(
-            status_code=503,
-            detail=f"{e} {e.hint or 'Run it on this machine instead, or pick another GPU.'}",
-            headers={"X-OmniVoice-Retryable": "true",
-                     "X-OmniVoice-Routing": "remote_failed",
-                     "Retry-After": "10"},
-        ) from e
     except GpuPoolBusyError as e:
         # Saturation, not failure (#1190): the job never started, so the caller
         # can retry the identical request. Retry-After + the retryable marker
@@ -2981,6 +2645,14 @@ async def generate_speech(
 
         _topic = classify(str(e))
         _owned = public_hint_for_topic(_topic) if _topic else ""
+        if _topic == "REFERENCE_STT_MISSING" and _owned:
+            # Structured so the client can show its localized copy (#2929/#2678)
+            # instead of the English sentence, and so the topic reaches the
+            # bug report.
+            raise HTTPException(
+                status_code=400,
+                detail={"docs_topic": _topic, "message": _owned, "hint": _owned},
+            ) from e
         raise HTTPException(status_code=400, detail=_owned or str(e)) from e
     except Exception as e:
         tb = traceback.format_exc()

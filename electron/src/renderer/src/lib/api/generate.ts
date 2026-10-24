@@ -2,6 +2,7 @@ import { generateAbortMs } from '@shared/utils/generateBudget';
 import { generationFailureMessage } from '@shared/utils/generationFailureMessage.ts';
 import i18next from 'i18next';
 import { languageRejectionMessage } from '@shared/utils/languageRejection.ts';
+import { announceModelLicenceRequired } from '@/features/settings/model-license-contract';
 import { ApiError, apiFetch, isAbortError } from './client';
 import {
   generateBudgetPending,
@@ -138,6 +139,7 @@ export function toGenerateForm(input: CloneGenerateInput): FormData {
   form.append('num_step', String(input.steps));
   form.append('wav_bits', String(input.wavBits ?? 16));
   form.append('effect_preset', input.effectPreset ?? 'broadcast');
+  if (input.presetVoice) form.append('preset_voice', input.presetVoice);
   form.append('guidance_scale', String(input.cfg));
   form.append('speed', String(input.speed));
   form.append('denoise', String(input.denoise));
@@ -254,16 +256,6 @@ export function shouldFallbackToClassic(error: unknown): boolean {
   return error instanceof StreamingPreviewError && !error.retryable && !error.terminal;
 }
 
-export async function resolveRemoteTtsTarget(signal?: AbortSignal): Promise<boolean> {
-  try {
-    const response = await apiFetch('/workers/target?op=tts', { signal });
-    const payload = (await response.json()) as { active?: { remote?: boolean } };
-    return payload.active?.remote === true;
-  } catch {
-    return false;
-  }
-}
-
 interface StreamEvent {
   type: 'start' | 'chunk' | 'done' | 'warning' | 'progress' | 'error';
   sample_rate?: number;
@@ -328,6 +320,7 @@ export async function generateCloneStreaming(
       } else if (event.type === 'done') {
         meta = event;
       } else if (event.type === 'error') {
+        announceModelLicenceRequired(event);
         const message =
           languageRejectionMessage(event, i18next.t) ||
           generationFailureMessage(event, i18next.t) ||

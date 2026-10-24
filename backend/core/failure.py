@@ -123,7 +123,7 @@ def invalid_media_file_detail() -> dict[str, str]:
 # One-line "what to do" per docs-taxonomy key. Keys mirror error_docs_map's
 # taxonomy; the docs URL itself stays owned by error_docs_map.
 _HINTS: dict[str, str] = {
-    "GPU_OOM": "Close other GPU-heavy apps or unload models, then retry. You can also choose CPU in Settings → Performance & Device or select a smaller TTS engine.",
+    "GPU_OOM": "Close other GPU-heavy apps or unload models, then retry. If another program is holding most of the GPU, or this computer has a second GPU, pick a different one in Settings → Performance & Device. You can also choose CPU there or select a smaller TTS engine.",
     "GPU_ARCH_UNSUPPORTED": "This PyTorch build does not support your GPU. Choose CPU in Settings → Performance & Device, or install a compatible PyTorch build.",
     # #2462: the HOST ran out of RAM, not a GPU. On a CPU-only machine there is
     # no device to spill to, so *every* out-of-memory failure there is this
@@ -132,34 +132,6 @@ _HINTS: dict[str, str] = {
     # was told to go and check their engine instead. A separate class (not a
     # wider GPU_OOM) because the remedy differs: free system RAM, not VRAM.
     "HOST_MEMORY_EXHAUSTED": "The machine ran out of memory during generation. Close other memory-heavy apps and browser tabs, unload models you are not using with Flush models, render a shorter passage, or select a lighter TTS engine. On Windows, enlarging the page file also gives a large engine room to load.",
-    "WORKER_AT_CAPACITY": "Wait for a running job on that worker to finish, or choose another available worker and retry.",
-    "MODEL_NOT_INSTALLED": "Install or enable this engine on the worker machine, then refresh its capabilities and retry.",
-    "MODEL_NOT_DOWNLOADED": "Open Models, install this model on the selected worker, then retry when the download completes.",
-    "INSUFFICIENT_MEMORY": "Choose a worker with more free GPU memory, unload another model there, or use a smaller model and retry.",
-    "OPERATION_UNSUPPORTED": "Choose a worker whose capability list includes this operation, or run the job locally.",
-    "ACCEPT_TIMEOUT": "Check that the worker is responsive and not overloaded, then reconnect it and retry.",
-    "MODEL_LOAD_TIMEOUT": "Check the worker's model download and load status, then retry after the model is ready.",
-    "EXECUTION_TIMEOUT": "Check the worker for a stalled engine or GPU error, restart that engine if needed, then retry.",
-    "PROGRESS_LEASE_EXPIRED": "Check the worker connection and engine log, reconnect or restart the worker, then retry the job.",
-    "RESULT_DELIVERY_TIMEOUT": "Check the connection and free disk space on both machines, then reconnect the worker and retry.",
-    "INPUT_FETCH_TIMEOUT": "Check the connection to the worker and retry; keep both machines awake until the reference file finishes transferring.",
-    "INPUT_FETCH_FAILED": "Check that the source file still exists and both machines are connected, then submit the job again.",
-    "RESULT_UPLOAD_FAILED": "Check the worker connection and free disk space on this machine, reconnect the worker, then retry.",
-    "WORKER_FAILED": "Open the selected worker's log for the underlying error, fix it there, then reconnect and retry.",
-    "SESSION_EXPIRED": "Reconnect the worker; if it cannot renew its session, remove it and enroll it again.",
-    "STALE_EPOCH": "Reconnect the worker so it receives the current session, then retry the job.",
-    "STALE_ATTEMPT": "Refresh the job state and retry only if the current attempt has not already completed elsewhere.",
-    "UPGRADE_REQUIRED": "Update VoiceStudio on the machine named in the error, then reconnect the worker.",
-    "WORKER_REVOKED": "Add the worker again from Settings → System → Remote workers to create a new trusted enrollment.",
-    "AUTH_FAILED": "Remove this worker, generate a new enrollment token, and add it again.",
-    "INVALID_TASK_PARAMS": "Review the job inputs, correct the invalid or missing value named in the error, and submit it again.",
-    "MODEL_REF_REJECTED": "Select a model from VoiceStudio's catalog on that worker instead of a path or custom model reference.",
-    "RESULT_TOO_LARGE": "Shorten or split the job so each result is smaller, then render the parts separately.",
-    "ARTIFACT_TOO_LARGE": "Shorten or split the job so each uploaded artifact is smaller, then render the parts separately.",
-    "OFFSET_MISMATCH": "Reconnect the worker and retry the upload from the byte count reported by the control plane.",
-    "SIZE_MISMATCH": "Reconnect the worker and retry the result upload; if it repeats, restart the worker before rerendering.",
-    "DIGEST_MISMATCH": "Retry the result upload; if it repeats, check the worker's disk and network for corruption, then rerender.",
-    "UPLOAD_INCOMPLETE": "Reconnect the worker and resume the result upload from the byte count reported by the control plane.",
     "PKG_RESOURCES_MISSING": "Run `uv pip install --reinstall 'setuptools>=75,<80'` in the backend venv (a plain install is skipped when setuptools' metadata is present but its pkg_resources files were removed by antivirus). Restart after.",
     "GATEKEEPER_QUARANTINE": "Clear the macOS quarantine flag (xattr -cr the app), then reopen.",
     "APPIMAGE_WEBKIT_WHITESCREEN": "Launch with WEBKIT_DISABLE_DMABUF_RENDERER=1 set.",
@@ -217,6 +189,12 @@ _HINTS: dict[str, str] = {
     # page showed verbatim and which read as a disk/permission problem.
     "NO_AUDIO_TRACK": "Check that the file plays with sound in a media player. If its audio is in a separate file, choose that file instead, or merge the audio into the video first.",
     "INVALID_MEDIA_FILE": "Check the source in a media player. If it cannot play, wait for the download or copy to finish, free disk space if needed, then download a fresh copy and upload it again.",
+    # #2929/#2678: the voice has no transcript and no speech-to-text model is
+    # installed to produce one, so the only advice that works is one of those two.
+    "REFERENCE_STT_MISSING": "This voice has no transcript, and no speech-to-text model is installed to write one. Type what the reference clip says into the transcript box (clips up to 20 seconds), or install a speech-to-text model in Model Catalogue (Whisper is a good default), select it, then generate again.",
+    # A Python package the engine imports is absent from VoiceStudio's
+    # environment. Not memory, not the GPU, not the network.
+    "ENGINE_DEPENDENCY_MISSING": "A Python package this engine needs is not installed in VoiceStudio's environment, so the engine could not start. Open Model Catalogue, select the engine and use Install / Repair, then restart VoiceStudio. If it still fails, switch to another engine and include the engine name in your report.",
     # HF_MIRROR_UNREACHABLE has a DYNAMIC hint (it names the configured mirror)
     # — see hf_mirror_hint(); build_failure special-cases it.
 }
@@ -486,6 +464,11 @@ _CONTEXT_FREE_HINT_CLASSES = frozenset({
     # Triggered by a VoiceStudio-authored sentence or ffmpeg's own no-stream
     # wording; it reaches the user through an upload's error response.
     "NO_AUDIO_TRACK",
+    # Each is matched on wording only that failure produces: a Python
+    # ModuleNotFoundError sentence and VoiceStudio's own reference-transcript
+    # sentence.
+    "ENGINE_DEPENDENCY_MISSING",
+    "REFERENCE_STT_MISSING",
 })
 
 
@@ -503,6 +486,10 @@ _TERMINAL_FAILURE_CLASSES = frozenset({
     "WINDOWS_APP_CONTROL_BLOCKED",
     # The same file has no audio on every retry.
     "NO_AUDIO_TRACK",
+    # A missing package or a missing transcript model does not appear between
+    # two renders of the same request.
+    "ENGINE_DEPENDENCY_MISSING",
+    "REFERENCE_STT_MISSING",
 })
 
 
@@ -952,6 +939,14 @@ def classify(reason: BaseException | str) -> str:
     # quote keeps a legitimately-named `omnivoice_*` helper from matching.
     if "no module named 'omnivoice'" in low:
         return "BROKEN_VENV"
+    # The reference clip has no transcript and no speech-to-text model exists to
+    # write one (omnivoice.models.omnivoice._ReferenceAsrNotInstalled).
+    if "automatic reference transcription needs an installed speech-to-text" in low:
+        return "REFERENCE_STT_MISSING"
+    # Last and narrowest-by-type: an engine imported a package that is not
+    # installed. Every earlier no-module rule (encodings, omnivoice) wins first.
+    if "no module named '" in low:
+        return "ENGINE_DEPENDENCY_MISSING"
     return ""
 
 
@@ -1369,9 +1364,27 @@ def build_failure(
     }
     if context:
         fields["context"] = {k: sanitize(str(v)) for k, v in context.items()}
+    licence = licence_required_detail(exc_or_msg)
+    if licence is not None:
+        # The client opens the acceptance dialog from these, not from the text.
+        fields["code"] = licence["code"]
+        fields["models"] = licence["models"]
     if include_diagnostic:
         fields["diagnostic"] = diagnostic(reason=reason, error_class=error_class, stage=stage)
     return fields
+
+
+def licence_required_detail(exc: Any) -> Optional[dict]:
+    """``ModelLicenceNotAccepted.detail()`` for ``exc`` or anything it was raised from."""
+    from services.model_acceptance import ModelLicenceNotAccepted
+
+    seen = 0
+    while isinstance(exc, BaseException) and seen < 8:
+        if isinstance(exc, ModelLicenceNotAccepted):
+            return exc.detail()
+        exc = exc.__cause__ or exc.__context__
+        seen += 1
+    return None
 
 
 def build_failure_event(

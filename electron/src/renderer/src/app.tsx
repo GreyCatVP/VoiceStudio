@@ -11,6 +11,7 @@ import { router } from './router';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { toast } from 'sonner';
 import { AnalyticsConsentBanner, AnalyticsRuntime } from '@/components/analytics-consent';
+import { CloudSyncRuntime } from '@/features/account/cloud-sync-runtime';
 import { getBridge } from '@/components/bridge';
 import { FirstSoundHandoff } from '@/components/first-sound-handoff';
 import { stepAppearanceScale } from '@/hooks/use-appearance';
@@ -20,6 +21,7 @@ import { RealtimeEventSync } from '@/hooks/use-realtime-events';
 import { GenerateBudgetSync } from '@/hooks/use-generate-budget-sync';
 import { runRendererTask } from '@/lib/global-error-recovery';
 import { WebAuthGate } from '@/components/web-auth-gate';
+import { ModelLicenceGate } from '@/features/settings/model-licence-acceptance';
 
 const notifiedUpdates = new Set<string>();
 
@@ -120,11 +122,13 @@ export function App() {
           <GenerateBudgetSync />
           <UpdateNotifier />
           <AnalyticsRuntime />
+          <CloudSyncRuntime />
           <AnalyticsConsentBanner />
           <GenerationProvider>
             <FirstSoundHandoff />
             <TooltipProvider>
               <RouterProvider router={router} />
+              <ModelLicenceGate />
               <Toaster richColors position="bottom-right" />
             </TooltipProvider>
           </GenerationProvider>
