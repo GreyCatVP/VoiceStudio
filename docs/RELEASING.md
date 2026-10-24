@@ -101,10 +101,17 @@ version only after validation.
    connection and clean shutdown, and removes the test profile. A setup-screen
    check alone is not evidence that runtime installation works.
 3. Verify a packaged launch and managed backend startup on the changed platforms.
-4. Rename `## [Unreleased]` in `CHANGELOG.md` to `## [X.Y.Z] — YYYY-MM-DD`.
+4. Fold the `changelog.d/` fragments into `## [Unreleased]` (`scripts/release.py` does this and deletes them; by hand: `uv run python scripts/changelog_fragments.py`), then rename `## [Unreleased]` in `CHANGELOG.md` to `## [X.Y.Z] — YYYY-MM-DD`.
    Lead with the largest user-visible change, keep Highlights to 3–5 bullets,
    include migration steps and real screenshots when relevant, and verify human
-   contributors and bug reporters from the tag comparison and included PRs.
+   contributors and bug reporters from the tag comparison and included PRs. The
+   release workflow adds a `### Contributors` block to the GitHub Release notes
+   by itself: everyone who committed since the latest stable release, plus the
+   authors of PRs merged in that span (ranked by commits; bots, AI agents and
+   unlinked placeholders are never listed). It does **not** find bug reporters,
+   and it skips the block when the changelog section already has a
+   `### Contributors` heading, so write one by hand when you want roles or
+   reporters credited.
 5. Run `uv run pytest tests/test_app_version.py tests/test_changelog_style.py -q`.
 6. Audit contributor agreements: `git fetch origin cla-signatures`, then
    `GH_TOKEN=... python scripts/cla_audit.py`. Follow up with each unsigned
@@ -146,8 +153,17 @@ only the workflow definition comes from `main`.
 
 Dispatch `electron-release.yml` for the exact tag with `publish=true`. Signing
 and notarization are required by default. The owner may explicitly set
-`allow_unsigned=true`; the workflow then adds the installer-trust disclosure to
-the release notes. Never select that exception without the owner's decision.
+`allow_unsigned=true`. Never select that exception without the owner's decision.
+Every build, published or not, verifies what each platform leg actually ships
+and the release notes open with an **Installer signing** table built from those
+checks (✅ signed and notarized, ⚠️ unsigned or ad hoc, with what users will
+see). A macOS bundle with an invalid signature always fails, and a platform
+whose signing credentials are configured fails if its installers are not signed
+with them, even with `allow_unsigned=true`.
+The owner can delegate it: accounts listed in the `UNSIGNED_RELEASE_PUBLISHERS`
+Actions variable (comma-separated logins, Settings → Secrets and variables →
+Actions → Variables; only admins can edit it) may also dispatch or re-run an
+unsigned publish. Remove a login to revoke it; an empty variable means owner only.
 
 Publishing the GitHub Release triggers the Docker workflow for that tag. Docker
 release tags are never built from a tag push, and `:latest` only ever tracks
@@ -187,13 +203,29 @@ type the tag name.
   beta copies it), runs the version guards, commits, pushes `main` and the tag.
   The tag push builds a draft release; nothing is public.
 - **Publish:** the same, then dispatches `electron-release.yml` with
-  `publish=true`. If the Mac/Windows signing secrets are missing or unreadable it
-  stops unless you explicitly accept unsigned installers.
+  `publish=true`. It lists which platforms have signing secrets (macOS needs the
+  Developer ID and notarization set, Windows needs `ELECTRON_WINDOWS_CSC_LINK` and
+  its password) and, for any platform without them, stops unless you explicitly
+  accept shipping that platform unsigned. The dispatch's `allow_unsigned` flag
+  only accepts platforms without credentials: a platform with signing configured
+  must still produce signed installers, and the notes' **Installer signing**
+  table shows each platform's measured result.
 - `--publish vX.Y.Z[-beta.N]` (`make release-publish TAG=…`) publishes an existing
   draft build later.
 - `--dry-run` (`make release-dry`) prints the plan and changes nothing.
 
 It does not replace the post-release verification below; run it every time.
+
+## Mobile apps
+
+Phone apps ship on their own `mobile-v*` tags through the `mobile-release`
+workflow (a draft GitHub prerelease with the APK, AAB and IPAs; store uploads use
+the TestFlight and Play internal workflows). The version is the root `package.json` version and each run's
+number is the store build number. Setup, secrets and sideloading: `docs/mobile.md`
+→ Releasing. Publishing the draft and promoting the store builds are manual.
+Publish it as a prerelease that is not `latest`; the desktop app's update checks
+and release list read only desktop tags (`vX.Y.Z` and `vX.Y.Z-beta.N`), so
+`mobile-v*` releases never reach them.
 
 ## Beta channel
 
@@ -264,3 +296,17 @@ published release.
 Clients only accept newer versions. To roll back, fix or revert the code, choose
 a higher patch version with owner approval, test it, and publish that version.
 Do not move or recreate an existing tag.
+
+## Merge queue (maintainers)
+
+With "Require branches to be up to date" on, every merge to `main` puts every other open PR behind, and each needs an update plus a full CI run. The merge queue replaces that: a PR that passes its checks joins the queue, GitHub builds a temporary commit of `main` plus the queued PRs, runs CI once on it, and merges.
+
+The workflows are ready: `ci.yml` runs on `merge_group`, and `merge-queue-checks.yml` reports the PR-level required checks ("CLA gate", "Commit identities", "CLA", "Commit identity policy") on the queue's commit, because they cannot run there. `tests/test_merge_queue.py` keeps those names equal to the ruleset's required list; change both together.
+
+To turn it on (Settings → Rules → Rulesets → `main`):
+
+1. Add **Require merge queue**: method *Merge commit*, build concurrency 1–3, minimum group size 1, wait time 0–5 minutes, status check timeout 60 minutes.
+2. Under **Require status checks to pass**, untick **Require branches to be up to date before merging**; the queue makes it unnecessary.
+3. Merge PRs with **Merge when ready** (the queue button) instead of **Merge**. `gh pr merge N --merge` joins the queue once it is on.
+
+Try it on one PR first. If a queued PR stalls, a required check name in the ruleset no longer matches a job or status the queue commit reports: compare the ruleset with `tests/test_merge_queue.py`.

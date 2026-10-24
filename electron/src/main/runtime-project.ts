@@ -76,8 +76,42 @@ export const CPU_TORCH_ARGS = [
 export const WIN_ARM64_PYTHON_REQUEST = 'cpython-3.11-windows-x86_64';
 export const RUNTIME_REPAIR_PACKAGES = ['torch', 'torchaudio', 'torchvision'] as const;
 export const RUNTIME_NATIVE_IMPORT_PROBE = 'import torch, torchaudio, torchvision';
-export const RUNTIME_IMPORT_PROBE =
-  'import fastapi, uvicorn, omnivoice, faster_whisper, sentencepiece, torch, torchaudio, torchvision';
+const RUNTIME_IMPORT_MODULES = [
+  'fastapi',
+  'uvicorn',
+  'omnivoice',
+  'faster_whisper',
+  'sentencepiece',
+  'torch',
+  'torchaudio',
+  'torchvision',
+] as const;
+const IMPORT_MARKER = 'VOICESTUDIO_IMPORT=';
+/**
+ * Imports every runtime module, announcing each one first. A native import that
+ * dies with an access violation (exit code 3221225477) leaves no traceback, so
+ * the last announcement is the only evidence of which module crashed (#3293).
+ */
+export const RUNTIME_IMPORT_PROBE = RUNTIME_IMPORT_MODULES.map(
+  (name) => `print('${IMPORT_MARKER}${name}', flush=True)\nimport ${name}`,
+).join('\n');
+/** The module an import probe was loading when its output stopped, if it said. */
+export function lastImportAttempted(output: unknown): string | null {
+  const marked = String(output ?? '')
+    .split(/\r?\n/)
+    .filter((line) => line.startsWith(IMPORT_MARKER))
+    .at(-1);
+  return marked ? marked.slice(IMPORT_MARKER.length).trim() || null : null;
+}
+function importFailure(error: unknown): Error {
+  const failure = error as { code?: unknown; message?: unknown; stdout?: unknown } | null;
+  const module = lastImportAttempted(failure?.stdout);
+  if (!module) return error instanceof Error ? error : new Error(String(error));
+  return Object.assign(
+    new Error(`${String(failure?.message)}; the import check stopped while importing "${module}"`),
+    { code: failure?.code, stdout: failure?.stdout },
+  );
+}
 const RUNTIME_SCHEMA = 'electron-runtime-v2-cudnn8';
 const CUDNN8_PROBE_PREFIX = 'VOICESTUDIO_CUDNN8_PROBE=';
 const REQUIRED_ENV_BYTES = 9 * 1024 ** 3;
@@ -418,9 +452,13 @@ export async function runtimeDependenciesReady(
         maxBuffer: 256 * 1024,
         env,
       },
-      (error, _stdout, stderr) => {
+      (error, stdout, stderr) => {
         const ready = !error || probeTimedOut(error);
-        if (!ready) onFailure?.(probeFailureDetail(error, stderr));
+        if (!ready) {
+          const module = lastImportAttempted(stdout);
+          const detail = probeFailureDetail(error, stderr);
+          onFailure?.(module && !String(stderr ?? '').trim() ? `${detail} (importing ${module})` : detail);
+        }
         resolve(ready);
       },
     );
@@ -764,7 +802,11 @@ export async function installRuntime(
   // startup on a non-UTF-8 Windows code page (#1783).
   await asciiSafePthFiles(join(project, '.venv')).catch(() => []);
   phase('verifying');
-  await run(runtimePython(project), ['-c', RUNTIME_IMPORT_PROBE], project);
+  try {
+    await run(runtimePython(project), ['-c', RUNTIME_IMPORT_PROBE], project);
+  } catch (error) {
+    throw importFailure(error);
+  }
   signal.throwIfAborted();
   await writeFile(join(project, '.runtime-ready'), await dependencyStamp(bundle, torch.variant));
   await rm(join(project, '.runtime-installing'), { force: true });

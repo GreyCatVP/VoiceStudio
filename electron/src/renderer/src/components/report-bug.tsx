@@ -117,7 +117,10 @@ export function ReportBug({ error }: { error?: Error | string }) {
         nativeStatus.status === 'fulfilled' && nativeStatus.value
           ? nativeStatus.value
           : cachedBackend;
-      const context = ['**App:** VoiceStudio ' + __APP_VERSION__, '**Shell:** Electron'];
+      const context = [
+        `**App:** VoiceStudio ${__APP_VERSION__} (build ${__BUILD_COMMIT__})`,
+        '**Shell:** Electron',
+      ];
       if (staleBuild) {
         context.push(
           `**Build status:** OUTDATED — v${staleBuild.latest} was already available when this was filed`,
@@ -126,6 +129,7 @@ export function ReportBug({ error }: { error?: Error | string }) {
       if (system.status === 'fulfilled') {
         for (const key of [
           'platform',
+          'build_commit',
           'arch',
           'os_version',
           'python',
