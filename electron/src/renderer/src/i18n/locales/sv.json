@@ -3799,7 +3799,7 @@
       "capture_slow": "Telefonen hann inte bearbeta mikrofonljudet. Stäng andra appar eller använd din dator.",
       "preset_voice": "Röst {{number}}",
       "transfer": "{{received}} av {{total}}",
-      "privacy": "Uppgifter på enheten stannar på telefonen. Bara modellnedladdningar och din parkopplade dator använder nätverket.",
+      "privacy": "Uppgifter på enheten stannar på telefonen. Bara modellnedladdningar, rapporter som du väljer att skicka och din parkopplade dator använder nätverket.",
       "computer_feature": "Den här funktionen körs just nu på din dator. Du kan använda Tala och Diktering på telefonen utan parkoppling.",
       "accepted": "Licens godkänd",
       "not_accepted": "Licens inte godkänd",

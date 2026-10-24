@@ -3799,7 +3799,7 @@
       "capture_slow": "Bu telefon mikrofon sesini yeterince hızlı işleyemedi. Diğer uygulamaları kapatın veya bilgisayarınızı kullanın.",
       "preset_voice": "Ses {{number}}",
       "transfer": "{{received}} / toplam {{total}}",
-      "privacy": "Cihaz içi görevler bu telefonda kalır. Yalnızca model indirmeleri ve eşleştirilmiş bilgisayarınız ağı kullanır.",
+      "privacy": "Cihaz içi görevler bu telefonda kalır. Yalnızca model indirmeleri, göndermeyi seçtiğiniz bildirimler ve eşleştirilmiş bilgisayarınız ağı kullanır.",
       "computer_feature": "Bu özellik şu anda bilgisayarınızda çalışır. Konuş ve Dikte'yi eşleştirmeden bu telefonda kullanabilirsiniz.",
       "accepted": "Lisans kabul edildi",
       "not_accepted": "Lisans kabul edilmedi",

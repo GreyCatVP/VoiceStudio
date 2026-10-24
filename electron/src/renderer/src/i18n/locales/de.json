@@ -3799,7 +3799,7 @@
       "capture_slow": "Dieses Telefon konnte das Mikrofonaudio nicht schnell genug verarbeiten. Beende andere Apps oder nutze deinen Computer.",
       "preset_voice": "Stimme {{number}}",
       "transfer": "{{received}} von {{total}}",
-      "privacy": "Aufgaben auf dem Gerät bleiben auf diesem Telefon. Nur Modell-Downloads und dein gekoppelter Computer nutzen das Netzwerk.",
+      "privacy": "Aufgaben auf dem Gerät bleiben auf diesem Telefon. Nur Modell-Downloads, Meldungen, die du sendest, und dein gekoppelter Computer nutzen das Netzwerk.",
       "computer_feature": "Diese Funktion läuft derzeit auf deinem Computer. Sprechen und Diktat funktionieren auf diesem Telefon ohne Kopplung.",
       "accepted": "Lizenz akzeptiert",
       "not_accepted": "Lizenz nicht akzeptiert",
