@@ -2906,6 +2906,7 @@
     "host_memory_exhausted": "De computer heeft geen geheugen meer. Sluit andere geheugenintensieve apps en browsertabs, ontlaad ongebruikte modellen, genereer een kortere passage of kies een lichtere TTS-engine.",
     "engine_dependency_missing": "Een Python-pakket dat deze engine nodig heeft is niet geïnstalleerd, dus de engine kon niet starten. Open de Modelcatalogus, selecteer de engine en gebruik Installeren / Repareren en start VoiceStudio daarna opnieuw.",
     "reference_stt_missing": "Deze stem heeft geen transcriptie en er is geen spraak-naar-tekstmodel geïnstalleerd om er een te maken. Typ wat de referentieclip zegt in het transcriptievak (clips tot 20 seconden) of installeer een spraak-naar-tekstmodel in de Modelcatalogus, selecteer het en genereer opnieuw.",
+    "install_speech_model": "Spraakherkenningsmodel installeren",
     "proxy_gateway_error": "Een proxy of gateway tussen jou en VoiceStudio antwoordde met HTTP {{status}} in plaats van de backend. De backend is mogelijk nog bezig. Verhoog de lees-timeout van de proxy (bij nginx proxy_read_timeout) voor lange generaties en controleer daarna Instellingen → Logboeken → Backend.",
     "route_not_found": "De draaiende VoiceStudio-backend heeft geen {{route}}-endpoint. Start VoiceStudio opnieuw zodat app en backend overeenkomen; blijft het probleem, werk dan beide bij naar dezelfde versie."
   },
@@ -3862,6 +3863,28 @@
     },
     "consent": {
       "phone_note": "Opgeslagen op deze telefoon. Er wordt niets verzonden."
+    },
+    "report": {
+      "action": "Melden",
+      "title": "Dit resultaat melden",
+      "reason": "Wat is er mis mee?",
+      "reasons": {
+        "sexual": "Seksuele inhoud",
+        "hateful": "Haatdragend of beledigend",
+        "impersonation": "Imitatie of een stem gekloond zonder toestemming",
+        "misleading": "Misleidend of schadelijk",
+        "other": "Iets anders"
+      },
+      "note": "Details (optioneel)",
+      "include_text": "De tekst die ik invoerde meesturen",
+      "disclosure": "Stuurt je reden, notitie, de app-versie en het gebruikte model naar het VoiceStudio-team. Er wordt geen audio, account of apparaat-ID verstuurd.",
+      "send": "Melding versturen",
+      "sending": "Versturen…",
+      "sent": "Melding verstuurd. Bedankt.",
+      "failed": "De melding kon niet worden verstuurd. Controleer je verbinding en probeer het opnieuw.",
+      "retry": "Opnieuw proberen",
+      "rate_limited": "Te veel meldingen vanaf dit netwerk. Probeer het later opnieuw.",
+      "invalid": "Deze melding kon niet worden verstuurd. Werk de app bij en probeer het opnieuw."
     }
   }
 }

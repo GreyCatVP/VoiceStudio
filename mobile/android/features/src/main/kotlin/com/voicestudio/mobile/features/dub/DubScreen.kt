@@ -154,8 +154,11 @@ import java.io.File
                 }
             }
             val job=info.outputData.getString("job") ?: info.progress.getString("job")
-            if(info.state==WorkInfo.State.SUCCEEDED&&job!=null) Secondary("mobile.dub.download",!state.busy) {
-                vm.run {shareFile(context,sharedDownload(context,vm.api!!,"/dub/download/${VoiceStudioApi.segment(job)}",if(inputType=="audio") "m4a" else "mkv"),"application/octet-stream")}
+            if(info.state==WorkInfo.State.SUCCEEDED&&job!=null) {
+                Secondary("mobile.dub.download",!state.busy) {
+                    vm.run {shareFile(context,sharedDownload(context,vm.api!!,"/dub/download/${VoiceStudioApi.segment(job)}",if(inputType=="audio") "m4a" else "mkv"),"application/octet-stream")}
+                }
+                ReportButton(vm) {ReportSubjects.computerDub(job)}
             }
             }}
             HorizontalDivider()
@@ -173,7 +176,8 @@ import java.io.File
                         savePath=file.absolutePath
                         save.launch(item.filename.substringBeforeLast('.').ifBlank {item.id}+"."+file.extension)
                     }},
-                    share={vm.run {shareFile(context,sharedDownload(context,vm.api!!,dubDownloadPath(job),"mkv"),"application/octet-stream")}})
+                    share={vm.run {shareFile(context,sharedDownload(context,vm.api!!,dubDownloadPath(job),"mkv"),"application/octet-stream")}},
+                    report=if(LocalContentReportClient.current!=null) {{vm.reports.open(ReportSubjects.computerDub(job))}} else null)
                 if(index<state.dubHistory.lastIndex) HorizontalDivider()
             }
         }
@@ -205,7 +209,7 @@ private fun dubDownloadPath(job: String) = "/dub/download/${VoiceStudioApi.segme
     }
 }
 
-@Composable fun DubHistoryRow(item: DubHistory, enabled: Boolean, download: ()->Unit, share: ()->Unit) {
+@Composable fun DubHistoryRow(item: DubHistory, enabled: Boolean, download: ()->Unit, share: ()->Unit, report: (()->Unit)? = null) {
     val name=item.filename.ifBlank {item.id}
     Row(Modifier.fillMaxWidth().padding(VSTheme.inset),verticalAlignment=Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
@@ -216,5 +220,6 @@ private fun dubDownloadPath(job: String) = "/dub/download/${VoiceStudioApi.segme
         }
         IconAction("mobile.dub.download_file",VSIcons.Download,enabled,mapOf("name" to name),download)
         IconAction("mobile.dub.share_file",Icons.Default.Share,enabled,mapOf("name" to name),share)
+        report?.let {IconAction("mobile.report.action",Icons.Default.Warning,onClick=it)}
     }
 }

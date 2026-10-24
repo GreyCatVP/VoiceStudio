@@ -65,6 +65,15 @@ run are shown greyed out with the reason.
 Plain `http://` works only for addresses on your own network (home Wi-Fi,
 `.local`, Tailscale); everything else must be `https://`.
 
+## Report a result
+
+Every generated result (a Speak take, a cloned voice, a finished dub) has a
+**Report** action. Pick what's wrong, optionally add a note or the text you
+typed, and tap **Send report**. It sends only the reason, your note, that text
+if you ticked it, the app version and the model that made the result to the
+VoiceStudio team; no audio, account or device ID. Nothing is sent until you tap
+Send, and reports are deleted after 180 days.
+
 ## If something doesn't work
 
 - **"Accept the licence on your computer"**: some models need their licence
@@ -144,7 +153,8 @@ number and attempt, so every upload is new.
 The `Android Play internal testing` workflow is the Android counterpart: it
 signs a release bundle with the Play upload key and uploads it to the Play
 Console **internal testing** track. It is dispatched by hand from `main` and
-never sends a release to production. One-time setup:
+never sends a release to production. The store listing, graphics and Play Console
+answers are in [`store/google-play.md`](../store/google-play.md). One-time setup:
 
 1. Create the app in the Play Console with the package name
    `sh.voicestudio.mobile` and keep Play App Signing on (Google holds the app

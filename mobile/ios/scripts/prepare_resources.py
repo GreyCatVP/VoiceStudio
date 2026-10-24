@@ -123,6 +123,8 @@ def prepare(output, info):
     version = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["version"]
     data = plistlib.loads((IOS / "VoiceStudio/Info.plist").read_bytes())
     data["CFBundleShortVersionString"] = marketing_version(version)
+    # The full root version (X.Y.Z or X.Y.Z-beta.N), which content reports send as app_version.
+    data["VoiceStudioAppVersion"] = version
     data["CFBundleVersion"] = build_number(os.environ.get("VOICESTUDIO_IOS_BUILD_NUMBER", "1"))
     data["CFBundleLocalizations"] = sorted(path.stem for path in source.glob("*.json"))
     for field, keys in permissions.items():

@@ -155,7 +155,7 @@ Dispatch `electron-release.yml` for the exact tag with `publish=true`. Signing
 and notarization are required by default. The owner may explicitly set
 `allow_unsigned=true`. Never select that exception without the owner's decision.
 Every build, published or not, verifies what each platform leg actually ships
-and the release notes end with an **Installer signing** table built from those
+and the release notes open with an **Installer signing** table built from those
 checks (✅ signed and notarized, ⚠️ unsigned or ad hoc, with what users will
 see). A macOS bundle with an invalid signature always fails, and a platform
 whose signing credentials are configured fails if its installers are not signed

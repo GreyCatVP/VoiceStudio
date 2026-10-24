@@ -2906,6 +2906,7 @@
     "host_memory_exhausted": "Komputer kehabisan memori. Tutup aplikasi dan tab peramban lain yang boros memori, bongkar model yang tidak dipakai, buat bagian yang lebih pendek, atau pilih mesin TTS yang lebih ringan.",
     "engine_dependency_missing": "Paket Python yang dibutuhkan mesin ini belum terpasang, sehingga mesin tidak bisa dimulai. Buka Katalog Model, pilih mesin lalu gunakan Pasang / Perbaiki, kemudian mulai ulang VoiceStudio.",
     "reference_stt_missing": "Suara ini tidak punya transkrip dan tidak ada model ucapan-ke-teks yang terpasang untuk membuatnya. Ketik isi klip referensi di kotak transkrip (klip hingga 20 detik), atau pasang model ucapan-ke-teks di Katalog Model, pilih, lalu buat lagi.",
+    "install_speech_model": "Instal model ucapan-ke-teks",
     "proxy_gateway_error": "Proxy atau gateway di antara Anda dan VoiceStudio menjawab HTTP {{status}} menggantikan backend. Backend mungkin masih bekerja. Naikkan batas waktu baca proxy (di nginx, proxy_read_timeout) untuk pembuatan yang panjang, lalu periksa Pengaturan → Log → Backend.",
     "route_not_found": "Backend VoiceStudio yang berjalan tidak memiliki endpoint {{route}}. Mulai ulang VoiceStudio agar aplikasi dan backend cocok; jika masih terjadi, perbarui keduanya ke versi yang sama."
   },
@@ -3862,6 +3863,28 @@
     },
     "consent": {
       "phone_note": "Disimpan di ponsel ini. Tidak ada yang dikirim."
+    },
+    "report": {
+      "action": "Laporkan",
+      "title": "Laporkan hasil ini",
+      "reason": "Apa masalahnya?",
+      "reasons": {
+        "sexual": "Konten seksual",
+        "hateful": "Kebencian atau pelecehan",
+        "impersonation": "Peniruan identitas atau suara yang dikloning tanpa izin",
+        "misleading": "Menyesatkan atau berbahaya",
+        "other": "Lainnya"
+      },
+      "note": "Detail (opsional)",
+      "include_text": "Sertakan teks yang saya masukkan",
+      "disclosure": "Mengirim alasan, catatan, versi aplikasi, dan model yang membuat ini ke tim VoiceStudio. Tidak ada audio, akun, atau ID perangkat yang dikirim.",
+      "send": "Kirim laporan",
+      "sending": "Mengirim…",
+      "sent": "Laporan terkirim. Terima kasih.",
+      "failed": "Laporan tidak dapat dikirim. Periksa koneksi Anda dan coba lagi.",
+      "retry": "Coba lagi",
+      "rate_limited": "Terlalu banyak laporan dari jaringan ini. Coba lagi nanti.",
+      "invalid": "Laporan ini tidak dapat dikirim. Perbarui aplikasi dan coba lagi."
     }
   }
 }

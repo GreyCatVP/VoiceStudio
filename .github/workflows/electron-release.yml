@@ -347,7 +347,9 @@ jobs:
           gh api -H "Accept: application/vnd.github.raw" \
             "repos/$GITHUB_REPOSITORY/contents/scripts/release_signing_notes.py?ref=$GITHUB_SHA" \
             > "$RUNNER_TEMP/release_signing_notes.py"
-          python3 "$RUNNER_TEMP/release_signing_notes.py" release-signing >> release-assets/RELEASE_NOTES.md
+          # The table leads the notes so downloaders see it before the changelog.
+          { python3 "$RUNNER_TEMP/release_signing_notes.py" release-signing; echo; cat release-assets/RELEASE_NOTES.md; } > "$RUNNER_TEMP/RELEASE_NOTES.md"
+          mv "$RUNNER_TEMP/RELEASE_NOTES.md" release-assets/RELEASE_NOTES.md
       - name: Create or update draft
         run: |
           # A beta is always a prerelease so GitHub never makes it `latest`.

@@ -422,6 +422,15 @@ Zipformer transcript. The `android-inference` job in `.github/workflows/mobile.y
 runs this smoke on an x86_64 emulator with explicit test-model provisioning;
 physical-device validation remains separate.
 
+`PlayScreenshotTour` captures the Google Play phone screenshots from the real
+app: it runs only with `playScreenshots=true`, provisions the smallest TTS model
+into the app's own model store with the same explicit `downloadSmokeModels` and
+`acceptModelLicencesForSmoke` flags, declines analytics, generates one take on
+the phone and saves `01-home.png` … `07-settings.png` to the app's external files
+directory (`play-screenshots/`). It asserts Play's size rules, so use a 16:9
+device; the `android-screenshots` job uses the Nexus 5X profile and uploads the
+`android-play-screenshots` artifact.
+
 `cloneInferenceSmoke=true` adds real WAV decoding, Whisper reference creation
 and OmniVoice cloning, including persisted rename/delete. `dubInferenceSmoke=true`
 adds an audio dub through real Whisper, llama and OmniVoice. Both use explicit

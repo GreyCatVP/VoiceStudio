@@ -2908,6 +2908,7 @@
     "host_memory_exhausted": "El equipo se quedó sin memoria. Cierra otras apps y pestañas del navegador que consuman memoria, libera los modelos que no uses, genera un fragmento más corto o elige un motor TTS más ligero.",
     "engine_dependency_missing": "Falta instalar un paquete de Python que necesita este motor, por lo que no pudo iniciarse. Abre el Catálogo de modelos, selecciona el motor y usa Instalar / Reparar; luego reinicia VoiceStudio.",
     "reference_stt_missing": "Esta voz no tiene transcripción y no hay ningún modelo de voz a texto instalado para crearla. Escribe lo que dice el clip de referencia en el cuadro de transcripción (clips de hasta 20 segundos) o instala un modelo de voz a texto en el Catálogo de modelos, selecciónalo y genera de nuevo.",
+    "install_speech_model": "Instalar modelo de voz a texto",
     "proxy_gateway_error": "Un proxy o puerta de enlace entre tú y VoiceStudio respondió HTTP {{status}} en lugar del backend. Puede que el backend siga trabajando. Aumenta el tiempo de espera de lectura del proxy (en nginx, proxy_read_timeout) para generaciones largas y revisa Ajustes → Registros → Backend.",
     "route_not_found": "El backend de VoiceStudio en ejecución no tiene el endpoint {{route}}. Reinicia VoiceStudio para que la app y el backend coincidan; si persiste, actualiza ambos a la misma versión."
   },
@@ -3864,6 +3865,28 @@
     },
     "consent": {
       "phone_note": "Guardado en este teléfono. No se envía nada."
+    },
+    "report": {
+      "action": "Denunciar",
+      "title": "Denunciar este resultado",
+      "reason": "¿Qué problema tiene?",
+      "reasons": {
+        "sexual": "Contenido sexual",
+        "hateful": "Odio o abuso",
+        "impersonation": "Suplantación o voz clonada sin consentimiento",
+        "misleading": "Engañoso o dañino",
+        "other": "Otra cosa"
+      },
+      "note": "Detalles (opcional)",
+      "include_text": "Incluir el texto que escribí",
+      "disclosure": "Envía tu motivo, tu nota, la versión de la app y el modelo que lo generó al equipo de VoiceStudio. No se envía audio, cuenta ni ID del dispositivo.",
+      "send": "Enviar denuncia",
+      "sending": "Enviando…",
+      "sent": "Denuncia enviada. Gracias.",
+      "failed": "No se pudo enviar la denuncia. Comprueba tu conexión e inténtalo de nuevo.",
+      "retry": "Reintentar",
+      "rate_limited": "Demasiadas denuncias desde esta red. Inténtalo más tarde.",
+      "invalid": "No se pudo enviar esta denuncia. Actualiza la app e inténtalo de nuevo."
     }
   }
 }

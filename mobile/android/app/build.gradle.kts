@@ -37,6 +37,11 @@ android {
         }
         buildTypes.getByName("release").signingConfig = signingConfigs.getByName("upload")
     }
+    // Content reports (mobile/contract/SPEC.md): debug builds never reach the production app API.
+    buildTypes {
+        getByName("debug") { buildConfigField("String", "CONTENT_REPORTS_URL", "\"https://dev-appapi.voicestudio.sh\"") }
+        getByName("release") { buildConfigField("String", "CONTENT_REPORTS_URL", "\"https://appapi.voicestudio.sh\"") }
+    }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     testOptions { unitTests.isIncludeAndroidResources = true }
@@ -108,6 +113,8 @@ dependencies {
     androidTestImplementation(libs.test.runner)
     androidTestImplementation(libs.test.ext.junit)
     androidTestImplementation(libs.test.core)
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.test)
     debugImplementation(libs.compose.test.manifest)
 }
 

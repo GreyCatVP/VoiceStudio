@@ -2906,6 +2906,7 @@
     "host_memory_exhausted": "Máy tính đã hết bộ nhớ. Hãy đóng các ứng dụng và thẻ trình duyệt khác dùng nhiều bộ nhớ, gỡ các mô hình không dùng, tạo đoạn ngắn hơn hoặc chọn công cụ TTS nhẹ hơn.",
     "engine_dependency_missing": "Một gói Python mà công cụ này cần chưa được cài đặt nên công cụ không thể khởi động. Hãy mở Danh mục mô hình, chọn công cụ và dùng Cài đặt / Sửa chữa, rồi khởi động lại VoiceStudio.",
     "reference_stt_missing": "Giọng này không có bản chép lời và chưa cài mô hình chuyển giọng nói thành văn bản để tạo bản chép. Hãy nhập nội dung đoạn âm thanh tham chiếu vào ô bản chép lời (đoạn tối đa 20 giây), hoặc cài mô hình chuyển giọng nói thành văn bản trong Danh mục mô hình, chọn nó rồi tạo lại.",
+    "install_speech_model": "Cài đặt mô hình chuyển giọng nói thành văn bản",
     "proxy_gateway_error": "Một proxy hoặc cổng giữa bạn và VoiceStudio đã trả lời HTTP {{status}} thay cho backend. Backend có thể vẫn đang xử lý. Hãy tăng thời gian chờ đọc của proxy (với nginx là proxy_read_timeout) cho các lần tạo dài, rồi kiểm tra Cài đặt → Nhật ký → Backend.",
     "route_not_found": "Backend VoiceStudio đang chạy không có điểm cuối {{route}}. Hãy khởi động lại VoiceStudio để ứng dụng và backend khớp nhau; nếu vẫn lỗi, hãy cập nhật cả hai lên cùng một phiên bản."
   },
@@ -3862,6 +3863,28 @@
     },
     "consent": {
       "phone_note": "Lưu trên điện thoại này. Không gửi gì cả."
+    },
+    "report": {
+      "action": "Báo cáo",
+      "title": "Báo cáo kết quả này",
+      "reason": "Có vấn đề gì?",
+      "reasons": {
+        "sexual": "Nội dung tình dục",
+        "hateful": "Thù ghét hoặc lăng mạ",
+        "impersonation": "Mạo danh hoặc giọng nói bị nhân bản khi chưa được đồng ý",
+        "misleading": "Gây hiểu lầm hoặc có hại",
+        "other": "Lý do khác"
+      },
+      "note": "Chi tiết (không bắt buộc)",
+      "include_text": "Kèm văn bản tôi đã nhập",
+      "disclosure": "Gửi lý do, ghi chú, phiên bản ứng dụng và mô hình đã tạo nội dung này đến nhóm VoiceStudio. Không gửi âm thanh, tài khoản hay ID thiết bị.",
+      "send": "Gửi báo cáo",
+      "sending": "Đang gửi…",
+      "sent": "Đã gửi báo cáo. Cảm ơn bạn.",
+      "failed": "Không thể gửi báo cáo. Hãy kiểm tra kết nối và thử lại.",
+      "retry": "Thử lại",
+      "rate_limited": "Quá nhiều báo cáo từ mạng này. Hãy thử lại sau.",
+      "invalid": "Không thể gửi báo cáo này. Hãy cập nhật ứng dụng và thử lại."
     }
   }
 }
