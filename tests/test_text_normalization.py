@@ -132,6 +132,10 @@ _CHANGE_CASES = [
     ("English", "___bold___ here", "bold here"),
     # Nested spans resolve fully, so a second pass is a no-op
     ("English", "**outer **inner** outer**", "outer inner outer"),
+    # Escaped markers are literal text and stay put
+    (None, "\\*literal\\* word", "\\*literal\\* word"),
+    # Removing markers must not leave punctuation above the repeat cap
+    (None, "wow!*!*!*!*!", "wow!!!"),
 ]
 
 

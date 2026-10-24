@@ -345,6 +345,14 @@ def _delim_tokens(text: str, ch: str) -> list[tuple[int, int, int, int]]:
     toks: list[tuple[int, int, int, int]] = []
     for m in re.finditer(re.escape(ch) + "+", text):
         rs, re_ = m.start(), m.end()
+        # ``\*`` is an escaped literal: the first marker of the run is text.
+        k = rs
+        while k > 0 and text[k - 1] == "\\":
+            k -= 1
+        if (rs - k) % 2:
+            rs += 1
+            if rs >= re_:
+                continue
         s, n = rs, re_ - rs
         while n > 3:
             toks.append((s, 2, rs, re_))
@@ -422,7 +430,11 @@ def _strip_markdown_emphasis(text: str) -> str:
             toks = [t for t in _delim_tokens(out, ch) if t[1] == L]
             out = _delete_spans(out, sorted(_pair_spans(out, toks, guarded)))
     # One pass: a replace per span rescans the whole text (quadratic).
-    return _MASK_RE.sub(lambda m: spans[int(m.group(1))], out)
+    result = _MASK_RE.sub(lambda m: spans[int(m.group(1))], out)
+    if result != text:
+        # Removing markers can join punctuation ("!*!*!" -> "!!!!!"): re-cap.
+        result = _REPEAT_RE.sub(lambda m: m.group(1) * 3, result)
+    return result
 
 
 def _strip_unsafe_controls(text: str) -> str:
