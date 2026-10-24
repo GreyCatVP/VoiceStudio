@@ -65,9 +65,77 @@ def test_every_package_leg_reports_and_mac_check_ignores_allow_unsigned():
     assert steps["Save the signing report"]["with"]["name"] == "electron-signing-${{ matrix.platform }}-${{ matrix.arch }}"
 
 
+def test_mac_package_discovers_the_imported_developer_id(tmp_path):
+    # electron-builder's findIdentity returns null without a lookup when discovery is
+    # off and no identity is named, so a supplied certificate was silently ignored.
+    import os
+    import subprocess
+    package = next(s for s in load_workflow()["jobs"]["package"]["steps"] if s.get("name") == "Package without publishing")
+    script = package["run"].split("set -o pipefail")[0].replace("${{ matrix.platform }}", "darwin")
+    for link, expected in [("base64-p12", "true"), ("", "false")]:
+        env = dict(os.environ, CSC_LINK=link, CSC_KEY_PASSWORD="x", CSC_IDENTITY_AUTO_DISCOVERY="false", PUBLISH="false")
+        out = subprocess.run(["bash", "-e", "-c", script + 'echo "$CSC_IDENTITY_AUTO_DISCOVERY"'],
+                             env=env, capture_output=True, text=True, check=True).stdout.strip()
+        assert out == expected, link
+
+
 def test_release_notes_are_built_from_the_reports():
     steps = load_workflow()["jobs"]["release"]["steps"]
     describe = next(step for step in steps if step.get("name") == "Describe installer signing per platform")
     assert "if" not in describe
-    assert describe["run"] == "python3 scripts/release_signing_notes.py release-signing >> release-assets/RELEASE_NOTES.md"
     assert not any("Electron installer trust" in step.get("run", "") for step in steps)
+
+
+def test_release_notes_helper_comes_from_the_workflow_commit(tmp_path):
+    # Rebuilding an older tag from main checks out a tag without the helper (#3241 review).
+    import os
+    import subprocess
+    steps = load_workflow()["jobs"]["release"]["steps"]
+    describe = next(step for step in steps if step.get("name") == "Describe installer signing per platform")
+    assert "python3 scripts/" not in describe["run"]
+    fake = tmp_path / "bin"
+    fake.mkdir()
+    (fake / "gh").write_text(
+        '#!/bin/sh\ncase "$*" in *"contents/scripts/release_signing_notes.py?ref=workflow-sha"*) '
+        f'cat "{ROOT / "scripts/release_signing_notes.py"}";; *) exit 1;; esac\n'
+    )
+    (fake / "gh").chmod(0o755)
+    work = tmp_path / "tag-checkout"
+    (work / "release-signing").mkdir(parents=True)
+    (work / "release-assets").mkdir()
+    (work / "release-assets/RELEASE_NOTES.md").write_text("**Highlights**\n")
+    write(work / "release-signing", "linux", "x64", "not-applicable")
+    env = dict(os.environ, PATH=f"{fake}{os.pathsep}{os.environ['PATH']}", GITHUB_SHA="workflow-sha",
+               GITHUB_REPOSITORY="debpalash/VoiceStudio", RUNNER_TEMP=str(tmp_path))
+    subprocess.run(["bash", "-e", "-c", describe["run"]], cwd=work, env=env, check=True)
+    text = (work / "release-assets/RELEASE_NOTES.md").read_text()
+    # The table leads the notes; the changelog follows unchanged.
+    assert "| Linux x64 |" in text
+    assert text.index("### Installer signing") < text.index("**Highlights**")
+
+
+@pytest.mark.parametrize("failures,message,calls,ok", [
+    (1, "Failed to staple your application with code: 68", 2, True),
+    (2, "Failed to staple your application with code: 68", 2, False),
+    (1, "codesign failed", 1, False),
+])
+def test_package_builds_again_only_when_stapling_fails(tmp_path, failures, message, calls, ok):
+    # A dropped connection to Apple's ticket server failed beta.2 after notarization.
+    import os
+    import subprocess
+    package = next(s for s in load_workflow()["jobs"]["package"]["steps"] if s.get("name") == "Package without publishing")
+    script = package["run"].split('if [ "$RUNNER_OS" = Linux ]')[0]
+    script = script.replace("${{ matrix.platform }}", "darwin").replace("${{ matrix.flags }}", "--mac")
+    fake = tmp_path / "bin"
+    fake.mkdir()
+    count = tmp_path / "calls"
+    (fake / "bun").write_text(
+        f'#!/bin/sh\necho x >> "{count}"\n'
+        f'[ "$(wc -l < "{count}")" -gt {failures} ] && exit 0\necho "{message}"; exit 1\n'
+    )
+    (fake / "bun").chmod(0o755)
+    env = dict(os.environ, PATH=f"{fake}{os.pathsep}{os.environ['PATH']}", RUNNER_TEMP=str(tmp_path),
+               CSC_LINK="", PUBLISH="false")
+    result = subprocess.run(["bash", "-e", "-c", script], env=env, capture_output=True, text=True)
+    assert (result.returncode == 0) is ok, result.stdout + result.stderr
+    assert len(count.read_text().splitlines()) == calls

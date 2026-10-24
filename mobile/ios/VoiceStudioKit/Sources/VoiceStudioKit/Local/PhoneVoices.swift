@@ -7,6 +7,9 @@ public struct PhoneVoice: Codable, Identifiable, Sendable, Equatable {
     public let createdAt: Date
     public let consentAt: Date
     public let sampleRate: Int
+    /// The catalogue model that transcribed this voice, for content reports. Absent on voices made before it was recorded.
+    public var modelRepo: String? = nil
+    public var modelRevision: String? = nil
 }
 public protocol PhoneAudioDecoder: Sendable {
     func decode(source: URL, output: URL, maxSeconds: Double, progress: @escaping @Sendable (Double) async -> Void) async throws -> PCMFile
@@ -44,7 +47,7 @@ public actor PhoneVoiceStore {
             // This is the user's reference, not synthesized output.
             try ReferenceWave.write(reference, to: actualDir.appendingPathComponent("reference.wav"))
             try Task.checkCancellation()
-            let voice = PhoneVoice(id: id,name: name.trimmingCharacters(in: .whitespacesAndNewlines),transcript: transcript,createdAt: now,consentAt: now,sampleRate: 24000)
+            let voice = PhoneVoice(id: id,name: name.trimmingCharacters(in: .whitespacesAndNewlines),transcript: transcript,createdAt: now,consentAt: now,sampleRate: 24000,modelRepo: asr.repo,modelRevision: asr.revision)
             try PrivateFiles.write(voice,to: actualDir.appendingPathComponent("voice.json")); return voice
         } catch { try? FileManager.default.removeItem(at: actualDir); throw error }
     }

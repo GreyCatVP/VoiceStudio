@@ -96,6 +96,7 @@
     "brand_by": "{{brand}} di",
     "all": "Tutti",
     "allContributors": "Tutti i collaboratori",
+    "coreMaintainer": "Manutentore principale",
     "title": "VoiceStudio.sh Codice aperto",
     "design": "Crea una voce da una descrizione.",
     "dub": "Traduci e doppia audio o video.",
@@ -2076,6 +2077,7 @@
     "port_in_use_short": "La porta {{port}} è in uso",
     "proxy_bypass_help": "Chiudi completamente VoiceStudio, imposta HTTP_PROXY/HTTPS_PROXY con l’URL del proxy e NO_PROXY con gli host esclusi in un terminale, quindi avvia VoiceStudio da quel terminale. Riprovare nell’app aperta non carica le nuove variabili d’ambiente.",
     "hint_spawn_blocked": "Il sistema operativo o il software di sicurezza ha rifiutato di avviare il motore locale. Aggiungi la cartella di runtime di VoiceStudio alle esclusioni dell’antivirus (Windows: Sicurezza di Windows → Protezione da virus e minacce → Gestisci impostazioni → Esclusioni), assicurati che non sia in una cartella sincronizzata nel cloud come OneDrive e riprova.",
+    "hint_smart_app_control": "Il controllo intelligente delle app di Windows ha bloccato il motore locale. Non prevede eccezioni per singola app, quindi un’esclusione dell’antivirus non serve. Disattivalo in Sicurezza di Windows → Controllo app e browser → Impostazioni del controllo intelligente delle app (Windows non può riattivarlo senza un ripristino), oppure collega VoiceStudio a un motore in esecuzione su un altro computer, poi riprova.",
     "hint_slow_start": "Il motore era ancora in fase di avvio quando l’attesa è scaduta. I computer lenti, soprattutto senza GPU dedicata, e il primo avvio dopo un’installazione (l’antivirus analizza ogni file nuovo) possono richiedere diversi minuti. Chiudi le app che usano molta memoria e riprova; gli avvii successivi sono molto più rapidi.",
     "hint_synced_folder": "Questa posizione si trova in una cartella sincronizzata nel cloud (OneDrive, Dropbox, iCloud Drive, Google Drive). I segnaposto solo online e il blocco dei file danneggiano l’ambiente Python. Sposta VoiceStudio in una normale cartella locale (ad esempio C:\\VoiceStudio su Windows o ~/VoiceStudio su macOS e Linux) e configuralo di nuovo."
   },
@@ -2322,7 +2324,9 @@
     "not_included": "Non incluso nel tuo piano",
     "plan_ends": "fino al {{date}}",
     "details_failed": "Impossibile caricare i dettagli dell’account ({{reason}}).",
-    "retry": "Riprova"
+    "retry": "Riprova",
+    "manage_profile": "Gestisci profilo",
+    "manage_plan": "Gestisci piano"
   },
   "cloudsync": {
     "unavailable": "La sincronizzazione non è disponibile al momento.",
@@ -2908,6 +2912,7 @@
     "host_memory_exhausted": "Il computer ha esaurito la memoria. Chiudi le altre app e le schede del browser che usano molta memoria, scarica i modelli inutilizzati, genera un brano più breve o scegli un motore TTS più leggero.",
     "engine_dependency_missing": "Manca un pacchetto Python necessario a questo motore, quindi non è stato possibile avviarlo. Apri il Catalogo modelli, seleziona il motore e usa Installa / Ripara, poi riavvia VoiceStudio.",
     "reference_stt_missing": "Questa voce non ha una trascrizione e non è installato alcun modello di riconoscimento vocale per crearne una. Scrivi ciò che dice la clip di riferimento nella casella della trascrizione (clip fino a 20 secondi), oppure installa un modello di riconoscimento vocale nel Catalogo modelli, selezionalo e genera di nuovo.",
+    "install_speech_model": "Installa un modello da voce a testo",
     "proxy_gateway_error": "Un proxy o gateway tra te e VoiceStudio ha risposto HTTP {{status}} al posto del backend. Il backend potrebbe essere ancora al lavoro. Aumenta il timeout di lettura del proxy (in nginx, proxy_read_timeout) per le generazioni lunghe, poi controlla Impostazioni → Log → Backend.",
     "route_not_found": "Il backend VoiceStudio in esecuzione non ha l'endpoint {{route}}. Riavvia VoiceStudio perché app e backend coincidano; se persiste, aggiorna entrambi alla stessa versione."
   },
@@ -3800,7 +3805,7 @@
       "capture_slow": "Questo telefono non ha elaborato l'audio del microfono abbastanza in fretta. Chiudi altre app o usa il computer.",
       "preset_voice": "Voce {{number}}",
       "transfer": "{{received}} di {{total}}",
-      "privacy": "Le attività sul dispositivo restano su questo telefono. Solo i download dei modelli e il computer associato usano la rete.",
+      "privacy": "Le attività sul dispositivo restano su questo telefono. Solo i download dei modelli, le segnalazioni che scegli di inviare e il computer associato usano la rete.",
       "computer_feature": "Questa funzione al momento viene eseguita sul computer. Parla e Dettatura funzionano su questo telefono senza associazione.",
       "accepted": "Licenza accettata",
       "not_accepted": "Licenza non accettata",
@@ -3864,6 +3869,28 @@
     },
     "consent": {
       "phone_note": "Salvato su questo telefono. Non viene inviato nulla."
+    },
+    "report": {
+      "action": "Segnala",
+      "title": "Segnala questo risultato",
+      "reason": "Qual è il problema?",
+      "reasons": {
+        "sexual": "Contenuti sessuali",
+        "hateful": "Odio o abusi",
+        "impersonation": "Impersonificazione o voce clonata senza consenso",
+        "misleading": "Fuorviante o dannoso",
+        "other": "Altro"
+      },
+      "note": "Dettagli (facoltativo)",
+      "include_text": "Includi il testo che ho inserito",
+      "disclosure": "Invia al team di VoiceStudio il motivo, la nota, la versione dell'app e il modello usato. Non vengono inviati audio, account né ID del dispositivo.",
+      "send": "Invia segnalazione",
+      "sending": "Invio…",
+      "sent": "Segnalazione inviata. Grazie.",
+      "failed": "Impossibile inviare la segnalazione. Controlla la connessione e riprova.",
+      "retry": "Riprova",
+      "rate_limited": "Troppe segnalazioni da questa rete. Riprova più tardi.",
+      "invalid": "Impossibile inviare questa segnalazione. Aggiorna l'app e riprova."
     }
   }
 }

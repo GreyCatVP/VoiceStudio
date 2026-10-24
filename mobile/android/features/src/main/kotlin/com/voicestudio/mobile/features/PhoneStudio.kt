@@ -77,7 +77,7 @@ class PhoneStudio(context: Context, private val scope: CoroutineScope, private v
                     val id=java.util.UUID.randomUUID().toString()
                     val output=File(application.noBackupFilesDir,"speech/$id.wav")
                     markSynthetic(audio,output)
-                    val generation=PhoneGeneration(id,text,System.currentTimeMillis())
+                    val generation=PhoneGeneration(id,text,System.currentTimeMillis(),model.repo,model.revision)
                     File(output.parentFile,"$id.json").writeText(kotlinx.serialization.json.Json.encodeToString(PhoneGeneration.serializer(),generation))
                     output
                 }
@@ -114,4 +114,5 @@ class PhoneStudio(context: Context, private val scope: CoroutineScope, private v
     fun cancelInference() {inference?.cancel()}
 }
 
-@kotlinx.serialization.Serializable data class PhoneGeneration(val id: String,val text: String,val createdAt: Long)
+/** The model that made the take is kept so it can be reported; older takes have none. */
+@kotlinx.serialization.Serializable data class PhoneGeneration(val id: String,val text: String,val createdAt: Long,val modelRepo: String? = null,val modelRevision: String? = null)

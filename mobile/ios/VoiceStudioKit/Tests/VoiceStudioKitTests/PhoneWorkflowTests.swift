@@ -108,6 +108,7 @@ private actor FixtureEngine: LocalEngine {
     #expect(await engine.transcriptions == 0)
     let voice = try await store.create(name: " Voice ",source: root,consent: true,asr: asr,engine: engine,decoder: FixtureDecoder())
     #expect(voice.name == "Voice"); #expect(voice.transcript == "A reference voice"); #expect(voice.sampleRate == 24000)
+    #expect(voice.modelRepo == asr.repo); #expect(voice.modelRevision == asr.revision)
     #expect(try await store.reference(voice).samples.count == 24000)
     #expect(try Data(contentsOf: await store.preview(voice)).range(of: Data("synthetic".utf8)) == nil)
     let restored = try PhoneVoiceStore(root: root)
@@ -130,10 +131,13 @@ private actor FixtureEngine: LocalEngine {
 @Test func phoneRecentAudioPersistsMarkedAndCanBeRemoved() async throws {
     let root = try fixtureRoot(); defer { try? FileManager.default.removeItem(at: root) }
     let store = try PhoneGenerationStore(root: root)
-    let item = try await store.save(text: "Hello",audio: LocalAudio(samples: [0.2,-0.2],sampleRate: 24000))
+    let tts = try fixtureModel(.tts)
+    let item = try await store.save(text: "Hello",audio: LocalAudio(samples: [0.2,-0.2],sampleRate: 24000),model: tts)
     #expect(try Data(contentsOf: await store.file(item)).range(of: Data("VoiceStudio synthetic audio".utf8)) != nil)
     let restored = try PhoneGenerationStore(root: root)
     #expect(try await restored.list().first?.text == "Hello")
+    #expect(try await restored.list().first?.modelRepo == tts.repo)
+    #expect(try await restored.list().first?.modelRevision == tts.revision)
     try await restored.delete(item); #expect(try await restored.list().isEmpty)
 }
 @Test func phoneAVExtractionResamplesAndRejectsLongReference() async throws {

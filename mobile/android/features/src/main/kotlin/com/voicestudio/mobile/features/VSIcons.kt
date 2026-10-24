@@ -11,6 +11,7 @@ object VSIcons {
     private fun symbol(name: String, data: String): ImageVector = ImageVector.Builder(name,24.dp,24.dp,24f,24f)
         .addPath(pathData=androidx.compose.ui.graphics.vector.PathParser().parsePathString(data).toNodes(),
             fill=SolidColor(Color(VSTheme.roles("default",true).getValue("text"))),pathFillType=androidx.compose.ui.graphics.PathFillType.EvenOdd).build()
+    val Stop by lazy {symbol("Stop","M6 6h12v12H6z")}
     val Wave by lazy {symbol("Wave","M3 10h2v4H3z M7 6h2v12H7z M11 2h2v20h-2z M15 6h2v12h-2z M19 10h2v4h-2z")}
     val Computer by lazy {symbol("Computer","M2 3h20v14H2z M4 5v10h16V5z M11 17h2v3h5v2H6v-2h5z")}
     val Folder by lazy {symbol("Folder","M2 4h8l2 2h10v15H2z M4 8v11h16V8z")}

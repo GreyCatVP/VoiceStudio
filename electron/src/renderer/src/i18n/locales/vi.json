@@ -96,6 +96,7 @@
     "brand_by": "{{brand}} bởi",
     "all": "Tất cả",
     "allContributors": "Tất cả người đóng góp",
+    "coreMaintainer": "Người bảo trì cốt lõi",
     "title": "VoiceStudio.sh Mã nguồn mở",
     "design": "Thiết kế giọng nói từ mô tả.",
     "dub": "Dịch và lồng tiếng âm thanh hoặc video.",
@@ -2074,6 +2075,7 @@
     "port_in_use_short": "Cổng {{port}} đang được sử dụng",
     "proxy_bypass_help": "Thoát hoàn toàn VoiceStudio, đặt HTTP_PROXY/HTTPS_PROXY thành URL proxy và NO_PROXY thành các máy chủ được loại trừ trong terminal, rồi mở VoiceStudio từ terminal đó. Thử lại trong ứng dụng đang mở không tải các biến môi trường mới.",
     "hint_spawn_blocked": "Hệ điều hành hoặc phần mềm bảo mật của bạn đã từ chối khởi chạy engine cục bộ. Hãy thêm thư mục runtime của VoiceStudio vào danh sách loại trừ của phần mềm diệt virus (Windows: Bảo mật Windows → Bảo vệ khỏi virus và mối đe dọa → Quản lý cài đặt → Loại trừ), đảm bảo thư mục này không nằm trong thư mục đồng bộ đám mây như OneDrive, rồi thử lại.",
+    "hint_smart_app_control": "Smart App Control của Windows đã chặn công cụ cục bộ. Tính năng này không có ngoại lệ cho từng ứng dụng nên loại trừ trong phần mềm diệt virus sẽ không giúp được. Hãy tắt nó trong Bảo mật Windows → Kiểm soát ứng dụng và trình duyệt → Cài đặt Smart App Control (Windows không thể bật lại nếu không đặt lại máy), hoặc kết nối VoiceStudio với công cụ chạy trên máy tính khác, rồi thử lại.",
     "hint_slow_start": "Engine vẫn đang khởi động thì hết thời gian chờ. Máy chậm, nhất là máy không có GPU rời, và lần khởi chạy đầu tiên sau khi cài đặt (phần mềm diệt virus quét mọi tệp mới) có thể mất vài phút. Hãy đóng các ứng dụng tốn nhiều bộ nhớ rồi thử lại; những lần khởi động sau nhanh hơn nhiều.",
     "hint_synced_folder": "Vị trí này nằm trong thư mục đồng bộ đám mây (OneDrive, Dropbox, iCloud Drive, Google Drive). Các tệp giữ chỗ chỉ có trên mạng và việc khóa tệp làm hỏng môi trường Python. Hãy chuyển VoiceStudio sang một thư mục cục bộ thông thường (ví dụ C:\\VoiceStudio trên Windows hoặc ~/VoiceStudio trên macOS và Linux) rồi thiết lập lại."
   },
@@ -2320,7 +2322,9 @@
     "not_included": "Không có trong gói của bạn",
     "plan_ends": "đến {{date}}",
     "details_failed": "Không thể tải thông tin tài khoản của bạn ({{reason}}).",
-    "retry": "Thử lại"
+    "retry": "Thử lại",
+    "manage_profile": "Quản lý hồ sơ",
+    "manage_plan": "Quản lý gói"
   },
   "cloudsync": {
     "unavailable": "Đồng bộ hiện không khả dụng.",
@@ -2906,6 +2910,7 @@
     "host_memory_exhausted": "Máy tính đã hết bộ nhớ. Hãy đóng các ứng dụng và thẻ trình duyệt khác dùng nhiều bộ nhớ, gỡ các mô hình không dùng, tạo đoạn ngắn hơn hoặc chọn công cụ TTS nhẹ hơn.",
     "engine_dependency_missing": "Một gói Python mà công cụ này cần chưa được cài đặt nên công cụ không thể khởi động. Hãy mở Danh mục mô hình, chọn công cụ và dùng Cài đặt / Sửa chữa, rồi khởi động lại VoiceStudio.",
     "reference_stt_missing": "Giọng này không có bản chép lời và chưa cài mô hình chuyển giọng nói thành văn bản để tạo bản chép. Hãy nhập nội dung đoạn âm thanh tham chiếu vào ô bản chép lời (đoạn tối đa 20 giây), hoặc cài mô hình chuyển giọng nói thành văn bản trong Danh mục mô hình, chọn nó rồi tạo lại.",
+    "install_speech_model": "Cài đặt mô hình chuyển giọng nói thành văn bản",
     "proxy_gateway_error": "Một proxy hoặc cổng giữa bạn và VoiceStudio đã trả lời HTTP {{status}} thay cho backend. Backend có thể vẫn đang xử lý. Hãy tăng thời gian chờ đọc của proxy (với nginx là proxy_read_timeout) cho các lần tạo dài, rồi kiểm tra Cài đặt → Nhật ký → Backend.",
     "route_not_found": "Backend VoiceStudio đang chạy không có điểm cuối {{route}}. Hãy khởi động lại VoiceStudio để ứng dụng và backend khớp nhau; nếu vẫn lỗi, hãy cập nhật cả hai lên cùng một phiên bản."
   },
@@ -3798,7 +3803,7 @@
       "capture_slow": "Điện thoại này không xử lý âm thanh micrô đủ nhanh. Hãy đóng các ứng dụng khác hoặc dùng máy tính của bạn.",
       "preset_voice": "Giọng {{number}}",
       "transfer": "{{received}} trên {{total}}",
-      "privacy": "Tác vụ trên thiết bị ở lại điện thoại này. Chỉ việc tải mô hình và máy tính đã ghép nối dùng mạng.",
+      "privacy": "Tác vụ trên thiết bị ở lại điện thoại này. Chỉ việc tải mô hình, báo cáo bạn chọn gửi và máy tính đã ghép nối dùng mạng.",
       "computer_feature": "Tính năng này hiện chạy trên máy tính của bạn. Bạn có thể dùng Nói và Đọc chính tả trên điện thoại này mà không cần ghép nối.",
       "accepted": "Đã chấp nhận giấy phép",
       "not_accepted": "Chưa chấp nhận giấy phép",
@@ -3862,6 +3867,28 @@
     },
     "consent": {
       "phone_note": "Lưu trên điện thoại này. Không gửi gì cả."
+    },
+    "report": {
+      "action": "Báo cáo",
+      "title": "Báo cáo kết quả này",
+      "reason": "Có vấn đề gì?",
+      "reasons": {
+        "sexual": "Nội dung tình dục",
+        "hateful": "Thù ghét hoặc lăng mạ",
+        "impersonation": "Mạo danh hoặc giọng nói bị nhân bản khi chưa được đồng ý",
+        "misleading": "Gây hiểu lầm hoặc có hại",
+        "other": "Lý do khác"
+      },
+      "note": "Chi tiết (không bắt buộc)",
+      "include_text": "Kèm văn bản tôi đã nhập",
+      "disclosure": "Gửi lý do, ghi chú, phiên bản ứng dụng và mô hình đã tạo nội dung này đến nhóm VoiceStudio. Không gửi âm thanh, tài khoản hay ID thiết bị.",
+      "send": "Gửi báo cáo",
+      "sending": "Đang gửi…",
+      "sent": "Đã gửi báo cáo. Cảm ơn bạn.",
+      "failed": "Không thể gửi báo cáo. Hãy kiểm tra kết nối và thử lại.",
+      "retry": "Thử lại",
+      "rate_limited": "Quá nhiều báo cáo từ mạng này. Hãy thử lại sau.",
+      "invalid": "Không thể gửi báo cáo này. Hãy cập nhật ứng dụng và thử lại."
     }
   }
 }

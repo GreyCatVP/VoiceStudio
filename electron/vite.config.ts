@@ -15,6 +15,7 @@ export default defineConfig({
   plugins: [react()],
   define: {
     __APP_VERSION__: JSON.stringify('0.0.0-test'),
+    __BUILD_COMMIT__: JSON.stringify('000000000'),
     __DISTRIBUTION_TARGET__: JSON.stringify('direct'),
     __WEB_DEPLOYMENT__: false,
   },

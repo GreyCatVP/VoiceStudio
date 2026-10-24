@@ -265,7 +265,7 @@ def test_packaging_omits_empty_signing_credentials(tmp_path, credentials, expect
     env = {k: v for k, v in os.environ.items() if k not in {'CSC_LINK', 'CSC_KEY_PASSWORD'}}
     env.update(credentials)
     capture = tmp_path / 'signing-env'
-    env.update(PATH=str(tmp_path) + os.pathsep + env['PATH'], CAPTURE_PATH=str(capture))
+    env.update(PATH=str(tmp_path) + os.pathsep + env['PATH'], CAPTURE_PATH=str(capture), RUNNER_TEMP=str(tmp_path))
     script = step['run'].replace('${{ matrix.flags }}', '--mac --arm64').replace('${{ matrix.platform }}', 'darwin').replace('${{ matrix.arch }}', 'arm64')
     subprocess.run(['bash', '-e', '-c', script], env=env, check=True)
     assert capture.read_text() == expected

@@ -62,14 +62,14 @@ import kotlinx.coroutines.CancellationException
                 Info("mobile.simple.info",key,params=params)
             }
         }
-        Secondary("mobile.simple.retry",!checking) {scope.launch {check()}}
-        Text(transcript,modifier=Modifier.fillMaxWidth().heightIn(min=VSTheme.touchTarget*3).semantics {liveRegion=LiveRegionMode.Polite})
+        if(!ready&&!checking) Secondary("mobile.simple.retry") {scope.launch {check()}}
+        DictationTranscript(transcript)
     }, controls={
-        MicControl(active,ready,tap={holding=false;if(active) controller.finish() else start()},hold={holding=true;holdStart()},release={if(holding) {holding=false;controller.finish()}})
-        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(VSTheme.gap,androidx.compose.ui.Alignment.CenterHorizontally)) {
-            IconAction("mobile.dictate.copy",VSIcons.Copy,transcript.isNotBlank()) {context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(null,transcript))}
-            IconAction("mobile.speak.share",androidx.compose.material.icons.Icons.Default.Share,transcript.isNotBlank()) {shareText(context,transcript)}
-        }
+        DictationControls(transcript,active,ready,
+            copy={context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(null,transcript))},
+            share={shareText(context,transcript)},
+            tap={holding=false;if(active) controller.finish() else start()},hold={holding=true;holdStart()},
+            release={if(holding) {holding=false;controller.finish()}})
     })
 }
 

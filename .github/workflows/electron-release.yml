@@ -193,8 +193,21 @@ jobs:
           # signer. Omit absent credentials rather than passing empty strings.
           if [ -z "${CSC_LINK:-}" ]; then
             unset CSC_LINK CSC_KEY_PASSWORD
+          elif [ "${{ matrix.platform }}" = darwin ]; then
+            # With discovery off and no identity name, electron-builder never looks in
+            # the keychain it imported CSC_LINK into and skips signing (v0.5.7-beta.1).
+            # Discovery is limited to that imported keychain, not the runner's.
+            export CSC_IDENTITY_AUTO_DISCOVERY=true
           fi
-          bun x electron-builder --config electron-builder.config.mjs ${{ matrix.flags }} --publish never
+          # Apple's ticket server can drop the staple lookup after notarization
+          # succeeded (error 68, v0.5.7-beta.2); only that failure builds again.
+          set -o pipefail
+          attempt=1
+          until bun x electron-builder --config electron-builder.config.mjs ${{ matrix.flags }} --publish never 2>&1 | tee "$RUNNER_TEMP/electron-builder.log"; do
+            if [ "$attempt" -ge 2 ] || ! grep -q "Failed to staple" "$RUNNER_TEMP/electron-builder.log"; then exit 1; fi
+            attempt=$((attempt + 1))
+            echo "::warning::Stapling the notarization ticket failed; building again"
+          done
           if [ "$RUNNER_OS" = Linux ]; then
             node scripts/embed-appimage-update.mjs
           fi
@@ -230,7 +243,16 @@ jobs:
           test -n "$APP" || { echo "No VoiceStudio.app to verify"; exit 1; }
           # An invalid bundle signature makes browser downloads open as "damaged".
           codesign --verify --deep --strict "$APP" || { echo "macOS bundle signature is invalid"; exit 1; }
-          if codesign -dvv "$APP" 2>&1 | grep -q '^Authority=Developer ID Application:' && xcrun stapler validate "$APP"; then
+          # stapler validate reaches Apple over the network; retry so a dropped
+          # connection is not reported as an unsigned app (v0.5.7-beta.2 tag run).
+          validate_stapled() {
+            for attempt in 1 2 3 4; do
+              xcrun stapler validate "$APP" && return 0
+              sleep $((attempt * 10))
+            done
+            return 1
+          }
+          if codesign -dvv "$APP" 2>&1 | grep -q '^Authority=Developer ID Application:' && validate_stapled; then
             STATUS=notarized
           elif [ "$HAS_CREDENTIALS" = true ]; then
             echo "Developer ID credentials are configured but the app is not signed and notarized with them"; exit 1
@@ -310,7 +332,7 @@ jobs:
           path: release-assets
       - name: Validate all platforms before creating a release
         run: |
-          python3 scripts/prepare_electron_release.py --assets release-assets --tag "$TAG"
+          python3 scripts/prepare_electron_release.py --assets release-assets --tag "$TAG" --repo "$GITHUB_REPOSITORY"
       - name: Preserve the final Tauri updater feeds
         # Archived Tauri clients read `latest/download`, which never serves a
         # prerelease, so only Stable releases carry the sunset feeds.
@@ -321,14 +343,22 @@ jobs:
           # so archived Tauri clients never receive Electron installers.
           gh release download "$SUNSET_TAG" --pattern latest.json --dir release-assets
           gh release download "$SUNSET_TAG" --pattern latest-user.json --dir release-assets
-          python3 scripts/prepare_electron_release.py --assets release-assets --tag "$TAG" --sunset-tag "$SUNSET_TAG"
+          python3 scripts/prepare_electron_release.py --assets release-assets --tag "$TAG" --sunset-tag "$SUNSET_TAG" --repo "$GITHUB_REPOSITORY"
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           pattern: electron-signing-*
           merge-multiple: true
           path: release-signing
       - name: Describe installer signing per platform
-        run: python3 scripts/release_signing_notes.py release-signing >> release-assets/RELEASE_NOTES.md
+        # The checkout is the release tag, which predates this helper when an older
+        # tag is rebuilt from main; use the helper from the workflow's own commit.
+        run: |
+          gh api -H "Accept: application/vnd.github.raw" \
+            "repos/$GITHUB_REPOSITORY/contents/scripts/release_signing_notes.py?ref=$GITHUB_SHA" \
+            > "$RUNNER_TEMP/release_signing_notes.py"
+          # The table leads the notes so downloaders see it before the changelog.
+          { python3 "$RUNNER_TEMP/release_signing_notes.py" release-signing; echo; cat release-assets/RELEASE_NOTES.md; } > "$RUNNER_TEMP/RELEASE_NOTES.md"
+          mv "$RUNNER_TEMP/RELEASE_NOTES.md" release-assets/RELEASE_NOTES.md
       - name: Create or update draft
         run: |
           # A beta is always a prerelease so GitHub never makes it `latest`.

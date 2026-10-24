@@ -36,6 +36,9 @@ struct SpeakView: View {
     @State private var generating = false
     @State private var deleting: HistoryItem?
     @State private var hostScope: UUID?
+    /// The take loaded in the player, for its Report action.
+    @State private var result: ContentReportSubject?
+    @State private var reporting: ContentReportSubject?
     private var engines: [SelectionOption] {
         (model.inventory?.tts.backends ?? []).map {
             SelectionOption(id: $0.id, title: $0.display_name,
@@ -50,7 +53,10 @@ struct SpeakView: View {
             speechEditor
             speechOptions
             if route == .download { LocalDownloadPrompt(items: phoneModel.map { [$0] } ?? [], feature: "mobile.tabs.speak") }
-            if player.file != nil || player.playing { AudioPlayerView(player: player) }
+            if player.file != nil || player.playing {
+                AudioPlayerView(player: player)
+                if let result { ReportButton(subject: result, reporting: $reporting).studioButton(.tertiary) }
+            }
             recentGenerations
         }.navigationTitle(model.t("mobile.tabs.speak")).navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -59,6 +65,7 @@ struct SpeakView: View {
         .onChange(of: model.inventory?.tts.active, initial: true) { _, _ in selection.reconcile(inventory: model.inventory, profiles: model.profiles) }
         .onChange(of: model.profiles.map(\.id)) { _, _ in selection.reconcile(inventory: model.inventory, profiles: model.profiles) }
         .refreshable { if model.connection.client != nil { await model.perform { try await model.refresh() } }; await model.phone.refresh(); selection.reconcile(inventory: model.inventory, profiles: model.profiles) }
+        .contentReportSheet($reporting)
         .sheet(item: $deleting) { item in
             DeleteConfirmation(title: model.t("mobile.ios.delete_generation")) {
                 Task { await model.perform { try await model.api().deleteHistory(item.id); model.history = try await model.api().history() } }
@@ -144,7 +151,9 @@ struct SpeakView: View {
                     Button(model.t("common.play"),systemImage: "play.fill") { Task { await model.performPhone {
                         guard let store = model.phone.generationStore else { throw ClientError("mobile.errors.file") }
                         try await player.load(Data(contentsOf: await store.file(item)),extension: "wav"); player.play()
+                        result = phoneSubject(item)
                     } } }
+                    ReportButton(subject: phoneSubject(item), reporting: $reporting, context: item.text)
                     Button(model.t("common.delete"),systemImage: "trash",role: .destructive) { Task { await model.performPhone { try await model.phone.generationStore?.delete(item); await model.phone.refresh() } } }
                 }.labelStyle(.iconOnly).studioButton(.tertiary)
             }
@@ -154,10 +163,11 @@ struct SpeakView: View {
                 ForEach(model.history) { item in
                     HStack(spacing: VSTokens.spacingGap) {
                         Text(item.text).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
-                        Button(model.t("common.play"), systemImage: "play.fill") { Task { await model.perform { let api = try model.api(); try await player.stream(request: api.historyAudioRequest(item.id), api: api) } } }
+                        Button(model.t("common.play"), systemImage: "play.fill") { Task { await model.perform { let api = try model.api(); try await player.stream(request: api.historyAudioRequest(item.id), api: api); result = computerSubject(item.id, text: item.text) } } }
                             .labelStyle(.iconOnly).studioButton(.tertiary)
                         Menu {
                             Button(model.t(item.starred ? "mobile.speak.unstar" : "mobile.speak.star"), systemImage: item.starred ? "star.fill" : "star") { Task { await model.perform { try await model.api().star(item); model.history = try await model.api().history() } } }
+                            ReportButton(subject: computerSubject(item.id, text: item.text), reporting: $reporting, context: item.text)
                             Button(model.t("common.delete"), systemImage: "trash", role: .destructive) { deleting = item }
                         } label: { Label(model.t("mobile.ios.more_actions"), systemImage: "ellipsis") }
                             .labelStyle(.iconOnly).studioButton(.tertiary).frame(minWidth: 44, minHeight: 44)
@@ -184,13 +194,17 @@ struct SpeakView: View {
                             } else {
                                 audio = try await engine.synthesize(model: phoneModel.selectingLanguage(phoneLanguage),text: submittedText,speaker: Int(speakerID) ?? 0,speed: 1,progress: report)
                             }
-                            _ = try await model.phone.generationStore?.save(text: submittedText,audio: audio)
+                            let saved = try await model.phone.generationStore?.save(text: submittedText,audio: audio,model: phoneModel)
                             await model.phone.refresh()
                             try await player.load(audio.markSynthetic(), extension: "wav")
+                            self.result = saved.map(phoneSubject) ?? .phone(.speak, id: UUID().uuidString, repo: phoneModel.repo, revision: phoneModel.revision, typedText: submittedText)
                             return
                         }
+                        let hostEngine = selection.engineID.isEmpty ? model.inventory?.tts.active : selection.engineID
                         let result = try await model.hostState.generate(api: model.api(), text: submittedText, profile: selection.profileID, engine: selection.engineID, language: selection.language)
+                        if let hostEngine { model.computerEngines[result.id] = hostEngine }
                         try await player.load(result.audio, extension: "wav")
+                        self.result = computerSubject(result.id, text: submittedText)
                         model.history = try await model.api().history()
                     }
                 }
@@ -205,6 +219,12 @@ struct SpeakView: View {
                 Button(model.t("common.cancel")) { generation?.cancel() }
             }
         }
+    }
+    private func phoneSubject(_ item: PhoneGeneration) -> ContentReportSubject {
+        .phone(.speak, id: item.id.uuidString, repo: item.modelRepo, revision: item.modelRevision, typedText: item.text)
+    }
+    private func computerSubject(_ id: String, text: String) -> ContentReportSubject {
+        .computer(.speak, id: id, engine: model.computerEngines[id], typedText: text)
     }
     private func reconcilePhone() {
         if phoneVoice != nil { phoneLanguage = "auto" }

@@ -388,6 +388,9 @@ def test_ios_home_contributors_match_electron_snapshot():
     swift = (ROOT / "mobile/ios/VoiceStudio/Features/HomeContributors.swift").read_text()
     ios = re.findall(r'"([^"]+)"', re.search(r"static let logins = \[(.*?)\]", swift, re.S).group(1))
     assert ios == electron
+    core = re.findall(r"'([^']+)'", re.search(r"homeCoreMaintainers = \[(.*?)\]", data, re.S).group(1))
+    ios_core = re.findall(r'"([^"]+)"', re.search(r"coreMaintainers: Set<String> = \[(.*?)\]", swift, re.S).group(1))
+    assert set(ios_core) == set(core) == {"debpalash", "velixio"}
     for login in electron:
         assert (ROOT / f"mobile/ios/VoiceStudio/Resources/Contributors.xcassets/contributor-{login}.imageset/{login}.png").is_file()
 
@@ -399,5 +402,9 @@ def test_android_home_contributors_match_electron_snapshot():
     kotlin = (ROOT / "mobile/android/features/src/main/kotlin/com/voicestudio/mobile/features/HomeContributors.kt").read_text()
     android = re.findall(r'"([^"]+)"', re.search(r"val logins = listOf\((.*?)\)", kotlin, re.S).group(1))
     assert android == electron
+    data = (ROOT / "electron/src/renderer/src/features/home/home-contributors-data.ts").read_text()
+    core = re.findall(r"'([^']+)'", re.search(r"homeCoreMaintainers = \[(.*?)\]", data, re.S).group(1))
+    android_core = re.findall(r'"([^"]+)"', re.search(r"coreMaintainers = setOf\((.*?)\)", kotlin, re.S).group(1))
+    assert set(android_core) == set(core) == {"debpalash", "velixio"}
     for login in electron:  # the Gradle catalog task copies these into the APK assets
         assert list((ROOT / "electron/src/renderer/src/features/home/contributors").glob(f"{login}.*"))

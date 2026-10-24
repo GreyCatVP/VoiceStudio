@@ -14,6 +14,9 @@ choose, per task, to run on **This phone** or **My computer**.
 | Minimum OS | iOS 17 (iPhone, iPad) | Android 10 (API 29) |
 | Source | [`mobile/ios/`](../mobile/ios/README.md) | [`mobile/android/`](../mobile/android/README.md) |
 
+Home marks **@debpalash** and **@velixio** with a small star badge as the core
+maintainer team, matching Electron. The badge has a localized core-maintainer description for accessibility.
+
 ## What you can do
 
 - **Speak**: type text, pick a voice and language, generate, play, share.
@@ -65,6 +68,15 @@ run are shown greyed out with the reason.
 Plain `http://` works only for addresses on your own network (home Wi-Fi,
 `.local`, Tailscale); everything else must be `https://`.
 
+## Report a result
+
+Every generated result (a Speak take, a cloned voice, a finished dub) has a
+**Report** action. Pick what's wrong, optionally add a note or the text you
+typed, and tap **Send report**. It sends only the reason, your note, that text
+if you ticked it, the app version and the model that made the result to the
+VoiceStudio team; no audio, account or device ID. Nothing is sent until you tap
+Send, and reports are deleted after 180 days.
+
 ## If something doesn't work
 
 - **"Accept the licence on your computer"**: some models need their licence
@@ -93,6 +105,12 @@ uv run python scripts/export_openapi.py    # mobile/contract/openapi.json from t
 ```
 
 `tests/test_mobile_contract.py` fails when either is stale.
+
+**Reports in test builds.** Every build, debug included, sends reports to
+production. To test against the development API, copy `mobile/.env.example` to
+`mobile/.env` (git-ignored) and set
+`VOICESTUDIO_CONTENT_REPORTS_URL=https://dev-appapi.voicestudio.sh`, or export
+that variable; the environment wins over the file. Rebuild after changing it.
 
 **Try the iPhone app without Xcode.** Each `mobile` workflow run uploads an
 unsigned build, `VoiceStudio-ios-unsigned` (kept 7 days). Download it from the
@@ -144,7 +162,8 @@ number and attempt, so every upload is new.
 The `Android Play internal testing` workflow is the Android counterpart: it
 signs a release bundle with the Play upload key and uploads it to the Play
 Console **internal testing** track. It is dispatched by hand from `main` and
-never sends a release to production. One-time setup:
+never sends a release to production. The store listing, graphics and Play Console
+answers are in [`store/google-play.md`](../store/google-play.md). One-time setup:
 
 1. Create the app in the Play Console with the package name
    `sh.voicestudio.mobile` and keep Play App Signing on (Google holds the app
@@ -164,8 +183,9 @@ never sends a release to production. One-time setup:
 
 The version name is the root `package.json` version. Both signed Android
 workflows get their version code from `scripts/android_version_code.py`: UTC
-seconds since 2020-01-01. They share a concurrency group, so signed builds run
-one at a time and subsequent builds, including reruns, receive increasing codes
+minutes since 2020-01-01 (seconds jumped too far for Play). They share a concurrency
+group, so signed builds run one at a time, each taking minutes, and subsequent
+builds, including reruns, receive increasing codes
 across Play and GitHub releases. Local and `mobile` workflow builds stay debug-signed.
 
 ## Releasing

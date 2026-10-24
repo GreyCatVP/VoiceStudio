@@ -96,6 +96,7 @@
     "brand_by": "{{brand}} autorstwa",
     "all": "Wszyscy",
     "allContributors": "Wszyscy współtwórcy",
+    "coreMaintainer": "Główny opiekun",
     "title": "VoiceStudio.sh Otwarty kod źródłowy",
     "design": "Zaprojektuj głos na podstawie opisu.",
     "dub": "Tłumacz i dubbinguj dźwięk lub wideo.",
@@ -2078,6 +2079,7 @@
     "port_in_use_short": "Port {{port}} jest zajęty",
     "proxy_bypass_help": "Całkowicie zamknij VoiceStudio, ustaw w terminalu HTTP_PROXY/HTTPS_PROXY na adres proxy oraz NO_PROXY na wykluczone hosty, a następnie uruchom VoiceStudio z tego terminala. Ponowienie próby w działającej aplikacji nie wczytuje nowych zmiennych środowiskowych.",
     "hint_spawn_blocked": "System operacyjny lub oprogramowanie zabezpieczające odmówiło uruchomienia lokalnego silnika. Dodaj folder środowiska uruchomieniowego VoiceStudio do wyjątków programu antywirusowego (Windows: Zabezpieczenia Windows → Ochrona przed wirusami i zagrożeniami → Zarządzaj ustawieniami → Wykluczenia), upewnij się, że nie znajduje się w folderze synchronizowanym z chmurą, takim jak OneDrive, i spróbuj ponownie.",
+    "hint_smart_app_control": "Inteligentna kontrola aplikacji w systemie Windows zablokowała lokalny silnik. Nie ma wyjątków dla pojedynczych aplikacji, więc wykluczenie w programie antywirusowym nie pomoże. Wyłącz ją w Zabezpieczeniach Windows → Kontrola aplikacji i przeglądarki → Ustawienia inteligentnej kontroli aplikacji (bez resetu systemu nie da się jej ponownie włączyć) albo połącz VoiceStudio z silnikiem działającym na innym komputerze i spróbuj ponownie.",
     "hint_slow_start": "Silnik nadal się uruchamiał, gdy skończył się czas oczekiwania. Wolne komputery, zwłaszcza bez dedykowanej karty graficznej, oraz pierwsze uruchomienie po instalacji (antywirus skanuje każdy nowy plik) mogą potrzebować kilku minut. Zamknij aplikacje zajmujące dużo pamięci i spróbuj ponownie; kolejne uruchomienia są znacznie szybsze.",
     "hint_synced_folder": "Ta lokalizacja znajduje się w folderze synchronizowanym z chmurą (OneDrive, Dropbox, iCloud Drive, Google Drive). Symbole zastępcze tylko online i blokowanie plików psują środowisko Pythona. Przenieś VoiceStudio do zwykłego folderu lokalnego (na przykład C:\\VoiceStudio w systemie Windows lub ~/VoiceStudio w macOS i Linux) i skonfiguruj go ponownie."
   },
@@ -2324,7 +2326,9 @@
     "not_included": "Poza twoim planem",
     "plan_ends": "do {{date}}",
     "details_failed": "Nie udało się wczytać danych konta ({{reason}}).",
-    "retry": "Spróbuj ponownie"
+    "retry": "Spróbuj ponownie",
+    "manage_profile": "Zarządzaj profilem",
+    "manage_plan": "Zarządzaj planem"
   },
   "cloudsync": {
     "unavailable": "Synchronizacja jest teraz niedostępna.",
@@ -2910,6 +2914,7 @@
     "host_memory_exhausted": "Komputerowi zabrakło pamięci. Zamknij inne aplikacje i karty przeglądarki zajmujące dużo pamięci, wyładuj nieużywane modele, wygeneruj krótszy fragment lub wybierz lżejszy silnik TTS.",
     "engine_dependency_missing": "Pakiet Pythona potrzebny temu silnikowi nie jest zainstalowany, więc silnik nie mógł się uruchomić. Otwórz Katalog modeli, wybierz silnik i użyj Zainstaluj / Napraw, a potem uruchom VoiceStudio ponownie.",
     "reference_stt_missing": "Ten głos nie ma transkrypcji, a nie jest zainstalowany żaden model rozpoznawania mowy, który mógłby ją utworzyć. Wpisz w polu transkrypcji, co mówi klip referencyjny (klipy do 20 sekund), albo zainstaluj model rozpoznawania mowy w Katalogu modeli, wybierz go i wygeneruj ponownie.",
+    "install_speech_model": "Zainstaluj model rozpoznawania mowy",
     "proxy_gateway_error": "Serwer proxy lub brama między Tobą a VoiceStudio odpowiedziały HTTP {{status}} zamiast backendu. Backend może nadal pracować. Zwiększ limit czasu odczytu proxy (w nginx proxy_read_timeout) dla długich generacji, a potem sprawdź Ustawienia → Dzienniki → Backend.",
     "route_not_found": "Uruchomiony backend VoiceStudio nie ma punktu końcowego {{route}}. Uruchom VoiceStudio ponownie, aby aplikacja i backend do siebie pasowały; jeśli problem się utrzymuje, zaktualizuj oba do tej samej wersji."
   },
@@ -3802,7 +3807,7 @@
       "capture_slow": "Telefon nie nadążył z przetwarzaniem dźwięku z mikrofonu. Zamknij inne aplikacje lub użyj komputera.",
       "preset_voice": "Głos {{number}}",
       "transfer": "{{received}} z {{total}}",
-      "privacy": "Zadania na urządzeniu zostają na tym telefonie. Sieci używają tylko pobieranie modeli i sparowany komputer.",
+      "privacy": "Zadania na urządzeniu zostają na tym telefonie. Z sieci korzystają tylko pobieranie modeli, zgłoszenia, które zdecydujesz się wysłać, oraz sparowany komputer.",
       "computer_feature": "Ta funkcja działa obecnie na Twoim komputerze. Możesz używać Mów i Dyktowanie na tym telefonie bez parowania.",
       "accepted": "Licencja zaakceptowana",
       "not_accepted": "Licencja niezaakceptowana",
@@ -3868,6 +3873,28 @@
     },
     "consent": {
       "phone_note": "Zapisano na tym telefonie. Nic nie jest wysyłane."
+    },
+    "report": {
+      "action": "Zgłoś",
+      "title": "Zgłoś ten wynik",
+      "reason": "Co jest nie tak?",
+      "reasons": {
+        "sexual": "Treści seksualne",
+        "hateful": "Nienawiść lub nękanie",
+        "impersonation": "Podszywanie się lub głos sklonowany bez zgody",
+        "misleading": "Wprowadzające w błąd lub szkodliwe",
+        "other": "Coś innego"
+      },
+      "note": "Szczegóły (opcjonalnie)",
+      "include_text": "Dołącz wpisany przeze mnie tekst",
+      "disclosure": "Wysyła powód, notatkę, wersję aplikacji i użyty model do zespołu VoiceStudio. Nie są wysyłane nagrania, konto ani identyfikator urządzenia.",
+      "send": "Wyślij zgłoszenie",
+      "sending": "Wysyłanie…",
+      "sent": "Zgłoszenie wysłane. Dziękujemy.",
+      "failed": "Nie udało się wysłać zgłoszenia. Sprawdź połączenie i spróbuj ponownie.",
+      "retry": "Spróbuj ponownie",
+      "rate_limited": "Zbyt wiele zgłoszeń z tej sieci. Spróbuj później.",
+      "invalid": "Nie udało się wysłać tego zgłoszenia. Zaktualizuj aplikację i spróbuj ponownie."
     }
   }
 }

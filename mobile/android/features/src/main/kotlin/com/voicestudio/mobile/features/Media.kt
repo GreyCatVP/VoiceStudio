@@ -6,6 +6,8 @@ import android.media.MediaRecorder
 import android.net.Uri
 import androidx.core.content.FileProvider
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -132,10 +134,7 @@ val LocalHostPlayerFactory=staticCompositionLocalOf<(Context,VoiceStudioApi)->Pl
                 IconAction(if(playing) "player.pause" else "player.play",if(playing) VSIcons.Pause else Icons.Default.PlayArrow) {
                     if(playing) player.pause() else {if(error) player.prepare();if(player.playbackState==Player.STATE_ENDED) player.seekTo(0);player.play()}
                 }
-                val label=tr("player.seek")
-                Slider(value=if(duration>0) (position.toFloat()/duration).coerceIn(0f,1f) else 0f,
-                    onValueChange={player.seekTo((it*duration).toLong())},enabled=duration>0,
-                    modifier=Modifier.weight(1f).semantics {contentDescription=label})
+                PlaybackSeek(position,duration,Modifier.weight(1f)) {player.seekTo(it)}
             }
             Text(tr("mobile.android.playback_time",mapOf("position" to formatDuration(position),"duration" to formatDuration(duration))),style=MaterialTheme.typography.bodySmall,color=role("textMuted"))
         }
@@ -168,12 +167,24 @@ val LocalAudioPlayerFactory=staticCompositionLocalOf<(Context)->Player> {
             if(file.extension=="mp4") Box(Modifier.fillMaxWidth().heightIn(max=(com.voicestudio.mobile.designsystem.VSTokens.SPACING_GAP*25).dp),contentAlignment=Alignment.Center) {
                 androidx.compose.ui.viewinterop.AndroidView(factory={android.view.SurfaceView(it)},update={player.setVideoSurfaceView(it)},modifier=Modifier.aspectRatio(videoRatio,matchHeightConstraintsFirst=true))
             }
-            IconAction(if(playing) "player.pause" else "player.play",if(playing) VSIcons.Pause else Icons.Default.PlayArrow) {
-                if(playing) player.pause() else {if(player.playbackState==Player.STATE_ENDED) player.seekTo(0);player.play()}
+            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                IconAction(if(playing) "player.pause" else "player.play",if(playing) VSIcons.Pause else Icons.Default.PlayArrow) {
+                    if(playing) player.pause() else {if(player.playbackState==Player.STATE_ENDED) player.seekTo(0);player.play()}
+                }
+                PlaybackSeek(position,duration,Modifier.weight(1f)) {player.seekTo(it)}
             }
-            val seek=tr("player.seek")
-            Slider(value=if(duration>0) (position.toFloat()/duration).coerceIn(0f,1f) else 0f,onValueChange={player.seekTo((it*duration).toLong())},enabled=duration>0,modifier=Modifier.semantics {contentDescription=seek})
-            Text(tr("mobile.android.playback_time",mapOf("position" to formatDuration(position),"duration" to formatDuration(duration))))
+            Text(tr("mobile.android.playback_time",mapOf("position" to formatDuration(position),"duration" to formatDuration(duration))),
+                style=MaterialTheme.typography.bodySmall,color=role("textMuted"))
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable private fun PlaybackSeek(position:Long,duration:Long,modifier:Modifier=Modifier,seek:(Long)->Unit) {
+    val label=tr("player.seek")
+    Slider(value=if(duration>0) (position.toFloat()/duration).coerceIn(0f,1f) else 0f,
+        onValueChange={seek((it*duration).toLong())},enabled=duration>0,
+        modifier=modifier.semantics {contentDescription=label},
+        thumb={Box(Modifier.size(12.dp).background(role("messageAction"),CircleShape))},
+        track={SliderDefaults.Track(it,modifier=Modifier.height(4.dp),thumbTrackGapSize=0.dp,drawStopIndicator=null)})
 }

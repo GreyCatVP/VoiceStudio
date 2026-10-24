@@ -69,7 +69,8 @@ func catalogs() throws -> [String: Data] {
         "mobile.local.category.": ["commercial-ok", "conditional", "non-commercial", "unidentified"],
         "mobile.local.right_": ["commercial", "outputs", "redistribution", "voice", "unknown", "restricted"],
         "mobile.settings.mode_": ThemeMode.allCases.map(\.rawValue),
-        "mobile.ios.dub_stages.": ["preparing", "transcribing", "translating", "rendering", "done", "failed", "cancelled"]
+        "mobile.ios.dub_stages.": ["preparing", "transcribing", "translating", "rendering", "done", "failed", "cancelled"],
+        "mobile.report.reasons.": ContentReportReason.allCases.map(\.rawValue)
     ]
     for case let file as URL in paths where file.pathExtension == "swift" && !file.path.contains("/.build/") && !file.path.contains("/.cache/") && !file.path.contains("/Tests/") && !file.path.contains("UITests/") {
         let source = try String(contentsOf: file, encoding: .utf8)

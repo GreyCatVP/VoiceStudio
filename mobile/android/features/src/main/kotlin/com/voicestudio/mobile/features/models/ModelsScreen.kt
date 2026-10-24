@@ -204,6 +204,8 @@ import com.voicestudio.mobile.local.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable private fun ModelsDialog(vm: StudioViewModel, dismiss: ()->Unit) {
     ModalBottomSheet(onDismissRequest=dismiss,containerColor=role("surfaceOverlay")) {
-        Box(Modifier.fillMaxWidth().fillMaxHeight(.9f)) {ModelsScreen(vm)}
+        Box(Modifier.fillMaxWidth().fillMaxHeight(.9f)) {
+            CompositionLocalProvider(LocalScreenTitleProvided provides false) {ModelsScreen(vm)}
+        }
     }
 }
