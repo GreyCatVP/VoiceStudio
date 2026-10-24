@@ -66,3 +66,13 @@ def test_data_safety_declares_the_report_the_app_sends():
     assert safety["collectsData"] and not safety["sharesData"] and safety["encryptedInTransit"]
     assert [item["optional"] for item in safety["collected"]] == [True]
     assert "reports you choose to send" in "\n".join(LISTING["listing"]["fullDescription"])
+
+
+def test_in_app_privacy_line_names_every_network_use():
+    # The phone's Home/Settings privacy line must list what the data safety form
+    # declares; it missed content reports when they shipped (#3268).
+    strings = json.loads((ROOT / "mobile/contract/strings.mobile.en.json").read_text())
+    line = strings["mobile"]["local"]["privacy"]
+    assert LISTING["dataSafety"]["collectsData"]
+    for use in ("model downloads", "reports", "paired computer"):
+        assert use in line, (use, line)

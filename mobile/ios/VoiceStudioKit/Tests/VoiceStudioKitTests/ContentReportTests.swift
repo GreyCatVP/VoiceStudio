@@ -179,6 +179,10 @@ private let speak = ContentReportSubject.phone(.speak, id: "take", repo: "k2-fsa
     #expect(ContentReportClient.appVersion(info: ["VoiceStudioAppVersion": "0.5.7-beta.2", "CFBundleShortVersionString": "0.5.7"]) == "0.5.7-beta.2")
     #expect(ContentReportClient.appVersion(info: ["CFBundleShortVersionString": "0.5.7"]) == "0.5.7")
     #expect(ContentReportClient.appVersion(info: nil) == "unknown")
+    // About and licence receipts show the same full version as Android's versionName.
+    #expect(AppVersion.full(info: ["VoiceStudioAppVersion": "0.5.7-beta.2", "CFBundleShortVersionString": "0.5.7"]) == "0.5.7-beta.2")
+    #expect(AppVersion.full(info: ["VoiceStudioAppVersion": " ", "CFBundleShortVersionString": "0.5.7"]) == "0.5.7")
+    #expect(AppVersion.full(info: nil) == nil)
     #expect(ContentReportClient.appVersion(info: ["VoiceStudioAppVersion": "1.0 (beta)"]) == "1.0beta")
 }
 

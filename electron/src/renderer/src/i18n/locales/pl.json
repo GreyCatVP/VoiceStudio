@@ -3803,7 +3803,7 @@
       "capture_slow": "Telefon nie nadążył z przetwarzaniem dźwięku z mikrofonu. Zamknij inne aplikacje lub użyj komputera.",
       "preset_voice": "Głos {{number}}",
       "transfer": "{{received}} z {{total}}",
-      "privacy": "Zadania na urządzeniu zostają na tym telefonie. Sieci używają tylko pobieranie modeli i sparowany komputer.",
+      "privacy": "Zadania na urządzeniu zostają na tym telefonie. Z sieci korzystają tylko pobieranie modeli, zgłoszenia, które zdecydujesz się wysłać, oraz sparowany komputer.",
       "computer_feature": "Ta funkcja działa obecnie na Twoim komputerze. Możesz używać Mów i Dyktowanie na tym telefonie bez parowania.",
       "accepted": "Licencja zaakceptowana",
       "not_accepted": "Licencja niezaakceptowana",

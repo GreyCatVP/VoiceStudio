@@ -3801,7 +3801,7 @@
       "capture_slow": "Este celular não conseguiu processar o áudio do microfone rápido o bastante. Feche outros apps ou use seu computador.",
       "preset_voice": "Voz {{number}}",
       "transfer": "{{received}} de {{total}}",
-      "privacy": "As tarefas no dispositivo ficam neste celular. Apenas downloads de modelos e seu computador pareado usam a rede.",
+      "privacy": "As tarefas no dispositivo ficam neste celular. Apenas downloads de modelos, denúncias que você escolher enviar e seu computador pareado usam a rede.",
       "computer_feature": "Este recurso roda atualmente no seu computador. Você pode usar Falar e Ditado neste celular sem parear.",
       "accepted": "Licença aceita",
       "not_accepted": "Licença não aceita",
