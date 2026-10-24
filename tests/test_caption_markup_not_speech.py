@@ -330,3 +330,11 @@ def test_ruby_pronunciation_annotations_excluded_from_speech():
     unclosed = "Please <ruby>read<rt>reed</ruby> once."
     assert spoken_cue_text(unclosed, webvtt=True) == "Please read once."
 
+
+
+def test_nested_rtc_annotation_is_removed_whole():
+    from services.srt_parser import spoken_cue_text
+
+    nested = "Please <ruby>read<rtc><rt>reed</rt><rt>more</rt></rtc></ruby> once."
+    assert spoken_cue_text(nested, webvtt=False) == "Please read once."
+    assert spoken_cue_text(nested, webvtt=True) == "Please read once."

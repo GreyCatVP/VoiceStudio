@@ -77,6 +77,16 @@ describe('parseSrt', () => {
       'Hello big world',
     );
   });
+  it('drops ruby pronunciation annotations, including a nested rtc block', () => {
+    const cue = (text) => `1\n00:00:01,000 --> 00:00:02,000\n${text}\n`;
+    expect(parseSrt(cue('Please <ruby>read<rt>reed</rt></ruby> once.'))).toBe('Please read once.');
+    expect(parseSrt(cue('Please <ruby>read<rtc><rt>reed</rt><rt>more</rt></rtc></ruby> once.'))).toBe(
+      'Please read once.',
+    );
+    expect(
+      parseSrt(`WEBVTT\n\n00:01.000 --> 00:02.000\nPlease <ruby>read<rtc><rt>reed</rt><rt>more</rt></rtc></ruby> once.\n`),
+    ).toBe('Please read once.');
+  });
   it('scans unclosed markup prefixes in linear time', () => {
     const started = Date.now();
     parseSrt(`1\n00:00:01,000 --> 00:00:02,000\n${'<i'.repeat(50000)}${'{\\'.repeat(50000)}\n`);

@@ -26,7 +26,10 @@ const ASS_OVERRIDE = /\{\\[^{}\n]*\}/g;
 // `<br>` is a rendered line break, so it separates words instead of vanishing.
 const LINE_BREAK = /<br[ \t]*\/?>/gi;
 // Ruby pronunciation annotations (<rt>...</rt>, <rtc>...</rtc>).
-const RUBY_ANNOTATION = /<(?:rt|rtc)(?=[\s.>])[^<>\n]*>.*?(?:<\/(?:rt|rtc)>|(?=<\/ruby>)|$)/gis;
+// An <rtc> block is matched through its own closer first, so a nested <rt>
+// inside it cannot end the match early and leak the rest of the block.
+const RUBY_ANNOTATION =
+  /<rtc(?=[\s.>])[^<>\n]*>.*?(?:<\/rtc>|(?=<\/ruby>)|$)|<rt(?=[\s.>])[^<>\n]*>.*?(?:<\/rt>|(?=<\/ruby>)|$)/gis;
 const TIMESTAMP = /^(?:\d+:)?[0-5]?\d:[0-5]?\d[,.]\d{1,3}$/;
 const TIMESTAMP_START = /^(?:\d+:)?[0-5]?\d:[0-5]?\d[,.]\d{1,3}(?:[ \t]|$)/;
 

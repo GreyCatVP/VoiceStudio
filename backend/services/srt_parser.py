@@ -261,8 +261,11 @@ _LINE_BREAK_RE = re.compile(r"<br[ \t]*/?>", re.IGNORECASE)
 _BARE_AMPERSAND_RE = re.compile(r"&(?!#\d+;|#[xX][0-9a-fA-F]+;|[A-Za-z][A-Za-z0-9]*;)")
 # Ruby pronunciation annotations (<rt>...</rt>, <rtc>...</rtc>).
 # Stripped before plain-text extraction so annotations are not duplicated as spoken dialogue.
+# An <rtc> block is matched through its own closer first, so a nested <rt>
+# inside it cannot end the match early and leak the rest of the block.
 _RUBY_ANNOTATION_RE = re.compile(
-    r"<(?:rt|rtc)(?=[\s.>])[^<>\n]*>.*?(?:</(?:rt|rtc)>|(?=</ruby>)|$)",
+    r"<rtc(?=[\s.>])[^<>\n]*>.*?(?:</rtc>|(?=</ruby>)|$)"
+    r"|<rt(?=[\s.>])[^<>\n]*>.*?(?:</rt>|(?=</ruby>)|$)",
     re.IGNORECASE | re.DOTALL,
 )
 

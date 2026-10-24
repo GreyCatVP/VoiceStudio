@@ -75,3 +75,21 @@ it('drops WebVTT scaffolding from an imported story caption file', () => {
   expect(importToText('captions.vtt', vtt)).toBe('hey everyone');
   expect(importToText('captions.srt', vtt)).toBe('hey everyone');
 });
+it('drops ruby pronunciation annotations, including a nested rtc block', () => {
+  const srt = (text: string) => `1\n00:00:01,000 --> 00:00:02,000\n${text}\n`;
+  expect(importToText('a.srt', srt('Please <ruby>read<rt>reed</rt></ruby> once.'))).toBe(
+    'Please read once.',
+  );
+  expect(
+    importToText(
+      'a.srt',
+      srt('Please <ruby>read<rtc><rt>reed</rt><rt>more</rt></rtc></ruby> once.'),
+    ),
+  ).toBe('Please read once.');
+  expect(
+    importToText(
+      'a.vtt',
+      'WEBVTT\n\n00:01.000 --> 00:02.000\nPlease <ruby>read<rtc><rt>reed</rt><rt>more</rt></rtc></ruby> once.\n',
+    ),
+  ).toBe('Please read once.');
+});
