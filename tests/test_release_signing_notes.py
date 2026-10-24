@@ -103,11 +103,15 @@ def test_release_notes_helper_comes_from_the_workflow_commit(tmp_path):
     work = tmp_path / "tag-checkout"
     (work / "release-signing").mkdir(parents=True)
     (work / "release-assets").mkdir()
+    (work / "release-assets/RELEASE_NOTES.md").write_text("**Highlights**\n")
     write(work / "release-signing", "linux", "x64", "not-applicable")
     env = dict(os.environ, PATH=f"{fake}{os.pathsep}{os.environ['PATH']}", GITHUB_SHA="workflow-sha",
                GITHUB_REPOSITORY="debpalash/VoiceStudio", RUNNER_TEMP=str(tmp_path))
     subprocess.run(["bash", "-e", "-c", describe["run"]], cwd=work, env=env, check=True)
-    assert "| Linux x64 |" in (work / "release-assets/RELEASE_NOTES.md").read_text()
+    text = (work / "release-assets/RELEASE_NOTES.md").read_text()
+    # The table leads the notes; the changelog follows unchanged.
+    assert "| Linux x64 |" in text
+    assert text.index("### Installer signing") < text.index("**Highlights**")
 
 
 @pytest.mark.parametrize("failures,message,calls,ok", [

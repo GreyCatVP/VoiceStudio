@@ -16,8 +16,14 @@ final class HomeScreens: XCTestCase {
             for _ in 0..<5 { if card.isHittable { break }; app.swipeUp() }
             XCTAssertTrue(card.isHittable, route); card.tap()
             XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 5), route)
-            if app.buttons["BackButton"].exists { app.buttons["BackButton"].tap() }
-            else { app.navigationBars.buttons.element(boundBy: 0).tap() }
+            // A Back tap during the push transition can be dropped; retry until Home shows,
+            // and never tap again once it does (Home's first bar button is Projects).
+            for _ in 0..<3 where !app.navigationBars["Home"].exists {
+                if app.buttons["BackButton"].exists { app.buttons["BackButton"].tap() }
+                else if app.navigationBars[title].exists { app.navigationBars[title].buttons.element(boundBy: 0).tap() }
+                _ = app.navigationBars["Home"].waitForExistence(timeout: 3)
+            }
+            XCTAssertTrue(app.navigationBars["Home"].exists, "did not return Home from \(route)")
         }
         for _ in 0..<5 { if app.staticTexts["Your generations will appear here."].isHittable { break }; app.swipeUp() }
         XCTAssertTrue(app.staticTexts["Your generations will appear here."].exists)

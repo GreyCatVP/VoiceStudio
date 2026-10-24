@@ -82,7 +82,7 @@ class StudioSmokeTest {
             compose.onNodeWithText("Sample voice").performClick()
             compose.onNodeWithText("Default voice").performClick()
             compose.onNodeWithText("Auto").assertExists()
-            compose.onNodeWithText("Generate").performScrollTo().performClick()
+            compose.onNodeWithText("Generate").assertIsDisplayed().performClick()
             awaitCondition {vm.state.value.audio!=null&&!vm.state.value.busy}
             compose.onNodeWithContentDescription("Play").performScrollTo().performClick()
             verify(player).play()

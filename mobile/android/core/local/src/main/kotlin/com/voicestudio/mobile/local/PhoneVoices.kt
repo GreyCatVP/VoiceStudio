@@ -18,7 +18,9 @@ internal fun atomicText(file: File, text: String) {
     java.io.FileOutputStream(pending).use {it.write(text.toByteArray(Charsets.UTF_8));it.fd.sync()}
     Files.move(pending.toPath(),file.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
 }
-@Serializable data class PhoneVoice(val id: String, val name: String, val transcript: String, val createdAt: Long, val consentAt: Long, val sampleRate: Int = 24000)
+/** [modelRepo]/[modelRevision] name the model that made the voice, for reports; older voices have none. */
+@Serializable data class PhoneVoice(val id: String, val name: String, val transcript: String, val createdAt: Long, val consentAt: Long, val sampleRate: Int = 24000,
+    val modelRepo: String? = null, val modelRevision: String? = null)
 /** One atomic metadata publication after ASR + reference writes. No user paths. */
 class PhoneVoiceStore(private val root: File) {
     private val mutex=Mutex()
@@ -51,7 +53,7 @@ class PhoneVoiceStore(private val root: File) {
             writeReferenceWave(audio.read(0,audio.frames.toInt()),File(dir,"reference.wav"))
             currentCoroutineContext().ensureActive()
             val now=System.currentTimeMillis()
-            val voice=PhoneVoice(id,name.trim(),transcript,now,now)
+            val voice=PhoneVoice(id,name.trim(),transcript,now,now,modelRepo=asr.repo,modelRevision=asr.revision)
             mutex.withLock {atomicText(File(dir,"voice.json"),LocalJson.encodeToString(PhoneVoice.serializer(),voice))}
             progress(1f);voice
         } catch(e:Throwable) {dir.deleteRecursively();throw e}

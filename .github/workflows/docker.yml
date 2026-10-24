@@ -48,6 +48,17 @@ name: Docker (GHCR)
 on:
   push:
     branches: [main]
+    # A merge that only touches these cannot change what the image contains, so it
+    # does not rebuild two ~35 minute images. deploy/dockerhub-overview.md (the Docker
+    # Hub page, synced by this workflow), the Dockerfile and README.md (copied into
+    # the image) are deliberately NOT listed. Release and manual runs are unaffected.
+    paths-ignore:
+      - "docs/**"
+      - "mobile/**"
+      - "changelog.d/**"
+      - "CHANGELOG.md"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/*.md"
   release:
     types: [published]
   workflow_dispatch:
@@ -68,6 +79,13 @@ on:
 permissions:
   contents: read
   packages: write
+
+# Only the newest main push needs to build the rolling :latest/:main images, so a
+# newer push cancels an older one. Releases and manual backfills never cancel
+# anything: each gets its own group.
+concurrency:
+  group: docker-${{ github.event_name == 'push' && 'main-push' || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 
 env:
   REGISTRY: ghcr.io
@@ -108,7 +126,9 @@ jobs:
       - name: Resolve image source commit
         id: source
         shell: bash
-        run: echo "short_sha=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "short_sha=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       # Both image builds run right at the runner's disk ceiling (CUDA hit
       # ENOSPC 2026-07-16 morning; ROCm hit it the same afternoon even with
@@ -187,6 +207,8 @@ jobs:
         with:
           context: .
           file: deploy/Dockerfile
+          build-args: |
+            BUILD_COMMIT=${{ steps.source.outputs.commit }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -286,7 +308,9 @@ jobs:
       - name: Resolve image source commit
         id: source
         shell: bash
-        run: echo "short_sha=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "short_sha=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       # The ROCm base (~25 GB unpacked) plus build layers need every GB.
       # Same reclaim list as the CUDA job above — keep them identical
@@ -358,6 +382,7 @@ jobs:
           build-args: |
             BASE_IMAGE=rocm/pytorch:rocm7.2.4_ubuntu24.04_py3.12_pytorch_release_2.8.0
             GPU_FLAVOR=rocm
+            BUILD_COMMIT=${{ steps.source.outputs.commit }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

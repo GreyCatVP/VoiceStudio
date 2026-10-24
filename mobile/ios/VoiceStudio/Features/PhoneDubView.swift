@@ -22,6 +22,7 @@ struct PhoneDubView: View {
     @State private var playing: SharedFile?
     @State private var creating: Task<Void,Never>?
     @State private var copying = false
+    @State private var reporting: ContentReportSubject?
     private var choices: [DubLanguage] { model.languages.dubOptions }
     private var ready: Bool { model.phone.dubReady && !connect }
     var body: some View {
@@ -74,6 +75,7 @@ struct PhoneDubView: View {
                                 Button(model.t("common.play"),systemImage: "play.fill") { open(record,output,action: .play) }
                                 Button(model.t("mobile.speak.share"),systemImage: "square.and.arrow.up") { open(record,output,action: .share) }
                                 Button(model.t("common.save"),systemImage: "arrow.down.to.line") { open(record,output,action: .save) }
+                                ReportButton(subject: reportSubject(record,output), reporting: $reporting, context: record.request.title + " " + output.name)
                                 if record.checkpoint.done { Button(model.t("mobile.simple.remove_job"),systemImage: "trash",role: .destructive) { remove(record) } }
                             }.labelStyle(.iconOnly).studioButton(.tertiary)
                         }
@@ -94,6 +96,7 @@ struct PhoneDubView: View {
         .sheet(isPresented: $languages) {
             LanguageSelectionSheet(selection: targets, includesUnavailable: false) { targets = $0 }
         }
+        .contentReportSheet($reporting)
         .sheet(item: $shared) { file in ShareSheet(items: [file.url]) }
         .sheet(item: $saved) { file in SaveFileSheet(url: file.url) }
         .sheet(item: $playing) { file in PhoneDubPlayback(url: file.url) }
@@ -128,6 +131,11 @@ struct PhoneDubView: View {
             let file = SharedFile(url: url)
             switch action { case .play: playing = file; case .share: shared = file; case .save: saved = file }
         } }
+    }
+    /// The dub's speech comes from its pinned voice (clone) model.
+    private func reportSubject(_ record: PhoneDubRecord,_ output: PhoneDubOutput) -> ContentReportSubject {
+        let voice = phoneDubVoiceModel(pins: record.request.modelPins, in: model.phone.models)
+        return .phone(.dub, id: record.id.uuidString + ":" + output.language, repo: voice?.repo, revision: voice?.revision)
     }
     private func remove(_ record: PhoneDubRecord) {
         Task { await model.performPhone { try await model.phone.dubStore?.delete(record.id); await model.phone.refresh() } }

@@ -150,6 +150,8 @@ def _drive(release, monkeypatch, answers, *, dry_run, secrets_missing=(), branch
         release.Path, "write_text", lambda self, *a, **k: calls.append(("write", self.name))
     )
     monkeypatch.setattr(release, "prepare_changelog", lambda text, *a: text)
+    monkeypatch.setattr(release, "read_fragments", lambda: [])
+    monkeypatch.setattr(release, "remove_fragments", lambda: [])
     monkeypatch.setattr(release.Path, "read_text", lambda self, *a, **k: "")
     release.release(argparse.Namespace(dry_run=dry_run))
     return calls
@@ -338,3 +340,12 @@ def test_a_changed_tree_is_still_committed_and_pushed(release, monkeypatch):
     calls = _drive(release, monkeypatch, ["beta", "", "draft", tag], dry_run=False)
     assert ("git", "commit", "-m", f"chore(release): {tag}") in calls
     assert calls.index(("git", "push", "origin", "main")) < calls.index(("git", "tag", tag))
+
+
+def test_release_folds_fragments_into_unreleased_before_the_section_is_made(release):
+    from changelog_fragments import apply_fragments
+
+    text = "## [Unreleased]\n\n### Fixed\n\n- Old (#1)\n\n## [0.5.6] — 2026-01-01\n\n- x\n"
+    folded = apply_fragments(text, [("Fixed", "New (#2)")])
+    out = release.prepare_changelog(folded, "0.5.8", TODAY)
+    assert "## [0.5.8] — " in out and "- New (#2)\n- Old (#1)" in out.split("## [0.5.6]")[0]

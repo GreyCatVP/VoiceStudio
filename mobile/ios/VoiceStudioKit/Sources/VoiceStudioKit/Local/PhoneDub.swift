@@ -64,6 +64,13 @@ public func phoneModelPin(_ model: PhoneModel) throws -> String {
     let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys,.withoutEscapingSlashes]
     return SHA256.hash(data: try encoder.encode(model)).map { String(format: "%02x",$0) }.joined()
 }
+/// The catalogue model that voiced a saved dub, for content reports. The revision is
+/// reported only while the catalogue entry still matches the dub's pin; after an update
+/// changed the entry, the current revision would name a model that never made the audio.
+public func phoneDubVoiceModel(pins: [String: String], in models: [PhoneModel]) -> (repo: String, revision: String?)? {
+    guard let model = models.first(where: { $0.capability == .clone && pins[$0.id] != nil }) else { return nil }
+    return (model.repo, (try? phoneModelPin(model)) == pins[model.id] ? model.revision : nil)
+}
 public actor PhoneDubStore {
     private let root: URL
     private var active = Set<UUID>()

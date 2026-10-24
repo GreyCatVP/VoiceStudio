@@ -328,6 +328,8 @@ export interface AccountPublicState {
     settingsSync: boolean | null;
     proDesktop: boolean | null;
   } | null;
+  /** Dashboard pages for managing the profile and the plan; null when signed out. */
+  links: { profile: string; plan: string } | null;
 }
 
 export interface VoiceStudioBridge {

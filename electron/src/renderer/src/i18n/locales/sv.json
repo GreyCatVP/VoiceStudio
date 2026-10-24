@@ -96,6 +96,7 @@
     "brand_by": "{{brand}} av",
     "all": "Alla",
     "allContributors": "Alla bidragsgivare",
+    "coreMaintainer": "Huvudansvarig",
     "title": "VoiceStudio.sh Öppen källkod",
     "design": "Skapa en röst utifrån en beskrivning.",
     "dub": "Översätt och dubba ljud eller video.",
@@ -2074,6 +2075,7 @@
     "port_in_use_short": "Port {{port}} används",
     "proxy_bypass_help": "Avsluta VoiceStudio helt, ange proxyadressen i HTTP_PROXY/HTTPS_PROXY och undantagna värdar i NO_PROXY i en terminal och starta sedan VoiceStudio därifrån. Ett nytt försök i den öppna appen läser inte in nya miljövariabler.",
     "hint_spawn_blocked": "Operativsystemet eller säkerhetsprogramvaran vägrade starta den lokala motorn. Lägg till VoiceStudios körtidsmapp bland undantagen i ditt antivirusprogram (Windows: Windows-säkerhet → Virus- och hotskydd → Hantera inställningar → Undantag), kontrollera att den inte ligger i en molnsynkad mapp som OneDrive och försök igen.",
+    "hint_smart_app_control": "Windows Smart appkontroll blockerade den lokala motorn. Den saknar undantag per app, så ett undantag i antivirusprogrammet hjälper inte. Stäng av den i Windows-säkerhet → App- och webbläsarkontroll → Inställningar för Smart appkontroll (Windows kan inte slå på den igen utan en återställning), eller anslut VoiceStudio till en motor på en annan dator och försök igen.",
     "hint_slow_start": "Motorn höll fortfarande på att starta när väntetiden tog slut. Långsamma datorer, särskilt utan dedikerat grafikkort, och den första starten efter en installation (antivirusprogrammet skannar varje ny fil) kan ta flera minuter. Stäng minneskrävande appar och försök igen; senare starter går mycket snabbare.",
     "hint_synced_folder": "Den här platsen ligger i en molnsynkad mapp (OneDrive, Dropbox, iCloud Drive, Google Drive). Platshållare som bara finns online och fillåsning förstör Python-miljön. Flytta VoiceStudio till en vanlig lokal mapp (till exempel C:\\VoiceStudio i Windows eller ~/VoiceStudio i macOS och Linux) och konfigurera den på nytt."
   },
@@ -2320,7 +2322,9 @@
     "not_included": "Ingår inte i ditt abonnemang",
     "plan_ends": "till {{date}}",
     "details_failed": "Det gick inte att läsa in dina kontouppgifter ({{reason}}).",
-    "retry": "Försök igen"
+    "retry": "Försök igen",
+    "manage_profile": "Hantera profil",
+    "manage_plan": "Hantera abonnemang"
   },
   "cloudsync": {
     "unavailable": "Synkning är inte tillgänglig just nu.",
@@ -2906,6 +2910,7 @@
     "host_memory_exhausted": "Datorn fick slut på minne. Stäng andra minnestunga appar och webbläsarflikar, avlasta modeller du inte använder, generera ett kortare stycke eller välj en lättare TTS-motor.",
     "engine_dependency_missing": "Ett Python-paket som den här motorn behöver är inte installerat, så motorn kunde inte starta. Öppna Modellkatalogen, välj motorn och använd Installera / Reparera och starta sedan om VoiceStudio.",
     "reference_stt_missing": "Rösten saknar transkription och ingen tal-till-text-modell är installerad för att skapa en. Skriv in vad referensklippet säger i transkriptionsrutan (klipp upp till 20 sekunder) eller installera en tal-till-text-modell i Modellkatalogen, välj den och generera igen.",
+    "install_speech_model": "Installera taligenkänningsmodell",
     "proxy_gateway_error": "En proxy eller gateway mellan dig och VoiceStudio svarade HTTP {{status}} i stället för backend. Backend kanske fortfarande arbetar. Höj proxyns läs-timeout (i nginx proxy_read_timeout) för långa genereringar och kontrollera sedan Inställningar → Loggar → Backend.",
     "route_not_found": "Den körande VoiceStudio-backenden har ingen {{route}}-ändpunkt. Starta om VoiceStudio så att appen och backend matchar; om det kvarstår, uppdatera båda till samma version."
   },
@@ -3798,7 +3803,7 @@
       "capture_slow": "Telefonen hann inte bearbeta mikrofonljudet. Stäng andra appar eller använd din dator.",
       "preset_voice": "Röst {{number}}",
       "transfer": "{{received}} av {{total}}",
-      "privacy": "Uppgifter på enheten stannar på telefonen. Bara modellnedladdningar och din parkopplade dator använder nätverket.",
+      "privacy": "Uppgifter på enheten stannar på telefonen. Bara modellnedladdningar, rapporter som du väljer att skicka och din parkopplade dator använder nätverket.",
       "computer_feature": "Den här funktionen körs just nu på din dator. Du kan använda Tala och Diktering på telefonen utan parkoppling.",
       "accepted": "Licens godkänd",
       "not_accepted": "Licens inte godkänd",
@@ -3862,6 +3867,28 @@
     },
     "consent": {
       "phone_note": "Sparas på telefonen. Ingenting skickas."
+    },
+    "report": {
+      "action": "Rapportera",
+      "title": "Rapportera det här resultatet",
+      "reason": "Vad är fel?",
+      "reasons": {
+        "sexual": "Sexuellt innehåll",
+        "hateful": "Hatiskt eller kränkande",
+        "impersonation": "Imitation eller en röst klonad utan samtycke",
+        "misleading": "Vilseledande eller skadligt",
+        "other": "Något annat"
+      },
+      "note": "Detaljer (valfritt)",
+      "include_text": "Ta med texten jag skrev",
+      "disclosure": "Skickar din anledning, anteckning, appversionen och modellen som skapade detta till VoiceStudio-teamet. Inget ljud, konto eller enhets-ID skickas.",
+      "send": "Skicka rapport",
+      "sending": "Skickar…",
+      "sent": "Rapporten har skickats. Tack.",
+      "failed": "Det gick inte att skicka rapporten. Kontrollera anslutningen och försök igen.",
+      "retry": "Försök igen",
+      "rate_limited": "För många rapporter från det här nätverket. Försök igen senare.",
+      "invalid": "Rapporten kunde inte skickas. Uppdatera appen och försök igen."
     }
   }
 }

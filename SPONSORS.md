@@ -27,6 +27,8 @@ GitHub Sponsors is the checkout; its tier names and prices follow this table. Ti
 | **Company Sponsor** | $500 | A logo and link on the [project website](https://voicestudio.sh). |
 | **Strategic Sponsor** | $1,000 | A 30-minute feedback call each quarter. Feedback is welcome; it does not set the roadmap. |
 
+The same tiers are published machine-readably in [`funding.json`](funding.json) ([funding.json](https://fundingjson.org) format); keep the two in step.
+
 Recognition appears only on surfaces that exist today: this file, the README and the website. New surfaces are added to existing sponsors when they ship.
 
 ### How recognition works

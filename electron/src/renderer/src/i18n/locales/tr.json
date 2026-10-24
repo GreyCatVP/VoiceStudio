@@ -96,6 +96,7 @@
     "brand_by": "{{brand}} geliştiricisi",
     "all": "Tümü",
     "allContributors": "Tüm katkıda bulunanlar",
+    "coreMaintainer": "Ana bakım sorumlusu",
     "title": "VoiceStudio.sh Açık Kaynak",
     "design": "Bir açıklamadan ses tasarlayın.",
     "dub": "Ses veya videoyu çevirip dublaj yapın.",
@@ -2074,6 +2075,7 @@
     "port_in_use_short": "{{port}} bağlantı noktası kullanımda",
     "proxy_bypass_help": "VoiceStudio’yu tamamen kapatın, terminalde HTTP_PROXY/HTTPS_PROXY değerini proxy URL’sine ve NO_PROXY değerini hariç tutulacak sunuculara ayarlayın, ardından VoiceStudio’yu o terminalden başlatın. Açık uygulamada yeniden denemek yeni ortam değişkenlerini yüklemez.",
     "hint_spawn_blocked": "İşletim sisteminiz veya güvenlik yazılımınız yerel motorun başlatılmasını reddetti. VoiceStudio çalışma zamanı klasörünü antivirüs dışlamalarınıza ekleyin (Windows: Windows Güvenliği → Virüs ve tehdit koruması → Ayarları yönet → Dışlamalar), klasörün OneDrive gibi bulutla eşitlenen bir klasörde olmadığından emin olun ve yeniden deneyin.",
+    "hint_smart_app_control": "Windows Akıllı Uygulama Denetimi yerel motoru engelledi. Uygulama başına istisna tanımıyor, bu yüzden antivirüs dışlaması işe yaramaz. Windows Güvenliği → Uygulama ve tarayıcı denetimi → Akıllı Uygulama Denetimi ayarları bölümünden kapatın (Windows sıfırlanmadan tekrar açamaz) ya da VoiceStudio’yu başka bir bilgisayarda çalışan bir motora bağlayıp yeniden deneyin.",
     "hint_slow_start": "Bekleme süresi dolduğunda motor hâlâ başlıyordu. Yavaş bilgisayarlar, özellikle ayrı ekran kartı olmayanlar, ve bir kurulumdan sonraki ilk başlatma (antivirüs her yeni dosyayı tarar) birkaç dakika sürebilir. Çok bellek kullanan uygulamaları kapatıp yeniden deneyin; sonraki başlatmalar çok daha hızlıdır.",
     "hint_synced_folder": "Bu konum, bulutla eşitlenen bir klasörde (OneDrive, Dropbox, iCloud Drive, Google Drive). Yalnızca çevrimiçi yer tutucular ve dosya kilitleme Python ortamını bozar. VoiceStudio'yu normal bir yerel klasöre (örneğin Windows'ta C:\\VoiceStudio, macOS ve Linux'ta ~/VoiceStudio) taşıyın ve yeniden kurun."
   },
@@ -2320,7 +2322,9 @@
     "not_included": "Planınızda yok",
     "plan_ends": "{{date}} tarihine kadar",
     "details_failed": "Hesap ayrıntıların yüklenemedi ({{reason}}).",
-    "retry": "Tekrar dene"
+    "retry": "Tekrar dene",
+    "manage_profile": "Profili yönet",
+    "manage_plan": "Planı yönet"
   },
   "cloudsync": {
     "unavailable": "Eşitleme şu anda kullanılamıyor.",
@@ -2906,6 +2910,7 @@
     "host_memory_exhausted": "Bilgisayarın belleği tükendi. Belleği çok kullanan diğer uygulamaları ve tarayıcı sekmelerini kapatın, kullanmadığınız modelleri boşaltın, daha kısa bir bölüm üretin veya daha hafif bir TTS motoru seçin.",
     "engine_dependency_missing": "Bu motorun ihtiyaç duyduğu bir Python paketi yüklü değil, bu yüzden motor başlatılamadı. Model Kataloğu'nu açın, motoru seçin ve Yükle / Onar'ı kullanın, ardından VoiceStudio'yu yeniden başlatın.",
     "reference_stt_missing": "Bu sesin deşifresi yok ve bir tane oluşturacak konuşmadan metne modeli yüklü değil. Referans klibin söylediğini deşifre kutusuna yazın (en fazla 20 saniyelik klipler) veya Model Kataloğu'ndan bir konuşmadan metne modeli yükleyip seçin ve yeniden üretin.",
+    "install_speech_model": "Konuşma tanıma modelini yükle",
     "proxy_gateway_error": "Sizinle VoiceStudio arasındaki bir proxy veya ağ geçidi, arka uç yerine HTTP {{status}} yanıtı verdi. Arka uç hâlâ çalışıyor olabilir. Uzun üretimler için proxy'nin okuma zaman aşımını artırın (nginx'te proxy_read_timeout), ardından Ayarlar → Günlükler → Arka uç bölümüne bakın.",
     "route_not_found": "Çalışan VoiceStudio arka ucunda {{route}} uç noktası yok. Uygulama ile arka ucun eşleşmesi için VoiceStudio'yu yeniden başlatın; sorun sürerse ikisini de aynı sürüme güncelleyin."
   },
@@ -3798,7 +3803,7 @@
       "capture_slow": "Bu telefon mikrofon sesini yeterince hızlı işleyemedi. Diğer uygulamaları kapatın veya bilgisayarınızı kullanın.",
       "preset_voice": "Ses {{number}}",
       "transfer": "{{received}} / toplam {{total}}",
-      "privacy": "Cihaz içi görevler bu telefonda kalır. Yalnızca model indirmeleri ve eşleştirilmiş bilgisayarınız ağı kullanır.",
+      "privacy": "Cihaz içi görevler bu telefonda kalır. Yalnızca model indirmeleri, göndermeyi seçtiğiniz bildirimler ve eşleştirilmiş bilgisayarınız ağı kullanır.",
       "computer_feature": "Bu özellik şu anda bilgisayarınızda çalışır. Konuş ve Dikte'yi eşleştirmeden bu telefonda kullanabilirsiniz.",
       "accepted": "Lisans kabul edildi",
       "not_accepted": "Lisans kabul edilmedi",
@@ -3862,6 +3867,28 @@
     },
     "consent": {
       "phone_note": "Bu telefonda saklanır. Hiçbir şey gönderilmez."
+    },
+    "report": {
+      "action": "Bildir",
+      "title": "Bu sonucu bildir",
+      "reason": "Sorun nedir?",
+      "reasons": {
+        "sexual": "Cinsel içerik",
+        "hateful": "Nefret içeren veya taciz edici",
+        "impersonation": "Kimliğe bürünme veya izinsiz klonlanmış ses",
+        "misleading": "Yanıltıcı veya zararlı",
+        "other": "Başka bir şey"
+      },
+      "note": "Ayrıntılar (isteğe bağlı)",
+      "include_text": "Girdiğim metni ekle",
+      "disclosure": "Nedeninizi, notunuzu, uygulama sürümünü ve bunu üreten modeli VoiceStudio ekibine gönderir. Ses, hesap veya cihaz kimliği gönderilmez.",
+      "send": "Bildirimi gönder",
+      "sending": "Gönderiliyor…",
+      "sent": "Bildirim gönderildi. Teşekkürler.",
+      "failed": "Bildirim gönderilemedi. Bağlantınızı kontrol edip tekrar deneyin.",
+      "retry": "Tekrar dene",
+      "rate_limited": "Bu ağdan çok fazla bildirim geldi. Daha sonra tekrar deneyin.",
+      "invalid": "Bu bildirim gönderilemedi. Uygulamayı güncelleyip tekrar deneyin."
     }
   }
 }

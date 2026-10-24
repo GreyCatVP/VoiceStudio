@@ -32,6 +32,7 @@ struct ComputerDubView: View {
     @State private var selectingLanguages = false
     @State private var shared: SharedFile?
     @State private var saved: SharedFile?
+    @State private var reporting: ContentReportSubject?
     var languages: [DubLanguage] { model.languages.dubOptions }
     var body: some View {
         Page {
@@ -66,7 +67,10 @@ struct ComputerDubView: View {
             if let cp = model.dub.checkpoint {
                 DubJobCard(title: cp.title, stage: model.t("mobile.ios.dub_stages." + cp.stage.rawValue), fraction: model.dub.progress, running: model.dub.monitoring) {
                     if cp.host != model.connection.active?.id { NavigationLink(model.t("mobile.simple.reconnect")) { ConnectView() } }
-                    else if cp.stage == .done { Button(model.t("mobile.dub.download"), systemImage: "arrow.down.to.line") { Task { await download(cp.jobID, name: cp.title) } } }
+                    else if cp.stage == .done {
+                        Button(model.t("mobile.dub.download"), systemImage: "arrow.down.to.line") { Task { await download(cp.jobID, name: cp.title) } }
+                        ReportButton(subject: .computer(.dub, id: cp.jobID, engine: nil), reporting: $reporting, context: cp.title)
+                    }
                     else if cp.stage != .cancelled {
                         if !model.dub.monitoring { Button(model.t("mobile.ios.upload_resume"), systemImage: "play.fill") { model.monitor() } }
                         Button(model.t("mobile.dub.abort"), systemImage: "xmark", role: .destructive) { Task { await model.perform { model.pauseMonitor(); try await model.dub.abort(api: model.api()) } } }
@@ -101,6 +105,7 @@ struct ComputerDubView: View {
         .fileImporter(isPresented: $importing, allowedContentTypes: [.movie, .audio]) { result in
             switch result { case .success(let url): selectedFile = SelectedMedia(url: url); sourceURL = ""; case .failure: model.error = ClientError("mobile.errors.file") }
         }
+        .contentReportSheet($reporting)
         .sheet(item: $shared) { file in ShareSheet(items: [file.url]) }
         .sheet(item: $saved) { file in SaveFileSheet(url: file.url) }
         .sheet(isPresented: $selectingLanguages) {
@@ -155,6 +160,7 @@ struct ComputerDubView: View {
                 Task { await download(item.job_id ?? item.id, name: item.title, share: true) }
             }.accessibilityIdentifier("dub.share." + item.id)
                 .accessibilityLabel(model.t("mobile.speak.share") + ": " + item.title)
+            ReportButton(subject: .computer(.dub, id: item.job_id ?? item.id, engine: nil), reporting: $reporting, context: item.title)
         }.labelStyle(.iconOnly).studioButton(.tertiary).disabled(model.busy)
     }
     private func download(_ id: String, name: String, share: Bool = false) async {

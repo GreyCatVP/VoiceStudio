@@ -41,23 +41,27 @@ import kotlinx.coroutines.*
     LaunchedEffect(engines,state.engines.active) {
         if(engines.none {it.id==engine && it.enabled}) engine=initialEngine(state.engines,engines)
     }
-    Screen {
+    Screen(bottomBar={
+        Action(if(state.busy) "mobile.speak.generating" else "mobile.speak.generate",text.isNotBlank()&&engines.any {it.id==engine&&it.enabled}&&!state.busy) {
+            vm.generate(text,voice,engine,language)
+        }
+    }) {
         ScreenTitle("mobile.tabs.speak")
         Field("mobile.speak.placeholder",text,onTextChange,multiline=true)
         if(catalog==null) InlineLoading()
-        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(VSTheme.gap)) {
-            Box(Modifier.weight(1f)) {ChoicePicker("mobile.speak.voice",voice,listOf(Choice("",tr("mobile.simple.default_voice")))+state.profiles.map {Choice(it.id,it.name)},compact=true) {voice=it}}
-            Box(Modifier.weight(1f)) {ChoicePicker("mobile.speak.engine",engine,engines,compact=true) {engine=it}}
-            Box(Modifier.weight(1f)) {ChoicePicker("mobile.speak.language",language,catalog?.names.orEmpty().map {Choice(it,it)},compact=true) {language=it}}
-        }
-        Action(if(state.busy) "mobile.speak.generating" else "mobile.speak.generate",text.isNotBlank()&&engines.any {it.id==engine&&it.enabled}&&!state.busy) {
-            vm.generate(text,voice,engine,language)
+        Group {
+            ChoicePicker("mobile.speak.voice",voice,listOf(Choice("",tr("mobile.simple.default_voice")))+state.profiles.map {Choice(it.id,it.name)}) {voice=it}
+            HorizontalDivider(color=role("border"))
+            ChoicePicker("mobile.speak.engine",engine,engines) {engine=it}
+            HorizontalDivider(color=role("border"))
+            ChoicePicker("mobile.speak.language",language,catalog?.names.orEmpty().map {Choice(it,it)}) {language=it}
         }
         val audio=state.audio;val api=vm.api
         if(audio!=null && api!=null) {
             HostPlayer(api,audio,vm::fail)
             Secondary("mobile.speak.share",!state.busy) {vm.run {shareFile(context,sharedDownload(context,api,audio,"wav"),"audio/wav")}}
             Secondary("common.save",!state.busy) {savePath=audio;save.launch("${java.util.UUID.randomUUID()}.wav")}
+            ReportButton(vm) {vm.computerSpeakSubject(audio)}
         }
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) {Heading("mobile.speak.recent")}
@@ -72,6 +76,7 @@ import kotlinx.coroutines.*
                     IconAction("player.play",Icons.Default.PlayArrow) {vm.play(vm.api!!.audioPath(item.audioPath))}
                     IconAction(if(item.isStarred) "mobile.speak.unstar" else "mobile.speak.star",Icons.Default.Star,!state.busy) {vm.star(item)}
                     IconAction("common.delete",Icons.Default.Delete,!state.busy) {vm.deleteHistory(item)}
+                    ReportAction(vm) {vm.computerSpeakSubject(vm.api?.audioPath(item.audioPath) ?: item.audioPath,item.text)}
                 }
                 HorizontalDivider()
             }
@@ -108,22 +113,27 @@ internal fun chooseSpeakModel(models: List<PhoneModel>,installed: Set<String>,ch
                 }
             }
             DisposableEffect(Unit) {onDispose {vm.phone.cancelInference()}}
-            Screen {
+            val speakers=selected?.option("num_speakers",selected.option("speaker_count","1"))?.toIntOrNull()?.coerceIn(1,128) ?: 1
+            val validSpeaker=voice!=null||speaker.toIntOrNull()?.let {it in 0 until speakers}==true
+            LaunchedEffect(selected?.id,speakers) {if(voice==null&&!validSpeaker) speaker="0"}
+            var language by rememberSaveable {mutableStateOf("en")}
+            LaunchedEffect(selected?.id,voice?.id) {language=if(voice!=null) "auto" else language.takeIf {it in selected?.languages.orEmpty()} ?: selected?.languages?.firstOrNull().orEmpty()}
+            val languageChoices=if(voice!=null) listOf(Choice("auto",tr("languagePicker.auto"))) else selected?.languages.orEmpty().map {Choice(it,languageName(it,LocalL10n.current.locale))}
+            Screen(bottomBar={
+                Action("mobile.speak.generate",text.isNotBlank()&&selected!=null&&phone.canRun(selected,vm.phone.ramBytes)&&validSpeaker&&phone.progress==null) {
+                    vm.phone.speak(selected!!,text,speaker.toIntOrNull() ?: 0,voice,language.takeUnless {it=="auto"})
+                }
+            }) {
                 ScreenTitle("mobile.tabs.speak")
                 Field("mobile.speak.placeholder",text,{text=it},multiline=true)
-                val speakers=selected?.option("num_speakers",selected.option("speaker_count","1"))?.toIntOrNull()?.coerceIn(1,128) ?: 1
-                val validSpeaker=voice!=null||speaker.toIntOrNull()?.let {it in 0 until speakers}==true
-                LaunchedEffect(selected?.id,speakers) {if(voice==null&&!validSpeaker) speaker="0"}
-                var language by rememberSaveable {mutableStateOf("en")}
-                LaunchedEffect(selected?.id,voice?.id) {language=if(voice!=null) "auto" else language.takeIf {it in selected?.languages.orEmpty()} ?: selected?.languages?.firstOrNull().orEmpty()}
-                val languageChoices=if(voice!=null) listOf(Choice("auto",tr("languagePicker.auto"))) else selected?.languages.orEmpty().map {Choice(it,languageName(it,LocalL10n.current.locale))}
-                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(VSTheme.gap)) {
-                    Box(Modifier.weight(1f)) {ChoicePicker("mobile.speak.voice",speaker,(0 until speakers).map {Choice(it.toString(),tr("mobile.local.preset_voice",mapOf("number" to it+1)))}+phone.voices.map {Choice("phone:"+it.id,it.name)},compact=true) {speaker=it}}
-                    Box(Modifier.weight(1f)) {com.voicestudio.mobile.features.models.TaskModelPicker(vm,"speak",setOf(capability),selected,compact=true,key=speakModelKey(capability))}
-                    Box(Modifier.weight(1f)) {ChoicePicker("mobile.speak.language",language,languageChoices,compact=true) {language=it}}
+                Group {
+                    ChoicePicker("mobile.speak.voice",speaker,(0 until speakers).map {Choice(it.toString(),tr("mobile.local.preset_voice",mapOf("number" to it+1)))}+phone.voices.map {Choice("phone:"+it.id,it.name)}) {speaker=it}
+                    HorizontalDivider(color=role("border"))
+                    com.voicestudio.mobile.features.models.TaskModelPicker(vm,"speak",setOf(capability),selected,key=speakModelKey(capability))
+                    HorizontalDivider(color=role("border"))
+                    ChoicePicker("mobile.speak.language",language,languageChoices) {language=it}
                 }
                 if(selected?.let {!phone.canRun(it,vm.phone.ramBytes)}!=false) selected?.let {com.voicestudio.mobile.features.models.MissingModelsCard(vm,"mobile.tabs.speak",listOf(it))}
-                else Action("mobile.speak.generate",text.isNotBlank()&&selected!=null&&validSpeaker&&phone.progress==null) {vm.phone.speak(selected!!,text,speaker.toIntOrNull() ?: 0,voice,language.takeUnless {it=="auto"})}
                 phone.progress?.let {p ->
                     LinearProgressIndicator(progress={p},modifier=Modifier.fillMaxWidth())
                     Secondary("common.cancel") {vm.phone.cancelInference()}
@@ -132,6 +142,7 @@ internal fun chooseSpeakModel(models: List<PhoneModel>,installed: Set<String>,ch
                     LocalAudioPlayer(file,vm::fail)
                     Secondary("mobile.speak.share") {scope.launch {try {shareLocalFile(context,file,"audio/wav")} catch(e:Exception) {vm.fail(e)}}}
                     Secondary("common.save") {save.launch(file.name)}
+                    phone.recent.firstOrNull {vm.phone.generationFile(it)==file}?.let {take -> ReportButton(vm) {ReportSubjects.phoneSpeak(take)}}
                 }
                 Heading("mobile.speak.recent")
                 if(phone.recent.isEmpty()) EmptyState("mobile.simple.empty_recent")
@@ -140,6 +151,7 @@ internal fun chooseSpeakModel(models: List<PhoneModel>,installed: Set<String>,ch
                         Text(item.text,Modifier.weight(1f),maxLines=1,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                         IconAction("player.play",Icons.Default.PlayArrow) {vm.phone.play(item)}
                         IconAction("common.delete",Icons.Default.Delete) {vm.phone.deleteGeneration(item)}
+                        ReportAction(vm) {ReportSubjects.phoneSpeak(item)}
                     }
                 }
 
