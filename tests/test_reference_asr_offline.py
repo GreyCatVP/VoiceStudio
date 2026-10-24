@@ -536,6 +536,39 @@ def test_unhelpful_recognizer_is_released_before_the_next_one_works():
     assert events.count("selected unloaded") == 2  # once per window it failed, never twice in a row
 
 
+def test_next_window_tries_the_resident_recognizer_first(monkeypatch):
+    """Window 1: the selected recognizer finds nothing, the installed fallback
+    succeeds. Window 2 must go straight to the resident fallback instead of
+    reloading the selected recognizer beside it."""
+    from services import asr_backend as ab
+
+    events = []
+
+    def backend(name, text):
+        return SimpleNamespace(
+            id=name,
+            transcribe=Mock(side_effect=lambda *_a, **_k: events.append(f"{name} transcribes") or {"text": text}),
+            unload=Mock(side_effect=lambda: events.append(f"{name} unloaded")),
+        )
+
+    selected, fallback = backend("selected", ""), backend("fallback", "Words.")
+    monkeypatch.setattr(ab, "_ref_audio_fingerprint", lambda _: None)
+    monkeypatch.setattr(ab, "active_backend_id", lambda: "faster-whisper")
+    monkeypatch.setattr(
+        ab, "asr_model_missing_error",
+        lambda **kw: "missing" if kw.get("purpose") == "dictation" else None,
+    )
+    monkeypatch.setattr(ab, "load_active_asr_backend", lambda **_kw: selected)
+    monkeypatch.setattr(ab, "_installed_reference_fallbacks", lambda _: [fallback])
+    with ab.release_reference_asr_after():
+        assert ab.transcribe_reference("w1.wav") == "Words."
+        assert events == ["selected transcribes", "selected unloaded", "fallback transcribes"]
+        events.clear()
+        assert ab.transcribe_reference("w2.wav") == "Words."
+        assert events == ["fallback transcribes"]  # selected is never touched again: no overlap
+    assert events == ["fallback transcribes", "fallback unloaded"]  # unloaded once, at the end
+
+
 def test_release_now_outside_a_pass_is_a_noop():
     from services import asr_backend as ab
 

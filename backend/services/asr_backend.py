@@ -3380,6 +3380,10 @@ class _DeferredReferencePass:
         self.used: list[ASRBackend] = []
         self.candidates: list[ASRBackend] | None = None
         self.fallbacks: list[ASRBackend] | None = None
+        # The recognizer that last produced words in this pass. Later windows try
+        # it first, so a selected-but-unhelpful recognizer is not reloaded beside
+        # the one that is already resident.
+        self.winner: ASRBackend | None = None
 
 
 # Set only by ``release_reference_asr_after``.
@@ -3423,6 +3427,7 @@ def release_reference_asr_now() -> None:
     state.used.clear()
     state.candidates = None  # a later transcribe in this pass rediscovers fresh ones
     state.fallbacks = None
+    state.winner = None
 
 
 def _transcribe_reference_candidates(
@@ -3438,9 +3443,15 @@ def _transcribe_reference_candidates(
             # that succeeds stays resident and is reused for the next window.
             _release_reference_backend(backend)
             deferred.used[:] = [b for b in deferred.used if b is not backend]
+            if deferred.winner is backend:
+                deferred.winner = None
+
+        def remember_winner(backend: ASRBackend) -> None:
+            deferred.winner = backend
 
         return _try_reference_candidates(
-            candidates, audio_path, release_after=True, on_failed=drop_unhelpful,
+            candidates, audio_path, release_after=True,
+            on_failed=drop_unhelpful, on_success=remember_winner,
         )
     # Sidecars serialize ASR and TTS; release even preloaded candidates skipped
     # after the first success before loading the much larger synthesis model.
@@ -3461,6 +3472,7 @@ def _release_reference_backend(backend: ASRBackend) -> None:
 def _try_reference_candidates(
     candidates: list[ASRBackend], audio_path: str, *, release_after: bool,
     on_failed: "Callable[[ASRBackend], None] | None" = None,
+    on_success: "Callable[[ASRBackend], None] | None" = None,
 ) -> str:
     """First candidate that produces words wins.
 
@@ -3480,6 +3492,8 @@ def _try_reference_candidates(
             )
             candidate_text = (candidate_text or "").strip()
             if candidate_text:
+                if on_success is not None:
+                    on_success(backend)
                 return candidate_text
         except ModelLicenceNotAccepted:
             logger.info("transcribe_reference: %s skipped — model licence not accepted", backend.id)
@@ -3557,13 +3571,24 @@ def transcribe_reference(audio_path: str, *, release_after: bool = False) -> str
                 _ref_transcript_cache.move_to_end(fingerprint)
                 return cached
     deferred = _deferred_reference_release.get()
+    # A recognizer that already produced words earlier in this pass is still
+    # resident: try it first, so later windows never reload an unhelpful
+    # recognizer beside it.
+    text = ""
+    if deferred is not None and deferred.winner is not None:
+        text = _transcribe_reference_candidates(
+            [deferred.winner], audio_path, release_after=release_after,
+        )
     if deferred is not None and deferred.candidates is not None:
         candidates = deferred.candidates
+    elif text:
+        candidates = []  # not needed: the resident recognizer already answered
     else:
         candidates = _discover_reference_candidates()
         if deferred is not None:
             deferred.candidates = candidates
-    text = _transcribe_reference_candidates(candidates, audio_path, release_after=release_after)
+    if not text:
+        text = _transcribe_reference_candidates(candidates, audio_path, release_after=release_after)
     fallbacks: list[ASRBackend] = []
     if not text:
         if deferred is not None and deferred.fallbacks is not None:
@@ -3574,7 +3599,7 @@ def transcribe_reference(audio_path: str, *, release_after: bool = False) -> str
                 deferred.fallbacks = fallbacks
         text = _transcribe_reference_candidates(fallbacks, audio_path, release_after=release_after)
 
-    if not candidates and not fallbacks:
+    if not text and not candidates and not fallbacks:
         logger.info(
             "transcribe_reference: no installed ASR model available — skipping "
             "reference auto-transcription (no silent download)."
