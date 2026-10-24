@@ -23,6 +23,7 @@ class CosyVoiceGGUFBackend(TTSBackend):
     gpu_compat = ("cpu", "vulkan")
     supports_cloning = True
     supports_voice_design = False
+    supports_generation_seed = True
     runs_out_of_process = True
     _is_subprocess_isolated = True
 
