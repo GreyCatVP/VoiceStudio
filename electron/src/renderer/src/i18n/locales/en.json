@@ -3799,7 +3799,7 @@
       "capture_slow": "This phone could not process microphone audio fast enough. Stop other apps or use your computer.",
       "preset_voice": "Voice {{number}}",
       "transfer": "{{received}} of {{total}}",
-      "privacy": "On-device tasks stay on this phone. Only model downloads and your paired computer use the network.",
+      "privacy": "On-device tasks stay on this phone. Only model downloads, reports you choose to send and your paired computer use the network.",
       "computer_feature": "This feature currently runs on your computer. You can use Speak and Dictate on this phone without pairing.",
       "accepted": "Licence accepted",
       "not_accepted": "Licence not accepted",

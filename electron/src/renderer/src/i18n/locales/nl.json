@@ -3799,7 +3799,7 @@
       "capture_slow": "Deze telefoon kon microfoonaudio niet snel genoeg verwerken. Sluit andere apps of gebruik je computer.",
       "preset_voice": "Stem {{number}}",
       "transfer": "{{received}} van {{total}}",
-      "privacy": "Taken op het apparaat blijven op deze telefoon. Alleen modeldownloads en je gekoppelde computer gebruiken het netwerk.",
+      "privacy": "Taken op het apparaat blijven op deze telefoon. Alleen modeldownloads, meldingen die je zelf verstuurt en je gekoppelde computer gebruiken het netwerk.",
       "computer_feature": "Deze functie draait momenteel op je computer. Je kunt Spreken en Dicteren op deze telefoon gebruiken zonder te koppelen.",
       "accepted": "Licentie geaccepteerd",
       "not_accepted": "Licentie niet geaccepteerd",

@@ -26,6 +26,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from prepare_electron_release import channel_for  # noqa: E402
+from changelog_fragments import apply_fragments, read_fragments, remove_fragments  # noqa: E402
 
 GUARD_TESTS = [
     "tests/test_app_version.py",
@@ -34,6 +35,7 @@ GUARD_TESTS = [
 ]
 RELEASE_FILES = [
     "package.json", "pyproject.toml", "backend/core/version.py", "uv.lock", "CHANGELOG.md",
+    "changelog.d",
 ]
 # Platforms whose installers are signed. Kept apart from the table below so that
 # what the helper prints is plain platform names, never anything derived from the
@@ -350,12 +352,15 @@ Release plan
     try:
         bump_files(ROOT, version)
         changelog = ROOT / "CHANGELOG.md"
+        folded = apply_fragments(changelog.read_text(encoding="utf-8"), read_fragments())
         changelog.write_text(
-            prepare_changelog(changelog.read_text(encoding="utf-8"), version, datetime.date.today()),
+            prepare_changelog(folded, version, datetime.date.today()),
             encoding="utf-8",
         )
         sh("uv", "lock")
         sh("uv", "run", "pytest", *GUARD_TESTS, "-q")
+        # Only now, with every guard passed: a failed release keeps every fragment.
+        remove_fragments()
     except (subprocess.CalledProcessError, ValueError) as error:
         # Nothing is committed or pushed yet: put the working tree back.
         sh("git", "checkout", "--", *RELEASE_FILES)
