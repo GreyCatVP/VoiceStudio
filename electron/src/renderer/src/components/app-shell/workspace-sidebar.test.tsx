@@ -74,15 +74,13 @@ it('expands the compact rail on double-click without changing single-click navig
   expect(sidebar.setOpen).toHaveBeenCalledWith(true);
 });
 
-it('places the navigation above the voice library in the expanded sidebar', () => {
+it('keeps only navigation and status in the slim expanded sidebar', () => {
   render(<WorkspaceSidebar />);
   const navigation = screen.getByTestId('navigation');
-  const library = screen.getByTestId('library');
   const status = screen.getByTestId('status');
-  expect(
-    navigation.compareDocumentPosition(library) & Node.DOCUMENT_POSITION_FOLLOWING,
-  ).toBeTruthy();
-  expect(library.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(navigation.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  // The saved voices and takes live in the section's own secondary sidebar.
+  expect(screen.queryByTestId('library')).toBeNull();
 });
 
 it('shows the app version beneath the brand name in the expanded sidebar', () => {

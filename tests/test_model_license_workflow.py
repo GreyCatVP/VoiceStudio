@@ -263,7 +263,7 @@ class WorkflowTests(unittest.TestCase):
         p = self.prepare()
         for group in ("receipts", "evidence", "installed"):
             self.assertEqual(self.service._record_path(group, p["plan_digest"]),
-                             self.service.store / group / f"{p['plan_digest']}.json")
+                             (self.service.store / group / f"{p['plan_digest']}.json").resolve())
 
     def test_symlinked_receipt_directory_cannot_escape_store(self):
         p = self.prepare()
@@ -358,7 +358,7 @@ class ProductionTests(unittest.TestCase):
 
     def test_production_rows_never_use_synthetic_positive_fixtures(self):
         registry = ml.load_registry()
-        self.assertEqual(len(registry["models"]), 58)
+        self.assertEqual(len(registry["models"]), 62)
         self.assertEqual(len(registry["dynamic_assets"]), 7)
         for row in registry["models"]:
             self.assertEqual(row["component_closure"], "incomplete")
