@@ -6,6 +6,11 @@ existing installations, see [migration notes](../docs/electron-migration.md).
 
 The runtime supervisor manages the local FastAPI backend. Network integrations
 and remote-backend connections require configuration; local generation stays on your machine.
+Once setup and the required models are installed, saving cloned voice profiles
+works without internet access. Desktop API requests follow the supervisor's
+backend readiness rather than the browser's internet connectivity; they still
+pause during startup or a backend failure. Remote backend requests also wait
+for network connectivity before resuming queued operations.
 
 ## Stack
 
@@ -263,9 +268,7 @@ Transcribe, Projects, Tools, and Integrations remain directly accessible.
 
 ### Desktop Pro licence configuration
 
-The open-source Pro page opens the public pricing site without licence controls.
-A separate Pro distribution can enable activation with live Lemon Squeezy store,
-product, and variant IDs at build time:
-`VOICESTUDIO_PRO_STORE_ID`, `VOICESTUDIO_PRO_PRODUCT_ID`,
-`VOICESTUDIO_PRO_YEARLY_VARIANT_ID`, and `VOICESTUDIO_PRO_LIFETIME_VARIANT_ID`.
-See `docs/specs/desktop-pro-page.md` for the checkout release gates.
+The open-source Pro page opens the public pricing site. The open-source app
+contains no licence client and makes no licensing network calls; any licence
+activation belongs to a separate Pro distribution. See
+`docs/specs/desktop-pro-page.md` for the checkout release gates.
