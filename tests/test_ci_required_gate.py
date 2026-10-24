@@ -15,5 +15,5 @@ def test_the_required_gate_only_reads_job_results():
     assert gate["name"] == "Tests (backend + frontend)"
     assert [step.get("uses") for step in gate["steps"]] == [None]
     assert "electron/" not in gate["steps"][0]["run"]
-    runs = [step["run"] for step in WORKFLOW["jobs"]["test-electron"]["steps"] if "run" in step]
+    runs = [step["run"] for step in WORKFLOW["jobs"]["electron-smokes"]["steps"] if "run" in step]
     assert any("node electron/tests/run-renderer-smokes.mjs" in run for run in runs)

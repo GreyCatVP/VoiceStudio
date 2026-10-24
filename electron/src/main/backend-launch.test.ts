@@ -279,3 +279,10 @@ it('hands backend-only capabilities to the managed backend alone, never to proce
   }
   expect(managedBackendSpawnOptions(3900).env.VOICESTUDIO_ACCOUNT_BRIDGE_TOKEN).toBeUndefined();
 });
+
+it('tells the backend which commit the app was built from (#3293)', () => {
+  vi.stubEnv('OMNIVOICE_BUILD_COMMIT', undefined);
+  expect(managedBackendSpawnOptions(3900).env.OMNIVOICE_BUILD_COMMIT).toBe('000000000');
+  vi.stubEnv('OMNIVOICE_BUILD_COMMIT', 'abcdef123');
+  expect(managedBackendSpawnOptions(3900).env.OMNIVOICE_BUILD_COMMIT).toBe('abcdef123');
+});

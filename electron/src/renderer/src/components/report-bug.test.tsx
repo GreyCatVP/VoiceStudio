@@ -157,6 +157,14 @@ it('includes the durable native crash journal when the backend API is unavailabl
   expect(body).toContain('durable native failure');
 });
 
+it('names the exact build, not just the version', async () => {
+  mock.api.mockRejectedValue(new Error('offline'));
+  render(<ReportBug />);
+  fireEvent.click(screen.getByRole('button', { name: 'reportBug.label' }));
+  await waitFor(() => expect(mock.open).toHaveBeenCalledTimes(1));
+  const body = new URL(mock.open.mock.calls[0]![0]).searchParams.get('body')!;
+  expect(body).toMatch(/\*\*App:\*\* VoiceStudio \S+ \(build [0-9a-f]{9}\)/);
+});
 it('describes the machine and runtime from the app when the backend never started (#3156)', async () => {
   mock.api.mockRejectedValue(new Error('offline'));
   mock.hostSnapshot.mockResolvedValue({

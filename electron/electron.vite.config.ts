@@ -10,6 +10,7 @@ import {
   PRODUCT_NAME,
 } from '../config/app-config.mjs';
 import { DISTRIBUTION_TARGET } from '../config/distributions.mjs';
+import { buildCommit } from '../config/build-commit.mjs';
 
 // The app version is single-sourced from the root package.json (CLAUDE.md,
 // Versioning). Nothing in electron/ mirrors it: the renderer reads it through
@@ -20,6 +21,7 @@ const frontendPkg = JSON.parse(readFileSync(resolve(__dirname, '../package.json'
 
 const define = {
   __APP_VERSION__: JSON.stringify(frontendPkg.version),
+  __BUILD_COMMIT__: JSON.stringify(buildCommit()),
   __DISTRIBUTION_TARGET__: JSON.stringify(DISTRIBUTION_TARGET),
   __WEB_DEPLOYMENT__: false,
   // Keep the renderer and its managed Python backend on one analytics project.

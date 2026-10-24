@@ -552,6 +552,10 @@ function childEnv(
     env.POSTHOG_PROJECT_TOKEN = packagedToken;
   }
   if (packagedHost && !env.POSTHOG_HOST) env.POSTHOG_HOST = packagedHost;
+  // The backend reports the same build commit as the app in bug reports.
+  if (!env.OMNIVOICE_BUILD_COMMIT && __BUILD_COMMIT__ !== 'unknown') {
+    env.OMNIVOICE_BUILD_COMMIT = __BUILD_COMMIT__;
+  }
   delete env.PYTHONHOME;
   delete env.PYTHONPATH;
   env.PYTHONUNBUFFERED = '1';
