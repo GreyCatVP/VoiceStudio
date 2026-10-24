@@ -58,7 +58,7 @@ def _word_count(text: str) -> int:
 def _is_short(seg) -> bool:
     return (
         seg.duration < MIN_DUR
-        or seg.char_count < MIN_CHARS
+        or _spaced_char_count(seg.text) < MIN_CHARS
         or _word_count(seg.text) < MIN_WORDS
     )
 
@@ -186,6 +186,17 @@ def _join_text(parts: Iterable[object]) -> str:
             out += " "
         out += piece
     return out
+
+
+def _spaced_char_count(text: str) -> int:
+    """Length on the Latin-calibrated scale ``MIN_CHARS`` uses.
+
+    Unspaced-script glyphs (CJK, kana, Thai, ...) each carry roughly a word,
+    so they count twice. Otherwise rejoining their words without the old
+    artificial spaces would turn full sentences into "short" fragments that
+    ``_merge_short`` folds together past ``MAX_DUR``.
+    """
+    return len(text) + len(_UNSPACED.findall(text))
 
 
 def _best_boundary(text: str, ideal_pos: int) -> int:

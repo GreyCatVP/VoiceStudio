@@ -471,3 +471,13 @@ def test_merging_short_chinese_segments_adds_no_space():
             Segment(start=0.35, end=2.5, text="我们走吧。")]
     merged = _merge_short(segs)
     assert merged[0].text == "好。我们走吧。"
+
+
+def test_full_chinese_sentences_are_not_short_once_rejoined():
+    # Two six-second, ten-character sentences: each is a full segment, so
+    # dropping the old artificial spaces must not make them fold together
+    # into one 12-second segment past MAX_DUR.
+    segs = [Segment(start=0.0, end=6.0, text="我们今天去公园散步了。"),
+            Segment(start=6.1, end=12.0, text="明天我们一起去看电影。")]
+    merged = _merge_short(segs)
+    assert [s.text for s in merged] == ["我们今天去公园散步了。", "明天我们一起去看电影。"]

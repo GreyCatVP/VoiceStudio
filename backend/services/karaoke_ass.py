@@ -25,6 +25,8 @@ from __future__ import annotations
 import re
 from typing import Optional, Sequence
 
+from services.segmentation import _UNSPACED, _join_text
+
 _WS = re.compile(r"\s+")
 
 #: Default ASS canvas. libass scales the script to the real video size, so
@@ -152,7 +154,9 @@ def _usable_words(cue: dict, text: str) -> Optional[list[tuple[str, float, float
             clean.append((wtext, ws, we))
     if not clean:
         return None
-    if _norm(" ".join(t for t, _, _ in clean)) != text:
+    # Same joining rule segmentation used to build the text: no space between
+    # two unspaced-script words (Chinese, Japanese, Thai, ...).
+    if _norm(_join_text(t for t, _, _ in clean)) != text:
         return None
     return clean
 
@@ -181,7 +185,12 @@ def _karaoke_text(cue: dict, text: str, start: float, end: float) -> str:
         parts.append(f"{{\\k{_cs(lead)}}}")
     for i, (wtext, ws) in enumerate(clamped):
         nxt = clamped[i + 1][1] if i + 1 < len(clamped) else end
-        sep = " " if i + 1 < len(clamped) else ""
+        if i + 1 >= len(clamped):
+            sep = ""
+        elif wtext and clamped[i + 1][0] and _UNSPACED.match(wtext[-1]) and _UNSPACED.match(clamped[i + 1][0][0]):
+            sep = ""
+        else:
+            sep = " "
         parts.append(f"{{\\kf{_cs(max(nxt, ws) - ws)}}}{_ass_escape(wtext)}{sep}")
     return "".join(parts)
 

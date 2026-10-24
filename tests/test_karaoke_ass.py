@@ -353,3 +353,22 @@ class TestKaraokeBurnEndpoint:
         assert "{\\kf" in res.text
         disposition = res.headers.get("content-disposition", "")
         assert disposition.startswith("attachment;") and ".ass" in disposition
+
+
+def test_unspaced_script_words_keep_their_timing_and_join_without_spaces():
+    # Segmentation now stores Chinese text without artificial spaces, so the
+    # persisted words must still be recognised as spelling it.
+    cue = {"start": 0.0, "end": 3.0, "text": "我们今天去公园。",
+           "words": [{"text": "我们", "start": 0.0, "end": 1.0},
+                     {"text": "今天", "start": 1.0, "end": 2.0},
+                     {"text": "去公园。", "start": 2.0, "end": 3.0}]}
+    script = build_ass([cue])
+    assert "{\\kf100}我们{\\kf100}今天{\\kf100}去公园。" in script
+
+
+def test_mixed_script_words_keep_the_space_next_to_latin():
+    cue = {"start": 0.0, "end": 3.0, "text": "用 iPhone 拍照。",
+           "words": [{"text": "用", "start": 0.0, "end": 1.0},
+                     {"text": "iPhone", "start": 1.0, "end": 2.0},
+                     {"text": "拍照。", "start": 2.0, "end": 3.0}]}
+    assert "{\\kf100}用 {\\kf100}iPhone {\\kf100}拍照。" in build_ass([cue])
