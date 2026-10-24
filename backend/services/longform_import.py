@@ -227,6 +227,15 @@ class _TextExtractor(HTMLParser):
             else:
                 self._parts.append("\n")
 
+    def handle_startendtag(self, tag, attrs):
+        # A self-closing void element (<x:br/>) is never pushed onto the scope
+        # stack, so running the end-tag search would close a same-named
+        # ancestor instead and lose that ancestor's namespace binding.
+        depth = len(self._elements)
+        self.handle_starttag(tag, attrs)
+        if len(self._elements) > depth:
+            self.handle_endtag(tag)
+
     def handle_endtag(self, tag):
         raw_tag = tag
         namespaces = self._elements[-1][1] if self._elements else {}

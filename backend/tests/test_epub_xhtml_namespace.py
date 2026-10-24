@@ -62,3 +62,15 @@ def test_prefixed_xhtml_epub_keeps_heading_and_paragraphs(importer):
         ))
         archive.writestr("chapter.xhtml", document)
     assert importer.epub_to_chapter_script(stream.getvalue()) == '# The Arrival\n\nOne.\n\nTwo.'
+
+
+def test_self_closing_xhtml_break_keeps_the_foreign_parent_binding(importer):
+    # The inner XHTML <x:br/> is void; closing it must not pop the outer
+    # foreign <x:br>, or the following foreign <x:script> reads as XHTML and
+    # its words are dropped.
+    document = (
+        '<x:html xmlns:x="http://www.w3.org/1999/xhtml"><x:body><x:h1>Chapter</x:h1><x:p>'
+        '<x:br xmlns:x="urn:publisher"><x:br xmlns:x="http://www.w3.org/1999/xhtml"/>'
+        '<x:script>spoken</x:script></x:br></x:p></x:body></x:html>'
+    )
+    assert importer._html_to_title_body(document) == ("Chapter", "spoken")
