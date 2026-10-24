@@ -207,7 +207,8 @@ export async function listDesktopReleases(
     if (!value || typeof value !== 'object') return [];
     const item = value as Record<string, unknown>;
     const tag = typeof item.tag_name === 'string' ? item.tag_name.trim() : '';
-    if (!tag) return [];
+    // Only desktop releases: the phone apps publish `mobile-vX.Y.Z` prereleases too.
+    if (!RELEASE_TAG.test(tag)) return [];
     const name = typeof item.name === 'string' && item.name.trim() ? item.name.trim() : tag;
     return [
       {

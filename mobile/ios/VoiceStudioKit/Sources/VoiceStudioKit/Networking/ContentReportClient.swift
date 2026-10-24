@@ -1,5 +1,13 @@
 import Foundation
 
+/// The root `package.json` version (`X.Y.Z` or `X.Y.Z-beta.N`). App Store Connect only
+/// accepts `X.Y.Z` in CFBundleShortVersionString, so the full one ships under its own key.
+public enum AppVersion {
+    public static func full(info: [String: Any]?) -> String? {
+        (info?[ContentReportClient.appVersionInfoKey] as? String)?.nilIfBlank ?? (info?["CFBundleShortVersionString"] as? String)?.nilIfBlank
+    }
+}
+
 /// `POST /v1/content-reports` on VoiceStudio's app API. Deliberately separate from
 /// `APIClient`: it never carries the paired host's PIN, session or any `Authorization`.
 public struct ContentReportClient: Sendable {
@@ -10,7 +18,7 @@ public struct ContentReportClient: Sendable {
     public static func baseURL(debug: Bool) -> URL { debug ? debugBaseURL : releaseBaseURL }
     /// The full app version (`X.Y.Z` or `X.Y.Z-beta.N`), limited to the server's `^[0-9A-Za-z.+_-]{1,32}$`.
     public static func appVersion(info: [String: Any]?) -> String {
-        let raw = (info?[appVersionInfoKey] as? String)?.nilIfBlank ?? (info?["CFBundleShortVersionString"] as? String) ?? ""
+        let raw = AppVersion.full(info: info) ?? ""
         let kept = String(String.UnicodeScalarView(raw.unicodeScalars.filter { ContentReportSubject.allowed($0, extra: ".+_-") }).prefix(32))
         return kept.isEmpty ? "unknown" : kept
     }

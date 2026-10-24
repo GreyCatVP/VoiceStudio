@@ -425,8 +425,10 @@ physical-device validation remains separate.
 `PlayScreenshotTour` captures the Google Play phone screenshots from the real
 app: it runs only with `playScreenshots=true`, provisions the smallest TTS model
 into the app's own model store with the same explicit `downloadSmokeModels` and
-`acceptModelLicencesForSmoke` flags, declines analytics, generates one take on
-the phone and saves `01-home.png` … `07-settings.png` to the app's external files
+`acceptModelLicencesForSmoke` flags, saves one phone voice ("Narrator", a
+reference clip spoken by that model) through `PhoneVoiceStore`, declines
+analytics, generates one take on the phone (and fails if its player never gets a
+duration), picks two dub target languages and saves `01-home.png` … `07-settings.png` to the app's external files
 directory (`play-screenshots/`). It asserts Play's size rules, so use a 16:9
 device; the `android-screenshots` job uses the Nexus 5X profile and uploads the
 `android-play-screenshots` artifact.

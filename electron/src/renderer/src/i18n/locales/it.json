@@ -3801,7 +3801,7 @@
       "capture_slow": "Questo telefono non ha elaborato l'audio del microfono abbastanza in fretta. Chiudi altre app o usa il computer.",
       "preset_voice": "Voce {{number}}",
       "transfer": "{{received}} di {{total}}",
-      "privacy": "Le attività sul dispositivo restano su questo telefono. Solo i download dei modelli e il computer associato usano la rete.",
+      "privacy": "Le attività sul dispositivo restano su questo telefono. Solo i download dei modelli, le segnalazioni che scegli di inviare e il computer associato usano la rete.",
       "computer_feature": "Questa funzione al momento viene eseguita sul computer. Parla e Dettatura funzionano su questo telefono senza associazione.",
       "accepted": "Licenza accettata",
       "not_accepted": "Licenza non accettata",

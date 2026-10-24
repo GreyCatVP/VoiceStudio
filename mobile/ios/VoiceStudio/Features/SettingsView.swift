@@ -37,7 +37,7 @@ struct SettingsView: View {
                 Toggle(isOn: $model.analytics) { Label(model.t("mobile.simple.analytics"),systemImage: "chart.bar") }.frame(minHeight: 44).accessibilityIdentifier("settings.analytics")
             }
             Section {
-                HStack { Label(model.t("mobile.ios.app_name"),systemImage: "info.circle"); Spacer(); Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? model.t("common.unknown")) }
+                HStack { Label(model.t("mobile.ios.app_name"),systemImage: "info.circle"); Spacer(); Text(AppVersion.full(info: Bundle.main.infoDictionary) ?? model.t("common.unknown")) }
                 NavigationLink { LicensesView() } label: { Label(model.t("mobile.settings.licenses"),systemImage: "doc.text") }
                 if let host = model.connection.active {
                     Link(destination: host.url) { Label(model.t("mobile.ios.model_licenses"),systemImage: "doc.badge.gearshape") }
