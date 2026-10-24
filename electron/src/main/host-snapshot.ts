@@ -21,10 +21,11 @@ export interface HostSnapshotInput {
   /** Runtime project directory (holds `.venv`); null when it cannot be resolved. */
   runtimeProject: string | null;
   runtimePython: string | null;
-  uv: string | null;
-  /** True when the uv search completed, so a null `uv` means "not installed". */
-  uvSearched?: boolean;
+  /** A path, or an async search: a completed search with no result means "not installed". */
+  uv: string | null | (() => Promise<string | null>);
   gpu?: () => Promise<string | null>;
+  /** Test seam for the filesystem stats call. */
+  statfs?: typeof statfs;
 }
 
 /**
@@ -58,15 +59,18 @@ async function exists(path: string | null): Promise<boolean | null> {
   }
 }
 
-async function freeGb(path: string | null): Promise<number | null> {
+async function freeGb(path: string | null, statfsFn: typeof statfs = statfs): Promise<number | null> {
   if (!path) return null;
   // First run: the project dir does not exist yet, but its drive does.
   let probe = path;
   for (;;) {
     try {
-      const fs = await statfs(probe);
+      const fs = await statfsFn(probe);
       return Math.round(((fs.bavail * fs.bsize) / 1024 ** 3) * 10) / 10;
-    } catch {
+    } catch (error) {
+      // Only a missing path borrows its parent; an unreadable one stays unknown.
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== 'ENOENT' && code !== 'ENOTDIR') return null;
       const parent = dirname(probe);
       if (parent === probe) return null;
       probe = parent;
@@ -90,14 +94,34 @@ async function withTimeout<T>(task: Promise<T>, ms: number): Promise<T | null> {
   }
 }
 
+const TIMED_OUT = Symbol('timed-out');
+
+async function uvPresence(uv: HostSnapshotInput['uv']): Promise<boolean | null> {
+  if (typeof uv !== 'function') return withTimeout(exists(uv), 1500);
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    const found = await Promise.race([
+      uv(),
+      new Promise<typeof TIMED_OUT>((resolve) => {
+        timer = setTimeout(() => resolve(TIMED_OUT), 1500);
+      }),
+    ]);
+    return found === TIMED_OUT ? null : found !== null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** Machine and runtime facts read in the main process, so a bug report is
  * useful even when the backend never started and `/system/info` is unreachable. */
 export async function collectHostSnapshot(input: HostSnapshotInput): Promise<HostSnapshot> {
   const platform = input.platform ?? process.platform;
   const [pythonPresent, uvPresent, diskFreeGb, gpu] = await Promise.all([
     withTimeout(exists(input.runtimePython), 1500),
-    input.uv ? exists(input.uv) : Promise.resolve(input.uvSearched ? false : null),
-    withTimeout(freeGb(input.runtimeProject), 1500),
+    uvPresence(input.uv),
+    withTimeout(freeGb(input.runtimeProject, input.statfs), 1500),
     input.gpu ? withTimeout(input.gpu(), 1500) : Promise.resolve(null),
   ]);
   return {

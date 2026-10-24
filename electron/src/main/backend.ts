@@ -32,7 +32,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { rm } from 'node:fs/promises';
+import { access, rm, stat } from 'node:fs/promises';
 import { cpus, homedir, totalmem } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { app } from 'electron';
@@ -51,7 +51,7 @@ import {
   saveRemoteBackend,
   type RemoteSession,
 } from './remote-backend';
-import { toolSearchDirs } from './tool-path';
+import { toolSearchDirs, toolSearchDirsAsync } from './tool-path';
 import { SetupProgressTracker, cleanProcessLine } from './setup-progress';
 import { scrubText } from '../shared/utils/scrub';
 import { DEFAULT_BACKEND_PORT } from '../../../config/app-config.mjs';
@@ -291,6 +291,32 @@ function findUv(): string | null {
     for (const name of names) {
       const candidate = join(dir, name);
       if (usableFile(candidate)) return candidate;
+    }
+  }
+  return null;
+}
+
+/** Off-main-thread twin of findUv() for diagnostics: a stalled PATH drive must not block the event loop. */
+async function findUvAsync(): Promise<string | null> {
+  const usable = async (path: string) => {
+    try {
+      const info = await stat(path);
+      if (!info.isFile() || info.size <= 0) return false;
+      await access(path, constants.X_OK);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  if (app.isPackaged && process.resourcesPath) {
+    const bundled = bundledUvPath(process.resourcesPath);
+    if (await usable(bundled)) return bundled;
+  }
+  const names = process.platform === 'win32' ? ['uv.exe', 'uv'] : ['uv'];
+  for (const dir of await toolSearchDirsAsync()) {
+    for (const name of names) {
+      const candidate = join(dir, name);
+      if (await usable(candidate)) return candidate;
     }
   }
   return null;
@@ -705,8 +731,7 @@ export class BackendSupervisor extends EventEmitter<{
     return collectHostSnapshot({
       runtimeProject: project,
       runtimePython: runtimePython(project),
-      uv: findUv(),
-      uvSearched: true,
+      uv: findUvAsync,
       gpu: async () => {
         const info = (await app.getGPUInfo('basic')) as {
           gpuDevice?: { vendorId?: number; deviceId?: number; active?: boolean; driverVersion?: string }[];

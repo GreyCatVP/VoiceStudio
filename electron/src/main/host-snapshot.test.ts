@@ -79,8 +79,7 @@ it('reports uv missing only when the search completed with no result', async () 
   const searched = await collectHostSnapshot({
     runtimeProject: null,
     runtimePython: null,
-    uv: null,
-    uvSearched: true,
+    uv: async () => null,
   });
   const unchecked = await collectHostSnapshot({
     runtimeProject: null,
@@ -96,3 +95,18 @@ it('validates the caller before the host snapshot IPC reads anything', () => {
   const handler = source.split('CHANNELS.backendHostSnapshot,')[1]?.split('ipcMain.handle')[0] ?? '';
   expect(handler).toContain('assertTrustedMainFrame(event, ');
 });
+
+it('does not let a hung tool search or stat stall the snapshot', async () => {
+  const hungSearch = await collectHostSnapshot({
+    runtimeProject: null,
+    runtimePython: null,
+    uv: () => new Promise(() => {}),
+  });
+  expect(hungSearch.runtime.uvPresent).toBeNull();
+  const found = await collectHostSnapshot({
+    runtimeProject: null,
+    runtimePython: null,
+    uv: async () => '/usr/bin/uv',
+  });
+  expect(found.runtime.uvPresent).toBe(true);
+}, 8000);

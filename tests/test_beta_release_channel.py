@@ -136,3 +136,14 @@ def test_every_electron_channel_regex_accepts_beta():
     assert "electron-beta-linux-x64" in (
         ROOT / "electron" / "scripts" / "embed-appimage-update.mjs"
     ).read_text(encoding="utf-8")
+
+
+def test_appimage_update_info_contract_matches_the_embed_script():
+    """v0.5.7-beta.1 failed Linux packaging: the embed script pinned a beta image to
+    its tag while the post-build contract still demanded `latest`. Both must key
+    the release field off the channel in the same way."""
+    embed = (ROOT / "electron/scripts/embed-appimage-update.mjs").read_text(encoding="utf-8")
+    contract = (ROOT / "electron/tests/update-package-contract.mjs").read_text(encoding="utf-8")
+    assert "isBeta ? releaseTag : 'latest'" in embed
+    assert "channel.startsWith('electron-beta-') ? `v${version}` : 'latest'" in contract
+    assert "|latest|VoiceStudio-Electron" not in contract, "contract must not hardcode latest"

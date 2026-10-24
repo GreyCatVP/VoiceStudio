@@ -17,15 +17,15 @@ Sponsorship does not change the software or model licence terms, guarantee featu
 
 ## Sponsorship tiers
 
-GitHub Sponsors is the checkout and its tiers match this table. Tiers are **recognition**, not features or priority. Higher tiers include everything below them.
+GitHub Sponsors is the checkout; its tier names and prices follow this table. Tiers are **recognition and communication**, not features or priority. Higher tiers include everything below them.
 
 | Tier | Monthly | What you get |
 |------|--------:|--------------|
 | **Supporter** | $5+ | Funds development. Optional name in the supporter list below. |
 | **Community Sponsor** | $25 | Your name with a link, in the README and in this file. |
-| **Development Sponsor** | $100 | A small logo in the README and in this file, and a written development update each quarter. |
+| **Development Sponsor** | $100 | A small logo in the README and in this file, and a written development update each quarter (a summary, not a delivery commitment). |
 | **Company Sponsor** | $500 | A logo and link on the [project website](https://voicestudio.sh). |
-| **Strategic Sponsor** | $1,000 | A 30-minute feedback call each quarter. |
+| **Strategic Sponsor** | $1,000 | A 30-minute feedback call each quarter. Feedback is welcome; it does not set the roadmap. |
 
 Recognition appears only on surfaces that exist today: this file, the README and the website. New surfaces are added to existing sponsors when they ship.
 
