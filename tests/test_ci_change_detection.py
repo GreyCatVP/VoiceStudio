@@ -293,3 +293,24 @@ def test_security_change_detection(rows, expected, tmp_path):
 @pytest.mark.skipif(sys.platform == "win32", reason="needs a POSIX shell and grep -P")
 def test_security_change_detection_runs_everything_off_pull_requests(tmp_path):
     assert _security_detect("modified\tdocs/a.md", tmp_path, event="push") == "code=true"
+
+
+# --- docker.yml: skip the image build for changes that cannot alter the image -----------
+
+DOCKER = yaml.safe_load((ROOT / ".github/workflows/docker.yml").read_text(encoding="utf-8"))
+
+
+def test_docker_main_pushes_skip_only_changes_that_cannot_alter_the_image():
+    ignored = set(DOCKER[True]["push"]["paths-ignore"])
+    assert {"docs/**", "mobile/**", "changelog.d/**"} <= ignored
+    # these reach the image or the Docker Hub page, so they must still rebuild
+    for path in ("deploy/dockerhub-overview.md", "deploy/Dockerfile", "README.md", "backend/main.py",
+                 ".github/workflows/docker.yml", "pyproject.toml"):
+        assert not any(_matches(path, pattern) for pattern in ignored), path
+    assert "paths-ignore" not in (DOCKER[True].get("release") or {})
+
+
+def _matches(path, pattern):
+    import fnmatch
+    regex = fnmatch.translate(pattern.replace("**", "\0")).replace("\\\0", ".*").replace("\0", ".*")
+    return re.match(regex, path) is not None

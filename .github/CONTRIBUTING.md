@@ -411,6 +411,8 @@ hard rules from the first prompt.
   The `Security` workflow works the same way: CodeQL, bandit and the dependency
   audits are skipped for a PR that only edits files under `docs/` or `mobile/` or
   Markdown, while the secret scan always runs (rule: its own `changes` job).
+  The Docker image build on `main` skips merges that only touch `docs/`, `mobile/`,
+  `changelog.d/` or `CHANGELOG.md`.
 - **Closed PRs stop their CI:** merging or closing a PR cancels its queued and
   running pull-request workflows (`.github/workflows/cancel-closed-pr-runs.yml`);
   the repository is capped at 20 concurrent jobs, so they would only delay others.

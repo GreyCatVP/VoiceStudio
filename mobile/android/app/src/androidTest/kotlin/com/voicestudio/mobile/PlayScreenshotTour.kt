@@ -109,17 +109,19 @@ class PlayScreenshotTour {
 
             compose.onNodeWithTag("home.speak").performScrollTo().performClick()
             val editor=hasText(l.t("mobile.speak.placeholder"))
-            // Generate replaces the download card only once the provisioned model is installed and accepted.
+            // Generate is fixed below the scrollable form; wait for model readiness after entering text.
             val generate=hasText(l.t("mobile.speak.generate")) and hasClickAction()
             compose.waitUntil(30_000) {exists(editor)&&exists(generate)}
             compose.onNode(editor).performTextInput("Welcome to VoiceStudio. This voice was generated right here on the phone.")
-            compose.onNode(generate).performScrollTo().performClick()
+            compose.waitUntil(30_000) {exists(generate and isEnabled())}
+            compose.onNode(generate).assertIsDisplayed().performClick()
             val share=hasText(l.t("mobile.speak.share")) and hasClickAction()
             compose.waitUntil(180_000) {exists(share)&&!exists(hasText(l.t("common.cancel")))}
             // The player polls ExoPlayer's duration; a take that never gets one is a real playback regression.
             val playable=playableTake()
             compose.waitUntil(10_000) {exists(playable)}
-            compose.onNode(hasText(l.t("mobile.tabs.speak")) and isHeading()).performScrollTo()
+            compose.onNode(hasSetTextAction()).performScrollTo()
+            compose.onNode(hasText(l.t("mobile.tabs.speak")) and isHeading()).assertIsDisplayed()
             shot("02-speak")
 
             tab("mobile.tabs.voices")
@@ -128,7 +130,8 @@ class PlayScreenshotTour {
 
             tab("mobile.tabs.dub")
             pickDubLanguages("Spanish","French")
-            compose.onNode(hasText(l.t("mobile.tabs.dub")) and isHeading()).performScrollTo()
+            compose.onNodeWithText(l.t("mobile.dub.pick_media")).performScrollTo()
+            compose.onNode(hasText(l.t("mobile.tabs.dub")) and isHeading()).assertIsDisplayed()
             shot("04-dub")
             tab("mobile.tabs.dictate");shot("05-dictate")
             tab("mobile.tabs.settings");shot("07-settings")

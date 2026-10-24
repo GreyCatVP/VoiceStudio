@@ -12,6 +12,8 @@ import subprocess
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 IOS = ROOT / "mobile/ios"
+PRODUCTION_REPORTS_URL = "https://appapi.voicestudio.sh"
+REPORTS_URL = re.compile(r"https://[A-Za-z0-9.-]+(?::\d+)?(?:/[A-Za-z0-9._~/-]*)?")
 
 
 def prepare_brand_assets(output):
@@ -28,6 +30,24 @@ def prepare_brand_assets(output):
     artwork.mkdir(parents=True, exist_ok=True)
     subprocess.run(["sips", "-s", "format", "png", str(ROOT / "electron/public/signal-field.webp"), "--out", str(artwork / "artwork.png")], check=True, stdout=subprocess.DEVNULL)
     (artwork / "Contents.json").write_text(json.dumps({"images": [{"filename": "artwork.png", "idiom": "universal"}], "info": {"version": 1, "author": "xcode"}}), encoding="utf-8")
+
+
+def dotenv(path):
+    values = {}
+    if path.is_file():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if match := re.fullmatch(r"\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*", line):
+                values[match[1]] = match[2].strip("'\"")
+    return values
+
+
+def content_reports_url(env=os.environ, dotenv_path=ROOT / "mobile/.env"):
+    """Production unless VOICESTUDIO_CONTENT_REPORTS_URL, from the environment or mobile/.env, overrides it."""
+    key = "VOICESTUDIO_CONTENT_REPORTS_URL"
+    url = ((env.get(key) or "").strip() or dotenv(dotenv_path).get(key, "")).strip().rstrip("/") or PRODUCTION_REPORTS_URL
+    if not REPORTS_URL.fullmatch(url):
+        raise ValueError(f"{key} must be an https URL, got {url!r}")
+    return url
 
 
 def merge(base, addition):
@@ -125,6 +145,7 @@ def prepare(output, info):
     data["CFBundleShortVersionString"] = marketing_version(version)
     # The full root version (X.Y.Z or X.Y.Z-beta.N), which content reports send as app_version.
     data["VoiceStudioAppVersion"] = version
+    data["VoiceStudioContentReportsURL"] = content_reports_url()
     data["CFBundleVersion"] = build_number(os.environ.get("VOICESTUDIO_IOS_BUILD_NUMBER", "1"))
     data["CFBundleLocalizations"] = sorted(path.stem for path in source.glob("*.json"))
     for field, keys in permissions.items():

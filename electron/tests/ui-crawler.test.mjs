@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { ROUTE_WEIGHTS, routesForShard } from './crawler-shards.mjs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -28,4 +29,19 @@ test('each shard leaves room for a full crawl', () => {
 
 test('crawler findings are fixed, not allowlisted', () => {
   assert.match(crawler, /export const KNOWN_FINDINGS = \{\};/);
+});
+
+
+test('the route shards cover every route exactly once and share the cost evenly', () => {
+  const routes = [...Object.keys(ROUTE_WEIGHTS), ...Array.from({ length: 24 }, (_, i) => `/route-${i}`)];
+  const owned = [1, 2, 3].map((shard) => routesForShard(routes, shard, 3));
+  assert.deepEqual(owned.flat().sort(), [...routes].sort(), 'each route is crawled by exactly one shard');
+  const cost = owned.map((set) => set.reduce((sum, route) => sum + (ROUTE_WEIGHTS[route] ?? 1), 0));
+  assert.ok(Math.max(...cost) - Math.min(...cost) <= 14, `shard costs ${cost} are too uneven`);
+  assert.ok(owned.every((set) => set.length), 'no shard is left empty');
+});
+
+test('a route without a weight still lands on a shard', () => {
+  const owned = [1, 2, 3].map((shard) => routesForShard(['/new-route'], shard, 3));
+  assert.equal(owned.flat().length, 1);
 });

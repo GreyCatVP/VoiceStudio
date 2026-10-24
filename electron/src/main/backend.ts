@@ -625,19 +625,54 @@ export function managedBackendSpawnOptions(
   };
 }
 
+export type SmartAppControl = 'on' | 'evaluation' | 'off' | 'unknown';
+
+/** Windows keeps Smart App Control in `VerifiedAndReputablePolicyState`: 0 off, 1 on, 2 evaluation. */
+export function smartAppControlFromRegistry(output: string): SmartAppControl {
+  const match = /VerifiedAndReputablePolicyState\s+REG_DWORD\s+0x([0-9a-f]+)/i.exec(output);
+  if (!match) return 'unknown';
+  return ({ 0: 'off', 1: 'on', 2: 'evaluation' } as const)[Number.parseInt(match[1], 16) as 0 | 1 | 2] ?? 'unknown';
+}
+
+/** Read only after a launch was already refused, so the 3 s cap never delays a healthy start. */
+function readSmartAppControl(platform = process.platform): SmartAppControl {
+  if (platform !== 'win32') return 'unknown';
+  try {
+    const result = spawnSync(
+      'reg.exe',
+      ['query', String.raw`HKLM\SYSTEM\CurrentControlSet\Control\CI\Policy`, '/v', 'VerifiedAndReputablePolicyState'],
+      { encoding: 'utf8', timeout: 3000, windowsHide: true },
+    );
+    return smartAppControlFromRegistry(result.stdout ?? '');
+  } catch {
+    return 'unknown';
+  }
+}
+
 /** A failed spawn names the program, not just the OS error. Windows denies a
  *  blocked executable with a bare `spawn UNKNOWN`; runtime-owned launches get
  *  the install that owns the program, while custom `OMNIVOICE_BACKEND_CMD`
- *  launches point at their own executable instead (#2440). */
+ *  launches point at their own executable instead (#2440). When Smart App
+ *  Control is on, it is named: it has no per-app exceptions, so the usual
+ *  antivirus-exclusion advice cannot help (#3224). */
 export function spawnFailureMessage(
   command: string,
   error: unknown,
-  { runtimeOwned = true }: { runtimeOwned?: boolean } = {},
+  {
+    runtimeOwned = true,
+    smartAppControl,
+  }: { runtimeOwned?: boolean; smartAppControl?: SmartAppControl } = {},
 ): string {
   const detail = errorMessage(error);
   const code = (error as NodeJS.ErrnoException | undefined)?.code;
   const launchRejected = ['ENOENT', 'UNKNOWN', 'EACCES', 'EPERM'].includes(code ?? '');
   if (!launchRejected) return `Could not start ${command}: ${detail}`;
+  if (runtimeOwned && code === 'UNKNOWN') {
+    const control = smartAppControl ?? readSmartAppControl();
+    if (control === 'on' || control === 'evaluation') {
+      return `Could not start ${command}: ${detail}. Windows Smart App Control blocked it.`;
+    }
+  }
   return runtimeOwned
     ? `Could not start ${command}: ${detail}. Install or repair the local runtime, then restart VoiceStudio.`
     : `Could not start ${command}: ${detail}. Check that the program exists and can be launched, then try again.`;

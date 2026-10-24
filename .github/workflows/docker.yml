@@ -48,6 +48,17 @@ name: Docker (GHCR)
 on:
   push:
     branches: [main]
+    # A merge that only touches these cannot change what the image contains, so it
+    # does not rebuild two ~35 minute images. deploy/dockerhub-overview.md (the Docker
+    # Hub page, synced by this workflow), the Dockerfile and README.md (copied into
+    # the image) are deliberately NOT listed. Release and manual runs are unaffected.
+    paths-ignore:
+      - "docs/**"
+      - "mobile/**"
+      - "changelog.d/**"
+      - "CHANGELOG.md"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/*.md"
   release:
     types: [published]
   workflow_dispatch:
