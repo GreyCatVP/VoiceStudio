@@ -595,6 +595,26 @@ def test_mlx_audio_generate_auto_language_skips_lang_code_entirely(language, mod
     assert "lang_code" not in seen_kwargs
 
 
+def test_mlx_audio_voxcpm2_8bit_resamples_48k_and_does_not_claim_cloning():
+    # The curated 8-bit VoxCPM2 emits 48 kHz; the adapter's rate is 24 kHz, so
+    # the audio must be resampled rather than played back at double length.
+    backend = tts_backend.MLXAudioBackend()
+    backend._model_id = backend.CURATED_MODELS["voxcpm2"]
+    backend._ensure_loaded = lambda: None
+    assert backend._model_id == "mlx-community/VoxCPM2-8bit"
+    assert backend.supports_cloning is False
+    seen = {}
+
+    def _fake_generate(**kw):
+        seen.update(kw)
+        return iter([types.SimpleNamespace(audio=[0.0] * 4800, sample_rate=48000)])
+
+    backend._model = types.SimpleNamespace(generate=_fake_generate)
+    wav = backend.generate("hello", language="th")
+    assert seen["lang_code"] == "th"
+    assert wav.shape[-1] == 2400
+
+
 @pytest.mark.parametrize("language, expected", [("German", "german"), ("de", "german"), ("pt-BR", "portuguese"), ("Chinese", "chinese")])
 def test_mlx_audio_generate_non_kokoro_model_ignores_kokoro_validation(language, expected):
     # Qwen3-TTS (and CSM/Dia/Chatterbox/MeloTTS/OuteTTS) don't use Kokoro's
@@ -855,3 +875,31 @@ def test_mlx_audio_dia_receives_speaker_tagged_text():
     assert seen["ref_text"] == "[S1] Earlier words."
     backend.generate("[S1] Hi. [S2] Hey.")
     assert seen["text"] == "[S1] Hi. [S2] Hey."
+
+
+def test_outetts_missing_reference_is_an_input_error(monkeypatch, tmp_path):
+    monkeypatch.setattr(tts_backend, "_outetts_speaker_dir", lambda: str(tmp_path))
+    with pytest.raises(tts_backend.TTSInputError):
+        tts_backend._outetts_speaker_file(str(tmp_path / "gone.wav"))
+
+
+def test_outetts_concurrent_calls_build_the_speaker_once(monkeypatch, tmp_path):
+    import threading
+
+    built = []
+    _fake_outetts_processor(monkeypatch, built)
+    monkeypatch.setattr(tts_backend, "_outetts_speaker_dir", lambda: str(tmp_path))
+    monkeypatch.setattr(tts_backend, "_outetts_whisper_dir", lambda: "/local/whisper")
+    ref = tmp_path / "ref.wav"
+    ref.write_bytes(b"a")
+    results = []
+    threads = [
+        threading.Thread(target=lambda: results.append(tts_backend._outetts_speaker_file(str(ref))))
+        for _ in range(4)
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert len(built) == 1 and len(set(results)) == 1
+    assert not [p for p in tmp_path.iterdir() if p.name.endswith(".tmp")]
