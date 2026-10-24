@@ -371,6 +371,21 @@ it("replaces a proxy gateway page with a localized explanation (#2781)", async (
   }
 });
 
+it("explains a Cloudflare 524 timeout page the same way (#3219)", async () => {
+  const translate = vi.spyOn(i18next, "t").mockReturnValue("Proxy gave up");
+  try {
+    const html =
+      "<!DOCTYPE html><html><head><title>example.com | 524: A timeout occurred</title></head></html>";
+    const error = await errorFromResponse(new Response(html, { status: 524 }));
+    expect(error.message).toBe("Proxy gave up");
+    expect(translate).toHaveBeenCalledWith("tts_errors.proxy_gateway_error", {
+      status: 524,
+    });
+  } finally {
+    translate.mockRestore();
+  }
+});
+
 it("keeps a backend-marked 504 as the backend answered it", async () => {
   const error = await errorFromResponse(
     new Response("upstream said no", {

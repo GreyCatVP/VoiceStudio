@@ -4331,6 +4331,11 @@
       "title": "Backend Port",
       "type": "integer"
      },
+     "build_commit": {
+      "default": "unknown",
+      "title": "Build Commit",
+      "type": "string"
+     },
      "code_fingerprint": {
       "default": "",
       "title": "Code Fingerprint",

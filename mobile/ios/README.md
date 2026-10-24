@@ -193,3 +193,5 @@ text), Models, the licence sheet and the dub glyph. They run the same offline mo
 (`AppModel(mock: true)`), so screens render with realistic data and update as you edit. Open a view file
 and press Option-Command-Return; Run (Command-R) is still a full rebuild.
 
+Home identifies debpalash and velixio with a small core-maintainer star on their
+avatars; VoiceOver announces the localized role.

@@ -184,3 +184,21 @@ def test_upload_checks_every_embedded_framework_version():
     script = next(s["run"] for s in load_workflow()["jobs"]["testflight"]["steps"] if s.get("name") == "Verify archive signature and version")
     assert 'Frameworks/*.framework/Info.plist' in script
     assert "CFBundleShortVersionString CFBundleVersion" in script
+
+
+def test_content_reports_go_to_production_unless_overridden(tmp_path):
+    dotenv = tmp_path / ".env"
+    assert prepare_resources.content_reports_url({}, dotenv) == "https://appapi.voicestudio.sh"
+    dotenv.write_text("# local\nexport VOICESTUDIO_CONTENT_REPORTS_URL='https://dev-appapi.voicestudio.sh/'\n", encoding="utf-8")
+    assert prepare_resources.content_reports_url({}, dotenv) == "https://dev-appapi.voicestudio.sh"
+    env = {"VOICESTUDIO_CONTENT_REPORTS_URL": "https://staging.example:8443"}
+    assert prepare_resources.content_reports_url(env, dotenv) == "https://staging.example:8443"
+    with pytest.raises(ValueError):
+        prepare_resources.content_reports_url({"VOICESTUDIO_CONTENT_REPORTS_URL": "http://dev-appapi.voicestudio.sh"}, dotenv)
+
+
+def test_info_plist_carries_the_content_reports_url(tmp_path, monkeypatch):
+    monkeypatch.setenv("VOICESTUDIO_CONTENT_REPORTS_URL", "https://dev-appapi.voicestudio.sh")
+    prepare_resources.prepare(tmp_path / "bundle", tmp_path / "Info.plist")
+    info = plistlib.loads((tmp_path / "Info.plist").read_bytes())
+    assert info["VoiceStudioContentReportsURL"] == "https://dev-appapi.voicestudio.sh"
