@@ -110,8 +110,12 @@ jobs:
       # networked empty-cache run before it was caught). All legitimate HF
       # interactions in tests are stubbed; anything that trips this is a
       # test-isolation bug.
+      # `-n auto` runs tests/ in parallel (one worker per CPU; 10 min serial ->
+      # ~3 min on a 4-core runner, with identical results). backend/tests/ below
+      # stays serial: one test there depends on another's leftover state and
+      # fails when run in isolation, which parallel scheduling exposes.
       - name: Run pytest
-        run: uv run --no-sync pytest tests/ -q --tb=short
+        run: uv run --no-sync pytest tests/ -q --tb=short -n auto
         env:
           HF_HUB_OFFLINE: "1"
 
@@ -495,7 +499,7 @@ jobs:
       - name: Run smoke tests
         # Exercise credential paths and the Windows accept guard natively.
         if: matrix.backend_supported
-        run: uv run --no-sync pytest tests/smoke/ tests/test_hf_token_cache_paths.py tests/test_win_accept_guard.py -q --tb=short
+        run: uv run --no-sync pytest tests/smoke/ tests/test_hf_token_cache_paths.py tests/test_win_accept_guard.py tests/test_ios_testflight.py -q --tb=short
         env:
           HF_HUB_OFFLINE: "1"  # same no-silent-downloads guard as the main pytest job
           HF_HUB_CACHE: ${{ runner.temp }}/pockettts-empty-hf-cache

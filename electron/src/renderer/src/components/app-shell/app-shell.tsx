@@ -1,4 +1,5 @@
 import { WorkspaceSidebar } from './workspace-sidebar';
+import { ContextSidebar } from './context-sidebar';
 import { CommandPalette } from '@/components/command-palette';
 import { Outlet, useRouterState } from '@tanstack/react-router';
 import { BackendGate } from '../backend-gate';
@@ -46,6 +47,7 @@ export function AppShell() {
           <BackendGate repairDock={<RepairAgentDock />}>
             <CommandPalette />
             <WorkspaceSidebar />
+            <ContextSidebar />
             <main
               data-slot="workspace-content"
               className="@container relative flex min-w-0 flex-1 flex-col overflow-hidden"

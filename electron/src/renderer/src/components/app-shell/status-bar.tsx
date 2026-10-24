@@ -22,6 +22,7 @@ import {
   LayersIcon,
   CodeXmlIcon,
   CpuIcon,
+  GaugeIcon,
   MemoryStickIcon,
   MonitorUpIcon,
 } from 'lucide-react';
@@ -576,6 +577,40 @@ export function StatusBar({
       })}
     </div>
   );
+  // The simplest view is icon-only: the status dot and tooltip carry what a label did.
+  const deviceIconOnly = level === 'simple';
+  const handleApplied = (applied: PerformanceProfileState) => {
+    appliedRefreshStarted.current = presetRefreshing;
+    setAppliedProfile(applied);
+  };
+  // The icon rail has no room for the slider, so the gauge opens it as a popover.
+  const railProfile = (
+    <Popover>
+      <PopoverTrigger
+        render={
+          <button
+            type="button"
+            aria-label={t('performanceProfile.title')}
+            title={t('performanceProfile.title')}
+            // In the macOS rail's two-column footer the gauge takes its own row above Settings.
+            className={cn(engineLinkClass, 'h-7 w-full', inline && 'order-first col-span-2')}
+          />
+        }
+      >
+        <GaugeIcon className={engineIconClass} aria-hidden="true" />
+      </PopoverTrigger>
+      <PopoverContent
+        side="right"
+        align="end"
+        className="max-h-[min(36rem,80dvh)] w-72 space-y-2 overflow-y-auto p-3 text-xs"
+      >
+        {isBackendReachable(status.stage) && (
+          <PerformanceProfile showHardware={false} onApplied={handleApplied} />
+        )}
+        {engineRows('models')}
+      </PopoverContent>
+    </Popover>
+  );
   const iconDevicePopover = (
     <Popover open={deviceOpen} onOpenChange={setDeviceOpen}>
       <PopoverTrigger
@@ -583,17 +618,23 @@ export function StatusBar({
           <button
             type="button"
             aria-label={`${deviceLabel}: ${stageText}`}
-            className={cn(engineLinkClass, 'h-7 w-full', !compact && 'justify-start gap-2 px-2')}
+            className={cn(
+              engineLinkClass,
+              'relative h-7 w-full',
+              !compact && !deviceIconOnly && 'justify-start gap-2 px-2',
+            )}
           />
         }
       >
         <CpuIcon className={engineIconClass} aria-hidden="true" />
-        {!compact && <span className="min-w-0 truncate">{deviceLabel}</span>}
+        {!compact && !deviceIconOnly && <span className="min-w-0 truncate">{deviceLabel}</span>}
         <span
           className={cn(
             compact
               ? 'absolute inset-x-2 bottom-0.5 h-0.5 rounded-full'
-              : 'ml-auto size-1.5 shrink-0 rounded-full',
+              : deviceIconOnly
+                ? 'absolute end-1.5 top-1 size-1.5 rounded-full'
+                : 'ml-auto size-1.5 shrink-0 rounded-full',
             stageDot,
           )}
           aria-hidden="true"
@@ -610,6 +651,7 @@ export function StatusBar({
           inline ? 'contents' : 'border-t border-border/50 px-1.5 py-2',
         )}
       >
+        {railProfile}
         {iconDevicePopover}
       </footer>
     );
@@ -640,17 +682,24 @@ export function StatusBar({
               </PopoverTrigger>
               {deviceContent}
             </Popover>
-            {viewControl}
+            {level !== 'simple' && viewControl}
           </div>
         )}
         {isBackendReachable(status.stage) && (
           <PerformanceProfile
             showHardware={level !== 'simple'}
-            extra={level === 'simple' ? engineRows('models') : undefined}
-            onApplied={(applied) => {
-              appliedRefreshStarted.current = presetRefreshing;
-              setAppliedProfile(applied);
-            }}
+            extra={
+              level === 'simple' ? (
+                <>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-muted-foreground">{t('sidebarTools.title')}</span>
+                    {viewControl}
+                  </div>
+                  {engineRows('models')}
+                </>
+              ) : undefined
+            }
+            onApplied={handleApplied}
           />
         )}
         {level !== 'simple' && (
@@ -667,7 +716,7 @@ export function StatusBar({
           <div className="sticky bottom-0 mt-1.5 flex items-center gap-1 border-t border-border/50 bg-sidebar pt-1.5">
             {footerLeading}
             <div className="min-w-0 flex-1">{iconDevicePopover}</div>
-            {viewControl}
+            {level !== 'simple' && viewControl}
           </div>
         )}
       </div>

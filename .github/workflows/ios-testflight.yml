@@ -41,6 +41,22 @@ jobs:
             test -n "${!name}" || { echo "Missing $name; see docs/mobile.md → TestFlight"; exit 1; }
           done
 
+      # iOS xcframeworks for the pinned on-device runtimes (sherpa-onnx, onnxruntime,
+      # llama.cpp, omnivoice.cpp); needs Xcode, so it only runs here.
+      - name: Cache native runtimes
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: mobile/native/ios/build
+          key: ios-native-${{ hashFiles('mobile/native/pins.json', 'mobile/native/ios/**', '!mobile/native/ios/build/**') }}
+
+      - name: Build native runtimes
+        env:
+          # Read-only token: avoids the anonymous GitHub API rate limit on shared runners.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          brew install cmake ninja 2>/dev/null || true
+          bash mobile/native/ios/build.sh ios
+
       - name: Generate Xcode project
         run: |
           brew install xcodegen
@@ -83,6 +99,13 @@ jobs:
           codesign --verify --deep --strict "$APP"
           codesign -dvv "$APP" 2>&1 | grep -qx "TeamIdentifier=$TEAM_ID"
           test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$APP/Info.plist")" = "$VOICESTUDIO_IOS_BUILD_NUMBER"
+          # App Store Connect rejects any embedded framework without both version keys.
+          for plist in "$APP"/Frameworks/*.framework/Info.plist; do
+            [ -e "$plist" ] || continue
+            for key in CFBundleShortVersionString CFBundleVersion; do
+              /usr/libexec/PlistBuddy -c "Print $key" "$plist" >/dev/null || { echo "$plist is missing $key"; exit 1; }
+            done
+          done
 
       - name: Upload to TestFlight
         env:
