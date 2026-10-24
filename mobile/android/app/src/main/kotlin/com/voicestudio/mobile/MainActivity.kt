@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -69,24 +70,18 @@ fun contentReportClient()=ContentReportClient(BuildConfig.CONTENT_REPORTS_URL,Bu
     val snackbars=remember {SnackbarHostState()}
     CompositionLocalProvider(LocalL10n provides l,LocalLayoutDirection provides direction,LocalContentReportClient provides reportClient) {
         VoiceStudioTheme(ThemePreferences(prefs.mode,prefs.lightPalette,prefs.darkPalette)) {
+            CompositionLocalProvider(LocalScreenTitleProvided provides true) {
             key(state.connectionId) {
             val initialRoute=remember {if(state.error?.key=="mobile.connect.error_session_expired") "connect" else "home"}
             val nav=rememberNavController()
             val back by nav.currentBackStackEntryAsState()
             val route=back?.destination?.route ?: "home"
+            var activeWorkspace by rememberSaveable {mutableStateOf("home")}
+            LaunchedEffect(route) {if(isWorkspace(route)) activeWorkspace=route}
             val dismissKeyboard=rememberKeyboardDismiss()
-            Scaffold(containerColor=role("canvas"),snackbarHost={SnackbarHost(snackbars)},bottomBar={
-                NavigationBar(containerColor=role("chrome"),contentColor=role("toolbarForeground")) {
-                    val tabs=listOf("home","voices","dub","dictate","settings")
-                    tabs.forEach {tab ->
-                        val label=if(tab=="home") l.t("nav.home") else if(tab=="connect") l.t("mobile.tabs.connect") else l.t("mobile.tabs.$tab")
-                        NavigationBarItem(selected=route==tab || (tab=="home" && (route=="speak" || route.startsWith("voice/") || route.startsWith("host-voice/") || route.startsWith("project"))),onClick={dismissKeyboard();nav.navigate(tab) {popUpTo(nav.graph.startDestinationId) {saveState=true};launchSingleTop=true;restoreState=tab!="home"}},
-                            icon={Icon(when(tab) {"home" -> Icons.Default.Home;"speak" -> Icons.Default.PlayArrow;"voices" -> Icons.Default.Person;"dub" -> Icons.AutoMirrored.Filled.List;"dictate" -> Icons.Default.Edit;"connect" -> Icons.Default.Add;else -> Icons.Default.Settings},contentDescription=label)},
-                            label=if(LocalDensity.current.fontScale<=1.5f) {{Text(label)}} else null,
-                            colors=NavigationBarItemDefaults.colors(indicatorColor=role("messageSurface"),selectedIconColor=role("messageAction"),selectedTextColor=role("toolbarForeground"),unselectedIconColor=role("textMuted"),unselectedTextColor=role("textMuted")))
-                    }
-                }
-            }) {padding ->
+            Scaffold(containerColor=role("canvas"),snackbarHost={SnackbarHost(snackbars)},
+                topBar={StudioTopBar(route,onBack={dismissKeyboard();nav.navigateUp()},onProjects={dismissKeyboard();nav.navigate("projects")})},
+                bottomBar={StudioDock(if(isWorkspace(route)) route else activeWorkspace) {tab -> dismissKeyboard();activeWorkspace=tab;nav.navigate(tab) {popUpTo(nav.graph.startDestinationId) {saveState=true};launchSingleTop=true;restoreState=tab!="home"}}}) {padding ->
                 Surface(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).dismissKeyboardOnTap(),color=role("canvas")) {
                     Column {
                     state.error?.let {error ->
@@ -133,6 +128,7 @@ fun contentReportClient()=ContentReportClient(BuildConfig.CONTENT_REPORTS_URL,Bu
                     }
                     }
                 }
+            }
             }
             }
             if(!state.loading&&prefs.consent==null) AlertDialog(shape=MaterialTheme.shapes.large,onDismissRequest={vm.consent(false)},title={Text(tr("consent.title"))},

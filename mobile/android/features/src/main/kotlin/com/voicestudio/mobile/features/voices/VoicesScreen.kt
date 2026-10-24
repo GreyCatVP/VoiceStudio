@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.voicestudio.mobile.designsystem.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -63,9 +64,11 @@ import java.io.File
     val pick=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) {uri ->
         if(uri!=null) scope.launch {try {sample?.let {File(it).delete()};sample=copyMedia(context,uri,"audio").absolutePath} catch(e:Exception) {vm.fail(e)}}
     }
-    Screen {
+    Screen(bottomBar=if(!cloning&&profiles.isEmpty()) {{
+        Action("mobile.voices.new_clone",!state.busy&&phone.progress==null) {cloning=true}
+    }} else null,centerContent=!cloning&&profiles.isEmpty()&&!state.catalogLoading) {
         ScreenTitle("mobile.tabs.voices")
-        if(!cloning) Action("mobile.voices.new_clone",!state.busy&&phone.progress==null) {cloning=true}
+        if(!cloning&&profiles.isNotEmpty()) Action("mobile.voices.new_clone",!state.busy&&phone.progress==null) {cloning=true}
         if(cloning) {
         if(location!=RunLocation.COMPUTER) {
             if(model!=null&&!phone.canRun(model,vm.phone.ramBytes)) MissingModelsCard(vm,"mobile.tabs.voices",listOf(model))
@@ -87,6 +90,16 @@ import java.io.File
         }
         Secondary("common.cancel",!recording) {vm.phone.cancelInference();cloning=false;sample?.let {File(it).delete()};sample=null}
         }
+        if(!cloning) {
+        if(profiles.isEmpty()&&!state.catalogLoading) {
+            Column(Modifier.fillMaxWidth().heightIn(min=320.dp),horizontalAlignment=Alignment.CenterHorizontally,
+                verticalArrangement=Arrangement.spacedBy(8.dp,Alignment.CenterVertically)) {
+                Icon(Icons.Default.Person,null,Modifier.size(40.dp),tint=role("textMuted"))
+                Text(tr("mobile.simple.empty_voices"),style=MaterialTheme.typography.titleMedium)
+                Text(tr("clone.reference_hint"),style=MaterialTheme.typography.bodyMedium,color=role("textMuted"),
+                    textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+            }
+        } else {
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) {Field("mobile.voices.search",query,{query=it})}
             IconAction("common.refresh",Icons.Default.Refresh,!state.busy,onClick=vm::refresh)
@@ -95,7 +108,6 @@ import java.io.File
         val matches=profiles.filter {it.name.contains(query,true)}
         if(query.isNotBlank() && matches.isEmpty()) SearchEmpty(query)
         else if(state.catalogLoading) InlineLoading()
-        else if(profiles.isEmpty()) EmptyState("mobile.simple.empty_voices",Icons.Default.Person)
         Group {
             matches.forEach {profile ->
                 var menu by remember {mutableStateOf(false)}
@@ -119,6 +131,8 @@ import java.io.File
                 }
                 HorizontalDivider()
             }
+        }
+        }
         }
         preview?.let {id ->
             val voice=phone.voices.firstOrNull {it.id==id}

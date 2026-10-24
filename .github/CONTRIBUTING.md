@@ -315,7 +315,7 @@ OMNIVOICE_PORT=3999 bun run --cwd electron smoke:server &
 OMNIVOICE_PORT=3999 VOICESTUDIO_UI_URL=http://localhost:3912 PLAYWRIGHT_CHANNEL=chromium \
   node electron/tests/run-renderer-smokes.mjs [name-filter ...]
 
-# UI crawler (the "UI crawler" CI job), against the same smoke server:
+# UI crawler (the "UI crawler (n/3)" CI jobs, VOICESTUDIO_CRAWL_SHARD=n/3), against the same smoke server:
 # clicks every enabled button on every route, then the buttons a filled-in form
 # enables, then one level into each dialog, while API writes answer normally,
 # with 500, with a network error, or with broken JSON. It fails on a spinner
@@ -334,11 +334,15 @@ cargo check --manifest-path native/desktop-bridge/Cargo.toml
 
 [Dagger](https://docs.dagger.io/install) runs the frontend tests, the mobile
 token check and both backend pytest suites in containers whose steps are cached
-by content, so a re-run after an unrelated edit takes seconds. It needs Docker
-and nothing leaves your machine. CI is unchanged: `ci.yml` stays the gate.
+by content, so a re-run after an unrelated edit takes seconds. It needs Docker.
+The first run downloads container images and dependencies (as CI does); after
+that your code and results stay on your machine. CI is unchanged: `ci.yml`
+stays the gate.
 
 ```bash
 dagger call check             # all of the above, in parallel
+dagger call check --git=.git  # also run tests that read real git history
+                              # (in a linked worktree: --git=$(git rev-parse --git-common-dir))
 dagger call frontend-tests    # or: mobile-tokens, python-tests
 ```
 
@@ -395,7 +399,7 @@ hard rules from the first prompt.
 ## Quality gates your PR must pass
 
 - **CI scope:** the Electron-only jobs (UI crawler, Desktop UI, Linux native
-  package, and `Tests (Electron)`, one half of `Tests (backend + frontend)`) are skipped on a
+  package, and `Tests (Electron)` plus `Electron renderer smokes`, the Electron halves of `Tests (backend + frontend)`) are skipped on a
   pull request whose every changed file is an *edit or addition* under `backend/`
   (except `backend/assets/`), `omnivoice/`, `docs/` or `mobile/`, a Python file under `tests/` or `scripts/`,
   a root `*.md`, `Makefile`, `uv.lock`, or a workflow other than `ci.yml` and
@@ -407,6 +411,8 @@ hard rules from the first prompt.
   The `Security` workflow works the same way: CodeQL, bandit and the dependency
   audits are skipped for a PR that only edits files under `docs/` or `mobile/` or
   Markdown, while the secret scan always runs (rule: its own `changes` job).
+  The Docker image build on `main` skips merges that only touch `docs/`, `mobile/`,
+  `changelog.d/` or `CHANGELOG.md`.
 - **Closed PRs stop their CI:** merging or closing a PR cancels its queued and
   running pull-request workflows (`.github/workflows/cancel-closed-pr-runs.yml`);
   the repository is capped at 20 concurrent jobs, so they would only delay others.

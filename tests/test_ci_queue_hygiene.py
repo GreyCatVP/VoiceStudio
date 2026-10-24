@@ -41,3 +41,24 @@ def test_scam_guard_skips_bots_but_still_checks_every_human():
 def test_other_pr_workflows_already_cancel_superseded_runs():
     for name in ("security.yml", "commit-identity.yml", "mobile.yml"):
         assert _load(name)["concurrency"]["cancel-in-progress"], name
+
+
+def test_mobile_builds_on_pull_requests_only_for_mobile_changes():
+    """Locale and package.json edits must not start the 25-minute iOS and Android builds.
+
+    They reach the apps through generated files under mobile/, which
+    tests/test_mobile_contract.py (run by ci.yml) keeps in step; `main` still builds on them.
+    """
+    import yaml
+
+    workflow = yaml.safe_load((ROOT / ".github/workflows/mobile.yml").read_text(encoding="utf-8"))
+    triggers = workflow.get("on", workflow.get(True))
+    pr_paths = triggers["pull_request"]["paths"]
+    assert "mobile/**" in pr_paths
+    assert not [p for p in pr_paths if "locales" in p or p in ("package.json", "electron/src/shared/languages.json")]
+    assert any("locales" in p for p in triggers["push"]["paths"])
+
+
+def test_platform_smokes_start_after_the_python_tests_not_the_whole_gate():
+    needs = _load("ci.yml")["jobs"]["smoke-matrix"]["needs"]
+    assert needs == "test-python", "waiting on `test` delays the smokes by the Electron jobs' runtime"
