@@ -54,11 +54,20 @@ fun Modifier.dismissKeyboardOnTap(): Modifier = composed {
     pointerInput(dismiss) {detectTapGestures(onTap={dismiss()})}
 }
 
-@Composable fun Screen(content: @Composable ColumnScope.() -> Unit) {
-    // Insets shrink the viewport, not the scrollable content. Every form shares this path.
-    Column(Modifier.fillMaxSize().imePadding().dismissKeyboardOnTap().verticalScroll(rememberScrollState()).padding(VSTheme.inset), verticalArrangement = Arrangement.spacedBy(VSTheme.gap), content = content)
+val LocalScreenTitleProvided = staticCompositionLocalOf { false }
+
+@Composable fun Screen(bottomBar: (@Composable ()->Unit)? = null, centerContent: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+    Column(Modifier.fillMaxSize().imePadding().dismissKeyboardOnTap()) {
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min=maxHeight).padding(VSTheme.inset),
+                verticalArrangement=Arrangement.spacedBy(VSTheme.gap,if(centerContent) Alignment.CenterVertically else Alignment.Top),content=content)
+        }
+        bottomBar?.let {bar -> Box(Modifier.fillMaxWidth().padding(horizontal=VSTheme.inset,vertical=8.dp)) {bar()}}
+    }
 }
-@Composable fun ScreenTitle(key: String) { Text(tr(key), style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() }) }
+@Composable fun ScreenTitle(key: String) {
+    if(!LocalScreenTitleProvided.current) Text(tr(key),style=MaterialTheme.typography.titleLarge,modifier=Modifier.semantics {heading()})
+}
 @Composable fun Heading(key: String) { Text(tr(key), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() }) }
 @Composable fun Group(content: @Composable ColumnScope.() -> Unit) {
     Surface(Modifier.fillMaxWidth(), color=role("surface"), shape=MaterialTheme.shapes.large, border=BorderStroke(VSTheme.borderWidth,role("border"))) {
@@ -69,18 +78,18 @@ fun Modifier.dismissKeyboardOnTap(): Modifier = composed {
     val dismiss=rememberKeyboardDismiss()
     val interaction=remember {MutableInteractionSource()}
     val pressed by interaction.collectIsPressedAsState()
-    Button(interactionSource=interaction, colors=ButtonDefaults.buttonColors(containerColor=role(if(pressed) "messageActionHover" else "messageAction"),contentColor=role("messageActionForeground")), onClick = {dismiss();onClick()}, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = VSTheme.touchTarget*1.25f), shape = MaterialTheme.shapes.small) { Icon(icon,contentDescription=null); Spacer(Modifier.width(VSTheme.gap)); Text(tr(key)) }
+    Button(interactionSource=interaction, colors=ButtonDefaults.buttonColors(containerColor=role(if(pressed) "messageActionHover" else "messageAction"),contentColor=role("messageActionForeground")), onClick = {dismiss();onClick()}, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = VSTheme.touchTarget), shape = CircleShape) { Icon(icon,contentDescription=null); Spacer(Modifier.width(VSTheme.gap)); Text(tr(key)) }
 }
 @Composable fun Secondary(key: String, enabled: Boolean = true, onClick: () -> Unit) {
     val dismiss=rememberKeyboardDismiss()
-    OutlinedButton(onClick={dismiss();onClick()}, enabled=enabled, modifier=Modifier.heightIn(min=VSTheme.touchTarget), shape=MaterialTheme.shapes.small,
+    OutlinedButton(onClick={dismiss();onClick()}, enabled=enabled, modifier=Modifier.heightIn(min=VSTheme.touchTarget), shape=CircleShape,
         border=BorderStroke(VSTheme.borderWidth,role("border")), colors=ButtonDefaults.outlinedButtonColors(containerColor=role("surface"),contentColor=role("text"))) { Icon(actionIcon(key),contentDescription=null);Spacer(Modifier.width(VSTheme.gap));Text(tr(key)) }
 }
 @Composable fun IconAction(key: String, icon: ImageVector, enabled: Boolean = true, params: Map<String,Any> = emptyMap(), onClick: () -> Unit) {
     val label=tr(key,params)
     val dismiss=rememberKeyboardDismiss()
-    // Surface keeps a token radius; Material's default icon button is circular.
-    Surface(onClick={dismiss();onClick()}, enabled=enabled, shape=MaterialTheme.shapes.small, color=role("surface"),
+    // Preserve a full touch target while keeping secondary actions visually quiet.
+    Surface(onClick={dismiss();onClick()}, enabled=enabled, shape=CircleShape, color=Color.Transparent,
         modifier=Modifier.sizeIn(minWidth=VSTheme.touchTarget,minHeight=VSTheme.touchTarget).semantics {contentDescription=label;role=Role.Button}) {
         Box(contentAlignment=Alignment.Center) {Icon(icon,contentDescription=null,tint=role(if(enabled) "text" else "textMuted"))}
     }
@@ -96,8 +105,8 @@ fun Modifier.dismissKeyboardOnTap(): Modifier = composed {
         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(autoCorrectEnabled = !secret, keyboardType = if(secret) KeyboardType.Password else KeyboardType.Text,
             imeAction=if(multiline) ImeAction.Default else ImeAction.Done),
         keyboardActions=KeyboardActions(onDone={dismiss()}),
-        shape = MaterialTheme.shapes.small,
-        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor=role("focus"), unfocusedBorderColor=role("border"), focusedContainerColor=role("input"), unfocusedContainerColor=role("input")))
+        shape = if(multiline) MaterialTheme.shapes.large else MaterialTheme.shapes.small,
+        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor=role("focus"), unfocusedBorderColor=role("border"), focusedContainerColor=role(if(multiline) "surface" else "input"), unfocusedContainerColor=role(if(multiline) "surface" else "input")))
     if(multiline && focused) Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {
         TextButton(onClick=dismiss,shape=MaterialTheme.shapes.small,modifier=Modifier.heightIn(min=VSTheme.touchTarget)) {Text(tr("mobile.keyboard.done"))}
     }
@@ -116,10 +125,10 @@ fun Modifier.dismissKeyboardOnTap(): Modifier = composed {
                 Text(value,style=MaterialTheme.typography.titleSmall,maxLines=2,overflow=TextOverflow.Ellipsis)
             }
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight,contentDescription=null,tint=role("textMuted"))
-        } else Row(Modifier.padding(VSTheme.inset),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(VSTheme.gap)) {
+        } else Row(Modifier.padding(horizontal=VSTheme.inset,vertical=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(VSTheme.gap)) {
             Icon(rowIcon(label),contentDescription=null,tint=role("textMuted"))
-            Text(tr(label),style=MaterialTheme.typography.labelLarge,maxLines=1,overflow=TextOverflow.Ellipsis)
-            Text(value,Modifier.weight(1f),color=role("textMuted"),style=MaterialTheme.typography.labelLarge,textAlign=TextAlign.End,maxLines=1,overflow=TextOverflow.Ellipsis)
+            Text(tr(label),style=MaterialTheme.typography.bodyLarge,maxLines=1,overflow=TextOverflow.Ellipsis)
+            Text(value,Modifier.weight(1f),color=role("textMuted"),style=MaterialTheme.typography.bodyLarge,textAlign=TextAlign.End,maxLines=1,overflow=TextOverflow.Ellipsis)
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight,contentDescription=null,tint=role("textMuted"))
         }
     }
@@ -229,8 +238,8 @@ fun languageName(code: String, locale: String): String = Locale.forLanguageTag(c
 }
 @Composable fun SettingsLink(label: String, value: String = "", onClick: ()->Unit) {
     Surface(onClick=onClick,color=role("surface"),shape=MaterialTheme.shapes.small,modifier=Modifier.fillMaxWidth().heightIn(min=VSTheme.touchTarget)) {
-        Row(Modifier.padding(VSTheme.inset),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(VSTheme.gap)) {
-            Icon(rowIcon(label),contentDescription=null)
+        Row(Modifier.padding(horizontal=VSTheme.inset,vertical=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(VSTheme.gap)) {
+            Icon(rowIcon(label),contentDescription=null,modifier=Modifier.size(20.dp))
             Text(tr(label),Modifier.weight(1f));if(value.isNotBlank()) Text(value,Modifier.weight(1f),color=role("textMuted"),maxLines=1,overflow=TextOverflow.Ellipsis,textAlign=TextAlign.End)
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight,contentDescription=null)
         }
@@ -245,14 +254,14 @@ fun languageName(code: String, locale: String): String = Locale.forLanguageTag(c
     val usable by rememberUpdatedState(ready||active)
     Box(Modifier.fillMaxWidth().padding(vertical=VSTheme.inset),contentAlignment=Alignment.Center) {
         Surface(color=role("messageAction"),contentColor=role("messageActionForeground"),shape=androidx.compose.foundation.shape.CircleShape,
-            modifier=Modifier.size(112.dp).semantics {
+            modifier=Modifier.size(88.dp).semantics {
                 contentDescription=label;role=Role.Button
                 if(!ready&&!active) disabled()
                 onClick {if(ready||active) tap();true}
                 onLongClick(label=holdLabel) {if(ready) hold();true}
             }.pointerInput(ready) {
                 detectTapGestures(onTap={if(usable) currentTap()},onLongPress={if(ready) currentHold()},onPress={tryAwaitRelease();currentRelease()})
-            }) {Box(contentAlignment=Alignment.Center) {Icon(if(active) Icons.Default.Close else VSIcons.Mic,contentDescription=null,modifier=Modifier.size(48.dp))}}
+            }) {Box(contentAlignment=Alignment.Center) {Icon(if(active) VSIcons.Stop else VSIcons.Mic,contentDescription=null,modifier=Modifier.size(36.dp))}}
     }
 }
 
@@ -319,12 +328,33 @@ fun rowIcon(key: String): ImageVector = when {
     else -> Icons.Default.Info
 }
 
-/** Transcript scrolls independently; recording and sharing stay clear of the tab bar. */
+/** Transcript scrolls independently; recording and sharing stay clear of the dock. */
 @Composable fun DictationLayout(content: @Composable ColumnScope.()->Unit, controls: @Composable ColumnScope.()->Unit) {
     Column(Modifier.fillMaxSize().imePadding().dismissKeyboardOnTap()) {
-        Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(VSTheme.inset),
-            verticalArrangement=Arrangement.spacedBy(VSTheme.gap),content=content)
-        Column(Modifier.fillMaxWidth().padding(horizontal=VSTheme.inset).padding(bottom=VSTheme.inset),
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min=maxHeight).padding(VSTheme.inset),
+                verticalArrangement=Arrangement.spacedBy(VSTheme.gap,Alignment.CenterVertically),content=content)
+        }
+        Column(Modifier.fillMaxWidth().padding(horizontal=VSTheme.inset).padding(bottom=8.dp),
             verticalArrangement=Arrangement.spacedBy(VSTheme.gap),content=controls)
+    }
+}
+
+@Composable fun DictationTranscript(text:String) {
+    if(text.isEmpty()) Column(Modifier.fillMaxWidth().heightIn(min=240.dp),horizontalAlignment=Alignment.CenterHorizontally,
+        verticalArrangement=Arrangement.spacedBy(8.dp,Alignment.CenterVertically)) {
+        Icon(VSIcons.Wave,null,Modifier.size(40.dp),tint=role("textMuted"))
+        Text(tr("mobile.ios.transcript"),style=MaterialTheme.typography.titleMedium)
+        Text(tr("mobile.dictate.tap_to_start"),style=MaterialTheme.typography.bodyMedium,color=role("textMuted"))
+    } else androidx.compose.foundation.text.selection.SelectionContainer {
+        Text(text,modifier=Modifier.fillMaxWidth().heightIn(min=240.dp).semantics {liveRegion=LiveRegionMode.Polite},style=MaterialTheme.typography.bodyLarge)
+    }
+}
+
+@Composable fun DictationControls(text:String,active:Boolean,ready:Boolean,copy:()->Unit,share:()->Unit,tap:()->Unit,hold:()->Unit,release:()->Unit) {
+    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+        Box(Modifier.weight(1f),contentAlignment=Alignment.Center) {IconAction("mobile.dictate.copy",VSIcons.Copy,text.isNotBlank(),onClick=copy)}
+        Box(Modifier.weight(1f)) {MicControl(active,ready,tap,hold,release)}
+        Box(Modifier.weight(1f),contentAlignment=Alignment.Center) {IconAction("mobile.speak.share",Icons.Default.Share,text.isNotBlank(),onClick=share)}
     }
 }

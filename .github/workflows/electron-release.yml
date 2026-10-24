@@ -243,7 +243,16 @@ jobs:
           test -n "$APP" || { echo "No VoiceStudio.app to verify"; exit 1; }
           # An invalid bundle signature makes browser downloads open as "damaged".
           codesign --verify --deep --strict "$APP" || { echo "macOS bundle signature is invalid"; exit 1; }
-          if codesign -dvv "$APP" 2>&1 | grep -q '^Authority=Developer ID Application:' && xcrun stapler validate "$APP"; then
+          # stapler validate reaches Apple over the network; retry so a dropped
+          # connection is not reported as an unsigned app (v0.5.7-beta.2 tag run).
+          validate_stapled() {
+            for attempt in 1 2 3 4; do
+              xcrun stapler validate "$APP" && return 0
+              sleep $((attempt * 10))
+            done
+            return 1
+          }
+          if codesign -dvv "$APP" 2>&1 | grep -q '^Authority=Developer ID Application:' && validate_stapled; then
             STATUS=notarized
           elif [ "$HAS_CREDENTIALS" = true ]; then
             echo "Developer ID credentials are configured but the app is not signed and notarized with them"; exit 1

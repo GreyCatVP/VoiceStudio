@@ -26,8 +26,11 @@ import com.voicestudio.mobile.l10n.L10n
     val notification=permissionAction(Manifest.permission.POST_NOTIFICATIONS,"mobile.settings.notifications_help",vm::fail) {vm.preference {it.copy(notifications=true)}}
     Screen {
         ScreenTitle("mobile.tabs.settings")
-        SettingsLink("mobile.tabs.connect",onClick=onConnect)
-        SettingsLink("mobile.local.models",onClick=onModels)
+        Group {
+            SettingsLink("mobile.tabs.connect",onClick=onConnect)
+            HorizontalDivider(color=role("border"))
+            SettingsLink("mobile.local.models",onClick=onModels)
+        }
         if(state.connected) {
             Heading("mobile.settings.connection")
             SettingsLink("mobile.settings.connection",prefs.activeUrl.orEmpty(),onConnect)
@@ -48,16 +51,23 @@ import com.voicestudio.mobile.l10n.L10n
             ChoicePicker("mobile.settings.dark_palette",prefs.darkPalette,palettes.map {Choice(it.first,it.second,swatch=VSTheme.roles(it.first,true).getValue("messageAction"))}) {value -> vm.preference {it.copy(darkPalette=value)}}
             }
 
-            Heading("mobile.settings.language")
+            Group {
             Picker("mobile.settings.language",prefs.locale,listOf("system" to l.t("mobile.settings.mode_system"))+L10n.languages.map {it to languageName(it,it)}) {value -> vm.preference {it.copy(locale=value)}}
-            Heading("mobile.settings.notifications")
-            Group {Toggle("mobile.settings.notifications",prefs.notifications) {enabled -> if(enabled&&Build.VERSION.SDK_INT>=33) notification() else vm.preference {it.copy(notifications=enabled)}}}
+            HorizontalDivider(color=role("border"))
+            Toggle("mobile.settings.notifications",prefs.notifications) {enabled -> if(enabled&&Build.VERSION.SDK_INT>=33) notification() else vm.preference {it.copy(notifications=enabled)}}
+            }
         Heading("mobile.settings.privacy")
-        Info("mobile.simple.privacy","mobile.local.privacy",row=true)
-        Group {Toggle("mobile.simple.analytics",prefs.consent==true) {vm.consent(it)}}
+        Group {
+            Info("mobile.simple.privacy","mobile.local.privacy",row=true)
+            HorizontalDivider(color=role("border"))
+            Toggle("mobile.simple.analytics",prefs.consent==true) {vm.consent(it)}
+        }
         Heading("mobile.settings.about")
-        SettingsLink("mobile.android.app_name",version) {licenses=true}
-        SettingsLink("mobile.settings.licenses") {licenses=true}
+        Group {
+            SettingsLink("mobile.android.app_name",version) {licenses=true}
+            HorizontalDivider(color=role("border"))
+            SettingsLink("mobile.settings.licenses") {licenses=true}
+        }
         if(state.connected) SettingsLink("mobile.android.model_licenses") {context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(vm.api!!.address.baseUrl.toString())))}
     }
     if(editUrl!=null) AlertDialog(onDismissRequest={editUrl=null},text={Field("mobile.android.host_label",editName,{editName=it})},confirmButton={TextButton(onClick={val url=editUrl;vm.preference {it.copy(hosts=it.hosts.map {h -> if(h.url==url) h.copy(label=editName) else h})};editUrl=null}) {Text(tr("common.save"))}},dismissButton={TextButton(onClick={editUrl=null}) {Text(tr("common.cancel"))}})

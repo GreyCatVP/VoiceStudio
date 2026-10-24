@@ -96,6 +96,7 @@
     "brand_by": "{{brand}} 作者",
     "all": "全部",
     "allContributors": "所有贡献者",
+    "coreMaintainer": "核心维护者",
     "title": "VoiceStudio.sh 开源",
     "design": "根据描述设计声音。",
     "dub": "翻译并配音音频或视频。",
@@ -2074,6 +2075,7 @@
     "port_in_use_short": "端口 {{port}} 已被占用",
     "proxy_bypass_help": "完全退出 VoiceStudio，在终端中将 HTTP_PROXY/HTTPS_PROXY 设为代理 URL，将 NO_PROXY 设为排除的主机，然后从该终端启动 VoiceStudio。在当前应用中重试不会加载新的环境变量。",
     "hint_spawn_blocked": "操作系统或安全软件拒绝启动本地引擎。请将 VoiceStudio 的运行时文件夹添加到杀毒软件的排除项（Windows：Windows 安全中心 → 病毒和威胁防护 → 管理设置 → 排除项），并确认它不在 OneDrive 等云同步文件夹内，然后重试。",
+    "hint_smart_app_control": "Windows 智能应用控制阻止了本地引擎。它不支持按应用设置例外，因此添加杀毒软件排除项无效。请在 Windows 安全中心 → 应用和浏览器控制 → 智能应用控制设置 中将其关闭（不重置系统就无法再次开启），或将 VoiceStudio 连接到另一台电脑上运行的引擎，然后重试。",
     "hint_slow_start": "等待超时时，引擎仍在启动。电脑较慢（尤其是没有独立显卡）以及安装后的首次启动（杀毒软件会扫描每个新文件）可能需要几分钟。请关闭占用大量内存的应用后重试；之后的启动会快得多。",
     "hint_synced_folder": "此位置位于云同步文件夹（OneDrive、Dropbox、iCloud Drive、Google Drive）内。仅在线的占位文件和文件锁定会破坏 Python 环境。请将 VoiceStudio 移到普通本地文件夹（例如 Windows 上的 C:\\VoiceStudio，或 macOS 和 Linux 上的 ~/VoiceStudio），然后重新设置。"
   },
@@ -2320,7 +2322,9 @@
     "not_included": "不在你的方案中",
     "plan_ends": "至 {{date}}",
     "details_failed": "无法加载你的账户详情（{{reason}}）。",
-    "retry": "重试"
+    "retry": "重试",
+    "manage_profile": "管理个人资料",
+    "manage_plan": "管理方案"
   },
   "cloudsync": {
     "unavailable": "同步当前不可用。",

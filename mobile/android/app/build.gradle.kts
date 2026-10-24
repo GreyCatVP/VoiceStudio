@@ -14,6 +14,16 @@ val appVersionCode = providers.environmentVariable("VOICESTUDIO_ANDROID_VERSION_
     ?: (major.toInt() * 1000000 + minor.toInt() * 1000 + patch.toInt())
 // The Play upload key, supplied only by the Play workflow; other builds stay debug-signed.
 val uploadKeystore = providers.environmentVariable("VOICESTUDIO_ANDROID_KEYSTORE").orNull
+// Content reports (mobile/contract/SPEC.md) go to production unless VOICESTUDIO_CONTENT_REPORTS_URL,
+// from the environment or mobile/.env, points this build elsewhere (e.g. https://dev-appapi.voicestudio.sh).
+val mobileDotenv = repository.resolve("mobile/.env").takeIf { it.isFile }?.readLines().orEmpty()
+    .mapNotNull { Regex("""\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*""").matchEntire(it)?.destructured }
+    .associate { (key, value) -> key to value.trim('"', '\'') }
+val contentReportsUrl = (providers.environmentVariable("VOICESTUDIO_CONTENT_REPORTS_URL").orNull?.takeIf { it.isNotBlank() }
+    ?: mobileDotenv["VOICESTUDIO_CONTENT_REPORTS_URL"]).orEmpty().trim().trimEnd('/').ifEmpty { "https://appapi.voicestudio.sh" }
+require(Regex("""https://[A-Za-z0-9.-]+(?::\d+)?(?:/[A-Za-z0-9._~/-]*)?""").matches(contentReportsUrl)) {
+    "VOICESTUDIO_CONTENT_REPORTS_URL must be an https URL, got $contentReportsUrl"
+}
 android {
     namespace = "com.voicestudio.mobile"
     compileSdk = 36
@@ -26,6 +36,7 @@ android {
         targetSdk = 36
         versionCode = appVersionCode
         versionName = appVersion
+        buildConfigField("String", "CONTENT_REPORTS_URL", "\"$contentReportsUrl\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     if (uploadKeystore != null) {
@@ -36,11 +47,6 @@ android {
             keyPassword = providers.environmentVariable("VOICESTUDIO_ANDROID_KEY_PASSWORD").get()
         }
         buildTypes.getByName("release").signingConfig = signingConfigs.getByName("upload")
-    }
-    // Content reports (mobile/contract/SPEC.md): debug builds never reach the production app API.
-    buildTypes {
-        getByName("debug") { buildConfigField("String", "CONTENT_REPORTS_URL", "\"https://dev-appapi.voicestudio.sh\"") }
-        getByName("release") { buildConfigField("String", "CONTENT_REPORTS_URL", "\"https://appapi.voicestudio.sh\"") }
     }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }

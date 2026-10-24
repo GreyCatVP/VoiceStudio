@@ -170,4 +170,8 @@ VOLUME ["/app/omnivoice_data"]
 # Bind to 0.0.0.0 for external access. The entrypoint reads the manifest default
 # (or OMNIVOICE_PORT) and forwards any explicit Uvicorn options after the image.
 ENV OMNIVOICE_BIND_HOST=0.0.0.0
+# Late on purpose: a new commit changes this arg every build, and nothing above may
+# be invalidated by it. Shown in bug reports to tell builds of one version apart.
+ARG BUILD_COMMIT=unknown
+ENV OMNIVOICE_BUILD_COMMIT=${BUILD_COMMIT}
 ENTRYPOINT ["python3", "backend/docker_entrypoint.py"]

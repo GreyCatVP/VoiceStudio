@@ -23,6 +23,12 @@ IGNORE = [
     "**/__pycache__",
     "**/.venv",
     ".git",
+    # Local secrets must never be copied into a container.
+    "**/.env",
+    "**/.env.local",
+    "**/.env.*.local",
+    "**/*.pem",
+    "**/*.key",
     "electron/dist",
     "electron/out",
     "electron/release",
@@ -79,7 +85,10 @@ class Voicestudio:
     async def python_tests(
         self,
         source: Source,
-        git: Annotated[dagger.Directory, DefaultPath("/.git")],
+        git: Annotated[
+            dagger.Directory | None,
+            Doc("a .git directory for exact history (`--git=.git`); omitted: a throwaway repo of the tree"),
+        ] = None,
         paths: Annotated[list[str], Doc("pytest targets")] = ["tests/", "backend/tests/"],
         extras: Annotated[bool, Doc("install --all-extras like CI")] = True,
     ) -> str:
@@ -106,7 +115,9 @@ class Voicestudio:
             # Real history, added last: several tests use `git show <pinned
             # commit>` / `git archive HEAD`. Its churn then only busts this
             # layer, never the dependency layers above.
-            .with_directory("/app/.git", git)
+            .with_(lambda c: c.with_directory("/app/.git", git) if git else c.with_exec(
+                ["sh", "-c", "git init -q && git add -A && git -c user.name=ci -c user.email=ci@localhost commit -qm tree"]
+            ))
             .with_file("/usr/local/bin/node", dag.container().from_("node:22-bookworm").file("/usr/local/bin/node"))
             .with_env_variable("HF_HUB_OFFLINE", "1")
         )
@@ -119,7 +130,7 @@ class Voicestudio:
         return out
 
     @function
-    async def check(self, source: Source, git: Annotated[dagger.Directory, DefaultPath("/.git")]) -> str:
+    async def check(self, source: Source, git: dagger.Directory | None = None) -> str:
         """Run every check concurrently; fails if any fails."""
         results = await asyncio.gather(
             self.frontend_tests(source),
