@@ -93,6 +93,52 @@ it('prioritizes required and curated models across families, with optional downl
   );
 });
 
+it('names each model in the compact setup pack, even two of the same family', async () => {
+  mock.api.mockImplementation((path: string) => {
+    if (path === '/models') {
+      return Promise.resolve({
+        disk_free_gb: 100,
+        models: performancePackRepos.balanced.map((repo_id, index) => ({
+          repo_id,
+          label: `Model ${index}`,
+          role: 'ASR',
+          dictation_id: repo_id.includes('sherpa') ? `dictation-${index}` : undefined,
+          size_gb: 1,
+          installed: false,
+          supported: true,
+        })),
+      });
+    }
+    if (path === '/api/settings/performance-profile') {
+      return Promise.resolve({
+        global: 'balanced',
+        overrides: {},
+        effective: {},
+        families: [],
+        implemented_families: [],
+        targets: {},
+        selections: {},
+      });
+    }
+    if (path === '/models/install/status') return Promise.resolve({ jobs: [] });
+    if (path === '/setup/recommendations') {
+      return Promise.resolve({ device: { label: 'Linux x64' }, models: [], download_gb_remaining: 0, total_gb: 0, all_installed: false });
+    }
+    return Promise.resolve({});
+  });
+
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <PerformanceModelPacks compact />
+    </QueryClientProvider>,
+  );
+
+  const names = performancePackRepos.balanced.map((_, index) => `Model ${index}`);
+  for (const name of names) expect(await screen.findByText(name)).toBeInTheDocument();
+  // The balanced pack carries two dictation engines; the role stays visible.
+  expect(screen.getAllByText(/^engineSidebar\.dictation · /)).toHaveLength(2);
+});
+
 it('allows using an installed performance pack below the download reserve', async () => {
   const profile = {
     global: 'balanced',

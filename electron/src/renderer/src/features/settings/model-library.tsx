@@ -255,10 +255,13 @@ export function PerformanceModelPacks({ compact = false }: { compact?: boolean }
                   <Icon className="size-3.5" aria-hidden="true" />
                 </span>
                 <span className="min-w-0 flex-1">
+                  {/* Name the model even in the compact setup view: a pack can
+                      hold two models of one family (two dictation engines). */}
                   <span className="block truncate text-xs font-medium" title={model.label}>
-                    {compact ? t('engineSidebar.' + family) : model.label}
+                    {model.label}
                   </span>
                   <span className="text-[11px] text-muted-foreground">
+                    {compact && `${t('engineSidebar.' + family)} · `}
                     {t(
                       model.installed ? 'modelMaintenance.installed' : 'modelMaintenance.download',
                     )}{' '}

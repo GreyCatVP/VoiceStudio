@@ -104,9 +104,7 @@
     "dub": "Traduci e doppia audio o video.",
     "stories": "Crea scene con più voci.",
     "audiobook": "Crea audiolibri con capitoli.",
-    "transcribe": "Trasforma le registrazioni in testo.",
-    "collapseFooter": "Comprimi piè di pagina",
-    "expandFooter": "Espandi piè di pagina"
+    "transcribe": "Trasforma le registrazioni in testo."
   },
   "longformPersistence": {
     "storage_unavailable_title": "Impossibile caricare i progetti",
@@ -1041,6 +1039,7 @@
     "save": "Salva",
     "reset": "Ripristina",
     "change_file": "Cambia file",
+    "use_link": "Usa link",
     "import_srt": "Importa .srt",
     "import_srt_alt": "Importa invece .srt",
     "cast": "CAST",
@@ -2748,13 +2747,6 @@
     "progress": "{{done}} / {{total}} segmenti convalidati",
     "cancelled": "Annullato",
     "fitting": "Regolazione dei tempi"
-  },
-  "sponsorSlot": {
-    "book": "Prenota il tuo spazio",
-    "preview": "Anteprima sponsor",
-    "message": "Il tuo marchio, sito e messaggio",
-    "email_app": "Apri l’app email",
-    "copy_email": "Copia email"
   },
   "supportPlans": {
     "remove": "Rimuovi barra sponsor",
