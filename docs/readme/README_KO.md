@@ -74,7 +74,7 @@ curl -fsSL https://voicestudio.sh/install | sh -s -- --main
 curl -fsSL https://voicestudio.sh/install | sh -s -- --uninstall
 ```
 
-Windows에서는 PowerShell에서 `irm https://voicestudio.sh/install | iex`를 실행하세요.
+Windows에서는 PowerShell에서 `irm https://voicestudio.sh/install.ps1 | iex`를 실행하세요.
 
 `voicestudio.sh/install`에 접속할 수 없거나 404가 반환되면, 같은 스크립트를
 저장소에서 직접 실행하거나 저장소를 클론한 뒤 `scripts/install.sh`를 실행하세요.
