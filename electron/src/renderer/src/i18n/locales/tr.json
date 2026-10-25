@@ -1,4 +1,18 @@
 {
+  "cloneEmotion": {
+    "title": "Duygu",
+    "off": "Kapalı",
+    "text": "Açıklama",
+    "vector": "Kaydırıcılar",
+    "happy": "Mutluluk",
+    "angry": "Öfke",
+    "sad": "Üzüntü",
+    "afraid": "Korku",
+    "disgusted": "İğrenme",
+    "melancholic": "Melankoli",
+    "surprised": "Şaşkınlık",
+    "calm": "Sakinlik"
+  },
   "cloneQuality": {
     "title": "Ses kalitesi",
     "precision": "WAV hassasiyeti",
@@ -1496,6 +1510,12 @@
     "submit_failed": "Gönderim formu açılamadı.",
     "submit_preset": "Ön ayar gönder",
     "submit_voice": "Ses gönder",
+    "community_packs": "Paketler",
+    "community_all_packs": "Tümü",
+    "community_language": "Dil",
+    "community_all_languages": "Tüm diller",
+    "community_new": "Yeni",
+    "community_author_profile": "GitHub'da {{author}}",
     "zone_community": "Topluluk",
     "import_persona": "Bir .ovsvoice kişi paketini içe aktarın",
     "persona_imported": "\"{{name}}\"{{unverified}} içe aktarıldı.",
@@ -1575,7 +1595,10 @@
     "aec_description": "VoiceStudio çalma sesini mikrofondan çıkarın.",
     "aec_row_title": "Dikte için yankı gidermeyi etkinleştir",
     "aec_experimental": "Deneysel",
-    "aec_hint": "Ön izleme, dublaj veya video oynarken uygulamanın sesini yazıya dökmeden dikte etmenizi sağlar. Biraz işlem ekler; çalma sırasında dikte etmiyorsanız kapalı bırakın."
+    "aec_hint": "Ön izleme, dublaj veya video oynarken uygulamanın sesini yazıya dökmeden dikte etmenizi sağlar. Biraz işlem ekler; çalma sırasında dikte etmiyorsanız kapalı bırakın.",
+    "cleanup_title": "Metin temizliği",
+    "spoken_punctuation": "Sesli noktalama",
+    "spoken_punctuation_desc": "Yazmak için “comma”, “period”, “question mark”, “new line” deyin. Yalnızca İngilizce."
   },
   "tools": {
     "title": "Araçlar",
@@ -2723,6 +2746,15 @@
     "vol": "Cilt",
     "vol_title": "Hacim (%0–200)",
     "search_placeholder": "Metin ara…",
+    "replace_placeholder": "Şununla değiştir…",
+    "replace": "Değiştir",
+    "replace_all": "Tümünü değiştir",
+    "find_next": "Sonraki eşleşme",
+    "find_prev": "Önceki eşleşme",
+    "find_count": "{{current}} / {{total}} eşleşme",
+    "find_none": "Eşleşme yok",
+    "replace_done_one": "{{count}} eşleşme değiştirildi",
+    "replace_done_other": "{{count}} eşleşme değiştirildi",
     "all_speakers": "Tüm konuşmacılar",
     "select_all_title": "Filtrelenenlerin tümünü seç",
     "sel_count": "{{count}} seç",
@@ -2970,6 +3002,7 @@
     "windows_app_control_blocked": "Windows uygulama denetimi gerekli bir dosyayı engelledi. Yöneticinizden güvenilir VoiceStudio çalışma ortamına izin vermesini isteyin, ardından uygulamayı yeniden başlatın.",
     "audio_io_failed": "Ses okunamadı veya kaydedilemedi. Dosya biçimini, boş disk alanını ve dosya izinlerini kontrol edin. Ayarlar → Depolama bölümündeki klasörü inceleyin.",
     "no_audio_track": "Bu dosyada ses parçası yok, bu yüzden yazıya dökülecek, dublajlanacak veya klonlanacak konuşma yok. Ses içeren bir video veya ses dosyası seçin.",
+    "source_language_required": "Konuşma tanıma bu videoda hangi dilin konuşulduğunu bildirmedi, bu yüzden burada çevrilemiyor. Videoyu Seslendirme'de açıp kaynak dilini seçin veya dili algılayan bir konuşma tanıma modeli seçin.",
     "transcription_media_tool": "Yazıya dökme için ffmpeg gerekir, ancak VoiceStudio onu bulamadı veya çalıştıramadı. Ayarlar → Ses araçları bölümünü açıp İndir/Onar'ı kullanın ya da ffmpeg'i kurun (macOS: brew install ffmpeg; Windows: winget install Gyan.FFmpeg; Linux: paket yöneticiniz) ve VoiceStudio'yu yeniden başlatın. FFMPEG_PATH değişkenini bir ffmpeg dosyasına da yönlendirebilirsiniz.",
     "transcription_pipe_lost": "Arka uç, yazıya dökme sırasında uygulamaya giden çıkış kanalını kaybetti (broken pipe). VoiceStudio'yu yeniden başlatıp tekrar deneyin.",
     "gpu_oom": "GPU belleği tükendi. GPU'yu çok kullanan diğer uygulamaları kapatın veya modelleri boşaltın, sonra tekrar deneyin. Ayarlar → Performans ve Aygıt bölümünden CPU'yu seçebilir veya daha küçük bir TTS motoru seçebilirsiniz.",
@@ -3477,7 +3510,11 @@
     "unknown": "Dil desteği bilinmiyor",
     "error": "Diller kontrol edilemedi",
     "modelLanguages": "Bu modelin dilleri",
-    "changeModel": "Modeli değiştir"
+    "changeModel": "Modeli değiştir",
+    "recent": "Son kullanılanlar",
+    "available": "Kullanılabilir",
+    "showAll": "Tüm dilleri göster",
+    "hideUnsupported": "Desteklenmeyen dilleri gizle"
   },
   "modelLicense": {
     "title": "Model koşulları",
@@ -4220,5 +4257,25 @@
       "fix1": "Ayarlar > Günlükler'de arka ucu kontrol edin",
       "fix2": "VoiceStudio'yu yeniden başlatıp tekrar deneyin"
     }
+  },
+  "modelInstall": {
+    "queued": "Başlamayı bekliyor…",
+    "downloading": "İndiriliyor…",
+    "downloadingPct": "İndiriliyor · %{{pct}}",
+    "finishing": "Doğrulanıyor ve kuruluyor…",
+    "cancelling": "İptal ediliyor…",
+    "cancelled": "İndirme iptal edildi",
+    "failed": "İndirme başarısız oldu",
+    "ready": "Kullanıma hazır",
+    "bytes": "{{total}} içinden {{done}}",
+    "speed": "{{rate}}/sn",
+    "eta": "{{time}} kaldı",
+    "downloadAgain": "Yeniden indir",
+    "nextDisk": "Yeterli disk alanı yok. Yer açın veya model klasörünü Ayarlar → Depolama bölümünden taşıyın, ardından yeniden deneyin.",
+    "nextGated": "Bu model Hugging Face erişimi gerektirir. Model sayfasından erişim isteyin, belirtecinizi Ayarlar → Kimlik Bilgileri bölümüne ekleyin, ardından yeniden deneyin.",
+    "nextNetwork": "İndirme sunucusuna ulaşılamadı. Bağlantıyı, proxy'yi veya yansıyı Ayarlar → Ağ bölümünden kontrol edin, ardından yeniden deneyin.",
+    "nextMemory": "Bu cihazın belleği yetmedi. Ayarlar → Performans bölümünden daha hafif bir profil seçin, ardından yeniden deneyin.",
+    "downloads": "İndirmeler",
+    "activeCount": "Süren indirmeler: {{count}}"
   }
 }

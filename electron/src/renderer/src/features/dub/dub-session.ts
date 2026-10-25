@@ -1,3 +1,4 @@
+import { dubSourceLanguage } from './source-language';
 import {
   startTranslationRun,
   appendTranslationLog,
@@ -583,6 +584,33 @@ export function assignDubSpeakerProfile(speakerId: string, profileId: string) {
     return invalidated;
   });
   if (changed) commitSegmentEdit(next);
+}
+
+export function replaceDubSegmentTexts(
+  updates: ReadonlyArray<{ id: string; text: string }>,
+  targetCode?: string,
+) {
+  if (!updates.length) return 0;
+  const byId = new Map(updates.map((update) => [String(update.id), update.text]));
+  let changed = 0;
+  const next = dubSession.state.segments.map((segment) => {
+    const text = byId.get(String(segment.id));
+    if (text === undefined || text === segment.text) return segment;
+    changed += 1;
+    // Same rules as the row editor: a translated row rewrites its target
+    // translation; an untranslated row is a source edit, so text_original
+    // carries the corrected words into later translations and stale
+    // translations of the old source are dropped rather than counted as done.
+    if (targetCode && typeof segment.translations?.[targetCode] === 'string') {
+      return patchSegment(segment, {
+        text,
+        translations: { ...segment.translations, [targetCode]: text },
+      });
+    }
+    return patchSegment(segment, { text, text_original: text, translations: undefined });
+  });
+  if (!changed) return 0;
+  return commitSegmentEdit(next) ? changed : 0;
 }
 
 export function applyDubTranslationRows(targetCode: string, rows: PasteTranslationRow[]) {
@@ -1172,7 +1200,7 @@ export async function translateDubWithAgent(
         {
           agent,
           purpose: 'translate',
-          sourceLanguage: snapshot.sourceLang || snapshot.sourceLanguage || undefined,
+          sourceLanguage: dubSourceLanguage(snapshot.sourceLanguage, snapshot.sourceLang),
           targetLanguage: targetLabel,
           dialect: snapshot.dialect,
           translationInstructions: snapshot.translationInstructions,
@@ -1297,7 +1325,7 @@ export async function translateDub(
         signal,
         body: JSON.stringify({
           job_id: snapshot.jobId,
-          source_lang: snapshot.sourceLang || undefined,
+          source_lang: dubSourceLanguage(snapshot.sourceLanguage, snapshot.sourceLang),
           target_lang: target,
           provider,
           quality: snapshot.quality,
@@ -1584,7 +1612,7 @@ export async function generateDub(
               {
                 agent: current.agentCli,
                 purpose: 'fit',
-                sourceLanguage: current.sourceLang || current.sourceLanguage || undefined,
+                sourceLanguage: dubSourceLanguage(current.sourceLanguage, current.sourceLang),
                 targetLanguage: language,
                 dialect: current.dialect,
                 translationInstructions: current.translationInstructions,

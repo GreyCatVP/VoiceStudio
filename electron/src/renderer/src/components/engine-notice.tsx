@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { LoaderCircleIcon, TriangleAlertIcon, WrenchIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -6,7 +6,8 @@ import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useTtsReadiness } from '@/hooks/use-tts-readiness';
-import { TERMINAL_MODEL_INSTALL_STATES, useModelInstallJobs } from '@/hooks/use-model-install-sync';
+import { useModelInstall } from '@/hooks/use-model-install';
+import { InstallProgress } from '@/components/model-install-progress';
 import { apiJson, describeError } from '@/lib/api/client';
 import { openRepairAgent } from '@/lib/repair-agent-events';
 import type { EnginesResponse } from '@/lib/api/types';
@@ -33,15 +34,7 @@ export function EngineNotice({
   const { t } = useTranslation();
   const client = useQueryClient();
   const [fixing, setFixing] = useState(false);
-  const [install, setInstall] = useState<{ repo: string } | null>(null);
-  const installSeen = useRef(false);
-  const jobs = useModelInstallJobs();
   const blocker = useTtsReadiness(operation);
-  const job = jobs.data?.jobs.find((item) => item.repo_id === install?.repo);
-  const progress =
-    job?.total_bytes && job.total_bytes > 0
-      ? Math.min(100, Math.round(((job.bytes_done ?? 0) / job.total_bytes) * 100))
-      : null;
 
   const refreshReadiness = useCallback(
     () =>
@@ -86,51 +79,29 @@ export function EngineNotice({
     [refreshReadiness],
   );
 
-  useEffect(() => {
-    if (!install || !jobs.data) return;
-    if (job && !TERMINAL_MODEL_INSTALL_STATES.has(job.state)) {
-      installSeen.current = true;
-      return;
-    }
-    if (!installSeen.current && !job) return;
-    const completed = !job || job.state === 'done';
-    const detail = job?.error || job?.state || 'The model installer stopped before completion.';
-    setInstall(null);
-    installSeen.current = false;
-    if (!completed) {
-      if (!['cancelled', 'install_cancelled'].includes(job?.state ?? '')) repair(detail);
-      return;
-    }
-    void (async () => {
-      try {
-        if (!(await activateAvailableEngine())) {
-          repair('The model installed, but no compatible local TTS engine became available.');
-        } else {
-          await refreshReadiness();
+  const install = useModelInstall(undefined, {
+    onReady: () => {
+      void (async () => {
+        try {
+          if (!(await activateAvailableEngine())) {
+            repair('The model installed, but no compatible local TTS engine became available.');
+          }
+        } catch (error) {
+          repair(`The model installed, but activation failed: ${describeError(error)}`);
         }
-      } catch (error) {
-        repair(`The model installed, but activation failed: ${describeError(error)}`);
-      }
-    })();
-  }, [activateAvailableEngine, install, job, jobs.data, refreshReadiness, repair]);
+      })();
+    },
+    // A full disk or a gated repository has an exact next step on screen;
+    // only an unexplained failure goes to the repair agent.
+    onFailed: (view) => {
+      if (!view.problem) repair(view.detail || 'The model installer stopped before completion.');
+    },
+  });
 
   if (blocker !== 'engine') return null;
   const startInstall = async (repo: string) => {
-    const existing = jobs.data?.jobs.find(
-      (item) => item.repo_id === repo && !TERMINAL_MODEL_INSTALL_STATES.has(item.state),
-    );
-    installSeen.current = false;
-    setInstall({ repo });
-    if (existing) {
-      installSeen.current = true;
-      return;
-    }
-    await apiJson('/models/install', {
-      method: 'POST',
-      body: JSON.stringify({ repo_id: repo }),
-    });
-    await client.invalidateQueries({ queryKey: ['model-install-jobs'] });
-    toast.success(t('models.started_downloading', { count: 1 }));
+    if ((await install.start(repo)) === 'started')
+      toast.success(t('models.started_downloading', { count: 1 }));
   };
   const fix = async () => {
     setFixing(true);
@@ -164,31 +135,38 @@ export function EngineNotice({
         );
       }
     } catch (error) {
-      setInstall(null);
-      installSeen.current = false;
       repair(`Automatic model setup failed: ${describeError(error)}`);
     } finally {
       setFixing(false);
     }
   };
-  const action = (
-    <Button
-      type="button"
-      size="sm"
-      className={compact ? 'shrink-0' : 'mt-2'}
-      disabled={fixing || Boolean(install)}
-      onClick={fix}
-    >
-      {fixing || install ? (
-        <LoaderCircleIcon className="animate-spin motion-reduce:animate-none" />
-      ) : (
-        <WrenchIcon />
-      )}
-      {install
-        ? `${t('modelMaintenance.downloading')}${progress === null ? '' : ` ${progress}%`}`
-        : t('repairAgent.fix')}
-    </Button>
-  );
+  const view = install.view;
+  const action =
+    view && view.stage !== 'ready' && view.stage !== 'cancelled' ? (
+      <InstallProgress
+        className={compact ? 'min-w-48 flex-1 basis-full' : 'mt-2'}
+        view={view}
+        busy={install.busy}
+        onCancel={() => void install.cancel()}
+        onRetry={() => void install.retry()}
+        onDismiss={view.stage === 'failed' ? install.dismiss : undefined}
+      />
+    ) : (
+      <Button
+        type="button"
+        size="sm"
+        className={compact ? 'shrink-0' : 'mt-2'}
+        disabled={fixing || install.busy}
+        onClick={fix}
+      >
+        {fixing ? (
+          <LoaderCircleIcon className="animate-spin motion-reduce:animate-none" />
+        ) : (
+          <WrenchIcon />
+        )}
+        {t('repairAgent.fix')}
+      </Button>
+    );
   if (compact) {
     return (
       <div className="flex min-w-0 flex-wrap items-center gap-3 rounded-lg border border-warning/30 bg-warning/8 px-3 py-2 text-sm">

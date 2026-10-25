@@ -584,9 +584,12 @@ it('shows device recommendations and live aggregate download telemetry', async (
   await screen.findByText('Fast local model');
   expect(screen.getByText('firstrun.chip_recommended')).toBeInTheDocument();
   expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '50');
-  expect(screen.getByText('512.0 MB / 1.00 GB')).toBeInTheDocument();
-  expect(screen.getByText('8.0 MB/s')).toBeInTheDocument();
-  expect(screen.getByText('~2m')).toBeInTheDocument();
+  // Bytes, speed and ETA come from the shared install progress (formatted
+  // values are covered in model-install-progress.test.tsx).
+  expect(screen.getByRole('status')).toHaveTextContent('modelInstall.downloadingPct');
+  expect(
+    screen.getByText('modelInstall.bytes · modelInstall.speed · modelInstall.eta'),
+  ).toBeInTheDocument();
 });
 
 it('shows the device bundle, warns before exceeding disk space, and starts selected installs', async () => {

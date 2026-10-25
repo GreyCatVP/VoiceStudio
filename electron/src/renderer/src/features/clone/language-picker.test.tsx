@@ -110,8 +110,66 @@ it('ranks enabled options before disabled matches and keeps every language uniqu
   );
   fireEvent.click(screen.getByRole('button', { name: 'Language' }));
   const rows = await screen.findAllByRole('option');
-  expect(rows.map((row) => row.getAttribute('aria-label'))).toEqual(['English', 'Japanese']);
-  expect(rows[1]).toHaveAttribute('aria-description', 'Not supported');
+  expect(rows.map((row) => row.getAttribute('aria-label'))).toEqual([
+    'English',
+    'Show all languages',
+  ]);
+  fireEvent.click(screen.getByRole('option', { name: 'Show all languages' }));
+  const expanded = await screen.findAllByRole('option');
+  expect(expanded.map((row) => row.getAttribute('aria-label'))).toEqual([
+    'English',
+    'Hide unsupported languages',
+    'Japanese',
+  ]);
+  expect(expanded[2]).toHaveAttribute('aria-description', 'Not supported');
+});
+
+it('collapses unsupported languages behind one keyboard-reachable row', async () => {
+  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(320);
+  vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(340);
+  const onValueChange = vi.fn();
+  render(
+    <LanguagePicker
+      options={['Auto', 'English', 'Japanese', 'German']}
+      supportedOptions={['english']}
+      onValueChange={onValueChange}
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Language' }));
+  const search = await screen.findByRole('combobox');
+  expect(screen.queryByRole('option', { name: 'Japanese' })).not.toBeInTheDocument();
+  fireEvent.keyDown(search, { key: 'ArrowDown' });
+  fireEvent.keyDown(search, { key: 'ArrowDown' });
+  const more = screen.getByRole('option', { name: 'Show all languages' });
+  expect(search).toHaveAttribute('aria-activedescendant', more.id);
+  expect(more).toHaveTextContent('+2');
+  fireEvent.keyDown(search, { key: 'Enter' });
+  expect(onValueChange).not.toHaveBeenCalled();
+  expect(await screen.findByRole('option', { name: 'Japanese' })).toBeDisabled();
+  expect(screen.getByRole('option', { name: 'Hide unsupported languages' })).toBeInTheDocument();
+});
+
+it('puts recent choices first under a Recent heading', async () => {
+  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(320);
+  vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(340);
+  localStorage.setItem('voicestudio.language-recents.recent-test.v1', JSON.stringify(['Japanese']));
+  render(
+    <LanguagePicker
+      options={['Auto', 'English', 'German', 'Japanese']}
+      recentsScope="recent-test"
+      onValueChange={vi.fn()}
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Language' }));
+  const rows = await screen.findAllByRole('option');
+  expect(rows.map((row) => row.getAttribute('aria-label'))).toEqual([
+    'Auto',
+    'Japanese',
+    'English',
+    'German',
+  ]);
+  expect(screen.getByText('Recent')).toBeInTheDocument();
+  localStorage.removeItem('voicestudio.language-recents.recent-test.v1');
 });
 
 it('does not select while an IME composition is in progress', async () => {

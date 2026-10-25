@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { buttonVariants } from '@/components/ui/button';
 import { ShortcutSettings } from './shortcut-settings';
 import { RefinementSettings } from './refinement-settings';
+import { DictationCleanupSettings } from './dictation-cleanup-settings';
 import { LlmSkills } from './llm-skills';
 import { LlmProviders } from './llm-providers';
 import { TranslationSettings } from './translation-settings';
@@ -76,6 +77,7 @@ export function ModelSettings({ family }: { family?: ModelFamily }) {
         <>
           <DictationList />
           <ShortcutSettings />
+          <DictationCleanupSettings />
           <RefinementSettings />
           <AecSettings />
         </>

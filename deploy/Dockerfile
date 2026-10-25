@@ -139,7 +139,7 @@ RUN uv pip install --python "$(command -v python3)" --no-cache \
 
 # Guard: every security override must be what the image actually installed.
 RUN python3 -c "from importlib.metadata import version; from packaging.requirements import Requirement; \
-    reqs = [Requirement(l) for l in open('deploy/uv-overrides.txt') if l.strip() and not l.lstrip().startswith('#')]; \
+    reqs = [Requirement(l.strip()) for l in open('deploy/uv-overrides.txt') if l.strip() and not l.lstrip().startswith('#')]; \
     bad = [f'{r.name} {version(r.name)} does not satisfy {r}' for r in reqs if not r.specifier.contains(version(r.name), prereleases=True)]; \
     assert not bad, bad; \
     print('uv overrides applied:', ', '.join(f'{r.name} {version(r.name)}' for r in reqs))"

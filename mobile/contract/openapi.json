@@ -1163,6 +1163,42 @@
       "title": "Effect Preset",
       "type": "string"
      },
+     "emo_alpha": {
+      "anyOf": [
+       {
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Emo Alpha"
+     },
+     "emo_text": {
+      "anyOf": [
+       {
+        "maxLength": 500,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Emo Text"
+     },
+     "emo_vector": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Emo Vector"
+     },
      "engine": {
       "anyOf": [
        {
@@ -5527,6 +5563,17 @@
        }
       ],
       "title": "Smart Cleanup"
+     },
+     "spoken_punctuation": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Spoken Punctuation"
      }
     },
     "title": "_RefinementBody",
@@ -9767,6 +9814,22 @@
         }
        ],
        "title": "Q"
+      }
+     },
+     {
+      "in": "query",
+      "name": "pack",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Pack"
       }
      },
      {
@@ -14031,6 +14094,7 @@
   },
   "/generate": {
    "post": {
+    "description": "Generate a voice take through the selected TTS engine.\n\nValidate engine-specific emotion conditioning before loading models,\nresolve saved voice references, and send the same controls through\nclassic WAV and streaming generation.",
     "operationId": "generate_speech_generate_post",
     "requestBody": {
      "content": {

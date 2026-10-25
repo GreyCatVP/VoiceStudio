@@ -1,4 +1,18 @@
 {
+  "cloneEmotion": {
+    "title": "Emotie",
+    "off": "Uit",
+    "text": "Beschrijving",
+    "vector": "Schuifregelaars",
+    "happy": "Blijdschap",
+    "angry": "Woede",
+    "sad": "Verdriet",
+    "afraid": "Angst",
+    "disgusted": "Afkeer",
+    "melancholic": "Melancholie",
+    "surprised": "Verrassing",
+    "calm": "Kalmte"
+  },
   "cloneQuality": {
     "title": "Audiokwaliteit",
     "precision": "WAV-precisie",
@@ -1496,6 +1510,12 @@
     "submit_failed": "Het indieningsformulier kon niet worden geopend.",
     "submit_preset": "Preset indienen",
     "submit_voice": "Stem indienen",
+    "community_packs": "Pakketten",
+    "community_all_packs": "Alle",
+    "community_language": "Taal",
+    "community_all_languages": "Alle talen",
+    "community_new": "Nieuw",
+    "community_author_profile": "{{author}} op GitHub",
     "zone_community": "Community",
     "import_persona": "Importeer een .ovsvoice-personabundel",
     "persona_imported": "Geïmporteerd \"{{name}}\"{{unverified}}.",
@@ -1575,7 +1595,10 @@
     "aec_description": "Verwijder VoiceStudio-weergave uit de microfoon.",
     "aec_row_title": "Echo-onderdrukking voor dicteren inschakelen",
     "aec_experimental": "Experimenteel",
-    "aec_hint": "Laat je dicteren tijdens een voorbeeld, dub of video zonder de audio van de app te transcriberen. Voegt enige verwerking toe; laat uit als je niet tijdens afspelen dicteert."
+    "aec_hint": "Laat je dicteren tijdens een voorbeeld, dub of video zonder de audio van de app te transcriberen. Voegt enige verwerking toe; laat uit als je niet tijdens afspelen dicteert.",
+    "cleanup_title": "Tekst opschonen",
+    "spoken_punctuation": "Gesproken leestekens",
+    "spoken_punctuation_desc": "Zeg “comma”, “period”, “question mark”, “new line” om het te typen. Alleen Engels."
   },
   "tools": {
     "title": "Gereedschap",
@@ -2723,6 +2746,15 @@
     "vol": "Vol",
     "vol_title": "Volume (0–200%)",
     "search_placeholder": "Zoek tekst…",
+    "replace_placeholder": "Vervangen door…",
+    "replace": "Vervangen",
+    "replace_all": "Alles vervangen",
+    "find_next": "Volgende treffer",
+    "find_prev": "Vorige treffer",
+    "find_count": "{{current}} van {{total}}",
+    "find_none": "Geen treffers",
+    "replace_done_one": "{{count}} treffer vervangen",
+    "replace_done_other": "{{count}} treffers vervangen",
     "all_speakers": "Alle luidsprekers",
     "select_all_title": "Selecteer alles gefilterd",
     "sel_count": "{{count}} gekozen",
@@ -2970,6 +3002,7 @@
     "windows_app_control_blocked": "Windows-toepassingsbeheer heeft een vereist bestand geblokkeerd. Vraag je beheerder de vertrouwde VoiceStudio-runtime toe te staan en start de app opnieuw.",
     "audio_io_failed": "De audio kon niet worden gelezen of opgeslagen. Controleer het bestandsformaat, de vrije schijfruimte en de bestandsrechten. Controleer de map bij Instellingen → Opslag.",
     "no_audio_track": "Dit bestand heeft geen audiotrack, dus er is geen spraak om te transcriberen, na te synchroniseren of te klonen. Kies een video- of audiobestand met geluid.",
+    "source_language_required": "Spraakherkenning heeft niet gemeld in welke taal deze video gesproken is, dus hij kan hier niet worden vertaald. Open de video in Nasynchronisatie en kies de brontaal, of kies een spraakherkenningsmodel dat de taal detecteert.",
     "transcription_media_tool": "Voor transcriptie is ffmpeg nodig, dat VoiceStudio niet kon vinden of uitvoeren. Open Instellingen → Audiotools en gebruik Downloaden/Herstellen, of installeer ffmpeg (macOS: brew install ffmpeg; Windows: winget install Gyan.FFmpeg; Linux: je pakketbeheerder) en herstart VoiceStudio. Je kunt ook FFMPEG_PATH naar een ffmpeg-bestand laten wijzen.",
     "transcription_pipe_lost": "De backend verloor tijdens de transcriptie zijn uitvoerkanaal naar de app (broken pipe). Herstart VoiceStudio en probeer het opnieuw.",
     "gpu_oom": "De GPU heeft geen geheugen meer. Sluit andere GPU-intensieve apps of ontlaad modellen en probeer het opnieuw. Je kunt ook CPU kiezen in Instellingen → Prestaties en apparaat of een kleinere TTS-engine selecteren.",
@@ -3477,7 +3510,11 @@
     "unknown": "Taalondersteuning onbekend",
     "error": "Talen konden niet worden gecontroleerd",
     "modelLanguages": "Talen voor dit model",
-    "changeModel": "Model wijzigen"
+    "changeModel": "Model wijzigen",
+    "recent": "Recent",
+    "available": "Beschikbaar",
+    "showAll": "Alle talen tonen",
+    "hideUnsupported": "Niet-ondersteunde talen verbergen"
   },
   "modelLicense": {
     "title": "Modelvoorwaarden",
@@ -4220,5 +4257,25 @@
       "fix1": "Controleer de backend in Instellingen > Logboeken",
       "fix2": "Start VoiceStudio opnieuw en probeer het nog eens"
     }
+  },
+  "modelInstall": {
+    "queued": "Wacht op start…",
+    "downloading": "Downloaden…",
+    "downloadingPct": "Downloaden · {{pct}}%",
+    "finishing": "Controleren en installeren…",
+    "cancelling": "Annuleren…",
+    "cancelled": "Download geannuleerd",
+    "failed": "Download mislukt",
+    "ready": "Klaar voor gebruik",
+    "bytes": "{{done}} van {{total}}",
+    "speed": "{{rate}}/s",
+    "eta": "nog {{time}}",
+    "downloadAgain": "Opnieuw downloaden",
+    "nextDisk": "Niet genoeg schijfruimte. Maak ruimte vrij of verplaats de modelmap via Instellingen → Opslag en probeer het opnieuw.",
+    "nextGated": "Dit model vereist toegang via Hugging Face. Vraag die aan op de modelpagina, voeg je token toe via Instellingen → Inloggegevens en probeer het opnieuw.",
+    "nextNetwork": "De downloadserver is niet bereikbaar. Controleer verbinding, proxy of mirror via Instellingen → Netwerk en probeer het opnieuw.",
+    "nextMemory": "Dit apparaat heeft te weinig geheugen. Kies een lichter profiel via Instellingen → Prestaties en probeer het opnieuw.",
+    "downloads": "Downloads",
+    "activeCount": "Lopende downloads: {{count}}"
   }
 }

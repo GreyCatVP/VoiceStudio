@@ -1,4 +1,18 @@
 {
+  "cloneEmotion": {
+    "title": "Cảm xúc",
+    "off": "Tắt",
+    "text": "Mô tả",
+    "vector": "Thanh trượt",
+    "happy": "Vui vẻ",
+    "angry": "Tức giận",
+    "sad": "Buồn",
+    "afraid": "Sợ hãi",
+    "disgusted": "Ghê tởm",
+    "melancholic": "U sầu",
+    "surprised": "Ngạc nhiên",
+    "calm": "Bình tĩnh"
+  },
   "cloneQuality": {
     "title": "Chất lượng âm thanh",
     "precision": "Độ chính xác WAV",
@@ -1496,6 +1510,12 @@
     "submit_failed": "Không thể mở biểu mẫu gửi.",
     "submit_preset": "Gửi cài đặt trước",
     "submit_voice": "Gửi giọng nói",
+    "community_packs": "Gói",
+    "community_all_packs": "Tất cả",
+    "community_language": "Ngôn ngữ",
+    "community_all_languages": "Tất cả ngôn ngữ",
+    "community_new": "Mới",
+    "community_author_profile": "{{author}} trên GitHub",
     "zone_community": "Cộng đồng",
     "import_persona": "Nhập gói cá nhân .ovsvoice",
     "persona_imported": "Đã nhập \"{{name}}\"{{unverified}}.",
@@ -1575,7 +1595,10 @@
     "aec_description": "Loại âm thanh VoiceStudio khỏi micrô.",
     "aec_row_title": "Bật khử tiếng vọng khi đọc chính tả",
     "aec_experimental": "Thử nghiệm",
-    "aec_hint": "Cho phép đọc chính tả khi đang phát bản xem trước, lồng tiếng hoặc video mà không chép lại âm thanh của ứng dụng. Thêm một ít xử lý; hãy tắt nếu bạn không đọc khi đang phát."
+    "aec_hint": "Cho phép đọc chính tả khi đang phát bản xem trước, lồng tiếng hoặc video mà không chép lại âm thanh của ứng dụng. Thêm một ít xử lý; hãy tắt nếu bạn không đọc khi đang phát.",
+    "cleanup_title": "Làm sạch văn bản",
+    "spoken_punctuation": "Dấu câu bằng giọng nói",
+    "spoken_punctuation_desc": "Nói “comma”, “period”, “question mark”, “new line” để gõ. Chỉ tiếng Anh."
   },
   "tools": {
     "title": "Công cụ",
@@ -2723,6 +2746,15 @@
     "vol": "tập",
     "vol_title": "Âm lượng (0–200%)",
     "search_placeholder": "Tìm kiếm văn bản…",
+    "replace_placeholder": "Thay bằng…",
+    "replace": "Thay thế",
+    "replace_all": "Thay tất cả",
+    "find_next": "Kết quả tiếp theo",
+    "find_prev": "Kết quả trước",
+    "find_count": "{{current}} / {{total}} kết quả",
+    "find_none": "Không có kết quả",
+    "replace_done_one": "Đã thay {{count}} kết quả",
+    "replace_done_other": "Đã thay {{count}} kết quả",
     "all_speakers": "Tất cả các loa",
     "select_all_title": "Chọn tất cả đã lọc",
     "sel_count": "{{count}} sel",
@@ -2970,6 +3002,7 @@
     "windows_app_control_blocked": "Tính năng kiểm soát ứng dụng của Windows đã chặn một tệp cần thiết. Nhờ quản trị viên cho phép môi trường chạy VoiceStudio đáng tin cậy, rồi khởi động lại ứng dụng.",
     "audio_io_failed": "Không thể đọc hoặc lưu âm thanh. Kiểm tra định dạng tệp, dung lượng đĩa trống và quyền truy cập tệp. Kiểm tra thư mục trong Cài đặt → Lưu trữ.",
     "no_audio_track": "Tệp này không có rãnh âm thanh nên không có lời nói để chép lời, lồng tiếng hoặc nhân bản. Hãy chọn tệp video hoặc âm thanh có tiếng.",
+    "source_language_required": "Nhận dạng giọng nói không cho biết video này dùng ngôn ngữ nào, nên không thể dịch tại đây. Mở video trong Lồng tiếng và chọn ngôn ngữ nguồn, hoặc chọn mô hình nhận dạng giọng nói có thể phát hiện ngôn ngữ.",
     "transcription_media_tool": "Chép lời cần ffmpeg, nhưng VoiceStudio không thể tìm thấy hoặc chạy nó. Mở Cài đặt → Công cụ âm thanh và dùng Tải xuống/Sửa chữa, hoặc cài ffmpeg (macOS: brew install ffmpeg; Windows: winget install Gyan.FFmpeg; Linux: trình quản lý gói của bạn) rồi khởi động lại VoiceStudio. Bạn cũng có thể trỏ FFMPEG_PATH tới tệp ffmpeg.",
     "transcription_pipe_lost": "Backend đã mất kênh đầu ra tới ứng dụng khi đang chép lời (broken pipe). Hãy khởi động lại VoiceStudio và thử lại.",
     "gpu_oom": "GPU đã hết bộ nhớ. Hãy đóng các ứng dụng khác dùng nhiều GPU hoặc gỡ mô hình khỏi bộ nhớ rồi thử lại. Bạn cũng có thể chọn CPU trong Cài đặt → Hiệu năng & Thiết bị hoặc chọn công cụ TTS nhỏ hơn.",
@@ -3477,7 +3510,11 @@
     "unknown": "Chưa rõ ngôn ngữ được hỗ trợ",
     "error": "Không thể kiểm tra ngôn ngữ",
     "modelLanguages": "Ngôn ngữ của mô hình này",
-    "changeModel": "Đổi mô hình"
+    "changeModel": "Đổi mô hình",
+    "recent": "Gần đây",
+    "available": "Khả dụng",
+    "showAll": "Hiện tất cả ngôn ngữ",
+    "hideUnsupported": "Ẩn ngôn ngữ không được hỗ trợ"
   },
   "modelLicense": {
     "title": "Điều khoản mô hình",
@@ -4220,5 +4257,25 @@
       "fix1": "Kiểm tra backend trong Cài đặt > Nhật ký",
       "fix2": "Khởi động lại VoiceStudio rồi thử lại"
     }
+  },
+  "modelInstall": {
+    "queued": "Đang chờ bắt đầu…",
+    "downloading": "Đang tải xuống…",
+    "downloadingPct": "Đang tải xuống · {{pct}}%",
+    "finishing": "Đang kiểm tra và cài đặt…",
+    "cancelling": "Đang hủy…",
+    "cancelled": "Đã hủy tải xuống",
+    "failed": "Tải xuống thất bại",
+    "ready": "Sẵn sàng sử dụng",
+    "bytes": "{{done}} trên {{total}}",
+    "speed": "{{rate}}/giây",
+    "eta": "còn {{time}}",
+    "downloadAgain": "Tải xuống lại",
+    "nextDisk": "Không đủ dung lượng đĩa. Giải phóng dung lượng hoặc chuyển thư mục mô hình trong Cài đặt → Lưu trữ, rồi thử lại.",
+    "nextGated": "Mô hình này cần quyền truy cập Hugging Face. Hãy yêu cầu trên trang mô hình, thêm token của bạn trong Cài đặt → Xác thực, rồi thử lại.",
+    "nextNetwork": "Không kết nối được máy chủ tải xuống. Kiểm tra kết nối, proxy hoặc mirror trong Cài đặt → Mạng, rồi thử lại.",
+    "nextMemory": "Thiết bị này đã hết bộ nhớ. Chọn hồ sơ nhẹ hơn trong Cài đặt → Hiệu suất, rồi thử lại.",
+    "downloads": "Tải xuống",
+    "activeCount": "Đang tải xuống: {{count}}"
   }
 }

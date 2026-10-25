@@ -1,4 +1,18 @@
 {
+  "cloneEmotion": {
+    "title": "Emoción",
+    "off": "Desactivado",
+    "text": "Descripción",
+    "vector": "Deslizadores",
+    "happy": "Alegría",
+    "angry": "Ira",
+    "sad": "Tristeza",
+    "afraid": "Miedo",
+    "disgusted": "Asco",
+    "melancholic": "Melancolía",
+    "surprised": "Sorpresa",
+    "calm": "Calma"
+  },
   "cloneQuality": {
     "title": "Calidad de audio",
     "precision": "Precisión WAV",
@@ -1498,6 +1512,12 @@
     "submit_failed": "No se pudo abrir el formulario de envío.",
     "submit_preset": "Enviar un preajuste",
     "submit_voice": "Enviar una voz",
+    "community_packs": "Paquetes",
+    "community_all_packs": "Todos",
+    "community_language": "Idioma",
+    "community_all_languages": "Todos los idiomas",
+    "community_new": "Nuevo",
+    "community_author_profile": "{{author}} en GitHub",
     "zone_community": "Comunidad",
     "import_persona": "Importar un paquete de persona .ovsvoice",
     "persona_imported": "Importado \"{{name}}\"{{unverified}}.",
@@ -1577,7 +1597,10 @@
     "aec_description": "Quita la reproducción de VoiceStudio del micrófono.",
     "aec_row_title": "Activar cancelación de eco para el dictado",
     "aec_experimental": "Experimental",
-    "aec_hint": "Permite dictar mientras se reproduce una vista previa, doblaje o vídeo sin transcribir el audio de la aplicación. Añade un poco de procesamiento; déjalo desactivado si no dictas durante la reproducción."
+    "aec_hint": "Permite dictar mientras se reproduce una vista previa, doblaje o vídeo sin transcribir el audio de la aplicación. Añade un poco de procesamiento; déjalo desactivado si no dictas durante la reproducción.",
+    "cleanup_title": "Limpieza del texto",
+    "spoken_punctuation": "Puntuación dictada",
+    "spoken_punctuation_desc": "Di “comma”, “period”, “question mark”, “new line” para escribirlo. Solo en inglés."
   },
   "tools": {
     "title": "Herramientas",
@@ -2725,6 +2748,15 @@
     "vol": "volumen",
     "vol_title": "Volumen (0–200%)",
     "search_placeholder": "Buscar texto…",
+    "replace_placeholder": "Reemplazar con…",
+    "replace": "Reemplazar",
+    "replace_all": "Reemplazar todo",
+    "find_next": "Siguiente coincidencia",
+    "find_prev": "Coincidencia anterior",
+    "find_count": "{{current}} de {{total}}",
+    "find_none": "Sin coincidencias",
+    "replace_done_one": "Se reemplazó {{count}} coincidencia",
+    "replace_done_other": "Se reemplazaron {{count}} coincidencias",
     "all_speakers": "Todos los oradores",
     "select_all_title": "Seleccionar todo filtrado",
     "sel_count": "selección {{count}}",
@@ -2972,6 +3004,7 @@
     "windows_app_control_blocked": "El control de aplicaciones de Windows bloqueó un archivo necesario. Pide al administrador que permita el entorno de ejecución de confianza de VoiceStudio y reinicia la aplicación.",
     "audio_io_failed": "No se pudo leer o guardar el audio. Comprueba el formato, el espacio libre y los permisos del archivo. Revisa la carpeta en Ajustes → Almacenamiento.",
     "no_audio_track": "Este archivo no tiene pista de audio, así que no hay voz que transcribir, doblar o clonar. Elige un archivo de vídeo o audio que tenga sonido.",
+    "source_language_required": "El reconocimiento de voz no indicó en qué idioma está este video, así que no se puede traducir aquí. Abre el video en Doblaje y elige su idioma de origen, o selecciona un modelo de reconocimiento de voz que detecte el idioma.",
     "transcription_media_tool": "La transcripción necesita ffmpeg, que VoiceStudio no pudo encontrar o ejecutar. Abre Ajustes → Herramientas de audio y usa Descargar/Reparar, o instala ffmpeg (macOS: brew install ffmpeg; Windows: winget install Gyan.FFmpeg; Linux: tu gestor de paquetes) y reinicia VoiceStudio. También puedes apuntar FFMPEG_PATH a un binario de ffmpeg.",
     "transcription_pipe_lost": "El backend perdió su canal de salida con la aplicación durante la transcripción (broken pipe). Reinicia VoiceStudio e inténtalo de nuevo.",
     "gpu_oom": "La GPU se quedó sin memoria. Cierra otras apps que usen mucho la GPU o descarga modelos y vuelve a intentarlo. También puedes elegir CPU en Ajustes → Rendimiento y dispositivo o seleccionar un motor TTS más pequeño.",
@@ -3479,7 +3512,11 @@
     "unknown": "Compatibilidad de idiomas desconocida",
     "error": "No se pudieron comprobar los idiomas",
     "modelLanguages": "Idiomas de este modelo",
-    "changeModel": "Cambiar modelo"
+    "changeModel": "Cambiar modelo",
+    "recent": "Recientes",
+    "available": "Disponibles",
+    "showAll": "Mostrar todos los idiomas",
+    "hideUnsupported": "Ocultar idiomas no compatibles"
   },
   "modelLicense": {
     "title": "Condiciones del modelo",
@@ -4222,5 +4259,25 @@
       "fix1": "Revisa el backend en Ajustes > Registros",
       "fix2": "Reinicia VoiceStudio y reintenta"
     }
+  },
+  "modelInstall": {
+    "queued": "Esperando para empezar…",
+    "downloading": "Descargando…",
+    "downloadingPct": "Descargando · {{pct}} %",
+    "finishing": "Verificando e instalando…",
+    "cancelling": "Cancelando…",
+    "cancelled": "Descarga cancelada",
+    "failed": "La descarga falló",
+    "ready": "Listo para usar",
+    "bytes": "{{done}} de {{total}}",
+    "speed": "{{rate}}/s",
+    "eta": "quedan {{time}}",
+    "downloadAgain": "Descargar de nuevo",
+    "nextDisk": "No hay suficiente espacio en disco. Libera espacio o mueve la carpeta de modelos en Ajustes → Almacenamiento y vuelve a intentarlo.",
+    "nextGated": "Este modelo requiere acceso en Hugging Face. Solicítalo en la página del modelo, añade tu token en Ajustes → Credenciales y vuelve a intentarlo.",
+    "nextNetwork": "No se pudo contactar con el servidor de descarga. Revisa la conexión, el proxy o el espejo en Ajustes → Red y vuelve a intentarlo.",
+    "nextMemory": "Este dispositivo se quedó sin memoria. Elige un perfil más ligero en Ajustes → Rendimiento y vuelve a intentarlo.",
+    "downloads": "Descargas",
+    "activeCount": "Descargas en curso: {{count}}"
   }
 }

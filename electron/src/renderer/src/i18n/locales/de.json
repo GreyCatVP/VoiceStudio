@@ -1,4 +1,18 @@
 {
+  "cloneEmotion": {
+    "title": "Emotion",
+    "off": "Aus",
+    "text": "Beschreibung",
+    "vector": "Regler",
+    "happy": "Freude",
+    "angry": "Wut",
+    "sad": "Trauer",
+    "afraid": "Angst",
+    "disgusted": "Ekel",
+    "melancholic": "Melancholie",
+    "surprised": "Überraschung",
+    "calm": "Ruhe"
+  },
   "cloneQuality": {
     "title": "Audioqualität",
     "precision": "WAV-Präzision",
@@ -1496,6 +1510,12 @@
     "submit_failed": "Das Einreichungsformular konnte nicht geöffnet werden.",
     "submit_preset": "Voreinstellung einreichen",
     "submit_voice": "Stimme einreichen",
+    "community_packs": "Pakete",
+    "community_all_packs": "Alle",
+    "community_language": "Sprache",
+    "community_all_languages": "Alle Sprachen",
+    "community_new": "Neu",
+    "community_author_profile": "{{author}} auf GitHub",
     "zone_community": "Community",
     "import_persona": "Importieren Sie ein .ovsvoice-Persona-Bundle",
     "persona_imported": "Importiert „{{name}}“{{unverified}}.",
@@ -1575,7 +1595,10 @@
     "aec_description": "VoiceStudio-Wiedergabe aus dem Mikrofonsignal entfernen.",
     "aec_row_title": "Echounterdrückung für Diktat aktivieren",
     "aec_experimental": "Experimentell",
-    "aec_hint": "Du kannst während einer Vorschau, Synchronisation oder eines Videos diktieren, ohne den App-Ton zu transkribieren. Benötigt etwas zusätzliche Verarbeitung; lass es aus, wenn du nicht über Wiedergabe diktierst."
+    "aec_hint": "Du kannst während einer Vorschau, Synchronisation oder eines Videos diktieren, ohne den App-Ton zu transkribieren. Benötigt etwas zusätzliche Verarbeitung; lass es aus, wenn du nicht über Wiedergabe diktierst.",
+    "cleanup_title": "Textbereinigung",
+    "spoken_punctuation": "Gesprochene Satzzeichen",
+    "spoken_punctuation_desc": "Sag “comma”, “period”, “question mark”, “new line”, um es zu tippen. Nur Englisch."
   },
   "tools": {
     "title": "Werkzeuge",
@@ -2723,6 +2746,15 @@
     "vol": "Bd",
     "vol_title": "Lautstärke (0–200 %)",
     "search_placeholder": "Text durchsuchen…",
+    "replace_placeholder": "Ersetzen durch…",
+    "replace": "Ersetzen",
+    "replace_all": "Alle ersetzen",
+    "find_next": "Nächster Treffer",
+    "find_prev": "Vorheriger Treffer",
+    "find_count": "{{current}} von {{total}}",
+    "find_none": "Keine Treffer",
+    "replace_done_one": "{{count}} Treffer ersetzt",
+    "replace_done_other": "{{count}} Treffer ersetzt",
     "all_speakers": "Alle Redner",
     "select_all_title": "Alle gefilterten auswählen",
     "sel_count": "{{count}} sel",
@@ -2970,6 +3002,7 @@
     "windows_app_control_blocked": "Die Windows-Anwendungssteuerung hat eine benötigte Datei blockiert. Bitte deinen Administrator, die vertrauenswürdige VoiceStudio-Laufzeit zuzulassen, und starte die App neu.",
     "audio_io_failed": "Die Audiodatei konnte nicht gelesen oder gespeichert werden. Prüfe Dateiformat, freien Speicherplatz und Dateiberechtigungen. Überprüfe den Ordner unter Einstellungen → Speicher.",
     "no_audio_track": "Diese Datei hat keine Tonspur, daher gibt es keine Sprache zum Transkribieren, Synchronisieren oder Klonen. Wähle eine Video- oder Audiodatei mit Ton.",
+    "source_language_required": "Die Spracherkennung hat nicht gemeldet, in welcher Sprache dieses Video gesprochen ist, daher kann es hier nicht übersetzt werden. Öffne das Video in der Synchronisation und wähle die Ausgangssprache, oder wähle ein Spracherkennungsmodell, das die Sprache erkennt.",
     "transcription_media_tool": "Für die Transkription wird ffmpeg benötigt, das VoiceStudio nicht finden oder ausführen konnte. Öffne Einstellungen → Audiotools und nutze Herunterladen/Reparieren, oder installiere ffmpeg (macOS: brew install ffmpeg; Windows: winget install Gyan.FFmpeg; Linux: dein Paketmanager) und starte VoiceStudio neu. Alternativ kannst du FFMPEG_PATH auf eine ffmpeg-Datei setzen.",
     "transcription_pipe_lost": "Das Backend hat während der Transkription seine Ausgabe-Pipe zur App verloren (Broken Pipe). Starte VoiceStudio neu und versuche es erneut.",
     "gpu_oom": "Der GPU ist der Speicher ausgegangen. Schließe andere GPU-intensive Apps oder entlade Modelle und versuche es erneut. Du kannst auch unter Einstellungen → Leistung & Gerät die CPU wählen oder eine kleinere TTS-Engine auswählen.",
@@ -3477,7 +3510,11 @@
     "unknown": "Sprachunterstützung unbekannt",
     "error": "Sprachen konnten nicht geprüft werden",
     "modelLanguages": "Sprachen dieses Modells",
-    "changeModel": "Modell wechseln"
+    "changeModel": "Modell wechseln",
+    "recent": "Zuletzt verwendet",
+    "available": "Verfügbar",
+    "showAll": "Alle Sprachen anzeigen",
+    "hideUnsupported": "Nicht unterstützte Sprachen ausblenden"
   },
   "modelLicense": {
     "title": "Modellbedingungen",
@@ -4220,5 +4257,25 @@
       "fix1": "Backend unter Einstellungen > Protokolle prüfen",
       "fix2": "VoiceStudio neu starten und erneut versuchen"
     }
+  },
+  "modelInstall": {
+    "queued": "Wartet auf Start…",
+    "downloading": "Wird heruntergeladen…",
+    "downloadingPct": "Wird heruntergeladen · {{pct}} %",
+    "finishing": "Wird geprüft und installiert…",
+    "cancelling": "Wird abgebrochen…",
+    "cancelled": "Download abgebrochen",
+    "failed": "Download fehlgeschlagen",
+    "ready": "Einsatzbereit",
+    "bytes": "{{done}} von {{total}}",
+    "speed": "{{rate}}/s",
+    "eta": "noch {{time}}",
+    "downloadAgain": "Erneut herunterladen",
+    "nextDisk": "Nicht genug Speicherplatz. Gib Platz frei oder verschiebe den Modellordner unter Einstellungen → Lagerung und versuche es dann erneut.",
+    "nextGated": "Dieses Modell erfordert Zugriff auf Hugging Face. Beantrage ihn auf der Modellseite, füge dein Token unter Einstellungen → Anmeldedaten hinzu und versuche es dann erneut.",
+    "nextNetwork": "Der Download-Server ist nicht erreichbar. Prüfe Verbindung, Proxy oder Mirror unter Einstellungen → Netzwerk und versuche es dann erneut.",
+    "nextMemory": "Dem Gerät ist der Speicher ausgegangen. Wähle unter Einstellungen → Leistung ein leichteres Profil und versuche es dann erneut.",
+    "downloads": "Downloads",
+    "activeCount": "Laufende Downloads: {{count}}"
   }
 }

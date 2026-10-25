@@ -1,4 +1,18 @@
 {
+  "cloneEmotion": {
+    "title": "Känsla",
+    "off": "Av",
+    "text": "Beskrivning",
+    "vector": "Reglage",
+    "happy": "Glädje",
+    "angry": "Ilska",
+    "sad": "Sorg",
+    "afraid": "Rädsla",
+    "disgusted": "Avsky",
+    "melancholic": "Melankoli",
+    "surprised": "Förvåning",
+    "calm": "Lugn"
+  },
   "cloneQuality": {
     "title": "Ljudkvalitet",
     "precision": "WAV-precision",
@@ -1496,6 +1510,12 @@
     "submit_failed": "Det gick inte att öppna inskickningsformuläret.",
     "submit_preset": "Skicka in en förinställning",
     "submit_voice": "Skicka in en röst",
+    "community_packs": "Paket",
+    "community_all_packs": "Alla",
+    "community_language": "Språk",
+    "community_all_languages": "Alla språk",
+    "community_new": "Ny",
+    "community_author_profile": "{{author}} på GitHub",
     "zone_community": "Community",
     "import_persona": "Importera ett .ovsvoice persona-paket",
     "persona_imported": "Importerade \"{{name}}\"{{unverified}}.",
@@ -1575,7 +1595,10 @@
     "aec_description": "Ta bort VoiceStudio-uppspelning från mikrofonen.",
     "aec_row_title": "Aktivera ekoreducering för diktering",
     "aec_experimental": "Experimentellt",
-    "aec_hint": "Låter dig diktera medan en förhandsvisning, dubbning eller video spelas utan att appens ljud transkriberas. Lägger till lite bearbetning; lämna av om du inte dikterar under uppspelning."
+    "aec_hint": "Låter dig diktera medan en förhandsvisning, dubbning eller video spelas utan att appens ljud transkriberas. Lägger till lite bearbetning; lämna av om du inte dikterar under uppspelning.",
+    "cleanup_title": "Textstädning",
+    "spoken_punctuation": "Uttalad interpunktion",
+    "spoken_punctuation_desc": "Säg “comma”, “period”, “question mark”, “new line” för att skriva det. Endast engelska."
   },
   "tools": {
     "title": "Verktyg",
@@ -2723,6 +2746,15 @@
     "vol": "Vol",
     "vol_title": "Volym (0–200 %)",
     "search_placeholder": "Sök text...",
+    "replace_placeholder": "Ersätt med…",
+    "replace": "Ersätt",
+    "replace_all": "Ersätt alla",
+    "find_next": "Nästa träff",
+    "find_prev": "Föregående träff",
+    "find_count": "{{current}} av {{total}}",
+    "find_none": "Inga träffar",
+    "replace_done_one": "Ersatte {{count}} träff",
+    "replace_done_other": "Ersatte {{count}} träffar",
     "all_speakers": "Alla högtalare",
     "select_all_title": "Välj alla filtrerade",
     "sel_count": "{{count}} sel",
@@ -2970,6 +3002,7 @@
     "windows_app_control_blocked": "Windows programkontroll blockerade en nödvändig fil. Be administratören tillåta den betrodda VoiceStudio-körmiljön och starta sedan om appen.",
     "audio_io_failed": "Ljudet kunde inte läsas eller sparas. Kontrollera filformat, ledigt diskutrymme och filbehörigheter. Kontrollera mappen under Inställningar → Lagring.",
     "no_audio_track": "Filen saknar ljudspår, så det finns inget tal att transkribera, dubba eller klona. Välj en video- eller ljudfil som innehåller ljud.",
+    "source_language_required": "Taligenkänningen rapporterade inte vilket språk som talas i videon, så den kan inte översättas här. Öppna videon i Dubbning och välj källspråket, eller välj en taligenkänningsmodell som identifierar språket.",
     "transcription_media_tool": "Transkribering kräver ffmpeg, som VoiceStudio inte kunde hitta eller köra. Öppna Inställningar → Ljudverktyg och använd Ladda ned/Reparera, eller installera ffmpeg (macOS: brew install ffmpeg; Windows: winget install Gyan.FFmpeg; Linux: din pakethanterare) och starta om VoiceStudio. Du kan också peka FFMPEG_PATH mot en ffmpeg-fil.",
     "transcription_pipe_lost": "Backend förlorade sin utdatakanal till appen under transkriberingen (broken pipe). Starta om VoiceStudio och försök igen.",
     "gpu_oom": "GPU:n fick slut på minne. Stäng andra GPU-tunga appar eller avlasta modeller och försök igen. Du kan också välja CPU under Inställningar → Prestanda och enhet eller välja en mindre TTS-motor.",
@@ -3477,7 +3510,11 @@
     "unknown": "Språkstöd okänt",
     "error": "Kunde inte kontrollera språk",
     "modelLanguages": "Språk för den här modellen",
-    "changeModel": "Byt modell"
+    "changeModel": "Byt modell",
+    "recent": "Senaste",
+    "available": "Tillgängliga",
+    "showAll": "Visa alla språk",
+    "hideUnsupported": "Dölj språk som inte stöds"
   },
   "modelLicense": {
     "title": "Modellvillkor",
@@ -4220,5 +4257,25 @@
       "fix1": "Kontrollera backend i Inställningar > Loggar",
       "fix2": "Starta om VoiceStudio och försök igen"
     }
+  },
+  "modelInstall": {
+    "queued": "Väntar på start…",
+    "downloading": "Laddar ned…",
+    "downloadingPct": "Laddar ned · {{pct}} %",
+    "finishing": "Verifierar och installerar…",
+    "cancelling": "Avbryter…",
+    "cancelled": "Nedladdningen avbröts",
+    "failed": "Nedladdningen misslyckades",
+    "ready": "Redo att använda",
+    "bytes": "{{done}} av {{total}}",
+    "speed": "{{rate}}/s",
+    "eta": "{{time}} kvar",
+    "downloadAgain": "Ladda ned igen",
+    "nextDisk": "Inte tillräckligt med diskutrymme. Frigör utrymme eller flytta modellmappen under Inställningar → Förvaring och försök sedan igen.",
+    "nextGated": "Den här modellen kräver åtkomst på Hugging Face. Begär den på modellsidan, lägg till din token under Inställningar → Autentisering och försök sedan igen.",
+    "nextNetwork": "Det gick inte att nå nedladdningsservern. Kontrollera anslutning, proxy eller spegel under Inställningar → Nätverk och försök sedan igen.",
+    "nextMemory": "Enheten fick slut på minne. Välj en lättare profil under Inställningar → Prestanda och försök sedan igen.",
+    "downloads": "Nedladdningar",
+    "activeCount": "Pågående nedladdningar: {{count}}"
   }
 }

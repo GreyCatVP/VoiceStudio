@@ -1,4 +1,18 @@
 {
+  "cloneEmotion": {
+    "title": "情緒",
+    "off": "關閉",
+    "text": "文字描述",
+    "vector": "情緒滑桿",
+    "happy": "喜悅",
+    "angry": "憤怒",
+    "sad": "悲傷",
+    "afraid": "恐懼",
+    "disgusted": "厭惡",
+    "melancholic": "憂鬱",
+    "surprised": "驚訝",
+    "calm": "平靜"
+  },
   "cloneQuality": {
     "title": "音訊品質",
     "precision": "WAV 精度",
@@ -1496,6 +1510,12 @@
     "submit_failed": "無法開啟投稿表單。",
     "submit_preset": "投稿預設",
     "submit_voice": "投稿語音",
+    "community_packs": "合集",
+    "community_all_packs": "全部",
+    "community_language": "語言",
+    "community_all_languages": "所有語言",
+    "community_new": "新",
+    "community_author_profile": "{{author}} 的 GitHub",
     "zone_community": "社群",
     "import_persona": "導入 .ovsvoice 角色包",
     "persona_imported": "導入“{{name}}”{{unverified}}。",
@@ -1575,7 +1595,10 @@
     "aec_description": "從麥克風移除 VoiceStudio 的播放聲音。",
     "aec_row_title": "為聽寫啟用回音消除",
     "aec_experimental": "實驗性",
-    "aec_hint": "可在播放預覽、配音或影片時聽寫，而不會轉錄應用程式本身的聲音。會增加少量音訊處理；若不會在播放時聽寫，請保持關閉。"
+    "aec_hint": "可在播放預覽、配音或影片時聽寫，而不會轉錄應用程式本身的聲音。會增加少量音訊處理；若不會在播放時聽寫，請保持關閉。",
+    "cleanup_title": "文字整理",
+    "spoken_punctuation": "語音標點",
+    "spoken_punctuation_desc": "說 “comma”, “period”, “question mark”, “new line” 即可輸入。僅支援英語。"
   },
   "tools": {
     "title": "工具",
@@ -2723,6 +2746,15 @@
     "vol": "卷",
     "vol_title": "音量 (0–200%)",
     "search_placeholder": "搜尋文字...",
+    "replace_placeholder": "取代為…",
+    "replace": "取代",
+    "replace_all": "全部取代",
+    "find_next": "下一個符合",
+    "find_prev": "上一個符合",
+    "find_count": "第 {{current}} / {{total}} 處",
+    "find_none": "沒有符合項目",
+    "replace_done_one": "已取代 {{count}} 處",
+    "replace_done_other": "已取代 {{count}} 處",
     "all_speakers": "所有發言者",
     "select_all_title": "選擇所有過濾的",
     "sel_count": "{{count}} 選擇",
@@ -2970,6 +3002,7 @@
     "windows_app_control_blocked": "Windows 應用程式控制封鎖了必要檔案。請聯絡管理員允許受信任的 VoiceStudio 執行環境，然後重新啟動應用程式。",
     "audio_io_failed": "無法讀取或儲存音訊。請檢查檔案格式、磁碟可用空間和檔案存取權限，並在設定 → 儲存空間中檢查資料夾。",
     "no_audio_track": "此檔案沒有音軌，因此沒有可轉錄、配音或複製的語音。請選擇包含聲音的影片或音訊檔案。",
+    "source_language_required": "語音辨識未回報此影片使用的語言，因此無法在此翻譯。請在配音中開啟該影片並選擇其來源語言，或選擇能偵測語言的語音辨識模型。",
     "transcription_media_tool": "轉錄需要 ffmpeg，但 VoiceStudio 找不到或無法執行它。請開啟設定 → 音訊工具並使用下載/修復，或安裝 ffmpeg（macOS：brew install ffmpeg；Windows：winget install Gyan.FFmpeg；Linux：你的套件管理員），然後重新啟動 VoiceStudio。你也可以將 FFMPEG_PATH 指向 ffmpeg 執行檔。",
     "transcription_pipe_lost": "轉錄期間後端失去了通往應用程式的輸出管道（broken pipe）。請重新啟動 VoiceStudio 後再試一次。",
     "gpu_oom": "GPU 記憶體不足。請關閉其他佔用 GPU 的應用程式或卸載模型後重試。你也可以在 設定 → 效能與裝置 中選擇 CPU，或選擇較小的 TTS 引擎。",
@@ -3477,7 +3510,11 @@
     "unknown": "支援的語言未知",
     "error": "無法檢查語言",
     "modelLanguages": "此模型的語言",
-    "changeModel": "更換模型"
+    "changeModel": "更換模型",
+    "recent": "最近使用",
+    "available": "可用",
+    "showAll": "顯示所有語言",
+    "hideUnsupported": "隱藏不支援的語言"
   },
   "modelLicense": {
     "title": "模型條款",
@@ -4220,5 +4257,25 @@
       "fix1": "在 設定 > 記錄 中檢查後端",
       "fix2": "重新啟動 VoiceStudio 後再試"
     }
+  },
+  "modelInstall": {
+    "queued": "等待開始…",
+    "downloading": "正在下載…",
+    "downloadingPct": "正在下載 · {{pct}}%",
+    "finishing": "正在驗證並安裝…",
+    "cancelling": "正在取消…",
+    "cancelled": "已取消下載",
+    "failed": "下載失敗",
+    "ready": "可以使用",
+    "bytes": "{{done}}，共 {{total}}",
+    "speed": "{{rate}}/秒",
+    "eta": "剩餘 {{time}}",
+    "downloadAgain": "重新下載",
+    "nextDisk": "磁碟空間不足。請釋放空間，或在 設定 → 儲存 中移動模型資料夾，然後重試。",
+    "nextGated": "此模型需要 Hugging Face 存取權限。請在模型頁面申請，並在 設定 → 金鑰憑證 中加入權杖，然後重試。",
+    "nextNetwork": "無法連線到下載伺服器。請在 設定 → 網路 中檢查網路連線、代理或鏡像，然後重試。",
+    "nextMemory": "此裝置記憶體不足。請在 設定 → 效能 中選擇較輕量的設定檔，然後重試。",
+    "downloads": "下載",
+    "activeCount": "進行中的下載：{{count}}"
   }
 }

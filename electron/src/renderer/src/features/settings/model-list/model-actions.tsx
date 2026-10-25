@@ -10,6 +10,7 @@ import {
   WrenchIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { InstallProgress } from '@/components/model-install-progress';
 import { fmtBytes } from '@shared/components/settings/models/format';
 import type { CatalogueModel } from '../model-catalogue-query';
 import type { ModelOps } from './model-ops';
@@ -34,49 +35,14 @@ function DownloadProgress({
   ops: ModelOps;
   info: JobInfo;
 }) {
-  const { t } = useTranslation();
-  const { job, pct } = info;
+  if (!info.view) return null;
   return (
-    <>
-      <div className="min-w-40 flex-1 space-y-1.5 @2xl:max-w-64">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs tabular-nums">
-          <span role="status">
-            {t('modelMaintenance.downloading')}
-            {pct === null ? '' : ' ' + pct + '%'}
-          </span>
-          {job?.total_bytes ? (
-            <span className="text-muted-foreground">
-              {fmtBytes(job.bytes_done ?? 0)} / {fmtBytes(job.total_bytes)}
-            </span>
-          ) : null}
-          {job?.rate && job.rate > 0 ? (
-            <span className="text-muted-foreground">{fmtBytes(job.rate)}/s</span>
-          ) : null}
-          {info.eta && <span className="text-muted-foreground">{info.eta}</span>}
-        </div>
-        <div
-          role="progressbar"
-          aria-label={t('modelMaintenance.downloading')}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={pct ?? undefined}
-          className="h-1.5 overflow-hidden rounded-full bg-muted"
-        >
-          <div
-            className="h-full rounded-full bg-primary transition-[width] duration-300 motion-reduce:transition-none"
-            style={{ width: `${pct ?? 8}%` }}
-          />
-        </div>
-      </div>
-      <Button
-        size="sm"
-        variant="ghost"
-        disabled={ops.pending === model.repo_id || info.cancelling}
-        onClick={() => void ops.cancel(model.repo_id)}
-      >
-        {t('common.cancel')}
-      </Button>
-    </>
+    <InstallProgress
+      className="min-w-40 flex-1 @2xl:max-w-72"
+      view={info.view}
+      busy={ops.pending === model.repo_id}
+      onCancel={() => void ops.cancel(model.repo_id)}
+    />
   );
 }
 

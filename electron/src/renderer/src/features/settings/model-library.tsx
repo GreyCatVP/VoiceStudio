@@ -13,6 +13,8 @@ import {
 import { toast } from 'sonner';
 import { apiJson, describeError } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
+import { InstallProgress } from '@/components/model-install-progress';
+import { describeInstallGroup } from '@/lib/model-install-state';
 import { TERMINAL_MODEL_INSTALL_STATES, useModelInstallJobs } from '@/hooks/use-model-install-sync';
 import {
   performanceTiers,
@@ -87,9 +89,7 @@ export function PerformanceModelPacks({ compact = false }: { compact?: boolean }
     jobs.data?.jobs.filter(
       (job) => packRepos.has(job.repo_id) && !TERMINAL_MODEL_INSTALL_STATES.has(job.state),
     ) ?? [];
-  const progressBytes = activeJobs.reduce((total, job) => total + (job.bytes_done ?? 0), 0);
-  const progressTotal = activeJobs.reduce((total, job) => total + (job.total_bytes ?? 0), 0);
-  const progress = progressTotal > 0 ? Math.round((progressBytes / progressTotal) * 100) : null;
+  const packView = describeInstallGroup(activeJobs);
   const diskShortfall = pack.missing.length
     ? modelDiskShortfall(
         pack.downloadGb,
@@ -231,19 +231,11 @@ export function PerformanceModelPacks({ compact = false }: { compact?: boolean }
           })}
         </div>
 
-        {activeJobs.length > 0 && (
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-              <span>{t('models.pack_installing', { count: activeJobs.length })}</span>
-              {progress !== null && <span className="tabular-nums">{progress}%</span>}
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary transition-[width] duration-300"
-                style={{ width: `${progress ?? 8}%` }}
-              />
-            </div>
-          </div>
+        {packView && (
+          <InstallProgress
+            view={packView}
+            name={t('models.pack_installing', { count: activeJobs.length })}
+          />
         )}
 
         {diskShortfall && (

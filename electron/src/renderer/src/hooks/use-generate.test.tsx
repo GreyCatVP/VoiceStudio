@@ -33,6 +33,7 @@ const engine = vi.hoisted(() => ({
   design: undefined as boolean | null | undefined,
   cloning: undefined as boolean | null | undefined,
   presets: undefined as string[] | undefined,
+  emotion: undefined as boolean | undefined,
 }));
 vi.mock('./use-engines', () => ({
   useEngines: () => ({
@@ -41,6 +42,7 @@ vi.mock('./use-engines', () => ({
       supports_voice_design: engine.design,
       supports_cloning: engine.cloning,
       preset_voices: engine.presets,
+      supports_emotion: engine.emotion,
     },
   }),
 }));
@@ -481,5 +483,67 @@ it.each([
       presets: undefined,
       vocabulary: undefined,
     });
+  },
+);
+
+it.each([
+  ['text', true, false, 'text'],
+  ['vector', true, false, 'vector'],
+  ['unsupported engine', false, false, 'text'],
+  ['Voice Design', true, true, 'text'],
+] as const)(
+  'forwards IndexTTS2 emotion only on supported clone takes (%s)',
+  async (_name, supportsEmotion, design, mode) => {
+    engine.emotion = supportsEmotion;
+    engine.design = true;
+    patchCloneSettings({
+      text: 'A cloned voice line.',
+      selectedProfileId: 'speaker-emotion',
+      emotionMode: mode,
+      emotionText: '  gently reassuring  ',
+      emotionAlpha: 0.4,
+      emotionVector: [0.2, 0, 0.5, 0, 0, 0.1, 0, 0],
+    });
+    vi.mocked(generateClone).mockReset().mockRejectedValue(new Error('stop'));
+
+    function EmotionConsumer() {
+      const generation = useGenerateClone();
+      return (
+        <button
+          onClick={() =>
+            void (design
+              ? generation.generateDesign({ text: 'A designed voice.', instruct: 'male' })
+              : generation.generate())
+          }
+        >
+          emotion render
+        </button>
+      );
+    }
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <GenerationProvider>
+          <EmotionConsumer />
+        </GenerationProvider>
+      </QueryClientProvider>,
+    );
+    fireEvent.click(screen.getByText('emotion render'));
+    await waitFor(() => expect(generateClone).toHaveBeenCalled());
+    const input = vi.mocked(generateClone).mock.calls[0][0];
+    if (!supportsEmotion || design) {
+      expect(input.emoText).toBeUndefined();
+      expect(input.emoVector).toBeUndefined();
+      expect(input.emoAlpha).toBeUndefined();
+    } else if (mode === 'text') {
+      expect(input.emoText).toBe('gently reassuring');
+      expect(input.emoAlpha).toBe(0.4);
+      expect(input.emoVector).toBeUndefined();
+    } else {
+      expect(input.emoVector).toEqual([0.2, 0, 0.5, 0, 0, 0.1, 0, 0]);
+      expect(input.emoText).toBeUndefined();
+      expect(input.emoAlpha).toBeUndefined();
+    }
+    engine.emotion = undefined;
+    engine.design = undefined;
   },
 );

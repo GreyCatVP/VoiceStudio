@@ -1,4 +1,18 @@
 {
+  "cloneEmotion": {
+    "title": "Emotion",
+    "off": "Off",
+    "text": "Description",
+    "vector": "Sliders",
+    "happy": "Happy",
+    "angry": "Angry",
+    "sad": "Sad",
+    "afraid": "Afraid",
+    "disgusted": "Disgusted",
+    "melancholic": "Melancholic",
+    "surprised": "Surprised",
+    "calm": "Calm"
+  },
   "cloneQuality": {
     "title": "Audio quality",
     "precision": "WAV precision",
@@ -583,6 +597,7 @@
     "windows_app_control_blocked": "Windows application control blocked a required file. Ask your administrator to allow the trusted VoiceStudio runtime, then restart the app.",
     "audio_io_failed": "Audio could not be read or saved. Check the file format, free disk space, and file permissions. Review the folder in Settings → Storage.",
     "no_audio_track": "This file has no audio track, so there is no speech to transcribe, dub or clone. Choose a video or audio file that contains sound.",
+    "source_language_required": "Speech recognition did not report which language this video is spoken in, so it can't be translated here. Open the video in Dubbing and choose its source language, or pick a speech recognition model that detects the language.",
     "transcription_media_tool": "Transcription needs ffmpeg, which VoiceStudio could not find or run. Open Settings → Audio tools and use Download/Repair, or install ffmpeg (macOS: brew install ffmpeg; Windows: winget install Gyan.FFmpeg; Linux: your package manager) and restart VoiceStudio. You can also point FFMPEG_PATH at an ffmpeg binary.",
     "transcription_pipe_lost": "The backend lost its output pipe to the app while transcribing (broken pipe). Restart VoiceStudio and try again.",
     "gpu_oom": "The GPU ran out of memory. Close other GPU-heavy apps or unload models, then retry. You can also choose CPU in Settings → Performance & Device or select a smaller TTS engine.",
@@ -1649,6 +1664,12 @@
     "submit_failed": "Could not open the submission form.",
     "submit_preset": "Submit a preset",
     "submit_voice": "Submit a voice",
+    "community_packs": "Packs",
+    "community_all_packs": "All",
+    "community_language": "Language",
+    "community_all_languages": "All languages",
+    "community_new": "New",
+    "community_author_profile": "{{author}} on GitHub",
     "zone_community": "Community",
     "filters": "Filters"
   },
@@ -1722,7 +1743,10 @@
     "aec_description": "Remove VoiceStudio playback from the microphone.",
     "aec_row_title": "Enable echo cancellation for dictation",
     "aec_experimental": "Experimental",
-    "aec_hint": "Lets you dictate while a preview, dub or video plays without transcribing the app's own audio. Adds a small amount of processing; leave it off if you do not dictate over playback."
+    "aec_hint": "Lets you dictate while a preview, dub or video plays without transcribing the app's own audio. Adds a small amount of processing; leave it off if you do not dictate over playback.",
+    "cleanup_title": "Text cleanup",
+    "spoken_punctuation": "Spoken punctuation",
+    "spoken_punctuation_desc": "Say “comma”, “period”, “question mark”, “new line” to type it. English only."
   },
   "tools": {
     "title": "Tools",
@@ -2787,6 +2811,15 @@
     "vol": "Vol",
     "vol_title": "Volume (0–200%)",
     "search_placeholder": "Search text…",
+    "replace_placeholder": "Replace with…",
+    "replace": "Replace",
+    "replace_all": "Replace all",
+    "find_next": "Next match",
+    "find_prev": "Previous match",
+    "find_count": "{{current}} of {{total}}",
+    "find_none": "No matches",
+    "replace_done_one": "Replaced {{count}} match",
+    "replace_done_other": "Replaced {{count}} matches",
     "all_speakers": "All speakers",
     "select_all_title": "Select all filtered",
     "sel_count": "{{count}} sel",
@@ -3477,7 +3510,11 @@
     "unknown": "Language support unknown",
     "error": "Could not check languages",
     "modelLanguages": "Languages for this model",
-    "changeModel": "Change model"
+    "changeModel": "Change model",
+    "recent": "Recent",
+    "available": "Available",
+    "showAll": "Show all languages",
+    "hideUnsupported": "Hide unsupported languages"
   },
   "modelLicense": {
     "title": "Model terms",
@@ -4220,5 +4257,25 @@
       "fix1": "Check the backend in Settings > Logs",
       "fix2": "Restart VoiceStudio and retry"
     }
+  },
+  "modelInstall": {
+    "queued": "Waiting to start…",
+    "downloading": "Downloading…",
+    "downloadingPct": "Downloading · {{pct}}%",
+    "finishing": "Verifying and installing…",
+    "cancelling": "Cancelling…",
+    "cancelled": "Download cancelled",
+    "failed": "Download failed",
+    "ready": "Ready to use",
+    "bytes": "{{done}} of {{total}}",
+    "speed": "{{rate}}/s",
+    "eta": "{{time}} left",
+    "downloadAgain": "Download again",
+    "nextDisk": "Not enough disk space. Free some up or move the models folder in Settings → Storage, then retry.",
+    "nextGated": "This model needs Hugging Face access. Request it on the model page, add your token in Settings → Credentials, then retry.",
+    "nextNetwork": "The download server couldn't be reached. Check your connection, proxy or mirror in Settings → Network, then retry.",
+    "nextMemory": "This device ran out of memory. Choose a lighter profile in Settings → Performance, then retry.",
+    "downloads": "Downloads",
+    "activeCount": "Downloads in progress: {{count}}"
   }
 }

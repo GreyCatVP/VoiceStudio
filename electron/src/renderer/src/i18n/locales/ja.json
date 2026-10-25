@@ -1,4 +1,18 @@
 {
+  "cloneEmotion": {
+    "title": "感情",
+    "off": "オフ",
+    "text": "文章で指定",
+    "vector": "感情スライダー",
+    "happy": "喜び",
+    "angry": "怒り",
+    "sad": "悲しみ",
+    "afraid": "恐れ",
+    "disgusted": "嫌悪",
+    "melancholic": "憂鬱",
+    "surprised": "驚き",
+    "calm": "落ち着き"
+  },
   "cloneQuality": {
     "title": "音声品質",
     "precision": "WAV精度",
@@ -1496,6 +1510,12 @@
     "submit_failed": "投稿フォームを開けませんでした。",
     "submit_preset": "プリセットを投稿",
     "submit_voice": "音声を投稿",
+    "community_packs": "パック",
+    "community_all_packs": "すべて",
+    "community_language": "言語",
+    "community_all_languages": "すべての言語",
+    "community_new": "新着",
+    "community_author_profile": "GitHub の {{author}}",
     "zone_community": "コミュニティ",
     "import_persona": ".ovsvoice ペルソナ バンドルをインポートする",
     "persona_imported": "「{{name}}」{{unverified}} をインポートしました。",
@@ -1575,7 +1595,10 @@
     "aec_description": "マイクから VoiceStudio の再生音を除去します。",
     "aec_row_title": "音声入力のエコーキャンセルを有効化",
     "aec_experimental": "試験的",
-    "aec_hint": "プレビュー、吹き替え、動画の再生中でも、アプリ自身の音声を文字起こしせずに音声入力できます。処理が少し増えるため、再生中に入力しない場合はオフのままにしてください。"
+    "aec_hint": "プレビュー、吹き替え、動画の再生中でも、アプリ自身の音声を文字起こしせずに音声入力できます。処理が少し増えるため、再生中に入力しない場合はオフのままにしてください。",
+    "cleanup_title": "テキストの整形",
+    "spoken_punctuation": "音声による句読点",
+    "spoken_punctuation_desc": "“comma”, “period”, “question mark”, “new line” と言うと入力されます。英語のみ。"
   },
   "tools": {
     "title": "ツール",
@@ -2723,6 +2746,15 @@
     "vol": "巻",
     "vol_title": "音量 (0 ～ 200%)",
     "search_placeholder": "テキストを検索…",
+    "replace_placeholder": "置換後の文字…",
+    "replace": "置換",
+    "replace_all": "すべて置換",
+    "find_next": "次を検索",
+    "find_prev": "前を検索",
+    "find_count": "{{current}} / {{total}} 件",
+    "find_none": "一致なし",
+    "replace_done_one": "{{count}} 件を置換しました",
+    "replace_done_other": "{{count}} 件を置換しました",
     "all_speakers": "すべてのスピーカー",
     "select_all_title": "フィルタリングされたすべてを選択",
     "sel_count": "{{count}} 選択",
@@ -2970,6 +3002,7 @@
     "windows_app_control_blocked": "Windowsのアプリケーション制御が必要なファイルをブロックしました。信頼できるVoiceStudioランタイムを許可するよう管理者に依頼し、アプリを再起動してください。",
     "audio_io_failed": "音声を読み込むか保存することができませんでした。ファイル形式、ディスクの空き容量、ファイルのアクセス権を確認してください。設定 → ストレージでフォルダーを確認してください。",
     "no_audio_track": "このファイルには音声トラックがないため、文字起こし・吹き替え・クローンする音声がありません。音声を含む動画または音声ファイルを選んでください。",
+    "source_language_required": "音声認識がこの動画の話し言葉を報告しなかったため、ここでは翻訳できません。吹き替えで動画を開いて元の言語を選ぶか、言語を検出できる音声認識モデルを選んでください。",
     "transcription_media_tool": "文字起こしには ffmpeg が必要ですが、VoiceStudio は見つけられないか実行できませんでした。設定 → オーディオツールを開いてダウンロード/修復を使うか、ffmpeg をインストール（macOS: brew install ffmpeg、Windows: winget install Gyan.FFmpeg、Linux: お使いのパッケージマネージャー）して VoiceStudio を再起動してください。FFMPEG_PATH を ffmpeg のファイルに向けることもできます。",
     "transcription_pipe_lost": "文字起こし中にバックエンドがアプリへの出力パイプを失いました（broken pipe）。VoiceStudio を再起動してもう一度お試しください。",
     "gpu_oom": "GPU のメモリが不足しました。GPU を多く使う他のアプリを閉じるかモデルをアンロードしてから、もう一度お試しください。設定 → パフォーマンスとデバイスで CPU を選ぶか、より小さな TTS エンジンを選ぶこともできます。",
@@ -3477,7 +3510,11 @@
     "unknown": "対応言語は不明です",
     "error": "言語を確認できませんでした",
     "modelLanguages": "このモデルの言語",
-    "changeModel": "モデルを変更"
+    "changeModel": "モデルを変更",
+    "recent": "最近使用",
+    "available": "利用可能",
+    "showAll": "すべての言語を表示",
+    "hideUnsupported": "非対応の言語を隠す"
   },
   "modelLicense": {
     "title": "モデルの利用条件",
@@ -4220,5 +4257,25 @@
       "fix1": "設定 > ログでバックエンドを確認する",
       "fix2": "VoiceStudioを再起動して再試行する"
     }
+  },
+  "modelInstall": {
+    "queued": "開始を待っています…",
+    "downloading": "ダウンロード中…",
+    "downloadingPct": "ダウンロード中 · {{pct}}%",
+    "finishing": "検証とインストール中…",
+    "cancelling": "キャンセル中…",
+    "cancelled": "ダウンロードをキャンセルしました",
+    "failed": "ダウンロードに失敗しました",
+    "ready": "使用できます",
+    "bytes": "{{total}} 中 {{done}}",
+    "speed": "{{rate}}/秒",
+    "eta": "残り {{time}}",
+    "downloadAgain": "もう一度ダウンロード",
+    "nextDisk": "ディスクの空き容量が足りません。空き容量を確保するか、設定 → ストレージ でモデルフォルダーを移動してから再試行してください。",
+    "nextGated": "このモデルには Hugging Face のアクセス権が必要です。モデルページで申請し、設定 → 資格情報 にトークンを追加してから再試行してください。",
+    "nextNetwork": "ダウンロードサーバーに接続できません。設定 → ネットワーク で接続、プロキシ、ミラーを確認してから再試行してください。",
+    "nextMemory": "このデバイスのメモリが不足しました。設定 → パフォーマンス で軽いプロファイルを選んでから再試行してください。",
+    "downloads": "ダウンロード",
+    "activeCount": "進行中のダウンロード: {{count}}"
   }
 }

@@ -1,4 +1,18 @@
 {
+  "cloneEmotion": {
+    "title": "情绪",
+    "off": "关闭",
+    "text": "文字描述",
+    "vector": "情绪滑块",
+    "happy": "快乐",
+    "angry": "愤怒",
+    "sad": "悲伤",
+    "afraid": "恐惧",
+    "disgusted": "厌恶",
+    "melancholic": "忧郁",
+    "surprised": "惊讶",
+    "calm": "平静"
+  },
   "cloneQuality": {
     "title": "音频质量",
     "precision": "WAV 精度",
@@ -1497,6 +1511,12 @@
     "submit_failed": "无法打开提交表单。",
     "submit_preset": "提交预设",
     "submit_voice": "提交声音",
+    "community_packs": "合集",
+    "community_all_packs": "全部",
+    "community_language": "语言",
+    "community_all_languages": "所有语言",
+    "community_new": "新",
+    "community_author_profile": "{{author}} 的 GitHub",
     "zone_community": "社区",
     "import_persona": "导入 .ovsvoice 角色包",
     "persona_imported": "导入“{{name}}”{{unverified}}。",
@@ -1575,7 +1595,10 @@
     "aec_description": "从麦克风中移除 VoiceStudio 的播放声音。",
     "aec_row_title": "为听写启用回声消除",
     "aec_experimental": "实验性",
-    "aec_hint": "可在播放预览、配音或视频时听写，而不会转写应用自身的声音。会增加少量音频处理；如果不会在播放时听写，请保持关闭。"
+    "aec_hint": "可在播放预览、配音或视频时听写，而不会转写应用自身的声音。会增加少量音频处理；如果不会在播放时听写，请保持关闭。",
+    "cleanup_title": "文本整理",
+    "spoken_punctuation": "语音标点",
+    "spoken_punctuation_desc": "说 “comma”, “period”, “question mark”, “new line” 即可输入。仅支持英语。"
   },
   "tools": {
     "title": "工具",
@@ -2723,6 +2746,15 @@
     "vol": "音量",
     "vol_title": "音量（0–200%）",
     "search_placeholder": "搜索文本…",
+    "replace_placeholder": "替换为…",
+    "replace": "替换",
+    "replace_all": "全部替换",
+    "find_next": "下一个匹配",
+    "find_prev": "上一个匹配",
+    "find_count": "第 {{current}} / {{total}} 处",
+    "find_none": "无匹配",
+    "replace_done_one": "已替换 {{count}} 处",
+    "replace_done_other": "已替换 {{count}} 处",
     "all_speakers": "所有说话人",
     "select_all_title": "全选当前筛选",
     "sel_count": "已选 {{count}} 条",
@@ -2970,6 +3002,7 @@
     "windows_app_control_blocked": "Windows 应用程序控制阻止了所需文件。请联系管理员允许受信任的 VoiceStudio 运行环境，然后重启应用。",
     "audio_io_failed": "无法读取或保存音频。请检查文件格式、磁盘剩余空间和文件访问权限，并在设置 → 存储中检查文件夹。",
     "no_audio_track": "此文件没有音轨，因此没有可转录、配音或克隆的语音。请选择包含声音的视频或音频文件。",
+    "source_language_required": "语音识别未报告此视频所用的语言，因此无法在此翻译。请在配音中打开该视频并选择其源语言，或选择能检测语言的语音识别模型。",
     "transcription_media_tool": "转录需要 ffmpeg，但 VoiceStudio 无法找到或运行它。请打开设置 → 音频工具并使用下载/修复，或安装 ffmpeg（macOS：brew install ffmpeg；Windows：winget install Gyan.FFmpeg；Linux：你的包管理器），然后重启 VoiceStudio。你也可以将 FFMPEG_PATH 指向 ffmpeg 可执行文件。",
     "transcription_pipe_lost": "转录期间后端丢失了通往应用的输出管道（broken pipe）。请重启 VoiceStudio 后重试。",
     "gpu_oom": "GPU 显存不足。请关闭其他占用 GPU 的应用或卸载模型后重试。你也可以在 设置 → 性能与设备 中选择 CPU，或选择更小的 TTS 引擎。",
@@ -3477,7 +3510,11 @@
     "unknown": "支持的语言未知",
     "error": "无法检查语言",
     "modelLanguages": "此模型的语言",
-    "changeModel": "更换模型"
+    "changeModel": "更换模型",
+    "recent": "最近使用",
+    "available": "可用",
+    "showAll": "显示所有语言",
+    "hideUnsupported": "隐藏不支持的语言"
   },
   "modelLicense": {
     "title": "模型条款",
@@ -4220,5 +4257,25 @@
       "fix1": "在 设置 > 日志 中检查后端",
       "fix2": "重启 VoiceStudio 后重试"
     }
+  },
+  "modelInstall": {
+    "queued": "等待开始…",
+    "downloading": "正在下载…",
+    "downloadingPct": "正在下载 · {{pct}}%",
+    "finishing": "正在校验并安装…",
+    "cancelling": "正在取消…",
+    "cancelled": "下载已取消",
+    "failed": "下载失败",
+    "ready": "可以使用",
+    "bytes": "{{done}}，共 {{total}}",
+    "speed": "{{rate}}/秒",
+    "eta": "剩余 {{time}}",
+    "downloadAgain": "重新下载",
+    "nextDisk": "磁盘空间不足。请释放空间，或在 设置 → 存储 中移动模型文件夹，然后重试。",
+    "nextGated": "此模型需要 Hugging Face 访问权限。请在模型页面申请，并在 设置 → 凭证 中添加令牌，然后重试。",
+    "nextNetwork": "无法连接下载服务器。请在 设置 → 网络 中检查网络连接、代理或镜像，然后重试。",
+    "nextMemory": "此设备内存不足。请在 设置 → 性能 中选择更轻量的配置，然后重试。",
+    "downloads": "下载",
+    "activeCount": "正在进行的下载：{{count}}"
   }
 }

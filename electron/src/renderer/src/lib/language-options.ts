@@ -2,7 +2,7 @@ import languageCodes from '@shared/language-codes.json';
 import languageRegions from '@shared/language-regions.json';
 import { LANG_CODES } from '@shared/utils/languages';
 import { TARGET_ONLY_LANGUAGES } from './translation-targets';
-import { normalizeSearch, type SearchOption } from '@shared/components/VirtualSearchableSelect';
+import { normalizeSearch, type SearchOption } from './language-search';
 import type { QueryClient } from '@tanstack/react-query';
 import type { EnginesResponse } from './api/types';
 import { LANGUAGE_VARIANTS } from './language-variants';
@@ -115,12 +115,24 @@ export function languageOptions(
             String.fromCodePoint(...[...region].map((char) => char.charCodeAt(0) + 127397)),
           ]
         : [];
+    // Regional/script variants (pt-BR, cmn-Hant) group under their primary language.
+    const family = code.includes('-') ? code.split('-')[0] : undefined;
+    let familyLabel = '';
+    if (family) {
+      try {
+        familyLabel = display.of(family) || '';
+      } catch {
+        /* Fall back to the canonical name's base below. */
+      }
+      familyLabel ||= value.replace(/\s*\(.*\)$/, '');
+    }
     const aliases = code === 'zh' ? ['mandarin'] : code === 'tl' ? ['tagalog'] : [];
     const option = {
       value,
       label,
       code,
       native,
+      ...(family ? { family, familyLabel } : {}),
       search: [
         ...new Set(
           [value, label, native, code, ...flagAliases, ...aliases]

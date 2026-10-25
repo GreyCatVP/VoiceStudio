@@ -43,6 +43,7 @@ import { EngineLanguagePicker } from './engine-language-picker';
 import { PresetVoicePicker } from './preset-voice-picker';
 import { CloneReadinessNotice } from './clone-readiness-notice';
 import { QualityControls } from './quality-controls';
+import { EmotionControls } from './emotion-controls';
 import { CloneDemoAction } from './clone-demo';
 import { useCloneDemo } from '@/hooks/use-clone-demo';
 
@@ -315,6 +316,7 @@ export function VoiceControls({ size = 'icon-lg' }: { size?: 'icon-sm' | 'icon-l
   );
 }
 
+/** Render the Voice Cloning composer including engine-aware emotion controls. */
 export function ActionBar() {
   const { t } = useTranslation();
   const demo = useCloneDemo();
@@ -368,6 +370,7 @@ export function ActionBar() {
           <span aria-hidden="true" className="mx-1 h-4 w-px bg-border" />
           <QualityControls disabled={isGenerating} />
           <VoiceControls />
+          <EmotionControls disabled={isGenerating} />
         </div>
 
         <div className="relative ml-auto flex shrink-0 gap-2">

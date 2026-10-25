@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { ExternalLink } from '@/components/external-link';
+import { INSTALL_NEXT_STEP } from '@/components/model-install-progress';
 import type { CatalogueModel } from '../model-catalogue-query';
 import type { ModelOps } from './model-ops';
 import type { JobInfo } from './model-job';
@@ -125,13 +126,19 @@ export function ModelFailure({
   return (
     <details className="basis-full rounded-lg border border-destructive/15 bg-destructive/5 px-3 py-2 text-xs @2xl:max-w-xl">
       <summary className="cursor-pointer font-medium text-destructive">
-        {t('modelMaintenance.failed')}
+        {t('modelInstall.failed')}
       </summary>
       <p role="alert" className="mt-2 break-words text-muted-foreground">
-        {info.job?.docs_topic === 'HF_MIRROR_GATED'
-          ? t('modelMaintenance.mirrorGatedAccess')
-          : info.job?.error || t('modelMaintenance.failed')}
+        {info.view?.problem
+          ? t(INSTALL_NEXT_STEP[info.view.problem])
+          : info.view?.reason || t('modelMaintenance.failed')}
       </p>
+      {info.view?.detail && info.view.detail !== info.view.reason && (
+        <details className="mt-1 text-muted-foreground">
+          <summary className="cursor-pointer">{t('common.details')}</summary>
+          <p className="mt-1 break-words whitespace-pre-wrap">{info.view.detail}</p>
+        </details>
+      )}
       <div className="mt-2 flex flex-wrap gap-1">
         <Button
           size="xs"

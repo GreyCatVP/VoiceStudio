@@ -151,6 +151,11 @@ To build it yourself on an arm64 host:
 docker build -f deploy/Dockerfile --build-arg BASE_IMAGE=cuda-arm64-base -t voicestudio:cuda-arm64 .
 ```
 
+All image variants verify installed dependency versions against
+`deploy/uv-overrides.txt` after installation. The check strips surrounding
+whitespace and line endings before parsing requirements, including with
+`packaging` 26.3; an installed version below the required floor still fails the build.
+
 ## Pull and run (AMD GPU / ROCm)
 
 AMD GPUs use the dedicated **`:rocm` image variant** — the default (CUDA)
