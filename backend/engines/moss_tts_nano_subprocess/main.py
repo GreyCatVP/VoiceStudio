@@ -140,7 +140,7 @@ def _configure_tokenizer_cache(model):
         # A strong reference to the bound loader would keep discarded GPU models
         # alive until cyclic GC runs. The active caller already owns the model.
         original_loader = weakref.WeakMethod(model._load_resolved_text_tokenizer)
-        use_fast = bool(model.config.tokenizer_use_fast)
+        use_fast = bool(getattr(getattr(model, "config", None), "tokenizer_use_fast", True))
 
         def load_tokenizer_with_cache_fallback(resolved_path, cache_dir):
             """Try existing Hub caches offline before the usual first-use loader."""
