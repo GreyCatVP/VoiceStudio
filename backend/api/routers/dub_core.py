@@ -41,7 +41,7 @@ from services.segmentation import (
     assign_speakers_from_diarization,
     assign_speakers_from_turns,
     assign_speakers_heuristic,
-    resplit_segments_by_diarization,
+    label_segments_by_diarization,
     resplit_segments_by_turns,
     _words_from_whisper,
     clean_up_segments,
@@ -2250,10 +2250,10 @@ async def dub_transcribe_stream(
                     diar = diar_pipe(asr_audio_target, num_speakers=num_speakers)
                 else:
                     diar = diar_pipe(asr_audio_target)
-                assigned = assign_speakers_from_diarization(all_segments, diar)
-                # #486: split any segment that spans two speakers' turns at the
-                # word boundary (single-speaker segments pass through unchanged).
-                resplit = resplit_segments_by_diarization(assigned, all_words, diar)
+                # #486: label, then split any segment that spans two speakers'
+                # turns at the word boundary (single-speaker segments pass
+                # through unchanged).
+                resplit = label_segments_by_diarization(all_segments, all_words, diar)
                 recovered = _recover_from_phrase_embeddings(
                     diar_pipe,
                     resplit,
@@ -2787,7 +2787,12 @@ async def dub_transcribe(job_id: str, num_speakers: Optional[int] = None):
                     diarization = diar_pipe(diar_target, num_speakers=num_speakers)
                 else:
                     diarization = diar_pipe(diar_target)
-                segments = assign_speakers_from_diarization(segments, diarization)
+                # Same label-then-split as the SSE endpoint (#486, #3419):
+                # labelling alone merged a short reply into the previous
+                # speaker's line for the CLI and phone companion.
+                segments = label_segments_by_diarization(
+                    segments, _words_from_whisper(result), diarization,
+                )
             except Exception:
                 logger.exception("Pyannote diarization failed during inference. Falling back to heuristic.")
                 segments = assign_speakers_heuristic(segments, num_speakers)

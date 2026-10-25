@@ -54,6 +54,16 @@ MIN_SEGMENT_REF_DURATION_S = 3.0
 MIN_SLICE_DURATION_S = 1.5
 ADJACENT_TURN_GUARD_S = 0.3
 
+# Short-turn fallback (#3419): a speaker who only ever answers in short turns
+# ("Good, and you?") has no slice of MIN_SLICE_DURATION_S, so the pass above
+# gave them no clone and every one of their lines fell back to the default
+# voice while the other speaker was cloned. When that pass finds nothing, the
+# speaker's lines are trimmed to keep ADJACENT_TURN_GUARD_S away from every
+# other speaker (the boundary-bleed risk the slice floor guards against) and
+# pooled from slices of at least FALLBACK_MIN_SLICE_S. The pool must reach
+# MIN_SEGMENT_REF_DURATION_S, the same floor a single-line reference needs.
+FALLBACK_MIN_SLICE_S = 0.8
+
 
 def extract_speaker_clones(
     vocals_path: str,
@@ -76,7 +86,9 @@ def extract_speaker_clones(
           ...
         }
 
-    Speakers whose segments total < MIN_REF_DURATION_S are skipped — we'd
+    Speakers without MIN_REF_DURATION_S of long slices fall back to their
+    short turns, trimmed clear of other speakers (#3419). A speaker whose
+    clean audio still totals < MIN_SEGMENT_REF_DURATION_S is skipped — we'd
     rather fall back to the default TTS voice than ship a bad clone.
 
     ``labels_source`` records where the ``speaker_id`` labels came from
@@ -128,8 +140,8 @@ def extract_speaker_clones(
         )
         if not chosen:
             logger.info(
-                "speaker_clone: %s has <%ss of usable audio; will fall back to default voice",
-                speaker_id, MIN_REF_DURATION_S,
+                "speaker_clone: %s has <%ss of clean audio; will fall back to default voice",
+                speaker_id, MIN_SEGMENT_REF_DURATION_S,
             )
             continue
 
@@ -333,8 +345,8 @@ def _pick_reference_slices(
     * ``labels_source="heuristic"`` returns [] — gap-based labels are not
       voice identity, so no slice of them is safe to clone from.
 
-    Cap at MAX_REF_DURATION_S. Return [] if we can't reach
-    MIN_REF_DURATION_S. When ``all_segments``/``speaker_id`` are not
+    Cap at MAX_REF_DURATION_S. When this can't reach MIN_REF_DURATION_S,
+    fall back to ``_pick_short_turn_slices`` (#3419). When ``all_segments``/``speaker_id`` are not
     provided (legacy callers), adjacency scoring degrades to duration-only —
     the pre-guard behavior.
     """
@@ -374,9 +386,69 @@ def _pick_reference_slices(
             break
 
     if total < MIN_REF_DURATION_S:
-        return []
+        return _pick_short_turn_slices(
+            items, speaker_id=speaker_id, all_segments=all_segments,
+        )
 
     # Restore original order so concatenated transcript reads left-to-right.
+    picked.sort(key=lambda pair: pair[0])
+    return picked
+
+
+def _guarded_span(
+    seg: dict, speaker_id: str, all_segments: list[dict] | None
+) -> tuple[float, float] | None:
+    """``seg``'s span trimmed to stay ADJACENT_TURN_GUARD_S clear of every
+    segment of a different speaker; None when nothing usable remains."""
+    s0 = float(seg.get("start", 0.0))
+    s1 = float(seg.get("end", 0.0))
+    start, end = s0, s1
+    for other in all_segments or []:
+        if other is seg or (other.get("speaker_id") or "Speaker 1") == speaker_id:
+            continue
+        o0 = float(other.get("start", 0.0))
+        o1 = float(other.get("end", 0.0))
+        if o1 <= s0 - ADJACENT_TURN_GUARD_S or o0 >= s1 + ADJACENT_TURN_GUARD_S:
+            continue
+        if o0 <= s0:
+            start = max(start, o1 + ADJACENT_TURN_GUARD_S)
+        elif o1 >= s1:
+            end = min(end, o0 - ADJACENT_TURN_GUARD_S)
+        else:
+            return None  # another speaker talks inside this line
+    return (start, end) if end > start else None
+
+
+def _pick_short_turn_slices(
+    items: list[tuple[int, dict]],
+    *,
+    speaker_id: str,
+    all_segments: list[dict] | None,
+) -> list[tuple[int, dict]]:
+    """Fallback for a speaker with no slice long enough for the main pass.
+
+    Returns trimmed copies of the speaker's segments (see ``_guarded_span``),
+    longest first up to IDEAL_REF_DURATION_S, or [] when they cannot reach
+    MIN_SEGMENT_REF_DURATION_S.
+    """
+    candidates = []
+    for idx, seg in items:
+        span = _guarded_span(seg, speaker_id, all_segments)
+        if span and span[1] - span[0] >= FALLBACK_MIN_SLICE_S:
+            candidates.append((idx, {**seg, "start": span[0], "end": span[1]}))
+    candidates.sort(key=lambda pair: -(pair[1]["end"] - pair[1]["start"]))
+    picked: list[tuple[int, dict]] = []
+    total = 0.0
+    for idx, seg in candidates:
+        dur = seg["end"] - seg["start"]
+        if total + dur > MAX_REF_DURATION_S and picked:
+            continue
+        picked.append((idx, seg))
+        total += dur
+        if total >= IDEAL_REF_DURATION_S:
+            break
+    if total < MIN_SEGMENT_REF_DURATION_S:
+        return []
     picked.sort(key=lambda pair: pair[0])
     return picked
 
