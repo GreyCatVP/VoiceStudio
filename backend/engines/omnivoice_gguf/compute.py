@@ -12,6 +12,22 @@ BACKEND_ENV = "OMNIVOICE_GGUF_BACKEND"
 DEVICE_ENV = "OMNIVOICE_GGUF_DEVICE"
 
 
+class ComputeConfigError(RuntimeError, ValueError):
+    """An invalid GGUF device override.
+
+    A ``RuntimeError`` so generation, the load probe and default-engine
+    selection report it the way they report every other engine failure,
+    and still a ``ValueError`` for callers that validate input.
+    """
+
+    def __init__(self, problem: str):
+        super().__init__(
+            f"{problem}. Fix or clear {BACKEND_ENV} / {DEVICE_ENV} "
+            "(for example OMNIVOICE_GGUF_BACKEND=vulkan OMNIVOICE_GGUF_DEVICE=0) "
+            "and restart the backend."
+        )
+
+
 def apply_compute_env(env: dict[str, str]) -> dict[str, str]:
     """Translate app overrides into GGML's native device-name environment."""
     from core.device_caps import requested_device_override
@@ -23,14 +39,14 @@ def apply_compute_env(env: dict[str, str]) -> dict[str, str]:
     index = env.get(DEVICE_ENV, "").strip()
     if not backend or backend == "auto":
         if index:
-            raise ValueError(f"{DEVICE_ENV} requires {BACKEND_ENV}=cuda or vulkan")
+            raise ComputeConfigError(f"{DEVICE_ENV} requires {BACKEND_ENV}=cuda or vulkan")
         return env
     if backend not in {"cpu", "cuda", "vulkan"}:
-        raise ValueError(f"{BACKEND_ENV} must be auto, cpu, cuda, or vulkan")
+        raise ComputeConfigError(f"{BACKEND_ENV} must be auto, cpu, cuda, or vulkan")
     if index and (not index.isascii() or not index.isdecimal()):
-        raise ValueError(f"{DEVICE_ENV} must be a non-negative device index")
+        raise ComputeConfigError(f"{DEVICE_ENV} must be a non-negative device index")
     if backend == "cpu" and index:
-        raise ValueError(f"{DEVICE_ENV} is only supported with cuda or vulkan")
+        raise ComputeConfigError(f"{DEVICE_ENV} is only supported with cuda or vulkan")
     env["GGML_BACKEND"] = (
         "CPU" if backend == "cpu" else
         ("CUDA" if backend == "cuda" else "Vulkan") + str(int(index or "0"))

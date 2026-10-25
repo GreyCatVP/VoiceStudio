@@ -54,13 +54,15 @@ F32 is published by the model but requires an explicit override — it's
 Settings override for users on machines where bit-exact reference output
 is needed.
 
-## Weights are local-only
+## Weights: installed first, downloaded on first use
 
-The engine never downloads weights. `quant_cache.py` resolves the pinned
-base+tokenizer pair from the local HuggingFace cache
-(`try_to_load_from_cache`, a pure filesystem lookup) and both readiness
-(`is_available`) and generation (`_resolve_quant_paths`) go through that
-one path, so they cannot disagree about what will be loaded.
+`quant_cache.py` resolves the pinned base+tokenizer pair from the local
+HuggingFace cache (`try_to_load_from_cache`, a pure filesystem lookup).
+Generation (`_resolve_quant_paths`) uses an installed pair whenever one
+is usable; only when none is does it download the selected pair at the
+pinned revision with `hf_hub_download`. Readiness (`is_available`) checks
+the runtime binary only, so a fresh install is ready before its weights
+arrive.
 
 - A complete pair counts only when **both** files exist at the pinned
   revision; a half-installed pair, a directory, a dangling symlink and a
@@ -72,13 +74,13 @@ one path, so they cannot disagree about what will be loaded.
   a larger cached quant is not substituted for it.
 - Only when the selected pair is absent, and the selection is not an
   explicit CPU choice, does the smallest complete cached automatic pair
-  (Q8_0, then BF16) stand in (#3042). Readiness and generation never
-  download a replacement, and an installed quant is never rewritten.
+  (Q8_0, then BF16) stand in (#3042), so an existing installation is
+  never re-downloaded, and an installed quant is never rewritten.
   Override-only quants (F32) are never auto-selected.
 
-Installing a pair is an explicit, user-run step, and it has to land in
-the cache this app reads — a standalone `hf` command does not inherit
-the app's cache location:
+An offline host can pre-install a pair by hand; it has to land in the
+cache this app reads — a standalone `hf` command does not inherit the
+app's cache location:
 
 ```bash
 hf download Serveurperso/OmniVoice-GGUF \
@@ -87,11 +89,20 @@ hf download Serveurperso/OmniVoice-GGUF \
   --cache-dir "<the cache directory this app reads>"
 ```
 
-The revision is `_meta.source_commit_sha` from `quant_map.json`. The
-catalogue shows a generic "not installed yet" line plus a link to
-`docs/engines/omnivoice-gguf.md`, which carries the per-platform
-`--cache-dir` examples. The internal diagnostic keeps the recipe; public
-views show the localized manual-install guidance and the guide link.
+The revision is `_meta.source_commit_sha` from `quant_map.json`;
+`docs/engines/omnivoice-gguf.md` carries the per-platform `--cache-dir`
+examples. A failed first-use download raises with this command in the
+message.
+
+## Runtime integrity
+
+`bin/checksums.sha256` covers the executable and every ggml shared
+library `scripts/build-omnivoice-tts.sh` copies next to it. Every listed
+library that is present must match before the binary is spawned; an
+unlisted one is logged (manifests from before #3042 list only the
+executable). The binary runs with `bin/` as its working directory, so
+ggml's dynamic backend loader cannot pick up a library from anywhere
+else.
 
 ## Hardware probe
 

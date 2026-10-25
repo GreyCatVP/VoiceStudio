@@ -27,12 +27,11 @@ Security (see plan front-matter threat model):
     T-04-02 — Subprocess arg injection: argv is composed from typed
               ``pathlib.Path`` objects rooted in ``$HF_HUB_CACHE`` or a
               ``tempfile.mkstemp()`` output path. ``shell=False`` always.
-    T-04-03 — GGUF quant fetched over the network: the engine never
-              downloads weights. The pair is read from the local
-              HuggingFace cache at the pinned revision
-              (``quant_map.json._meta.source_commit_sha``); installing
-              one is an explicit, user-run ``hf download`` (see
-              docs/engines/omnivoice-gguf.md).
+    T-04-03 — GGUF quant served from network: an installed pair is read
+              from the local HuggingFace cache first; only a missing
+              pair is fetched, on first generate, through
+              ``huggingface_hub`` (SHA-verified at download time) at the
+              revision pinned in ``quant_map.json._meta.source_commit_sha``.
     T-04-04 — HF_TOKEN leak into stderr: subprocess stderr is decoded
               through ``services.tts_backend._mask_hf_tokens`` before
               landing in any logger record.
@@ -175,6 +174,39 @@ def _spawn_env() -> dict[str, str]:
     return apply_compute_env(env)
 
 
+#: Shared ggml runtime libraries the build drops next to the binary. With
+#: ``GGML_BACKEND_DL`` the runtime picks its CPU/Vulkan backend from these
+#: at load time, so they are as much "the runtime" as the executable.
+_GGML_LIB_RE = re.compile(r"^(?:lib)?ggml[\w.-]*\.(?:so(?:\.\d+)*|dylib|dll)$", re.IGNORECASE)
+
+
+def _mismatched_runtime_library(bin_dir: Path, manifest: dict[str, str]) -> str | None:
+    """Return the first listed ggml library whose bytes differ from the manifest.
+
+    Every listed library that is present must match. A listed library that
+    is absent belongs to another platform's build and is skipped; a present
+    library the manifest does not list is logged — manifests written before
+    #3042 listed only the executable, and refusing those installs would break
+    working runtimes.
+    """
+    for name, digest in sorted(manifest.items()):
+        if not _GGML_LIB_RE.match(name):
+            continue
+        path = bin_dir / name
+        if path.is_file() and _sha256_of_file(path).lower() != digest.lower():
+            return name
+    unlisted = sorted(
+        p.name for p in bin_dir.iterdir()
+        if p.is_file() and _GGML_LIB_RE.match(p.name) and p.name not in manifest
+    ) if manifest else []
+    if unlisted:
+        logger.warning(
+            "GGUF runtime libraries not covered by bin/checksums.sha256: %s",
+            ", ".join(unlisted),
+        )
+    return None
+
+
 def _binary_repair_hint() -> str:
     """One actionable sentence for a broken/placeholder GGUF binary (#1172).
 
@@ -283,11 +315,11 @@ def _automatic_entry(quant_map: dict) -> dict:
 
 
 def _weights_install_command(entry: dict, revision: str) -> str:
-    """The explicit, pinned command that installs one quant pair.
+    """The pinned command that pre-installs one quant pair by hand.
 
-    This is the only supported way to add weights: the engine itself
-    never downloads them (T-04-03), so the command has to be run by the
-    user, against the pinned revision and into the cache this app reads.
+    The engine downloads a missing pair itself on first generate; this
+    is the fallback for a host that cannot reach Hugging Face from the
+    app (it must land in the cache this app reads).
     """
     return (
         f"hf download {_HF_REPO_ID} {entry.get('base')} "
@@ -296,21 +328,15 @@ def _weights_install_command(entry: dict, revision: str) -> str:
     )
 
 
-def _weights_missing_reason(entry: dict, revision: str) -> str:
-    """Actionable reason for a host that has no usable weight pair.
-
-    The internal diagnostic keeps the recipe. Public views replace it
-    with the localized manual-install guidance and the guide link, so
-    the command here is not something the catalogue shows.
-    """
+def _weights_missing_reason(entry: dict, revision: str, exc: BaseException | None = None) -> str:
+    """Actionable reason when the pinned pair is neither cached nor fetchable."""
+    cause = f" ({type(exc).__name__}: {exc})" if exc is not None else ""
     return (
-        "GGUF weights are not installed — the engine loads only from the "
-        "local HuggingFace cache and never downloads them for you. Install "
-        "the pinned pair once with:\n\n    "
-        f"{_weights_install_command(entry, revision)}\n\n"
-        "and point it at the cache this app reads (--cache-dir); the Model "
-        "Catalogue has no entry for this repo yet, so that command is the "
-        "install route."
+        f"Could not download the GGUF weights {entry.get('base')} + "
+        f"{entry.get('tokenizer')}{cause}. Check the connection to "
+        "huggingface.co (or set a mirror in Settings) and try again, or "
+        "pre-install the pinned pair with:\n\n    "
+        f"{_weights_install_command(entry, revision)}"
     )
 
 
@@ -529,6 +555,16 @@ def _make_backend_class():
                             f"{expected[:12]}…, actual is {actual[:12]}…. "
                             f"Reinstall or run the bundled `xattr -cr` cleanup."
                         )
+                if manifest:
+                    bad_lib = _mismatched_runtime_library(bin_path.parent, manifest)
+                    if bad_lib is not None:
+                        return False, (
+                            f"GGUF runtime library checksum mismatch for "
+                            f"{bad_lib} — the runtime would load a library "
+                            f"other than the one that was built. Reinstall "
+                            f"VoiceStudio or rebuild with "
+                            f"`scripts/build-omnivoice-tts.sh`."
+                        )
                 # macOS Gatekeeper quarantine detection (Pitfall 3).
                 if _is_macos_quarantined(bin_path):
                     return False, (
@@ -559,35 +595,16 @@ def _make_backend_class():
 
         @classmethod
         def is_available(cls) -> tuple[bool, str]:
-            """Verify the binary AND that usable weights are installed.
+            """Verify the bundled runtime; weights are not a readiness gate.
 
-            The engine loads its weights from the local HuggingFace
-            cache and never downloads them, so a runtime binary without
-            an installed pair is not a usable engine. Reporting it as
-            ready would advertise a model that cannot generate.
-
-            Never raises — failures roll up as ``(False, reason)`` so
-            ``list_backends()`` can render the picker even when the
+            A missing weight pair is fetched on first generate (see
+            ``_resolve_quant_paths``), so a fresh install with a working
+            binary is a usable engine — the same contract as before
+            #3042. Never raises — failures roll up as ``(False, reason)``
+            so ``list_backends()`` can render the picker even when the
             engine is broken.
             """
-            ok, reason = cls._binary_status()
-            if not ok:
-                return ok, reason
-            try:
-                # The constructor only assigns two fields, so this shares
-                # the generation path without touching a model or a
-                # process: readiness and generation cannot diverge.
-                cls()._resolve_quant_paths()
-            except RuntimeError as exc:
-                return False, str(exc)
-            except Exception as exc:
-                # Never raise: a broken engine must still render in the
-                # picker. This path is rare, so log it with a traceback
-                # (the same shape as the cache lookup) and stay
-                # unavailable.
-                logger.debug("GGUF availability probe failed", exc_info=True)
-                return False, f"{type(exc).__name__}: {exc}"
-            return True, "ready"
+            return cls._binary_status()
 
         @property
         def sample_rate(self) -> int:
@@ -636,12 +653,13 @@ def _make_backend_class():
                 return None
             return self._quant_override
 
-        def _resolve_quant_paths(self) -> tuple[Path, Path, dict]:
-            """Return the installed base+tokenizer paths for this engine.
+        def _resolve_quant_paths(self, *, download: bool = True) -> tuple[Path, Path, dict]:
+            """Return the base+tokenizer paths for this engine.
 
-            Never downloads: the engine loads only what the user already
-            installed, at the pinned revision. This is the single
-            decision path behind both readiness and generation:
+            An installed pair at the pinned revision always wins, so an
+            existing installation is never re-downloaded. Only when no
+            usable pair is cached — and ``download`` is true — is the
+            selected pair fetched from Hugging Face (first generate):
 
             * an explicit quant override is strict — only that exact
               pair counts, and a missing one is reported instead of
@@ -653,7 +671,7 @@ def _make_backend_class():
               so an existing installation is never re-downloaded.
 
             Raises ``RuntimeError`` with the pinned install command when
-            no usable pair is present.
+            no usable pair is present and it cannot be downloaded.
             """
             q = self._ensure_quant_map()
             revision = q["_meta"]["source_commit_sha"]
@@ -680,9 +698,22 @@ def _make_backend_class():
                 revision=revision,
                 allow_fallback=allow_fallback,
             )
-            if pair is None:
+            if pair is not None:
+                return pair[0], pair[1], pair[2]
+            if not download:
                 raise RuntimeError(_weights_missing_reason(entry, revision))
-            return pair[0], pair[1], pair[2]
+            try:
+                from huggingface_hub import hf_hub_download
+
+                base_path = Path(hf_hub_download(
+                    repo_id=_HF_REPO_ID, filename=entry["base"], revision=revision,
+                ))
+                tok_path = Path(hf_hub_download(
+                    repo_id=_HF_REPO_ID, filename=entry["tokenizer"], revision=revision,
+                ))
+            except Exception as exc:
+                raise RuntimeError(_weights_missing_reason(entry, revision, exc)) from exc
+            return base_path, tok_path, entry
 
         @classmethod
         def probe_load(cls, *, quant: str | None = None, timeout: float = 5.0) -> None:
@@ -712,6 +743,9 @@ def _make_backend_class():
                     timeout=timeout,
                     check=False,
                     env=_spawn_env(),
+                    # ggml's dynamic backend loader also scans the working
+                    # directory; pin it to the verified bin/ directory.
+                    cwd=str(bin_path.parent),
                 )
             except FileNotFoundError:
                 raise
@@ -922,6 +956,8 @@ def _make_backend_class():
                     timeout=timeout_s,
                     check=False,
                     env=_spawn_env(),
+                    # See probe_load: keep ggml's backend scan inside bin/.
+                    cwd=str(_binary_path().parent),
                 )
             except subprocess.TimeoutExpired as exc:
                 raise RuntimeError(
@@ -1002,7 +1038,6 @@ def select_default_engine() -> str:
 
     Returns ``"omnivoice-gguf"`` when:
         * the binary is present, checksum matches, not Gatekeeper-quarantined
-        * a usable weight pair is installed in the local cache
         * ``probe_load`` succeeds (binary actually executes)
 
     Returns ``"omnivoice"`` (the existing in-process default) on any

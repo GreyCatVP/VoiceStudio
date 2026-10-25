@@ -1,14 +1,14 @@
-"""The GGUF engine resolves weights from the local cache only (#3042).
+"""The GGUF engine prefers installed weights and fetches only what is missing (#3042).
 
 Two halves of one contract: a host that already installed a complete
 pair keeps using it (the engine never fetches a second quant because the
-conservative automatic tier changed), and a host that installed nothing
-is told exactly how to install the pinned pair instead of being
-advertised as ready.
+conservative automatic tier changed), and a fresh host still works on
+first run — the selected pair is downloaded at the pinned revision on
+first generate, and readiness does not wait for it.
 
-Every test runs against an empty cache with the download entry points
-replaced by a tripwire, so a regression that reaches for the network
-fails here rather than in a user's face.
+The baseline cache fixture replaces the download entry points with a
+tripwire, so any test that does not opt into a download fails loudly if
+the engine reaches for the network.
 """
 from __future__ import annotations
 
@@ -29,29 +29,41 @@ from gguf_cache_fixtures import (
 __all__ = ["gguf_binary", "gguf_cache", "gguf_engine"]
 
 
-def test_published_install_command_matches_the_pinned_pair():
-    """The install command the user is told to run names the pinned pair."""
-    from services.tts_backend import _INSTALL_HINTS
+@pytest.fixture
+def downloads(monkeypatch, gguf_cache):
+    """Record first-use downloads and serve them from the test cache."""
+    import huggingface_hub
 
-    hint = _INSTALL_HINTS["omnivoice-gguf"]
+    calls = []
+
+    def _download(*, repo_id, filename, revision):
+        calls.append((repo_id, filename, revision))
+        path = gguf_cache / "downloaded" / filename
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"gguf-weights")
+        return str(path)
+
+    monkeypatch.setattr(huggingface_hub, "hf_hub_download", _download)
+    return calls
+
+
+def test_offline_install_command_matches_the_pinned_pair():
+    """The pre-install command in the guide names the pinned pair and cache."""
     doc = (REPO / "docs" / "engines" / "omnivoice-gguf.md").read_text(encoding="utf-8")
-    for text in (hint, doc):
-        assert "hf download" in text
-        assert REVISION in text
-        for name in CPU_PAIR:
-            assert name in text
-
-
-def test_published_install_command_targets_the_app_cache():
-    """The download must land in the app's cache, so the steps say so."""
-    from services.tts_backend import _INSTALL_HINTS
-
-    hint = _INSTALL_HINTS["omnivoice-gguf"]
-    doc = (REPO / "docs" / "engines" / "omnivoice-gguf.md").read_text(encoding="utf-8")
-    for text in (hint, doc):
-        assert "--cache-dir" in text
+    assert "hf download" in doc
+    assert REVISION in doc
+    for name in CPU_PAIR:
+        assert name in doc
+    assert "--cache-dir" in doc
     # The Windows default the app redirects to, spelled out for PowerShell.
     assert r"$env:LOCALAPPDATA\OmniVoice\hf_cache" in doc
+
+
+def test_install_hint_does_not_duplicate_the_pin():
+    """The revision lives in quant_map.json only; a copied pin would drift."""
+    from services.tts_backend import _INSTALL_HINTS
+
+    assert REVISION not in _INSTALL_HINTS["omnivoice-gguf"]
 
 
 def test_installed_pair_is_reused_without_a_second_download(
@@ -68,23 +80,45 @@ def test_installed_pair_is_reused_without_a_second_download(
     assert ok is True, reason
 
 
-def test_missing_weights_are_unavailable_with_an_install_command(
+def test_fresh_install_is_ready_before_its_weights_arrive(
     gguf_cache, gguf_binary, gguf_engine
 ):
-    """Nothing installed: unavailable, and the reason carries the pinned command."""
+    """Readiness is the runtime's: a fresh host is not reported unavailable."""
     ok, reason = gguf_engine.OmniVoiceGGUFBackend.is_available()
-    assert ok is False
+    assert ok is True, reason
+
+
+def test_first_generate_downloads_the_selected_pair_at_the_pin(
+    gguf_cache, gguf_binary, gguf_engine, downloads
+):
+    """Nothing installed: the selected pair is fetched at the pinned revision."""
+    base, tokenizer, entry = gguf_engine.OmniVoiceGGUFBackend()._resolve_quant_paths()
+    assert (base.name, tokenizer.name) == CPU_PAIR
+    assert entry["base"] == CPU_PAIR[0]
+    assert downloads == [
+        ("Serveurperso/OmniVoice-GGUF", CPU_PAIR[0], REVISION),
+        ("Serveurperso/OmniVoice-GGUF", CPU_PAIR[1], REVISION),
+    ]
+
+
+def test_failed_download_names_the_offline_install_command(
+    gguf_cache, gguf_binary, gguf_engine
+):
+    """An unreachable hub is reported with the pinned pre-install command."""
+    with pytest.raises(RuntimeError) as excinfo:
+        gguf_engine.OmniVoiceGGUFBackend()._resolve_quant_paths()
+    reason = str(excinfo.value)
     assert "hf download" in reason
     assert REVISION in reason
     for name in CPU_PAIR:
         assert name in reason
 
 
-def test_partial_pair_is_not_installed(gguf_cache, gguf_binary, gguf_engine):
-    """Base without tokenizer is not an installation."""
+def test_partial_pair_is_not_installed(gguf_cache, gguf_binary, gguf_engine, downloads):
+    """Base without tokenizer is not an installation: the pair is fetched."""
     install_pair(gguf_cache, [CPU_PAIR[0]])
-    ok, _reason = gguf_engine.OmniVoiceGGUFBackend.is_available()
-    assert ok is False
+    gguf_engine.OmniVoiceGGUFBackend()._resolve_quant_paths()
+    assert [call[1] for call in downloads] == list(CPU_PAIR)
 
 
 def test_pair_at_another_revision_is_not_installed(
@@ -92,8 +126,8 @@ def test_pair_at_another_revision_is_not_installed(
 ):
     """The pin is exact: a pair cached at another revision does not count."""
     install_pair(gguf_cache, CPU_PAIR, revision="0" * 40)
-    ok, _reason = gguf_engine.OmniVoiceGGUFBackend.is_available()
-    assert ok is False
+    with pytest.raises(RuntimeError):
+        gguf_engine.OmniVoiceGGUFBackend()._resolve_quant_paths(download=False)
 
 
 def test_preferred_installed_quant_wins(gguf_cache, gguf_binary, gguf_engine):
@@ -105,25 +139,25 @@ def test_preferred_installed_quant_wins(gguf_cache, gguf_binary, gguf_engine):
 
 
 def test_override_only_f32_is_never_auto_selected(
-    gguf_cache, gguf_binary, gguf_engine
+    gguf_cache, gguf_binary, gguf_engine, downloads
 ):
-    """F32 needs an explicit override: the automatic fallback must skip it."""
+    """F32 needs an explicit override: the automatic path fetches the CPU pair."""
     f32 = QUANT_MAP["_extras"]["f32"]
     install_pair(gguf_cache, (f32["base"], f32["tokenizer"]))
-    ok, _reason = gguf_engine.OmniVoiceGGUFBackend.is_available()
-    assert ok is False
+    base, _tokenizer, _entry = gguf_engine.OmniVoiceGGUFBackend()._resolve_quant_paths()
+    assert base.name == CPU_PAIR[0]
 
 
 def test_explicit_override_does_not_fall_back_to_another_quant(
-    gguf_cache, gguf_binary, gguf_engine
+    gguf_cache, gguf_binary, gguf_engine, downloads
 ):
-    """An explicit override is honoured exactly or not at all."""
+    """An explicit override is honoured exactly: its own pair is fetched."""
     install_pair(gguf_cache, CPU_PAIR)
     f32 = QUANT_MAP["_extras"]["f32"]
     engine = gguf_engine.OmniVoiceGGUFBackend(quant_override=f32["base"])
-    with pytest.raises(RuntimeError) as excinfo:
-        engine._resolve_quant_paths()
-    assert "hf download" in str(excinfo.value)
+    base, _tokenizer, _entry = engine._resolve_quant_paths()
+    assert base.name == f32["base"]
+    assert [call[1] for call in downloads] == [f32["base"], f32["tokenizer"]]
 
 
 def test_explicit_override_uses_its_installed_pair(
@@ -136,15 +170,6 @@ def test_explicit_override_uses_its_installed_pair(
     base, tokenizer, _entry = engine._resolve_quant_paths()
     assert base.name == f32["base"]
     assert tokenizer.name == f32["tokenizer"]
-
-
-def test_generation_reports_missing_weights_instead_of_downloading(
-    gguf_cache, gguf_binary, gguf_engine
-):
-    """Generation never reaches the network: it reports the missing pair."""
-    with pytest.raises(RuntimeError) as excinfo:
-        gguf_engine.OmniVoiceGGUFBackend().generate("hello")
-    assert "hf download" in str(excinfo.value)
 
 
 def test_explicit_cpu_choice_keeps_the_cpu_tier(
@@ -178,14 +203,14 @@ def test_unusable_cache_entries_are_not_installed(
             marker = gguf_cache / REPO_DIR / ".no_exist" / REVISION
             marker.mkdir(parents=True, exist_ok=True)
             (marker / name).write_text("", encoding="utf-8")
-    ok, _reason = gguf_engine.OmniVoiceGGUFBackend.is_available()
-    assert ok is False
+    with pytest.raises(RuntimeError):
+        gguf_engine.OmniVoiceGGUFBackend()._resolve_quant_paths(download=False)
 
 
-def test_resolving_weights_writes_nothing_to_the_cache(
+def test_resolving_installed_weights_writes_nothing_to_the_cache(
     gguf_cache, gguf_binary, gguf_engine
 ):
-    """Resolution is a read: it creates no cache entries of its own."""
+    """Resolving an installed pair is a read: it creates no cache entries."""
     install_pair(gguf_cache, CPU_PAIR)
     before = sorted(p.relative_to(gguf_cache).as_posix() for p in gguf_cache.rglob("*"))
     gguf_engine.OmniVoiceGGUFBackend()._resolve_quant_paths()

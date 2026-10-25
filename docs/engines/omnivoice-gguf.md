@@ -41,18 +41,20 @@ Which quant is actually loaded depends on what is installed:
   tier's quant policy, so a larger cached quant is never used in its place;
 - only when the selected pair is absent, and the selection is not an explicit
   CPU choice, does the smallest complete cached automatic pair (Q8_0, then
-  BF16) stand in. Readiness and generation never download a replacement, and
-  an installed quant is never rewritten.
+  BF16) stand in, so an existing installation is never re-downloaded, and an
+  installed quant is never rewritten.
 
 ## Weights
 
-The engine never downloads weights. It loads the pinned base+tokenizer pair
-from your local HuggingFace cache, and reports itself as *Unavailable* when
-that pair is missing. The Model Catalogue then shows a generic "not installed
-yet" line and a link to this guide — the pinned command lives here, not in the
-catalogue row.
+An installed base+tokenizer pair at the pinned revision is always used from
+your local HuggingFace cache. When no usable pair is installed, the first
+generate downloads the selected pair from Hugging Face at that pinned
+revision, the same way every other engine fetches its model.
 
-Install the default (Q4_K_M) pair once:
+### Pre-installing on an offline host
+
+On a machine that cannot reach Hugging Face from the app, install the
+default (Q4_K_M) pair once by hand:
 
 ```bash
 hf download Serveurperso/OmniVoice-GGUF \
@@ -115,12 +117,10 @@ native binary yet, so on an installed app the engine shows *Unavailable* in
 Model Catalogue ([#2780](https://github.com/debpalash/VoiceStudio/issues/2780)).
 Use the default in-process OmniVoice engine, which is the same model, or run
 from a source checkout and build the binary for your platform (below). Once
-`bin/omnivoice-tts-<platform>` exists, install the weights (see
-[Weights](#weights)) and select the engine via **Model Catalogue** (TTS tab →
-**Use**) or `OMNIVOICE_TTS_BACKEND=omnivoice-gguf`. Both the runtime binary
-and the weight pair must be present before the engine reports itself as
-available — a missing pair is reported as "not installed yet", with a link to
-this guide, not with a download that starts behind your back.
+`bin/omnivoice-tts-<platform>` exists, select the engine via **Model
+Catalogue** (TTS tab → **Use**) or `OMNIVOICE_TTS_BACKEND=omnivoice-gguf`.
+The first generate downloads the weights if they are not installed yet (see
+[Weights](#weights)).
 
 **Source checkouts:** the repo ships zero-byte placeholders in `bin/` — real
 binaries come from CI (`build-omnivoice-tts`) or a local build. The engine detects a placeholder and
@@ -174,10 +174,9 @@ explicit quant override remains authoritative in either case.
 
 Before reporting ready, the engine:
 
-- verifies the binary against the SHA-256 manifest (`bin/checksums.sha256`);
-- confirms the pinned base+tokenizer pair is present in the local cache (both
-  files, at the pinned revision) — a half-installed pair does not count, and
-  the engine never downloads weights;
+- verifies the binary, and every ggml shared library listed next to it,
+  against the SHA-256 manifest (`bin/checksums.sha256`), and runs the binary
+  with `bin/` as its working directory so no other library can be loaded;
 - detects macOS Gatekeeper quarantine and prints the exact
   `xattr -cr '/Applications/VoiceStudio.app'` fix;
 - restores a missing execute bit (a git clone or zip extract on POSIX can

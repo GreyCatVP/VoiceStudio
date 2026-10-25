@@ -316,7 +316,7 @@ def test_build_script_copies_shared_libs_on_every_platform_branch():
                       if platform in names.split("|"))
         copies = list(
             re.finditer(
-                r'cp -v build/(?:Release/)?omnivoice-tts(?:\.exe)? "\$BIN_DIR',
+                r'cp -v (?:build/omnivoice-tts|"\$exe") "\$BIN_DIR',
                 branch,
             )
         )
@@ -342,3 +342,25 @@ def test_ci_artifact_upload_includes_the_shared_libs():
     wf = (REPO / ".github/workflows/build-omnivoice-tts.yml").read_text()
     assert "bin/libggml*" in wf
     assert "bin/ggml*.dll" in wf
+
+
+def test_windows_build_finds_the_exe_for_either_generator():
+    # Visual Studio writes build/Release/omnivoice-tts.exe; Ninja and
+    # Makefiles write build/omnivoice-tts.exe. Copying only the first path
+    # failed every Ninja build at the copy step (#3042).
+    script = (REPO / "scripts" / "build-omnivoice-tts.sh").read_text(encoding="utf-8")
+    finder = script.split("built_windows_exe() {", 1)[1].split("\n}", 1)[0]
+    assert "build/Release/omnivoice-tts.exe" in finder
+    assert "build/omnivoice-tts.exe" in finder
+    assert 'exe="$(built_windows_exe)"' in script
+
+
+def test_manifest_covers_every_copied_library():
+    # The runtime loads the copied ggml libraries at spawn time, so each one
+    # gets a checksum next to the executable's (#3042).
+    script = (REPO / "scripts" / "build-omnivoice-tts.sh").read_text(encoding="utf-8")
+    copier = script.split("copy_shared_libs() {", 1)[1].split("\n}", 1)[0]
+    assert copier.count('>> "$COPIED_LIBS"') == 2
+    manifest_step = script.split('MANIFEST="$BIN_DIR/checksums.sha256"', 1)[1]
+    assert '"$COPIED_LIBS"' in manifest_step
+    assert 'sha256_of "$name"' in manifest_step

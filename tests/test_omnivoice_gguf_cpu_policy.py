@@ -37,8 +37,9 @@ def test_explicit_cpu_requires_the_cpu_quant(
     choose_cpu(monkeypatch, source)
     install_pair(gguf_cache, cached_pair)
 
-    ok, reason = gguf_engine.OmniVoiceGGUFBackend.is_available()
-    assert ok is False, reason
+    with pytest.raises(RuntimeError) as excinfo:
+        gguf_engine.OmniVoiceGGUFBackend()._resolve_quant_paths(download=False)
+    reason = str(excinfo.value)
     for name in CPU_PAIR:
         assert name in reason
     assert REVISION in reason
@@ -48,7 +49,8 @@ def test_explicit_cpu_requires_the_cpu_quant(
 def test_explicit_cpu_generation_reports_the_missing_cpu_quant(
     gguf_cache, gguf_binary, gguf_engine, monkeypatch, source
 ):
-    """Generation refuses to substitute the larger cached quant."""
+    """Generation fetches the CPU quant rather than substituting the larger
+    cached one; when that fetch fails it reports the CPU pair to install."""
     choose_cpu(monkeypatch, source)
     install_pair(gguf_cache, BF16_PAIR)
 
