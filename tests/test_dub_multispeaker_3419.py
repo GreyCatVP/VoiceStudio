@@ -187,3 +187,35 @@ def test_heuristic_labels_still_get_no_short_turn_clone(tmp_path):
     vocals, segments = _exchange(tmp_path)
     assert extract_speaker_clones(vocals, segments, str(tmp_path / "refs"),
                                   labels_source="heuristic") == {}
+
+
+# ── A trimmed reference never names words whose audio was cut ───────────────
+
+def _with_reply_words(segments):
+    for seg in segments:
+        if seg["speaker_id"] == "Speaker 2":
+            t = seg["start"]
+            seg["words"] = [  # "Good," sits in the trimmed guard next to Speaker 1
+                {"text": "Good,", "start": t, "end": t + 0.15},
+                {"text": "and", "start": t + 0.25, "end": t + 0.5},
+                {"text": "you?", "start": t + 0.5, "end": t + 1.2},
+            ]
+    return segments
+
+
+def test_trimmed_reference_text_keeps_only_words_inside_the_slice(tmp_path):
+    vocals, segments = _exchange(tmp_path)
+    clones = extract_speaker_clones(vocals, _with_reply_words(segments),
+                                    str(tmp_path / "refs"), labels_source="pyannote")
+    assert clones["Speaker 2"]["ref_text"] == " ".join(["and you?"] * 4)
+    # Untrimmed long lines keep their full text.
+    assert clones["Speaker 1"]["ref_text"].startswith("long line")
+
+
+def test_trimmed_reference_without_word_timestamps_has_empty_text(tmp_path):
+    # Unknown transcript -> empty, so the engine transcribes the clip itself
+    # instead of trusting text that names cut words.
+    vocals, segments = _exchange(tmp_path)
+    clones = extract_speaker_clones(vocals, segments, str(tmp_path / "refs"),
+                                    labels_source="pyannote")
+    assert clones["Speaker 2"]["ref_text"] == ""

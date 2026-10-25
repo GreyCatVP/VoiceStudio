@@ -159,7 +159,12 @@ def extract_speaker_clones(
                 raise
             continue
 
-        ref_text = " ".join((seg.get("text") or "").strip() for _, seg in chosen).strip()
+        if any(seg.get("text") is None for _, seg in chosen):
+            # A trimmed slice without word timestamps: its transcript is
+            # unknown, so leave it empty for the engine to transcribe (#3419).
+            ref_text = ""
+        else:
+            ref_text = " ".join((seg.get("text") or "").strip() for _, seg in chosen).strip()
         out[speaker_id] = {
             "ref_audio": ref_path,
             "ref_text": ref_text,
@@ -419,6 +424,26 @@ def _guarded_span(
     return (start, end) if end > start else None
 
 
+def _text_within(seg: dict, span: tuple[float, float]) -> str | None:
+    """The words of ``seg`` whose timestamps lie inside the kept ``span``.
+
+    A trimmed slice must not carry words whose audio was cut: a reference
+    transcript naming unheard words makes the clone speak them. Returns None
+    when the segment has no word timestamps, so the caller leaves ref_text
+    empty and the engine transcribes the clip itself.
+    """
+    words = seg.get("words") or []
+    timed = [w for w in words if isinstance(w, dict)
+             and isinstance(w.get("start"), (int, float))
+             and isinstance(w.get("end"), (int, float))]
+    if not timed or len(timed) != len(words):
+        return None
+    eps = 1e-6
+    kept = [str(w.get("text", w.get("word", ""))).strip() for w in timed
+            if w["start"] >= span[0] - eps and w["end"] <= span[1] + eps]
+    return " ".join(t for t in kept if t)
+
+
 def _pick_short_turn_slices(
     items: list[tuple[int, dict]],
     *,
@@ -435,7 +460,12 @@ def _pick_short_turn_slices(
     for idx, seg in items:
         span = _guarded_span(seg, speaker_id, all_segments)
         if span and span[1] - span[0] >= FALLBACK_MIN_SLICE_S:
-            candidates.append((idx, {**seg, "start": span[0], "end": span[1]}))
+            trimmed = {**seg, "start": span[0], "end": span[1]}
+            if span != (float(seg.get("start", 0.0)), float(seg.get("end", 0.0))):
+                trimmed["text"] = _text_within(seg, span)
+                if trimmed["text"] == "":
+                    continue  # no whole word survives the trim
+            candidates.append((idx, trimmed))
     candidates.sort(key=lambda pair: -(pair[1]["end"] - pair[1]["start"]))
     picked: list[tuple[int, dict]] = []
     total = 0.0
