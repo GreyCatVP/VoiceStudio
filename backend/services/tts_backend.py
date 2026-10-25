@@ -2228,6 +2228,9 @@ class KittenTTSBackend(TTSBackend):
     # KittenTTS ships as an ONNX CPU graph; no CUDA/MPS path today.
     gpu_compat = ("cpu",)
     supports_cloning = False  # fixed preset voices only; ref_audio is ignored
+    # instruct is ignored too, so a Voice Design take would always be the same
+    # preset voice whatever the details or seed (#3413).
+    supports_voice_design = False
 
     PRESET_VOICES = [
         "expr-voice-2-m", "expr-voice-2-f",
@@ -2598,6 +2601,8 @@ class MLXAudioBackend(TTSBackend):
     # mlx is Apple-Silicon-only; CPU is the practical fallback when the
     # mlx framework is installed but the user lacks an Apple GPU.
     gpu_compat = ("mps", "cpu")
+    # generate() seeds mlx's RNG from the request's seed.
+    supports_generation_seed = True
 
     # A curated subset surfaced by default — the full mlx-audio roster is
     # larger but these cover the useful tiers: small multilingual (Kokoro),
@@ -2861,6 +2866,14 @@ class MLXAudioBackend(TTSBackend):
                         kwargs["lang_code"] = mapped_language
                 elif code is not None:
                     kwargs["lang_code"] = code
+
+        # mlx samples from its own RNG, which torch.manual_seed never touches,
+        # so a new seed would otherwise give the same take (#3413).
+        seed = kw.get("seed")
+        if seed is not None:
+            import mlx.core as mx
+
+            mx.random.seed(int(seed))
 
         # Filter only keywords the signature proves unsupported. A TypeError
         # from generation (including iterator consumption) is a model failure,
@@ -3285,6 +3298,7 @@ class SherpaOnnxBackend(TTSBackend):
     # baseline; CUDA provider is available on Linux/Windows installs.
     gpu_compat = ("cuda", "cpu")
     supports_cloning = False  # VITS speaker-id only; no ref_audio support
+    supports_voice_design = False  # speaker ids only; instruct is never read (#3413)
 
     def __init__(self):
         self._tts = None

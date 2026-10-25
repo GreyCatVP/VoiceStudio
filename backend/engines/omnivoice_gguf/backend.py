@@ -384,6 +384,9 @@ def _make_backend_class():
         instruct_vocabulary = "tags"
         gpu_compat = ("cuda", "mps", "cpu")
         supports_voice_design = False
+        # The seed reaches the binary as --seed; the parent's torch RNG never
+        # does, so /generate must forward it (#3413).
+        supports_generation_seed = True
         # Every generate() spawns the external binary — allocations live in
         # that process, invisible to parent-side accelerator counters.
         runs_out_of_process = True

@@ -148,12 +148,14 @@ this as `instruct_vocabulary`: `"tags"` for the OmniVoice family,
 `"freeform"` for everything else.
 
 IndexTTS2, MOSS-TTS v1.5, MOSS-TTS-Nano, dots.tts, Confucius4, GPT-SoVITS,
-Supertonic-3 and OmniVoice GGUF take their timbre from a reference clip or a
-preset voice, so they can't design one. With one of them selected, the Design
+Supertonic-3, OmniVoice GGUF, PocketTTS, KittenTTS and Sherpa-ONNX take their
+timbre from a reference clip or a preset voice and never read a description,
+so they can't design one. With one of them selected, the Design
 workspace says so and links to the engine settings, and `/generate` answers a
 design request (an `instruct`, a Voice Design recipe or a design voice with no
 saved sample) with a 422. Cloning a saved design voice's sample still works on
-them. The engine catalogue reports this as `supports_voice_design`: `false`
+them. On a preset-voice engine, the Home composer leaves out any style
+instruction, which those engines can't read, so the preset take still runs. The engine catalogue reports this as `supports_voice_design`: `false`
 for these engines, `true` for engines that design, and `null` when an engine
 doesn't declare it.
 
@@ -168,6 +170,11 @@ and you can save them as a new voice. Through the API, a `/generate` request
 whose `instruct` or `seed` differs from the design profile's designs from the
 request instead of cloning the saved sample, and the take is not filed under
 that profile.
+
+The seed reaches every engine that designs, so a new seed gives a new take.
+Engines with their own random generator (VoxCPM2, CosyVoice, audio.cpp,
+MLX-Audio and the OmniVoice sidecar, plus OmniVoice GGUF for cloning) receive
+it with each request.
 
 Reopening a take restores the description, picks and details it was made with;
 they are kept with the take in your local history. Takes made before this was

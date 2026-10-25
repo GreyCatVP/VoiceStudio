@@ -32,6 +32,7 @@ const engine = vi.hoisted(() => ({
   vocabulary: undefined as 'tags' | 'freeform' | undefined,
   design: undefined as boolean | null | undefined,
   cloning: undefined as boolean | null | undefined,
+  presets: undefined as string[] | undefined,
 }));
 vi.mock('./use-engines', () => ({
   useEngines: () => ({
@@ -39,6 +40,7 @@ vi.mock('./use-engines', () => ({
       instruct_vocabulary: engine.vocabulary,
       supports_voice_design: engine.design,
       supports_cloning: engine.cloning,
+      preset_voices: engine.presets,
     },
   }),
 }));
@@ -393,5 +395,34 @@ it.each([
     }
     engine.design = undefined;
     engine.cloning = undefined;
+  },
+);
+
+it.each([
+  [false, ''],
+  [null, 'calm'],
+] as const)(
+  'a preset-only engine generates without a clip or profile (supports_voice_design=%s)',
+  async (design, sent) => {
+    Object.assign(engine, { design, cloning: false, presets: ['expr-voice-2-f'], vocabulary: 'freeform' });
+    patchCloneSettings({ text: 'Preset script', instruct: 'calm', selectedProfileId: null, autoPlay: false });
+    vi.mocked(generateClone).mockReset().mockRejectedValue(new Error('stop'));
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <GenerationProvider>
+          <Consumer name="preset" />
+        </GenerationProvider>
+      </QueryClientProvider>,
+    );
+    fireEvent.click(screen.getByText('preset:idle'));
+    // The instruct is a design request /generate refuses on an engine that
+    // can't design; it never reaches a preset voice anyway (#3413).
+    await waitFor(() =>
+      expect(generateClone).toHaveBeenCalledWith(
+        expect.objectContaining({ text: 'Preset script', instruct: sent, profileId: null, refAudio: null }),
+        expect.anything(),
+      ),
+    );
+    Object.assign(engine, { design: undefined, cloning: undefined, presets: undefined, vocabulary: undefined });
   },
 );

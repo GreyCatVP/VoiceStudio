@@ -294,7 +294,8 @@ function useGenerateController(): UseGenerateClone {
             ) || !design.text.trim()
           : blocker ||
             !settings.text.trim() ||
-            (!settings.selectedProfileId && !reference.file?.size)
+            // A preset-only engine speaks its preset voice: no clip or profile.
+            (!presetOnly && !settings.selectedProfileId && !reference.file?.size)
       ) {
         if (blocker === 'reference') setWorkspace({ panel: 'voice' });
         return;
@@ -326,7 +327,12 @@ function useGenerateController(): UseGenerateClone {
       const controller = new AbortController();
       abortRef.current = controller;
       try {
-        const free = design?.instruct ?? settings.instruct;
+        // A preset-only engine that can't design never reads a style
+        // instruct, and /generate refuses one there as a design request: the
+        // preset voice take keeps working with a leftover instruct (#3413).
+        const free =
+          design?.instruct ??
+          (presetOnly && activeTts?.supports_voice_design === false ? '' : settings.instruct);
         // Only OmniVoice's closed tag set needs reducing; other engines read
         // the description natively and would lose whatever the sanitizer drops.
         const instruct = !free.trim()
