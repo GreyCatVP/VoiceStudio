@@ -145,11 +145,7 @@ export function BackendGate({ children, repairDock }: BackendGateProps) {
   const failed = RETRYABLE.has(status.stage);
   // One named cause and one primary action, instead of a raw error to decode.
   const cause = failed && !setup ? backendFailureCause(status.message) : null;
-  const pillState: BackendPillState = failed
-    ? 'failed'
-    : reachedReady
-      ? 'recovering'
-      : 'starting';
+  const pillState: BackendPillState = failed ? 'failed' : reachedReady ? 'recovering' : 'starting';
   const causeAction = cause ? BACKEND_CAUSE_ACTION[cause] : 'retry';
   const stageText =
     installing && status.setupPhase
