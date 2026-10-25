@@ -300,6 +300,7 @@ export function BackendGate({ children, repairDock }: BackendGateProps) {
               status={status}
               seconds={seconds}
               label={stageText}
+              cancelling={restarting}
               onCancel={retry}
             />
           ) : null}

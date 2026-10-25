@@ -153,8 +153,34 @@ it('lists install steps with the active package on the current step and the log 
   expect(screen.getByLabelText(i18n.t('backend.log_label'))).toHaveTextContent('Downloading torch');
   expect(screen.getAllByRole('button', { name: i18n.t('backend.details') })).toHaveLength(1);
 
-  fireEvent.click(screen.getByRole('button', { name: i18n.t('common.cancel') }));
-  await waitFor(() => expect(restart).toHaveBeenCalledTimes(1));
+  const cancel = screen.getByRole('button', { name: i18n.t('common.cancel') });
+  fireEvent.click(cancel);
+  await waitFor(() => expect(cancel).toBeDisabled());
+  fireEvent.click(cancel);
+  expect(restart).toHaveBeenCalledTimes(1);
+});
+
+it('keeps the download bar live when a new download follows a prepared batch', () => {
+  backendStatus.stage = 'installing';
+  backendStatus.setupPhase = 'installing_deps';
+  backendStatus.setupProgress = {
+    preparedPackages: 120,
+    completedDownloads: 3,
+    downloadedBytes: 1024 ** 3,
+    totalBytes: 2 * 1024 ** 3,
+    downloadsComplete: false,
+    activePackage: 'torch',
+  };
+
+  render(
+    <BackendGate>
+      <div>workspace</div>
+    </BackendGate>,
+  );
+
+  expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '50');
+  expect(screen.getByText('torch')).toBeInTheDocument();
+  expect(screen.queryByText(i18n.t('bootstrap.downloads_complete'))).not.toBeInTheDocument();
 });
 
 // #2430 — a live-but-busy backend is not a failure.

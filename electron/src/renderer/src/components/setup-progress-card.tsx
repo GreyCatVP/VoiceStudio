@@ -13,6 +13,7 @@ interface SetupProgressCardProps {
   status: BackendStatus;
   seconds: number;
   label: string;
+  cancelling: boolean;
   onCancel: () => void;
 }
 
@@ -35,16 +36,21 @@ function settledLabel(label: string): string {
 }
 
 /** The first-run runtime install: one download bar, a step checklist and the raw log on demand. */
-export function SetupProgressCard({ status, seconds, label, onCancel }: SetupProgressCardProps) {
+export function SetupProgressCard({
+  status,
+  seconds,
+  label,
+  cancelling,
+  onCancel,
+}: SetupProgressCardProps) {
   const { t } = useTranslation();
   const [logOpen, setLogOpen] = useState(false);
   const phaseIndex = status.setupPhase ? SETUP_PHASES.indexOf(status.setupPhase) : 0;
   const installingDeps = status.setupPhase === 'installing_deps';
   const progress = installingDeps ? status.setupProgress : undefined;
   const downloadedBytes = progress?.downloadedBytes ?? 0;
-  const downloadsComplete = Boolean(
-    progress?.downloadsComplete || progress?.preparedPackages || progress?.installedPackages,
-  );
+  // Main clears this when a later download starts, even after a "Prepared" count.
+  const downloadsComplete = Boolean(progress?.downloadsComplete);
   const downloadPercent = progress?.totalBytes
     ? downloadsComplete
       ? 100
@@ -174,7 +180,7 @@ export function SetupProgressCard({ status, seconds, label, onCancel }: SetupPro
           <span className="ml-auto font-mono text-xs tabular-nums text-muted-foreground">
             {t('backend.elapsed', { seconds })}
           </span>
-          <Button size="sm" variant="ghost" onClick={onCancel}>
+          <Button size="sm" variant="ghost" disabled={cancelling} onClick={onCancel}>
             {t('common.cancel')}
           </Button>
         </div>
