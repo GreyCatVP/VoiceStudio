@@ -26,6 +26,7 @@ import {
   type DesignDraft,
 } from './design-draft';
 import { useDescription } from './use-description';
+import { useFollowLatestTake } from './use-follow-latest-take';
 import { useProfiles } from '@/hooks/use-profiles';
 import { useEngines } from '@/hooks/use-engines';
 import { AudioPreviewButton } from '@/components/audio-preview-button';
@@ -67,6 +68,7 @@ import { pickDesignSeed } from '@shared/utils/seed';
 export function DesignPage() {
   const { t } = useTranslation();
   const selectedTake = useSelectedTake();
+  useFollowLatestTake();
   const [draft, setDraft] = useState(readDraft);
   const [name, setName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);

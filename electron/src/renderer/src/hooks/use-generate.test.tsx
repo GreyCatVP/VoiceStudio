@@ -190,7 +190,13 @@ describe('shared generation lifecycle', () => {
 });
 
 it('design generation ignores a selected clone profile and sends its own script and seed', async () => {
-  patchCloneSettings({ text: 'Clone script', selectedProfileId: 'clone-profile', autoPlay: false });
+  // The composer's language, not a saved voice's or an opened take's, drives the take.
+  patchCloneSettings({
+    text: 'Clone script',
+    selectedProfileId: 'clone-profile',
+    autoPlay: false,
+    language: 'English',
+  });
   vi.mocked(generateClone).mockClear().mockRejectedValueOnce(new Error('stop after request'));
   function DesignConsumer() {
     const state = useGenerateClone();
@@ -220,6 +226,7 @@ it('design generation ignores a selected clone profile and sends its own script 
     expect.objectContaining({
       text: 'Design script',
       seed: 42,
+      language: 'English',
       profileId: null,
       refAudio: null,
       refText: undefined,

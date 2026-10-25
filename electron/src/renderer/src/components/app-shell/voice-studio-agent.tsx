@@ -263,7 +263,11 @@ export function VoiceStudioAgent() {
         aria-label={t('repairAgent.title')}
         title={t('repairAgent.title')}
         onClick={() => setOpen(true)}
-        className="fixed right-3 top-1/2 z-40 size-11 -translate-y-1/2 rounded-full border border-sidebar-border bg-sidebar text-sidebar-foreground shadow-lg"
+        data-slot="agent-launcher"
+        // A slim tab in the window's edge gutter: a floating round button here
+        // covered whatever a right-hand pane showed at mid-height (take
+        // details, settings rows). It widens to the full button on hover/focus.
+        className="fixed right-0 top-1/2 z-40 h-12 w-2.5 -translate-y-1/2 justify-start overflow-hidden rounded-l-lg rounded-r-none border border-r-0 border-sidebar-border bg-sidebar px-0 text-sidebar-foreground opacity-80 shadow-lg transition-[width,opacity] duration-150 hover:w-10 hover:opacity-100 focus-visible:w-10 focus-visible:opacity-100 motion-reduce:transition-none [&>svg]:ml-2.5 [&>svg]:shrink-0"
       >
         <BotIcon />
         {running && <span className="absolute right-1 top-1 size-2 rounded-full bg-primary" />}

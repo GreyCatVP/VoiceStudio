@@ -234,3 +234,11 @@ it('keeps the newest CLI scan when an older one answers last', async () => {
   });
   expect(screen.getByRole('button', { name: 'Claude Code' })).toBeEnabled();
 });
+it('docks the closed launcher in the window edge instead of floating over pane content', () => {
+  render(<VoiceStudioAgent />);
+  const launcher = screen.getByRole('button', { name: 'repairAgent.title' });
+  // The round button at right-3 covered right-pane rows (a take's Style value).
+  expect(launcher.className).toMatch(/\bright-0\b/);
+  expect(launcher.className).toMatch(/(^|\s)w-2\.5(\s|$)/);
+  expect(launcher.className).not.toMatch(/\bright-3\b|\bsize-11\b/);
+});
