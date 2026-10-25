@@ -2998,6 +2998,7 @@
       "not_voicestudio": "Geen VoiceStudio-kloon gevonden in die map.",
       "read_only": "VoiceStudio kan niet naar die map schrijven. Kies een map van jezelf."
     },
+    "chooseFailed": "Die map kon niet worden gebruikt. Probeer het opnieuw of kies een andere.",
     "noneFound": "Installeer Codex, Claude Code, OpenCode of Pi voor lokale reparatie.",
     "ready": "Gereed",
     "placeholder": "Wat ging er mis? Voeg stappen, zichtbare fouten of verwacht gedrag toe.",

@@ -10,8 +10,6 @@ export type SourceCheckoutResult =
 
 // Files every VoiceStudio clone has had since the Electron migration.
 const MARKERS = ['backend/main.py', 'electron/package.json', 'package.json'];
-// How far up a picked subfolder (e.g. `electron/src`) we look for the repo root.
-const MAX_ASCENT = 8;
 
 const hasMarkers = (dir: string) => MARKERS.every((entry) => existsSync(join(dir, entry)));
 const isGitRoot = (dir: string) => existsSync(join(dir, '.git'));
@@ -41,13 +39,13 @@ function writable(dir: string): boolean {
 function ancestors(start: string): string[] {
   const out: string[] = [];
   let current = start;
-  for (let i = 0; i <= MAX_ASCENT; i += 1) {
+  // Up to the filesystem root: a pick can sit arbitrarily deep, e.g. in node_modules.
+  for (;;) {
     out.push(current);
     const parent = dirname(current);
-    if (parent === current) break;
+    if (parent === current) return out;
     current = parent;
   }
-  return out;
 }
 
 function childCheckouts(dir: string): string[] {
@@ -69,17 +67,19 @@ function childCheckouts(dir: string): string[] {
  */
 export function inspectSourceCheckout(picked: string): SourceCheckoutResult {
   const start = resolve(picked);
-  const gitRoot = ancestors(start).find(isGitRoot);
-  let root: string | undefined;
-  if (gitRoot && hasMarkers(gitRoot)) root = gitRoot;
-  else {
+  const chain = ancestors(start);
+  // The nearest enclosing clone wins, even past a nested repository such as
+  // a git dependency inside node_modules.
+  let root = chain.find((dir) => isGitRoot(dir) && hasMarkers(dir));
+  const gitRoot = chain.find(isGitRoot);
+  if (!root) {
     // The folder `git clone` ran in (it may itself sit inside another repo,
     // such as a dotfiles home): accept it only when the choice is unambiguous.
     const children = childCheckouts(start);
     if (children.length === 1) root = children[0];
   }
   if (!root) {
-    if (ancestors(start).some(isInstalledApp)) return { ok: false, reason: 'installed_app' };
+    if (chain.some(isInstalledApp)) return { ok: false, reason: 'installed_app' };
     if (gitRoot) return { ok: false, reason: 'not_voicestudio' };
     return { ok: false, reason: hasMarkers(start) ? 'not_git' : 'not_voicestudio' };
   }

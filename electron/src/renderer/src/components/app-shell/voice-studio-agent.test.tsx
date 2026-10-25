@@ -117,6 +117,22 @@ it('requires an attached checkout only for explicitly selected source repair', a
   );
 });
 
+it('shows a short selection error, not the raw filesystem error, when choosing fails', async () => {
+  const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+  await open();
+  fireEvent.click(screen.getByRole('button', { name: 'agentWorkspace.features' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'agentWorkspace.source' }));
+  const failure = new Error(
+    "Error invoking remote method 'repair:choose-workspace': Error: EACCES: permission denied, open '/x/repair-workspace.json'",
+  );
+  mocks.repair.chooseWorkspace.mockRejectedValue(failure);
+  fireEvent.click(screen.getByRole('button', { name: 'settings.models_dir_choose' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('repairAgent.chooseFailed');
+  expect(screen.queryByText(/EACCES/)).not.toBeInTheDocument();
+  expect(logged).toHaveBeenCalledWith(expect.any(String), failure);
+  logged.mockRestore();
+});
+
 it('explains why a picked source folder was rejected and how to get one', async () => {
   await open();
   fireEvent.click(screen.getByRole('button', { name: 'agentWorkspace.features' }));

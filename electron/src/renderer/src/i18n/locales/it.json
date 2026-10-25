@@ -3000,6 +3000,7 @@
       "not_voicestudio": "Nessun clone di VoiceStudio trovato in questa cartella.",
       "read_only": "VoiceStudio non può scrivere in questa cartella. Scegline una tua."
     },
+    "chooseFailed": "Impossibile usare questa cartella. Riprova o scegline un'altra.",
     "noneFound": "Installa Codex, Claude Code, OpenCode o Pi per usare la riparazione locale.",
     "ready": "Pronto",
     "placeholder": "Che cosa non ha funzionato? Aggiungi passaggi, errori visibili o comportamento previsto.",

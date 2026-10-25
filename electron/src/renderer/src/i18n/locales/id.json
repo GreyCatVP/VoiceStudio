@@ -2998,6 +2998,7 @@
       "not_voicestudio": "Tidak ada klon VoiceStudio di folder itu.",
       "read_only": "VoiceStudio tidak bisa menulis ke folder itu. Pilih folder milik Anda."
     },
+    "chooseFailed": "Folder itu tidak dapat digunakan. Coba lagi atau pilih folder lain.",
     "noneFound": "Pasang Codex, Claude Code, OpenCode, atau Pi untuk perbaikan lokal.",
     "ready": "Siap",
     "placeholder": "Apa yang salah? Tambahkan langkah, galat yang terlihat, atau perilaku yang diharapkan.",

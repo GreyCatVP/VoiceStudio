@@ -2998,6 +2998,7 @@
       "not_voicestudio": "このフォルダーに VoiceStudio のクローンが見つかりません。",
       "read_only": "VoiceStudio はこのフォルダーに書き込めません。自分のフォルダーを選んでください。"
     },
+    "chooseFailed": "このフォルダーを使用できませんでした。もう一度試すか、別のフォルダーを選んでください。",
     "noneFound": "ローカル修復を使うには Codex、Claude Code、OpenCode、または Pi をインストールしてください。",
     "ready": "準備完了",
     "placeholder": "何が起きましたか？手順、表示されたエラー、期待する動作を入力してください。",

@@ -3002,6 +3002,7 @@
       "not_voicestudio": "W tym folderze nie znaleziono klonu VoiceStudio.",
       "read_only": "VoiceStudio nie może zapisywać w tym folderze. Wybierz własny folder."
     },
+    "chooseFailed": "Nie można użyć tego folderu. Spróbuj ponownie lub wybierz inny.",
     "noneFound": "Zainstaluj Codex, Claude Code, OpenCode lub Pi, aby skorzystać z naprawy lokalnej.",
     "ready": "Gotowy",
     "placeholder": "Co poszło nie tak? Dodaj kroki, widoczne błędy lub oczekiwane działanie.",

@@ -2998,6 +2998,7 @@
       "not_voicestudio": "In diesem Ordner wurde kein VoiceStudio-Klon gefunden.",
       "read_only": "VoiceStudio kann in diesen Ordner nicht schreiben. Wählen Sie einen eigenen Ordner."
     },
+    "chooseFailed": "Dieser Ordner konnte nicht verwendet werden. Versuchen Sie es erneut oder wählen Sie einen anderen.",
     "noneFound": "Installieren Sie Codex, Claude Code, OpenCode oder Pi, um die lokale Reparatur zu verwenden.",
     "ready": "Bereit",
     "placeholder": "Was ist schiefgelaufen? Ergänze Schritte, sichtbare Fehler oder das erwartete Verhalten.",

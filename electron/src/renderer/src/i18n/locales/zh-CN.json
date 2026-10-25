@@ -2998,6 +2998,7 @@
       "not_voicestudio": "该文件夹中未找到 VoiceStudio 克隆。",
       "read_only": "VoiceStudio 无法写入该文件夹。请选择你自己的文件夹。"
     },
+    "chooseFailed": "无法使用该文件夹。请重试或选择其他文件夹。",
     "noneFound": "安装 Codex、Claude Code、OpenCode 或 Pi 以使用本地修复。",
     "ready": "就绪",
     "placeholder": "出了什么问题？请添加操作步骤、可见错误或预期行为。",

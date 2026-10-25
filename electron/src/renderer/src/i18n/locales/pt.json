@@ -3000,6 +3000,7 @@
       "not_voicestudio": "Nenhum clone do VoiceStudio encontrado nessa pasta.",
       "read_only": "O VoiceStudio não consegue gravar nessa pasta. Escolha uma pasta sua."
     },
+    "chooseFailed": "Não foi possível usar essa pasta. Tente de novo ou escolha outra.",
     "noneFound": "Instale Codex, Claude Code, OpenCode ou Pi para usar o reparo local.",
     "ready": "Pronto",
     "placeholder": "O que deu errado? Adicione etapas, erros visíveis ou o comportamento esperado.",

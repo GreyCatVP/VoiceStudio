@@ -241,7 +241,9 @@ export function VoiceStudioAgent() {
       setWorkspace({ available: state.workspaceAvailable, path: state.workspacePath ?? '' });
       setWorkspaceProblem(state.workspaceError ?? null);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      // The raw filesystem error stays in the logs; the user gets a next step.
+      console.error('[repair] choosing the source folder failed', reason);
+      setError(t('repairAgent.chooseFailed'));
     }
   }
   async function stop() {

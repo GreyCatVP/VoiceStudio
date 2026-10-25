@@ -2998,6 +2998,7 @@
       "not_voicestudio": "Ingen VoiceStudio-klon hittades i mappen.",
       "read_only": "VoiceStudio kan inte skriva till mappen. Välj en mapp du äger."
     },
+    "chooseFailed": "Mappen kunde inte användas. Försök igen eller välj en annan.",
     "noneFound": "Installera Codex, Claude Code, OpenCode eller Pi för att använda lokal reparation.",
     "ready": "Redo",
     "placeholder": "Vad gick fel? Lägg till steg, synliga fel eller förväntat beteende.",

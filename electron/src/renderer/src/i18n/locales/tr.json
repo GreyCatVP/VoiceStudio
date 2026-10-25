@@ -2998,6 +2998,7 @@
       "not_voicestudio": "Bu klasörde VoiceStudio kopyası bulunamadı.",
       "read_only": "VoiceStudio bu klasöre yazamıyor. Size ait bir klasör seçin."
     },
+    "chooseFailed": "Bu klasör kullanılamadı. Tekrar deneyin veya başka bir klasör seçin.",
     "noneFound": "Yerel onarım için Codex, Claude Code, OpenCode veya Pi yükleyin.",
     "ready": "Hazır",
     "placeholder": "Ne yanlış gitti? Adımları, görünen hataları veya beklenen davranışı ekleyin.",

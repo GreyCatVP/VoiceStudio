@@ -2998,6 +2998,7 @@
       "not_voicestudio": "此資料夾中找不到 VoiceStudio 複本。",
       "read_only": "VoiceStudio 無法寫入此資料夾。請選擇你自己的資料夾。"
     },
+    "chooseFailed": "無法使用此資料夾。請重試或選擇其他資料夾。",
     "noneFound": "安裝 Codex、Claude Code、OpenCode 或 Pi 以使用本機修復。",
     "ready": "就緒",
     "placeholder": "出了什麼問題？請加入操作步驟、可見錯誤或預期行為。",

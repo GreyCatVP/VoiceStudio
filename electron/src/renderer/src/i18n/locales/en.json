@@ -2998,6 +2998,7 @@
       "not_voicestudio": "No VoiceStudio clone found in that folder.",
       "read_only": "VoiceStudio can't write to that folder. Pick one you own."
     },
+    "chooseFailed": "Couldn't use that folder. Try again or pick another one.",
     "noneFound": "Install Codex, Claude Code, OpenCode, or Pi to use local repair.",
     "ready": "Ready",
     "placeholder": "What went wrong? Add steps, visible errors, or expected behavior.",

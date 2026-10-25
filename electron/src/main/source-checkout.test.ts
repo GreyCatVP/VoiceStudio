@@ -69,6 +69,16 @@ it('accepts a folder inside the clone and resolves the clone root', () => {
   expect(inspectSourceCheckout(join(root, 'electron', 'src', 'main'))).toEqual({ ok: true, root });
 });
 
+it('resolves the clone root from a folder nine or more levels deep, past nested repos', () => {
+  const root = freshClone(join(base, 'VoiceStudio'));
+  const nestedRepo = join(root, 'electron', 'node_modules', '@scope', 'pkg');
+  mkdirSync(join(nestedRepo, '.git'), { recursive: true });
+  const deep = join(nestedRepo, 'dist', 'esm', 'internal', 'a', 'b', 'c');
+  mkdirSync(deep, { recursive: true });
+  expect(deep.slice(root.length).split(/[\\/]/).filter(Boolean).length).toBeGreaterThanOrEqual(9);
+  expect(inspectSourceCheckout(deep)).toEqual({ ok: true, root });
+});
+
 it('names an ambiguous parent with several clones as not a checkout', () => {
   freshClone(join(base, 'a'));
   freshClone(join(base, 'b'));

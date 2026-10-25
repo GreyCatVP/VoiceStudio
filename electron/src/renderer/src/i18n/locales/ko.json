@@ -2998,6 +2998,7 @@
       "not_voicestudio": "이 폴더에서 VoiceStudio 클론을 찾지 못했습니다.",
       "read_only": "VoiceStudio가 이 폴더에 쓸 수 없습니다. 본인 소유 폴더를 선택하세요."
     },
+    "chooseFailed": "이 폴더를 사용할 수 없습니다. 다시 시도하거나 다른 폴더를 선택하세요.",
     "noneFound": "로컬 복구를 사용하려면 Codex, Claude Code, OpenCode 또는 Pi를 설치하세요.",
     "ready": "준비됨",
     "placeholder": "무엇이 잘못되었나요? 단계, 표시된 오류 또는 예상 동작을 추가하세요.",

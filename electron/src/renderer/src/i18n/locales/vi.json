@@ -2998,6 +2998,7 @@
       "not_voicestudio": "Không tìm thấy bản sao VoiceStudio trong thư mục này.",
       "read_only": "VoiceStudio không thể ghi vào thư mục này. Hãy chọn thư mục của bạn."
     },
+    "chooseFailed": "Không thể dùng thư mục này. Hãy thử lại hoặc chọn thư mục khác.",
     "noneFound": "Cài đặt Codex, Claude Code, OpenCode hoặc Pi để sử dụng tính năng sửa chữa cục bộ.",
     "ready": "Sẵn sàng",
     "placeholder": "Điều gì đã xảy ra? Thêm các bước, lỗi hiển thị hoặc hành vi mong đợi.",
