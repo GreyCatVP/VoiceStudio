@@ -1,4 +1,5 @@
 import { SetupGate } from './setup-gate';
+import { SetupDownloadNotice } from './setup-download-notice';
 import { ReportBug } from './report-bug';
 import { CrashDetails } from './crash-details';
 import {
@@ -303,6 +304,9 @@ export function BackendGate({ children, repairDock }: BackendGateProps) {
               <p className="text-sm font-medium" data-testid="backend-cause">
                 {t(`backend.cause_${cause}`)}
               </p>
+            ) : null}
+            {installing && status.setupPhase === 'installing_deps' ? (
+              <SetupDownloadNotice progress={status.setupProgress} />
             ) : null}
             {failed && !setup
               ? backendFailureHints(status.message).map((key) => (

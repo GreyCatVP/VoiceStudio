@@ -647,30 +647,18 @@ won't launch.
 **Cause:** on Windows/Linux NVIDIA machines, VoiceStudio installs the CUDA PyTorch
 build (`torch` + `torchaudio`) from PyTorch's own index. That CUDA wheel is
 large (~2.5 GB), so a flaky or restricted network drops it partway. This is a
-download/network problem, **not** a bug in VoiceStudio — but the CUDA wheels come
-from a *named, explicit* index that a PyPI mirror (`UV_DEFAULT_INDEX`) cannot
-redirect, so the generic mirror trick doesn't help here.
+download/network problem, **not** a bug in VoiceStudio. The install fetches the
+exact URLs pinned in `uv.lock`, so a PyPI mirror (`UV_DEFAULT_INDEX`) cannot
+redirect it.
 
 **Fix, in order:**
 
 1. **Clean & Retry.** Large downloads frequently succeed on a second attempt —
    VoiceStudio already retries each request 5× with long timeouts, and a fresh
-   attempt restarts cleanly.
+   attempt reuses every file that finished downloading.
 2. **Use a VPN** if your network throttles or blocks the PyTorch CDN.
-3. **Provide the wheels manually (offline path).** Download the two wheels that
-   match your machine from a source you *can* reach (the official
-   [pytorch.org](https://pytorch.org/get-started/locally/) wheel index or a
-   regional mirror), then drop them in the wheel folder and **Clean & Retry** —
-   VoiceStudio will install from your local copies instead of the network:
-   - Folder: **`<env dir>/wheels`** (the exact path is printed in the error
-     message and in the setup log; `<env dir>` is your chosen install/storage
-     location).
-   - Files: the `torch` **and** `torchaudio` wheels for your exact Python/OS/CUDA
-     — e.g. `torch-2.8.0+cu128-cp311-cp311-win_amd64.whl` and the matching
-     `torchaudio-2.8.0+cu128-cp311-cp311-win_amd64.whl`. They must match the
-     pinned versions (shown in the failing URL).
-   - On retry, VoiceStudio re-resolves the install using those local wheels; the
-     rest of the (small) dependencies still come from PyPI/your mirror.
+3. See [First-run setup is slow or stalls on a download](#first-run-setup-is-slow-or-stalls-on-a-download)
+   for what the setup screen shows and what a retry keeps.
 
 If you don't have an NVIDIA GPU, you don't need the CUDA build at all — a CPU /
 Apple-Silicon install skips this index entirely. Electron source and packaged
@@ -1192,15 +1180,68 @@ VoiceStudio now tries, in order: the default GitHub host → a gh-proxy mirror �
    tick *"Add Python to PATH"*), then relaunch — VoiceStudio will use it.
 2. **Point at a reachable mirror** for the Python download:
    - `UV_PYTHON_INSTALL_MIRROR=https://gh-proxy.com/https://github.com/astral-sh/python-build-standalone/releases/download`
-3. **Point at a PyPI mirror** for the dependency install (`uv sync`):
-   - China: `UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple` (or `https://mirrors.aliyun.com/pypi/simple`)
-   - Fully-blocked networks (e.g. some regions): use a VPN — there is no
-     government-blessed PyPI mirror to rely on.
+3. **Use a VPN or proxy for the dependency install.** The install downloads
+   the exact wheel URLs pinned in `uv.lock`, so a PyPI mirror setting
+   (`UV_DEFAULT_INDEX`, `UV_INDEX_URL`) does **not** redirect it. Packaged
+   setup uses your system proxy, or `HTTPS_PROXY` when it is set. See
+   [First-run setup is slow or stalls on a download](#first-run-setup-is-slow-or-stalls-on-a-download).
 4. The bootstrap already raises the network budget for you
    (`UV_HTTP_TIMEOUT=120`, `UV_HTTP_CONNECT_TIMEOUT=30`, `UV_HTTP_RETRIES=5`);
    you can raise them further in the environment if a mirror is very slow.
 
 **Linked issues:** [#130](https://github.com/debpalash/VoiceStudio/issues/130), [#60](https://github.com/debpalash/VoiceStudio/issues/60), [#57](https://github.com/debpalash/VoiceStudio/issues/57)
+
+## First-run setup is slow or stalls on a download
+
+**Symptom:** first-run setup sits on **Installing…** for a long time, shows a
+low speed (about 1 MB/s) on a fast connection, or shows **No data from
+`<host>` for N s**.
+
+**What the screen shows:** while dependencies download, the setup screen names
+the host the current download comes from. When no data has arrived for 45
+seconds, it says the download has stalled and names that host. The setup log
+(**Details**, and `bootstrap.log` afterwards; see
+[Reading the first-run install log](#reading-the-first-run-install-log-after-setup-finishes))
+records each source host, a progress line every 30 seconds, and when the
+download stalled or resumed. Attach those lines to a bug report.
+
+**Where the downloads come from:** the wheels pinned in `uv.lock`, nothing else:
+
+| Host | What |
+|---|---|
+| `files.pythonhosted.org` (PyPI) | Most packages, and on Linux the `nvidia-*` CUDA libraries (~3 GB) |
+| `download-r2.pytorch.org` (PyTorch) | `torch`, `torchaudio`, `torchvision` on Windows and Linux x64. On Windows the CUDA `torch` wheel is one file of about 3 GB |
+
+**Why it can be slow:** each file downloads over a single connection, and uv
+cannot resume a file that stopped partway. A speed test opens many connections
+at once, so a network or CDN that limits each connection looks fast in a speed
+test and slow here. One large file (the Windows CUDA `torch` wheel) then decides
+the total time.
+
+**What Cancel keeps:** every file that finished downloading stays in the
+runtime's `.uv-cache` folder, and the next attempt reuses it, including after
+**Clean & Retry**. A file that was still downloading starts again from zero.
+The next attempt deletes the unfinished parts a cancelled attempt left behind,
+so repeated retries do not fill the disk.
+
+**What to do:**
+
+1. **If the bytes are still moving, let it run.** A stall notice only appears
+   after 45 seconds without data.
+2. **If it stalls, cancel and retry.** Finished files are kept.
+3. **Use a VPN or a proxy.** Setup uses your system proxy; to force one, set
+   `HTTPS_PROXY` (macOS/Linux: `export HTTPS_PROXY=http://host:port`; Windows
+   PowerShell: `[Environment]::SetEnvironmentVariable("HTTPS_PROXY","http://host:port","User")`),
+   then restart VoiceStudio.
+4. **No NVIDIA GPU, or you don't need it?** The CPU build skips the large CUDA
+   downloads. Setup picks it when no NVIDIA driver is found; set
+   `OMNIVOICE_TORCH_VARIANT=cpu` to choose it.
+
+The **download region** choice on the setup screen changes where the Python
+interpreter downloads from. It does not redirect the wheel downloads above, and
+neither do PyPI mirror variables (`UV_DEFAULT_INDEX`, `UV_INDEX_URL`).
+
+**Linked issue:** [#3411](https://github.com/debpalash/VoiceStudio/issues/3411)
 
 ## Workspace navigation crashes with `insertBefore` / `NotFoundError`
 

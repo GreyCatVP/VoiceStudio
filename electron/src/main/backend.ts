@@ -5,9 +5,11 @@ import {
   promoteLegacyRuntimeCaches,
   runtimeCompatible,
   runtimeDependenciesReady,
+  runtimeDownloadHosts,
   runtimeInstallInterrupted,
   runtimeReady,
   runtimePython,
+  runtimeUvCache,
   stageRuntimeSources,
   type RuntimeRegion,
 } from './runtime-project';
@@ -55,6 +57,7 @@ import {
 } from './remote-backend';
 import { toolSearchDirs, toolSearchDirsAsync } from './tool-path';
 import { SetupProgressTracker, cleanProcessLine } from './setup-progress';
+import { SetupDownloadReporter, inFlightDownloadBytes } from './setup-downloads';
 import { scrubText } from '../shared/utils/scrub';
 import { DEFAULT_BACKEND_PORT } from '../../../config/app-config.mjs';
 
@@ -1052,6 +1055,7 @@ export class BackendSupervisor extends EventEmitter<{
     this.setupPhase = 'checking';
     this.setupProgress.reset();
     this.setStage('installing', { message: undefined });
+    const stopWatching = this.watchSetupDownloads(gen, controller.signal);
     try {
       const reusable =
         ((await runtimeReady(backendRoot(), project)) ||
@@ -1175,8 +1179,43 @@ export class BackendSupervisor extends EventEmitter<{
         this.setStage('setup_required', { message: errorMessage(error) });
       }
     } finally {
+      stopWatching();
       if (this.installation === controller) this.installation = null;
     }
+  }
+
+  /**
+   * uv prints nothing while a large wheel downloads, so watch its cache for
+   * in-flight bytes: the setup screen names the source host, and a download
+   * that stops receiving data shows as stalled instead of frozen (#3411).
+   */
+  private watchSetupDownloads(gen: number, signal: AbortSignal): () => void {
+    const reporter = new SetupDownloadReporter();
+    void Promise.resolve()
+      .then(() => runtimeDownloadHosts(backendRoot()))
+      .then((hosts) => this.setupProgress.setDownloadHosts(hosts))
+      .catch(() => undefined);
+    let sampling = false;
+    const timer = setInterval(() => {
+      if (sampling || signal.aborted || gen !== this.generation || this.stage !== 'installing')
+        return;
+      if (this.setupPhase !== 'installing_deps' || !this.runtimeProject) return;
+      sampling = true;
+      void inFlightDownloadBytes(runtimeUvCache(this.runtimeProject))
+        .then((bytes) => {
+          if (signal.aborted || gen !== this.generation || this.stage !== 'installing') return;
+          this.setupProgress.observeInFlight(bytes);
+          const snapshot = this.setupProgress.snapshot();
+          for (const line of reporter.lines(snapshot)) this.pushLog('out', line);
+          if (snapshot.downloadsComplete === false) this.emitStatus();
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          sampling = false;
+        });
+    }, 3_000);
+    timer.unref?.();
+    return () => clearInterval(timer);
   }
 
   /** Remove only an Electron-owned Python project, then perform a fresh install. */
