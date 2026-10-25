@@ -69,6 +69,22 @@ export function takeSettings(item: HistoryItem): Partial<TakeSettings> {
     for (const name of Object.keys(DEFAULT_CLONE_SETTINGS) as Array<keyof CloneSettings>)
       if (!PREFERENCES.has(name) && name in raw && acceptsCloneSetting(name, raw[name]))
         safe[name] = raw[name];
+    // The mode and its required input form a single setting. If the saved
+    // active input is missing, corrupt, or blank, restoring the mode would
+    // silently reuse a meaningless instruction. Reset the entire emotion
+    // selection to Off, while retaining other saved generation controls.
+    const validEmotion =
+      safe.emotionMode === 'none' ||
+      (safe.emotionMode === 'text' &&
+        typeof safe.emotionText === 'string' &&
+        Boolean(safe.emotionText.trim())) ||
+      (safe.emotionMode === 'vector' && Array.isArray(safe.emotionVector));
+    if (!validEmotion) {
+      delete safe.emotionMode;
+      delete safe.emotionText;
+      delete safe.emotionAlpha;
+      delete safe.emotionVector;
+    }
     return { ...neutralEmotion, ...safe, ...identity };
   } catch {
     return fallback;

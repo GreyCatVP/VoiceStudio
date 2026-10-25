@@ -103,6 +103,58 @@ describe('take metadata', () => {
       emotionVector: [0, 0, 0, 0, 0, 0, 0, 0],
     });
   });
+  it.each([
+    ['missing text', { emotionMode: 'text' }],
+    ['blank text', { emotionMode: 'text', emotionText: '   ' }],
+    ['invalid text type', { emotionMode: 'text', emotionText: 99 }],
+    ['oversized text', { emotionMode: 'text', emotionText: 'x'.repeat(501) }],
+    ['missing vector', { emotionMode: 'vector' }],
+    ['short vector', { emotionMode: 'vector', emotionVector: [0, 1] }],
+    ['out-of-bounds vector', { emotionMode: 'vector', emotionVector: [2, 0, 0, 0, 0, 0, 0, 0] }],
+    ['invalid mode', { emotionMode: 'invalid', emotionText: 'sad' }],
+  ])(
+    'resets corrupt %s conditioning without dropping unrelated take settings',
+    async (_case, emotion) => {
+      localStorage.setItem(
+        'voicestudio.take-settings.v1',
+        JSON.stringify({
+          take: {
+            speed: 1.45,
+            steps: 24,
+            emotionAlpha: 0.2,
+            ...emotion,
+          },
+        }),
+      );
+      patchCloneSettings({
+        emotionMode: 'text',
+        emotionText: 'different take',
+        emotionVector: [0, 1, 0, 0, 0, 0, 0, 0],
+      });
+      await reuseTake(item);
+      expect(cloneSettingsStore.state).toMatchObject({
+        emotionMode: 'none',
+        emotionText: '',
+        emotionAlpha: DEFAULT_CLONE_SETTINGS.emotionAlpha,
+        emotionVector: DEFAULT_CLONE_SETTINGS.emotionVector,
+        speed: 1.45,
+        steps: 24,
+        selectedProfileId: item.profile_id,
+      });
+    },
+  );
+  it('keeps valid vector conditioning together with its selected mode', () => {
+    const vector = [0.4, 0.1, 0, 0, 0, 0.2, 0.1, 0.2];
+    localStorage.setItem(
+      'voicestudio.take-settings.v1',
+      JSON.stringify({ take: { emotionMode: 'vector', emotionVector: vector, speed: 1.25 } }),
+    );
+    expect(takeSettings(item)).toMatchObject({
+      emotionMode: 'vector',
+      emotionVector: vector,
+      speed: 1.25,
+    });
+  });
   it('restores every generation control the clone form stores', () => {
     const changed: CloneSettings = {
       text: 'ignored: history text wins',
