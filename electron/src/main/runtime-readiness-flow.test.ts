@@ -62,6 +62,8 @@ it('resolves a healthy project with one native verification and fresh independen
 });
 
 it('setup reuse makes one native verification in its readiness decision', async () => {
+  // This drives the Windows ROCm installer, which runs only on x64.
+  vi.spyOn(process, 'arch', 'get').mockReturnValue('x64');
   const { internal, supervisor, target } = await prepared();
   internal.runtimeProject = target;
   internal.stage = 'setup_required';
