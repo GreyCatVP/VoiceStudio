@@ -343,6 +343,16 @@ function useGenerateController(): UseGenerateClone {
           instruct,
           instructVocabulary,
           designRecipe: design?.recipe,
+          // IndexTTS2's emotion controls affect the performance, not the
+          // reference voice. Never leak stale emotion options to other engines
+          // or to the separate Voice Design workspace.
+          ...(!design && activeTts?.supports_emotion
+            ? settings.emotionMode === 'vector'
+              ? { emoVector: [...settings.emotionVector] }
+              : settings.emotionMode === 'text' && settings.emotionText.trim()
+                ? { emoText: settings.emotionText.trim(), emoAlpha: settings.emotionAlpha }
+                : {}
+            : {}),
           steps: effectiveSamplingSteps(
             settings.steps,
             queryClient.getQueryData<EnginesResponse>(queryKeys.engines)?.tts?.active,
