@@ -102,7 +102,11 @@
     "dub": "Vertaal en dub audio of video.",
     "stories": "Maak scènes met meerdere stemmen.",
     "audiobook": "Maak luisterboeken met hoofdstukken.",
-    "transcribe": "Zet opnamen om in tekst."
+    "transcribe": "Zet opnamen om in tekst.",
+    "creatorCoreTeam": "Maker en kernteam",
+    "coreTeam": "Kernteam",
+    "follow": "Volgen",
+    "website": "Website"
   },
   "twilioIntegration": {
     "exposureWarning": "Inschakelen opent een aparte lokale poort die je tunnel op internet publiceert. Alleen verzoeken die met je Twilio Auth Token zijn ondertekend worden geaccepteerd; de rest van VoiceStudio blijft privé.",
@@ -370,7 +374,8 @@
   },
   "paneActions": {
     "collapse": "Paneel inklappen",
-    "edit": "Stemprofiel bewerken"
+    "edit": "Stemprofiel bewerken",
+    "expand": "Paneel uitklappen"
   },
   "modelSettings": {
     "models": "Modellen",
@@ -989,7 +994,8 @@
     "play": "Afspelen",
     "pause": "Pauzeren",
     "seek": "Afspeelpositie",
-    "missing": "Audiobestand ontbreekt."
+    "missing": "Audiobestand ontbreekt.",
+    "now_playing": "Nu aan het spelen"
   },
   "logs": {
     "no_tauri_log": "Nog geen Tauri-inlogschijf: start via de desktop-build om er een te maken",

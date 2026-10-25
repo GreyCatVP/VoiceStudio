@@ -102,7 +102,11 @@
     "dub": "Dịch và lồng tiếng âm thanh hoặc video.",
     "stories": "Tạo cảnh với nhiều giọng nói.",
     "audiobook": "Tạo sách nói có chương.",
-    "transcribe": "Chuyển bản ghi âm thành văn bản."
+    "transcribe": "Chuyển bản ghi âm thành văn bản.",
+    "creatorCoreTeam": "Người tạo và nhóm cốt lõi",
+    "coreTeam": "Nhóm cốt lõi",
+    "follow": "Theo dõi",
+    "website": "Trang web"
   },
   "twilioIntegration": {
     "exposureWarning": "Bật tính năng này sẽ mở một cổng cục bộ riêng mà đường hầm của bạn công bố ra internet. Chỉ các yêu cầu được ký bằng Auth Token Twilio của bạn mới được chấp nhận; phần còn lại của VoiceStudio vẫn riêng tư.",
@@ -370,7 +374,8 @@
   },
   "paneActions": {
     "collapse": "Thu gọn bảng",
-    "edit": "Chỉnh sửa hồ sơ giọng nói"
+    "edit": "Chỉnh sửa hồ sơ giọng nói",
+    "expand": "Mở rộng ngăn"
   },
   "modelSettings": {
     "models": "Mô hình",
@@ -989,7 +994,8 @@
     "play": "Phát",
     "pause": "Tạm dừng",
     "seek": "Vị trí phát",
-    "missing": "Không tìm thấy tệp âm thanh."
+    "missing": "Không tìm thấy tệp âm thanh.",
+    "now_playing": "Đang phát"
   },
   "logs": {
     "no_tauri_log": "Chưa có bản đăng nhập Tauri nào trên đĩa - khởi chạy thông qua bản dựng máy tính để bàn để tạo một bản ghi",

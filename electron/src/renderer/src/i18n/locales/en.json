@@ -102,7 +102,11 @@
     "dub": "Translate and dub audio or video.",
     "stories": "Create scenes with multiple voices.",
     "audiobook": "Build audiobooks with chapters.",
-    "transcribe": "Turn recordings into text."
+    "transcribe": "Turn recordings into text.",
+    "creatorCoreTeam": "Creator and Core Team",
+    "coreTeam": "Core Team",
+    "follow": "Follow",
+    "website": "Website"
   },
   "twilioIntegration": {
     "exposureWarning": "Turning this on opens a separate local port that your tunnel publishes to the internet. Only requests signed with your Twilio Auth Token are accepted; the rest of VoiceStudio stays private.",
@@ -603,7 +607,8 @@
     "unmute": "Unmute",
     "volume": "Volume",
     "exit_fullscreen": "Exit full screen",
-    "unavailable": "Playback unavailable"
+    "unavailable": "Playback unavailable",
+    "now_playing": "Now playing"
   },
   "common": {
     "close": "Close",
@@ -736,7 +741,8 @@
   },
   "paneActions": {
     "collapse": "Collapse pane",
-    "edit": "Edit voice profile"
+    "edit": "Edit voice profile",
+    "expand": "Expand pane"
   },
   "modelSettings": {
     "models": "Models",

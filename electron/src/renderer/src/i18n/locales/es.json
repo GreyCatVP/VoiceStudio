@@ -102,7 +102,11 @@
     "dub": "Traduce y dobla audio o vídeo.",
     "stories": "Crea escenas con varias voces.",
     "audiobook": "Crea audiolibros con capítulos.",
-    "transcribe": "Convierte grabaciones en texto."
+    "transcribe": "Convierte grabaciones en texto.",
+    "creatorCoreTeam": "Creador y equipo principal",
+    "coreTeam": "Equipo principal",
+    "follow": "Seguir",
+    "website": "Sitio web"
   },
   "twilioIntegration": {
     "exposureWarning": "Al activarlo se abre un puerto local independiente que tu túnel publica en internet. Solo se aceptan solicitudes firmadas con tu Auth Token de Twilio; el resto de VoiceStudio sigue siendo privado.",
@@ -372,7 +376,8 @@
   },
   "paneActions": {
     "collapse": "Contraer panel",
-    "edit": "Editar perfil de voz"
+    "edit": "Editar perfil de voz",
+    "expand": "Expandir panel"
   },
   "modelSettings": {
     "models": "Modelos",
@@ -991,7 +996,8 @@
     "play": "Reproducir",
     "pause": "Pausar",
     "seek": "Buscar posición",
-    "missing": "Falta el archivo de audio."
+    "missing": "Falta el archivo de audio.",
+    "now_playing": "Reproduciendo"
   },
   "logs": {
     "no_tauri_log": "Aún no hay ningún registro de Tauri en el disco: inicie a través de la compilación de escritorio para producir uno",

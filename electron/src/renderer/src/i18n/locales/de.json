@@ -102,7 +102,11 @@
     "dub": "Übersetze und synchronisiere Audio oder Video.",
     "stories": "Erstelle Szenen mit mehreren Stimmen.",
     "audiobook": "Erstelle Hörbücher mit Kapiteln.",
-    "transcribe": "Wandle Aufnahmen in Text um."
+    "transcribe": "Wandle Aufnahmen in Text um.",
+    "creatorCoreTeam": "Gründer und Kernteam",
+    "coreTeam": "Kernteam",
+    "follow": "Folgen",
+    "website": "Website"
   },
   "twilioIntegration": {
     "exposureWarning": "Beim Einschalten wird ein separater lokaler Port geöffnet, den dein Tunnel im Internet veröffentlicht. Nur mit deinem Twilio Auth Token signierte Anfragen werden akzeptiert; der Rest von VoiceStudio bleibt privat.",
@@ -370,7 +374,8 @@
   },
   "paneActions": {
     "collapse": "Bereich einklappen",
-    "edit": "Stimmprofil bearbeiten"
+    "edit": "Stimmprofil bearbeiten",
+    "expand": "Bereich ausklappen"
   },
   "modelSettings": {
     "models": "Modelle",
@@ -989,7 +994,8 @@
     "play": "Abspielen",
     "pause": "Pausieren",
     "seek": "Wiedergabeposition",
-    "missing": "Audiodatei fehlt."
+    "missing": "Audiodatei fehlt.",
+    "now_playing": "Wird abgespielt"
   },
   "logs": {
     "no_tauri_log": "Noch kein Tauri-Log auf der Festplatte – starten Sie es über den Desktop-Build, um eines zu erstellen",

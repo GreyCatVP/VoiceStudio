@@ -102,7 +102,11 @@
     "dub": "Översätt och dubba ljud eller video.",
     "stories": "Skapa scener med flera röster.",
     "audiobook": "Skapa ljudböcker med kapitel.",
-    "transcribe": "Omvandla inspelningar till text."
+    "transcribe": "Omvandla inspelningar till text.",
+    "creatorCoreTeam": "Skapare och kärnteam",
+    "coreTeam": "Kärnteam",
+    "follow": "Följ",
+    "website": "Webbplats"
   },
   "twilioIntegration": {
     "exposureWarning": "När detta slås på öppnas en separat lokal port som din tunnel publicerar på internet. Endast förfrågningar signerade med din Twilio Auth Token accepteras; resten av VoiceStudio förblir privat.",
@@ -370,7 +374,8 @@
   },
   "paneActions": {
     "collapse": "Fäll ihop panelen",
-    "edit": "Redigera röstprofil"
+    "edit": "Redigera röstprofil",
+    "expand": "Expandera panel"
   },
   "modelSettings": {
     "models": "Modeller",
@@ -989,7 +994,8 @@
     "play": "Spela upp",
     "pause": "Pausa",
     "seek": "Uppspelningsposition",
-    "missing": "Ljudfilen saknas."
+    "missing": "Ljudfilen saknas.",
+    "now_playing": "Spelas nu"
   },
   "logs": {
     "no_tauri_log": "Ingen Tauri-inloggningsskiva än - starta via skrivbordsbygget för att skapa en",

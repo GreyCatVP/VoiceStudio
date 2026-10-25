@@ -102,7 +102,11 @@
     "dub": "音声や動画を翻訳・吹き替え。",
     "stories": "複数の声でシーンを作成。",
     "audiobook": "章立てのオーディオブックを作成。",
-    "transcribe": "録音を文字に起こす。"
+    "transcribe": "録音を文字に起こす。",
+    "creatorCoreTeam": "作者・コアチーム",
+    "coreTeam": "コアチーム",
+    "follow": "フォロー",
+    "website": "ウェブサイト"
   },
   "twilioIntegration": {
     "exposureWarning": "オンにすると、トンネルがインターネットに公開する別のローカルポートが開きます。Twilio Auth Token で署名されたリクエストのみ受け付け、VoiceStudio のその他の部分は非公開のままです。",
@@ -370,7 +374,8 @@
   },
   "paneActions": {
     "collapse": "パネルを折りたたむ",
-    "edit": "音声プロフィールを編集"
+    "edit": "音声プロフィールを編集",
+    "expand": "ペインを展開"
   },
   "modelSettings": {
     "models": "モデル",
@@ -989,7 +994,8 @@
     "play": "再生",
     "pause": "一時停止",
     "seek": "再生位置",
-    "missing": "音声ファイルが見つかりません。"
+    "missing": "音声ファイルが見つかりません。",
+    "now_playing": "再生中"
   },
   "logs": {
     "no_tauri_log": "ディスク上にまだ Tauri ログがありません — デスクトップ ビルド経由で起動してログを作成します",

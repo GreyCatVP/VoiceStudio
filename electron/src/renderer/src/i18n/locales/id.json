@@ -102,7 +102,11 @@
     "dub": "Terjemahkan dan sulihsuarakan audio atau video.",
     "stories": "Buat adegan dengan beberapa suara.",
     "audiobook": "Buat buku audio dengan bab.",
-    "transcribe": "Ubah rekaman menjadi teks."
+    "transcribe": "Ubah rekaman menjadi teks.",
+    "creatorCoreTeam": "Pembuat dan Tim Inti",
+    "coreTeam": "Tim Inti",
+    "follow": "Ikuti",
+    "website": "Situs web"
   },
   "twilioIntegration": {
     "exposureWarning": "Mengaktifkan ini membuka port lokal terpisah yang dipublikasikan tunnel Anda ke internet. Hanya permintaan yang ditandatangani dengan Auth Token Twilio Anda yang diterima; bagian lain VoiceStudio tetap privat.",
@@ -370,7 +374,8 @@
   },
   "paneActions": {
     "collapse": "Ciutkan panel",
-    "edit": "Edit profil suara"
+    "edit": "Edit profil suara",
+    "expand": "Luaskan panel"
   },
   "modelSettings": {
     "models": "Model",
@@ -989,7 +994,8 @@
     "play": "Putar",
     "pause": "Jeda",
     "seek": "Cari posisi",
-    "missing": "File audio tidak ditemukan."
+    "missing": "File audio tidak ditemukan.",
+    "now_playing": "Sedang diputar"
   },
   "logs": {
     "no_tauri_log": "Belum ada Tauri yang masuk ke disk — luncurkan melalui versi desktop untuk menghasilkannya",
