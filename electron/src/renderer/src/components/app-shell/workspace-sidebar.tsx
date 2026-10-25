@@ -6,37 +6,36 @@ import { appVersion, isMac } from '@/components/bridge';
 import { cn } from '@/lib/utils';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { usePaneResize } from '@/hooks/use-pane-resize';
+import { useWindowFullscreen } from '@/hooks/use-window-fullscreen';
+import { MAC_TRAFFIC_LIGHTS_BAND } from '@shared/utils/windowChrome';
 import { useWorkspace } from '@/lib/store/workspace';
 import { useWorkspaceSidebarState } from './use-workspace-sidebar';
-import { VoicesSidebar } from '@/features/clone/voices-sidebar';
 import { WorkspaceNavigation } from './workspace-menu';
 import { StatusBar } from './status-bar';
-import { SystemNotifications } from './system-notifications';
-import { useBackendStatus } from '@/hooks/use-backend-status';
-import { isBackendReachable } from '@shared/utils/backendStage';
 
 export function versionTranslationKey(development: boolean) {
   return development ? ('app.version_dev' as const) : ('app.version' as const);
 }
 
 export function WorkspaceSidebar() {
-  const backend = useBackendStatus();
   const { t } = useTranslation();
   const mac = isMac();
+  // Fullscreen hides the traffic lights, so their reserved corner is given back to the brand.
+  const trafficLights = mac && !useWindowFullscreen();
   const versionLabel = t(versionTranslationKey(import.meta.env.DEV), {
     version: appVersion(),
   });
-  const { libraryOpen, libraryTab } = useWorkspace();
+  const { libraryOpen } = useWorkspace();
   // One source of truth for "rail or full sidebar": the header toggle and the
   // sidebar's own buttons used to keep separate copies of this state.
   const { compact, compactViewport, forceExpanded, secondaryWorkspace, setOpen } =
     useWorkspaceSidebarState();
   const sidebarResize = usePaneResize({
-    storageKey: 'voicestudio.library-width',
+    storageKey: 'voicestudio.nav-width',
     side: 'left',
-    minimum: mac ? 288 : 220,
-    initial: mac ? 288 : 256,
-    maximum: 360,
+    minimum: 196,
+    initial: 216,
+    maximum: 288,
     reserve: compactViewport && secondaryWorkspace && forceExpanded ? 520 : 640,
     enabled: libraryOpen,
   });
@@ -56,14 +55,14 @@ export function WorkspaceSidebar() {
             <span
               aria-hidden="true"
               data-slot="compact-sidebar-divider"
-              className="pointer-events-none absolute top-[72px] right-0 bottom-0 w-px bg-border/50"
+              style={{ top: 48 + (trafficLights ? MAC_TRAFFIC_LIGHTS_BAND : 0) }}
+              className="pointer-events-none absolute right-0 bottom-0 w-px bg-border/50"
             />
           )}
           <div
-            className={cn(
-              'workspace-titlebar flex shrink-0 justify-center',
-              mac ? 'min-h-[72px] items-end pb-1' : 'h-12 items-center',
-            )}
+            data-slot="titlebar-row"
+            style={trafficLights ? { paddingTop: MAC_TRAFFIC_LIGHTS_BAND } : undefined}
+            className="workspace-titlebar box-content flex h-12 shrink-0 items-center justify-center"
           >
             {/* The rail can always reopen itself, on every platform: the
                 brand icon alone gave Windows/Linux no local control. */}
@@ -86,8 +85,8 @@ export function WorkspaceSidebar() {
           {!mac && <StatusBar compact />}
           <div
             className={cn(
-              'shrink-0 border-t border-border/50 py-2',
-              mac ? 'grid grid-cols-2 items-center gap-1 px-1' : 'flex flex-col items-center gap-1',
+              // One centered column, like the navigation above it.
+              'flex shrink-0 flex-col items-center gap-1 border-t border-border/50 py-2',
             )}
           >
             <Link
@@ -95,10 +94,7 @@ export function WorkspaceSidebar() {
               aria-label={t('nav.settings')}
               title={t('nav.settings')}
               className={cn(
-                buttonVariants({
-                  variant: 'ghost',
-                  size: mac ? 'icon-xs' : 'icon-sm',
-                }),
+                buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
                 'workspace-nav-item',
               )}
             >
@@ -109,7 +105,6 @@ export function WorkspaceSidebar() {
               />
             </Link>
             {mac && <StatusBar compact inline />}
-            {!mac && <SystemNotifications enabled={isBackendReachable(backend.stage)} compact />}
           </div>
         </aside>
       )}
@@ -117,8 +112,8 @@ export function WorkspaceSidebar() {
         <aside
           ref={sidebarResize.host}
           style={{ width: sidebarResize.width }}
-          aria-label={t('clone.saved_profiles')}
-          className="brand-sidebar relative isolate grid h-full min-h-0 min-w-0 shrink-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,auto)_minmax(7rem,1fr)_auto] overflow-hidden border-r border-border/50 bg-sidebar"
+          aria-label={t('app.name')}
+          className="brand-sidebar relative isolate grid h-full min-h-0 min-w-0 shrink-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden border-r border-border/50 bg-sidebar"
         >
           <img
             src={brandArtwork}
@@ -127,10 +122,11 @@ export function WorkspaceSidebar() {
             className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-40 w-full object-cover object-right opacity-25 [mask-image:linear-gradient(black,transparent)] dark:opacity-40"
           />
           <header
-            className={cn(
-              'workspace-titlebar flex shrink-0 items-center gap-2 px-4',
-              mac && 'pl-24',
-            )}
+            data-slot="titlebar-row"
+            // The traffic lights own a strip above the brand (one shared constant
+            // with the main process); this drag row pads past it, never under it.
+            style={trafficLights ? { paddingTop: MAC_TRAFFIC_LIGHTS_BAND } : undefined}
+            className="workspace-titlebar box-content flex h-14 shrink-0 items-center gap-2 px-3"
           >
             <Link
               to="/"
@@ -156,15 +152,14 @@ export function WorkspaceSidebar() {
           </header>
           <div
             {...sidebarResize.separatorProps}
-            aria-label={t('clone.saved_profiles')}
+            aria-label={t('app.name')}
             className="absolute inset-y-0 right-0 z-20 w-2 cursor-col-resize touch-none outline-none hover:bg-primary/15 focus-visible:bg-primary/30"
           />
           {/* Navigation first, like the compact rail: it stays at a fixed
               position under the header instead of riding the library's height. */}
-          <div className="min-h-0 min-w-0 overflow-y-auto border-b border-border/50">
+          <div className="min-h-0 min-w-0 overflow-y-auto">
             <WorkspaceNavigation />
           </div>
-          <VoicesSidebar key={libraryTab} initialTab={libraryTab} />
           <div className="flex min-w-0 shrink-0 flex-col border-t border-border/50">
             <StatusBar
               footerLeading={
@@ -203,7 +198,6 @@ export function WorkspaceSidebar() {
                   />
                   {t('nav.settings')}
                 </Link>
-                <SystemNotifications enabled={isBackendReachable(backend.stage)} />
               </div>
             )}
           </div>
