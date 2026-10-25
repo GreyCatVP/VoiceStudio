@@ -69,6 +69,18 @@ it('falls back to chapter counts on an older backend, ignoring instant cached ch
   expect(status.percent).toBe(75);
   // 600 s for the one chapter actually rendered, one left — not 200 s.
   expect(status.etaS).toBe(600);
+  // No chunk events from this backend: a long chapter is not a stall.
+  expect(status.stalledForS).toBeNull();
+  expect(
+    renderStatus({
+      stage: 'rendering',
+      chapters: chapters('rendering'),
+      progress: null,
+      startedAt: T0,
+      lastActivityAt: T0,
+      now: T0 + 3_600_000,
+    }).stalledForS,
+  ).toBeNull();
 });
 
 it('rejects malformed progress events and clamps values', () => {

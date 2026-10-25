@@ -153,8 +153,8 @@ timbre from a reference clip or a preset voice and never read a description,
 so they can't design one. With one of them selected, the Design
 workspace says so and links to the engine settings, and `/generate` answers a
 design request (an `instruct`, a Voice Design recipe or a design voice with no
-saved sample) with a 422. Cloning a saved design voice's sample still works on
-them. On a preset-voice engine, the Home composer leaves out any style
+saved sample) with a 422. On those that clone, a saved design voice's sample
+still works; KittenTTS and Sherpa-ONNX use only their preset voices. On a preset-voice engine, the Home composer leaves out any style
 instruction, which those engines can't read, so the preset take still runs. The engine catalogue reports this as `supports_voice_design`: `false`
 for these engines, `true` for engines that design, and `null` when an engine
 doesn't declare it.

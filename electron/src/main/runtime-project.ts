@@ -745,6 +745,9 @@ export async function installRuntime(
     throw Object.assign(new Error('INTEL_MAC_UNSUPPORTED'), { code: 'INTEL_MAC_UNSUPPORTED' });
   }
   await mkdir(project, { recursive: true });
+  // A cancelled attempt leaves its unfinished wheels behind; uv cannot resume them.
+  // Drop them before measuring free space, or they can block the retry that would free it.
+  await pruneInterruptedUvDownloads(runtimeUvCache(project));
   const torch = resolveTorchVariant();
   const requiredBytes = torch.variant === 'cpu' ? REQUIRED_CPU_ENV_BYTES : REQUIRED_ENV_BYTES;
   const disk = await statfs(project);
@@ -767,7 +770,7 @@ export async function installRuntime(
   await rm(join(project, '.runtime-ready'), { force: true });
   await stageRuntimeSources(bundle, project);
   await promoteLegacyRuntimeCaches(project);
-  // A cancelled attempt leaves its unfinished wheels behind; uv cannot resume them.
+  // A promoted legacy cache can carry interrupted downloads of its own.
   await pruneInterruptedUvDownloads(runtimeUvCache(project));
   const tools = join(project, '.tools');
   const privateUv = join(tools, process.platform === 'win32' ? 'uv.exe' : 'uv');

@@ -733,6 +733,21 @@ describe('packaged runtime setup', () => {
     expect(fetch).not.toHaveBeenCalled();
     expect(run).not.toHaveBeenCalled();
   });
+  it('drops partial downloads before checking free space', async () => {
+    const { bundle, project } = await fixture();
+    const partial = join(project, '..', '.uv-cache', '.tmpHZ1msW');
+    await mkdir(partial, { recursive: true });
+    await writeFile(join(partial, 'torch.so'), 'partial');
+    let partialAtCheck: boolean | undefined;
+    vi.mocked(statfs).mockImplementationOnce(async () => {
+      partialAtCheck = existsSync(partial);
+      return { bavail: 1024, bsize: 1024 } as Awaited<ReturnType<typeof statfs>>;
+    });
+    await expect(
+      installRuntime(bundle, project, null, vi.fn(), new AbortController().signal),
+    ).rejects.toThrow('GiB');
+    expect(partialAtCheck).toBe(false);
+  });
   it('reuses the app-private uv after a cancelled or failed installation', async () => {
     const { bundle, project } = await fixture();
     await mkdir(join(project, '.tools'), { recursive: true });

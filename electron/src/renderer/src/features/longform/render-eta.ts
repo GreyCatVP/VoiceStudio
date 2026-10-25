@@ -104,7 +104,8 @@ export function renderStatus({
     if (timed > 0 && left > 0) etaS = (elapsedS / timed) * left;
   }
   let stalledForS: number | null = null;
-  if (stage === 'rendering' && lastActivityAt != null) {
+  // An older backend sends no chunk events, so silence there is not a stall.
+  if (stage === 'rendering' && progress != null && lastActivityAt != null) {
     const idle = Math.max(0, (now - lastActivityAt) / 1000);
     if (idle > stallThresholdS(progress?.chunkS ?? null)) stalledForS = idle;
   }
