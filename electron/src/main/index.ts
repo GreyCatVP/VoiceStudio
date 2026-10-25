@@ -129,7 +129,10 @@ function brandIconPath(file: string): string {
     : join(backendRoot(), 'electron', 'build', 'icons', file);
 }
 
-ipcMain.handle('app:is-fullscreen', (event) => BrowserWindow.fromWebContents(event.sender)?.isFullScreen() ?? false);
+ipcMain.handle(
+  'app:is-fullscreen',
+  (event) => BrowserWindow.fromWebContents(event.sender)?.isFullScreen() ?? false,
+);
 
 function createWindow(): BrowserWindow {
   const appUrl =
