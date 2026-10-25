@@ -102,7 +102,11 @@
     "dub": "Ses veya videoyu çevirip dublaj yapın.",
     "stories": "Birden fazla sesle sahneler oluşturun.",
     "audiobook": "Bölümlü sesli kitaplar oluşturun.",
-    "transcribe": "Kayıtları metne dönüştürün."
+    "transcribe": "Kayıtları metne dönüştürün.",
+    "creatorCoreTeam": "Yaratıcı ve çekirdek ekip",
+    "coreTeam": "Çekirdek ekip",
+    "follow": "Takip et",
+    "website": "Web sitesi"
   },
   "twilioIntegration": {
     "exposureWarning": "Bunu açmak, tünelinizin internette yayımladığı ayrı bir yerel bağlantı noktası açar. Yalnızca Twilio Auth Token'ınızla imzalanan istekler kabul edilir; VoiceStudio'nun geri kalanı gizli kalır.",
@@ -370,7 +374,8 @@
   },
   "paneActions": {
     "collapse": "Paneli daralt",
-    "edit": "Ses profilini düzenle"
+    "edit": "Ses profilini düzenle",
+    "expand": "Paneli genişlet"
   },
   "modelSettings": {
     "models": "Modeller",
@@ -989,7 +994,8 @@
     "play": "Oynat",
     "pause": "Duraklat",
     "seek": "Oynatma konumu",
-    "missing": "Ses dosyası bulunamadı."
+    "missing": "Ses dosyası bulunamadı.",
+    "now_playing": "Şimdi çalıyor"
   },
   "logs": {
     "no_tauri_log": "Henüz diskte Tauri oturumu açılmadı; bir tane oluşturmak için masaüstü sürümü aracılığıyla başlatın",

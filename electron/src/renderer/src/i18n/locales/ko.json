@@ -102,7 +102,11 @@
     "dub": "오디오나 영상을 번역하고 더빙하세요.",
     "stories": "여러 목소리로 장면을 만드세요.",
     "audiobook": "챕터가 있는 오디오북을 만드세요.",
-    "transcribe": "녹음을 텍스트로 변환하세요."
+    "transcribe": "녹음을 텍스트로 변환하세요.",
+    "creatorCoreTeam": "제작자 · 코어 팀",
+    "coreTeam": "코어 팀",
+    "follow": "팔로우",
+    "website": "웹사이트"
   },
   "twilioIntegration": {
     "exposureWarning": "켜면 터널이 인터넷에 공개하는 별도의 로컬 포트가 열립니다. Twilio Auth Token으로 서명된 요청만 허용되며 VoiceStudio의 나머지 부분은 비공개로 유지됩니다.",
@@ -370,7 +374,8 @@
   },
   "paneActions": {
     "collapse": "패널 접기",
-    "edit": "음성 프로필 편집"
+    "edit": "음성 프로필 편집",
+    "expand": "창 펼치기"
   },
   "modelSettings": {
     "models": "모델",
@@ -989,7 +994,8 @@
     "play": "재생",
     "pause": "일시정지",
     "seek": "탐색",
-    "missing": "오디오 파일이 없습니다."
+    "missing": "오디오 파일이 없습니다.",
+    "now_playing": "재생 중"
   },
   "logs": {
     "no_tauri_log": "아직 디스크에 Tauri 로그가 없습니다. 데스크탑 빌드를 통해 실행하여 생성하세요.",

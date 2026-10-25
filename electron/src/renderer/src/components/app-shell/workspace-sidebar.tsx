@@ -85,8 +85,8 @@ export function WorkspaceSidebar() {
           {!mac && <StatusBar compact />}
           <div
             className={cn(
-              'shrink-0 border-t border-border/50 py-2',
-              mac ? 'grid grid-cols-2 items-center gap-1 px-1' : 'flex flex-col items-center gap-1',
+              // One centered column, like the navigation above it.
+              'flex shrink-0 flex-col items-center gap-1 border-t border-border/50 py-2',
             )}
           >
             <Link
@@ -94,10 +94,7 @@ export function WorkspaceSidebar() {
               aria-label={t('nav.settings')}
               title={t('nav.settings')}
               className={cn(
-                buttonVariants({
-                  variant: 'ghost',
-                  size: mac ? 'icon-xs' : 'icon-sm',
-                }),
+                buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
                 'workspace-nav-item',
               )}
             >

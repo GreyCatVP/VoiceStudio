@@ -102,7 +102,11 @@
     "dub": "翻译并配音音频或视频。",
     "stories": "用多种声音创作场景。",
     "audiobook": "制作分章节的有声书。",
-    "transcribe": "将录音转成文字。"
+    "transcribe": "将录音转成文字。",
+    "creatorCoreTeam": "创建者 · 核心团队",
+    "coreTeam": "核心团队",
+    "follow": "关注",
+    "website": "网站"
   },
   "twilioIntegration": {
     "exposureWarning": "开启后会打开一个单独的本地端口，由你的隧道发布到互联网。只接受使用你的 Twilio Auth Token 签名的请求；VoiceStudio 的其余部分保持私密。",
@@ -347,7 +351,8 @@
     "unavailable": "无法播放",
     "play": "播放",
     "pause": "暂停",
-    "missing": "音频文件缺失。"
+    "missing": "音频文件缺失。",
+    "now_playing": "正在播放"
   },
   "synthesisState": {
     "preparing": "准备中…",
@@ -383,7 +388,8 @@
   },
   "paneActions": {
     "collapse": "折叠面板",
-    "edit": "编辑声音档案"
+    "edit": "编辑声音档案",
+    "expand": "展开窗格"
   },
   "modelSettings": {
     "models": "模型",
