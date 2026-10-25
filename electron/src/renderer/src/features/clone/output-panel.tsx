@@ -26,11 +26,18 @@ export function OutputPanel() {
     >
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between gap-3">
-          <SectionLabel>
-            <AudioLinesIcon aria-hidden="true" />
-            {t('clone.output_title')}
-          </SectionLabel>
-          <div className="flex items-center gap-1">
+          <div className="flex min-w-0 items-center gap-3">
+            <SectionLabel>
+              <AudioLinesIcon aria-hidden="true" />
+              {t('clone.output_title')}
+            </SectionLabel>
+            {text && (
+              <p className="min-w-0 truncate text-sm text-muted-foreground" title={text}>
+                {text}
+              </p>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
             <SaveAudioButton
               url={result.audioPath ? audioUrl(result.audioPath) : undefined}
               suggestedName={`voicestudio-${result.id ?? stamp}.wav`}
@@ -52,19 +59,18 @@ export function OutputPanel() {
         {result && objectUrl ? (
           <>
             <WaveformPlayer key={objectUrl} src={playbackUrl} source="output" height={36} />
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <AudioFileDetails blob={result.blob} />
-              <span className="text-xs text-muted-foreground tabular-nums">
+            {/* One quiet line: length, render time, sample rate; full file facts on hover. */}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+              <span className="tabular-nums">
                 {t('clone.output_meta', {
                   duration: formatSeconds(result.durationSeconds),
                   gen: formatSeconds(result.genTimeSeconds),
                 })}
               </span>
+              <span aria-hidden="true">·</span>
+              <AudioFileDetails blob={result.blob} compact />
               {result.audioPath && <AudioQuality key={objectUrl} audioPath={result.audioPath} />}
             </div>
-            <p className="line-clamp-2 text-sm text-muted-foreground" title={text}>
-              {text}
-            </p>
           </>
         ) : (
           <div className="flex min-h-24 items-center justify-center rounded-lg border border-dashed text-[length:var(--text-label)] text-muted-foreground">
