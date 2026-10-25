@@ -6,6 +6,7 @@ import { downloadProxyEnv } from './proxy-env';
 import { DIRECTORY_RENAME, renameWithRetry } from './rename-retry';
 import { downloadRuntimeInstaller } from './runtime-download';
 import { asciiSafePthFiles } from './pth-ascii';
+import { pruneInterruptedUvDownloads, setupDownloadHosts } from './setup-downloads';
 import { scrubText } from '../shared/utils/scrub';
 import { execFile } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
@@ -76,8 +77,67 @@ export const CPU_TORCH_ARGS = [
 export const WIN_ARM64_PYTHON_REQUEST = 'cpython-3.11-windows-x86_64';
 export const RUNTIME_REPAIR_PACKAGES = ['torch', 'torchaudio', 'torchvision'] as const;
 export const RUNTIME_NATIVE_IMPORT_PROBE = 'import torch, torchaudio, torchvision';
-export const RUNTIME_IMPORT_PROBE =
-  'import fastapi, uvicorn, omnivoice, faster_whisper, sentencepiece, torch, torchaudio, torchvision';
+/**
+ * The Visual C++ runtime the Windows PyTorch wheels link against.
+ *
+ * `torchaudio/lib/libtorchaudio.pyd` imports `VCOMP140.DLL` (the MSVC OpenMP
+ * runtime) and nothing else in the torch stack does: `torch_cpu.dll`,
+ * `torch_cuda.dll` and `c10_cuda.dll` need only `MSVCP140.dll`,
+ * `VCRUNTIME140.dll` and `VCRUNTIME140_1.dll`. A Windows install without the
+ * OpenMP part of the "Microsoft Visual C++ 2015-2022 Redistributable (x64)"
+ * therefore imports torch fine and then dies on torchaudio with
+ * `FileNotFoundError: Could not find module '…libtorchaudio.pyd' (or one of
+ * its dependencies)` (#3058).
+ *
+ * Reinstalling the wheels cannot supply a system library, so this class has
+ * to be recognised instead of downloading gigabytes that cannot fix it.
+ */
+export const WINDOWS_TORCH_SYSTEM_LIBRARIES = [
+  'msvcp140.dll',
+  'vcruntime140.dll',
+  'vcruntime140_1.dll',
+  'vcomp140.dll',
+] as const;
+/** Marker the native diagnostic prints on stdout. */
+export const NATIVE_DIAGNOSTIC_PREFIX = 'VOICESTUDIO_NATIVE_DIAGNOSTIC=';
+/** Error code for "a system library the native extensions need is missing". */
+export const MISSING_SYSTEM_LIBRARY_CODE = 'MISSING_SYSTEM_LIBRARY';
+const RUNTIME_IMPORT_MODULES = [
+  'fastapi',
+  'uvicorn',
+  'omnivoice',
+  'faster_whisper',
+  'sentencepiece',
+  'torch',
+  'torchaudio',
+  'torchvision',
+] as const;
+const IMPORT_MARKER = 'VOICESTUDIO_IMPORT=';
+/**
+ * Imports every runtime module, announcing each one first. A native import that
+ * dies with an access violation (exit code 3221225477) leaves no traceback, so
+ * the last announcement is the only evidence of which module crashed (#3293).
+ */
+export const RUNTIME_IMPORT_PROBE = RUNTIME_IMPORT_MODULES.map(
+  (name) => `print('${IMPORT_MARKER}${name}', flush=True)\nimport ${name}`,
+).join('\n');
+/** The module an import probe was loading when its output stopped, if it said. */
+export function lastImportAttempted(output: unknown): string | null {
+  const marked = String(output ?? '')
+    .split(/\r?\n/)
+    .filter((line) => line.startsWith(IMPORT_MARKER))
+    .at(-1);
+  return marked ? marked.slice(IMPORT_MARKER.length).trim() || null : null;
+}
+function importFailure(error: unknown): Error {
+  const failure = error as { code?: unknown; message?: unknown; stdout?: unknown } | null;
+  const module = lastImportAttempted(failure?.stdout);
+  if (!module) return error instanceof Error ? error : new Error(String(error));
+  return Object.assign(
+    new Error(`${String(failure?.message)}; the import check stopped while importing "${module}"`),
+    { code: failure?.code, stdout: failure?.stdout },
+  );
+}
 const RUNTIME_SCHEMA = 'electron-runtime-v2-cudnn8';
 const CUDNN8_PROBE_PREFIX = 'VOICESTUDIO_CUDNN8_PROBE=';
 const REQUIRED_ENV_BYTES = 9 * 1024 ** 3;
@@ -184,6 +244,28 @@ export function resolveTorchVariant(
   if (!cpuTorchApplies(platform, arch)) return { variant: 'default', explicit: false };
   if (platform === 'win32' && arch === 'arm64') return { variant: 'cpu', explicit: false };
   return { variant: hasNvidia() ? 'default' : 'cpu', explicit: false };
+}
+
+/** uv's download cache: beside the replaceable project, so retries reuse finished wheels. */
+export function runtimeUvCache(project: string): string {
+  return join(project, '..', '.uv-cache');
+}
+
+/** Package to the host its wheel downloads from in this install, for the setup screen (#3411). */
+export async function runtimeDownloadHosts(
+  bundle: string,
+  platform: NodeJS.Platform = process.platform,
+  arch: string = process.arch,
+): Promise<Map<string, string>> {
+  const lock = await readFile(join(bundle, 'uv.lock'), 'utf8');
+  const rocm = resolveTorchVariant(process.env, platform, arch).variant === 'rocm';
+  const rocmHost = new URL(process.env.OMNIVOICE_TORCH_INDEX || ROCM_TORCH_INDEX).host;
+  return setupDownloadHosts(lock, {
+    pytorchIndex: cpuTorchApplies(platform, arch),
+    overrides: rocm
+      ? Object.fromEntries(ROCM_TORCH_PINS.map((pin) => [pin.split(/[=<>!~]/)[0]!, rocmHost]))
+      : undefined,
+  });
 }
 
 /** Python request for a fresh venv; Windows on ARM needs the emulated x64 build. */
@@ -418,13 +500,118 @@ export async function runtimeDependenciesReady(
         maxBuffer: 256 * 1024,
         env,
       },
-      (error, _stdout, stderr) => {
+      (error, stdout, stderr) => {
         const ready = !error || probeTimedOut(error);
-        if (!ready) onFailure?.(probeFailureDetail(error, stderr));
+        if (!ready) {
+          const module = lastImportAttempted(stdout);
+          const detail = probeFailureDetail(error, stderr);
+          onFailure?.(module && !String(stderr ?? '').trim() ? `${detail} (importing ${module})` : detail);
+        }
         resolve(ready);
       },
     );
   });
+}
+
+/**
+ * What the failed native import was actually caused by.
+ *
+ * `extensionPresent` tells a missing wheel apart from a wheel that is there
+ * but cannot be loaded; `missingSystemLibraries` names the system libraries
+ * the extension links against that this host does not have.
+ */
+export interface NativeRuntimeDiagnosis {
+  /** System libraries the torch extensions need that this host cannot load. */
+  missingSystemLibraries: string[];
+  /** The torchaudio native extension exists in the environment. */
+  extensionPresent: boolean;
+}
+
+const EMPTY_DIAGNOSIS: NativeRuntimeDiagnosis = {
+  missingSystemLibraries: [],
+  extensionPresent: true,
+};
+
+/**
+ * Report what a failed `import torchaudio` was caused by.
+ *
+ * The check runs in the environment's own interpreter, so it sees the same
+ * DLL search path the backend will use. Windows-only questions (the Visual
+ * C++ runtime) are answered there; every other platform reports nothing
+ * missing and keeps the reinstall path.
+ */
+export const RUNTIME_NATIVE_DIAGNOSTIC_PROBE = [
+  'import ctypes, json, os, sys, sysconfig',
+  `libraries = ${JSON.stringify([...WINDOWS_TORCH_SYSTEM_LIBRARIES])}`,
+  'missing = []',
+  "if sys.platform == 'win32':",
+  '    for name in libraries:',
+  '        try:',
+  '            ctypes.CDLL(name)',
+  '        except OSError:',
+  '            missing.append(name)',
+  '    purelib = sysconfig.get_paths()["purelib"]',
+  '    extension = os.path.join(purelib, "torchaudio", "lib", "libtorchaudio.pyd")',
+  '    present = os.path.isfile(extension)',
+  'else:',
+  '    present = True',
+  `print(${JSON.stringify(NATIVE_DIAGNOSTIC_PREFIX)} + json.dumps({"missing_system_libraries": missing, "extension_present": present}))`,
+].join('\n');
+
+/** Read the diagnostic marker out of the probe's output. */
+export function parseNativeDiagnosis(output: string | void): NativeRuntimeDiagnosis | null {
+  if (!output) return null;
+  const line = output
+    .split(/\r?\n/)
+    .findLast((candidate) => candidate.startsWith(NATIVE_DIAGNOSTIC_PREFIX));
+  if (!line) return null;
+  try {
+    const parsed = JSON.parse(line.slice(NATIVE_DIAGNOSTIC_PREFIX.length)) as {
+      missing_system_libraries?: unknown;
+      extension_present?: unknown;
+    };
+    return {
+      missingSystemLibraries: Array.isArray(parsed.missing_system_libraries)
+        ? parsed.missing_system_libraries.filter(
+            (name): name is string => typeof name === 'string' && name.length > 0,
+          )
+        : [],
+      extensionPresent: parsed.extension_present !== false,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Ask the environment why its native extensions would not load.
+ *
+ * A diagnostic that cannot run is not evidence of anything: the caller then
+ * keeps the reinstall path, which is the safe default.
+ */
+export async function diagnoseNativeRuntime(
+  project: string,
+  run: RuntimeRunner,
+): Promise<NativeRuntimeDiagnosis> {
+  let output: string | void;
+  try {
+    output = await run(runtimePython(project), ['-c', RUNTIME_NATIVE_DIAGNOSTIC_PROBE], project);
+  } catch {
+    return EMPTY_DIAGNOSIS;
+  }
+  return parseNativeDiagnosis(output) ?? EMPTY_DIAGNOSIS;
+}
+
+/** The error a missing system library produces: nothing to reinstall, a fix to apply. */
+export function missingSystemLibraryError(libraries: readonly string[]): Error {
+  return Object.assign(
+    new Error(
+      `This Windows system is missing ${libraries.join(', ')}, which the PyTorch audio extension links ` +
+        'against. Install the Microsoft Visual C++ 2015-2022 Redistributable (x64) and restart ' +
+        'VoiceStudio; reinstalling the Python packages cannot supply a system library.',
+    ),
+    { code: MISSING_SYSTEM_LIBRARY_CODE, missingSystemLibraries: [...libraries] },
+  );
 }
 
 export async function runtimeReady(bundle: string, project: string): Promise<boolean> {
@@ -558,6 +745,9 @@ export async function installRuntime(
     throw Object.assign(new Error('INTEL_MAC_UNSUPPORTED'), { code: 'INTEL_MAC_UNSUPPORTED' });
   }
   await mkdir(project, { recursive: true });
+  // A cancelled attempt leaves its unfinished wheels behind; uv cannot resume them.
+  // Drop them before measuring free space, or they can block the retry that would free it.
+  await pruneInterruptedUvDownloads(runtimeUvCache(project));
   const torch = resolveTorchVariant();
   const requiredBytes = torch.variant === 'cpu' ? REQUIRED_CPU_ENV_BYTES : REQUIRED_ENV_BYTES;
   const disk = await statfs(project);
@@ -580,6 +770,8 @@ export async function installRuntime(
   await rm(join(project, '.runtime-ready'), { force: true });
   await stageRuntimeSources(bundle, project);
   await promoteLegacyRuntimeCaches(project);
+  // A promoted legacy cache can carry interrupted downloads of its own.
+  await pruneInterruptedUvDownloads(runtimeUvCache(project));
   const tools = join(project, '.tools');
   const privateUv = join(tools, process.platform === 'win32' ? 'uv.exe' : 'uv');
   if (
@@ -600,7 +792,7 @@ export async function installRuntime(
     UV_PROJECT_ENVIRONMENT: join(project, '.venv'),
     // Keep immutable downloads beside the replaceable project. Clean & Retry can
     // rebuild a broken venv without paying the multi-gigabyte transfer twice.
-    UV_CACHE_DIR: join(project, '..', '.uv-cache'),
+    UV_CACHE_DIR: runtimeUvCache(project),
     UV_PYTHON_INSTALL_DIR: join(project, '..', '.python'),
     TEMP: scratch,
     TMP: scratch,
@@ -642,6 +834,10 @@ export async function installRuntime(
   );
   let existingPython = false;
   const repairPackages: string[] = [];
+  // System libraries the native extensions need that this host does not have.
+  // Collected here and thrown after the interpreter probe, because the outer
+  // catch below deliberately swallows any failure of a suspect interpreter.
+  let missingSystemLibraries: string[] = [];
   if (interpreterExists) {
     try {
       await run(
@@ -668,7 +864,13 @@ export async function installRuntime(
         } catch {
           // A native wheel can be missing or ABI-broken while its dist-info
           // still convinces uv sync that it is installed. Reinstall only then.
-          repairPackages.push(...RUNTIME_REPAIR_PACKAGES);
+          // A missing SYSTEM library is a different class: no wheel can
+          // supply it, so reinstalling gigabytes cannot fix it (#3058).
+          const diagnosis = await diagnoseNativeRuntime(project, run);
+          missingSystemLibraries = diagnosis.missingSystemLibraries;
+          if (!missingSystemLibraries.length) {
+            repairPackages.push(...RUNTIME_REPAIR_PACKAGES);
+          }
         }
         // Sentencepiece has its own native wheel, independent of PyTorch.
         signal.throwIfAborted();
@@ -684,6 +886,12 @@ export async function installRuntime(
       // replacement; immutable downloads and user data remain outside the venv.
       signal.throwIfAborted();
     }
+  }
+  if (missingSystemLibraries.length) {
+    // The wheels are fine; this Windows system is missing a library they
+    // link against. Say so instead of downloading gigabytes that cannot
+    // supply a system file (#3058).
+    throw missingSystemLibraryError(missingSystemLibraries);
   }
   const pythonArgs = existingPython
     ? ['--python', runtimePython(project)]
@@ -764,7 +972,17 @@ export async function installRuntime(
   // startup on a non-UTF-8 Windows code page (#1783).
   await asciiSafePthFiles(join(project, '.venv')).catch(() => []);
   phase('verifying');
-  await run(runtimePython(project), ['-c', RUNTIME_IMPORT_PROBE], project);
+  try {
+    await run(runtimePython(project), ['-c', RUNTIME_IMPORT_PROBE], project);
+  } catch (error) {
+    // A fresh install on a Windows system without the Visual C++ runtime
+    // cannot verify either, and no wheel can supply the missing file (#3058).
+    const diagnosis = await diagnoseNativeRuntime(project, run);
+    if (diagnosis.missingSystemLibraries.length) {
+      throw missingSystemLibraryError(diagnosis.missingSystemLibraries);
+    }
+    throw importFailure(error);
+  }
   signal.throwIfAborted();
   await writeFile(join(project, '.runtime-ready'), await dependencyStamp(bundle, torch.variant));
   await rm(join(project, '.runtime-installing'), { force: true });

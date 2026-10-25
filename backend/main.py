@@ -402,6 +402,7 @@ from core.auth import (
     PrincipalKind,
     credential_matches,
     is_local_host,
+    is_trusted_host_loopback,
     principal_for,
     remote_api_key,
 )
@@ -668,7 +669,24 @@ def _phase_a_build_inner() -> None:
         pass
 
     _startup_progress.begin_step("ml_imports")
-    import torchaudio
+    try:
+        import torchaudio  # noqa: F401
+    except Exception as exc:  # noqa: BLE001
+        # Sanitized summary only, never a traceback-bearing log call: an
+        # import traceback embeds absolute user-home paths (C:\Users\<name>\…, /Users/<name>/…)
+        # and lands in backend.log, which goes into diagnostic bundles and
+        # prefilled bug reports (CWE-532; CodeRabbit #3150).
+        try:
+            from core.failure import sanitize as _sanitize
+            _detail = _sanitize(f"{type(exc).__name__}: {exc}")
+        except Exception:  # noqa: BLE001 — never lose the signal to this
+            _detail = type(exc).__name__
+        logging.getLogger("omnivoice.model").warning(
+            "torchaudio import failed during ml_imports (startup will "
+            "continue degraded): %s",
+            _detail,
+        )
+        torchaudio = None  # type: ignore[assignment]
     warnings.filterwarnings("ignore", category=UserWarning)
     # torchaudio 2.9 REMOVED set_audio_backend(); soundfile has been the only
     # backend since 2.0, so the call was already a no-op there and is simply
@@ -686,8 +704,15 @@ def _phase_a_build_inner() -> None:
     # lists sm_120 in get_arch_list(). CU128_ARCHS in
     # tests/test_cuda_arch_compat.py records the same list, captured verbatim
     # from a real cu128 build in #1285.
-    if hasattr(torchaudio, "set_audio_backend"):
-        torchaudio.set_audio_backend("soundfile")
+    # The bare hasattr guard (no `torchaudio is not None` prefix) is what
+    # tests/test_torchaudio_legacy_backend_1931.py asserts, and it is safe
+    # either way: hasattr(None, ...) is False, so the call is skipped when
+    # the import above failed too.
+    try:
+        if hasattr(torchaudio, "set_audio_backend"):
+            torchaudio.set_audio_backend("soundfile")
+    except Exception:  # noqa: BLE001
+        pass
     from utils import hf_progress
     # HF tqdm patch before any library import that can trigger
     # hf_hub_download (transformers, mlx_whisper, …).
@@ -862,10 +887,16 @@ def _phase_a_finalize() -> None:
         def _no_web_ui(request: Request):
             # Only a local browser may be sent to the local dev UI; a LAN
             # device redirected to localhost reaches itself, not us (#2599).
+            # The PIN query survives the hop so the gate still sees it, and
+            # a request already aimed at the UI port is answered terminally
+            # instead of bouncing onto itself forever (#2680: with default
+            # ports the share listener sits on the UI port).
             client = request.client.host if request.client else None
-            target = dev_ui_redirect(client, request.headers.get("host", ""), _ui_port())
-            if target:
-                return RedirectResponse(url=target)
+            ui_port = _ui_port()
+            target = dev_ui_redirect(client, request.headers.get("host", ""), ui_port)
+            if target and request.url.port != ui_port:
+                query = request.url.query
+                return RedirectResponse(url=target + (f"/?{query}" if query else ""))
             media_type, body = web_ui_missing_body(request.headers.get("accept", ""))
             return Response(body, status_code=503, media_type=media_type)
 
@@ -1510,6 +1541,10 @@ def _safe_validation_input(value):
     """
     if isinstance(value, (bytes, bytearray, memoryview)):
         return f"<{len(bytes(value))} bytes of binary data>"
+    # JSON number overflow (e.g. 1e309) and accepted NaN/Infinity tokens can
+    # reach Pydantic as floats, but cannot be echoed in a JSONResponse.
+    if isinstance(value, float) and not math.isfinite(value):
+        return str(value)
     if isinstance(value, str) and len(value) > _VALIDATION_INPUT_MAX:
         return value[:_VALIDATION_INPUT_MAX] + f"… (+{len(value) - _VALIDATION_INPUT_MAX} chars)"
     return value
@@ -1773,7 +1808,7 @@ class NetworkAccessMiddleware:
         if not pin:
             return await self.app(scope, receive, send)
         client = scope["client"][0] if scope.get("client") else None
-        if is_local_host(client):
+        if is_local_host(client) or is_trusted_host_loopback(request):
             return await self.app(scope, receive, send)
         if _is_public_path(scope["path"]):
             return await self.app(scope, receive, send)

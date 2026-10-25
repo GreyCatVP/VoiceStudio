@@ -7,7 +7,12 @@ the same stack the original WhisperX paper used.
 ## What diarization buys you
 
 - Multi-speaker dubbing: each detected speaker gets its own voice clone in
-  the target language.
+  the target language. A line whose words belong to two speakers is split at
+  the speaker change, on every transcription path (the app, the CLI and the
+  phone companion). A speaker who only speaks in short turns still gets a
+  clone, cut from their turns with the edges next to other speakers trimmed
+  off; only a speaker with less than about 3 s of clean speech falls back to
+  the default voice.
 - Subtitle styling: speaker labels (`SPEAKER_00:`, `SPEAKER_01:`, …) on the
   exported SRT/VTT files.
 - Audio editing: per-speaker tracks in the timeline view.
@@ -20,7 +25,7 @@ the model's license once.
 
 1. Get a HF token if you don't have one — see
    [docs/setup/huggingface-token.md](../setup/huggingface-token.md).
-2. Set the token via **Settings → API Keys** (or any of the other supported
+2. Set the token via **Settings → Credentials** (or any of the other supported
    paths).
 3. While signed in to HuggingFace with the same account, visit:
    - https://huggingface.co/pyannote/speaker-diarization-3.1 → **"Agree and

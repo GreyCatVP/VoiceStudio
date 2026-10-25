@@ -34,7 +34,9 @@ export function SaveTakeProfile({ item }: { item: HistoryItem }) {
     }
   };
   return (
-    <div className="space-y-2">
+    // Collapsed, the button sits in the take's action row as its primary action;
+    // the form it opens takes the full row.
+    <div className={file || failed ? 'w-full basis-full space-y-2' : 'contents'}>
       {file ? (
         <>
           <SaveProfileForm
@@ -52,8 +54,8 @@ export function SaveTakeProfile({ item }: { item: HistoryItem }) {
       ) : (
         <Button
           type="button"
-          variant="ghost"
           size="sm"
+          className={failed ? undefined : 'min-w-0 flex-1'}
           disabled={busy || !item.audio_path}
           onClick={() => void start()}
         >

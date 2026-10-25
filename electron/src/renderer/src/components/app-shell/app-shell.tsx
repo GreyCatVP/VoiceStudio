@@ -1,4 +1,5 @@
 import { WorkspaceSidebar } from './workspace-sidebar';
+import { ContextSidebar } from './context-sidebar';
 import { CommandPalette } from '@/components/command-palette';
 import { Outlet, useRouterState } from '@tanstack/react-router';
 import { BackendGate } from '../backend-gate';
@@ -8,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { useBackendStatus } from '@/hooks/use-backend-status';
 import { isBackendReachable } from '@shared/utils/backendStage';
 import { AccountCorner } from './account-corner';
+import { NowPlayingDock } from '@/components/now-playing-dock';
 
 export function AppShell() {
   const backend = useBackendStatus();
@@ -46,6 +48,7 @@ export function AppShell() {
           <BackendGate repairDock={<RepairAgentDock />}>
             <CommandPalette />
             <WorkspaceSidebar />
+            <ContextSidebar />
             <main
               data-slot="workspace-content"
               className="@container relative flex min-w-0 flex-1 flex-col overflow-hidden"
@@ -58,6 +61,7 @@ export function AppShell() {
           </BackendGate>
         )}
       </div>
+      <NowPlayingDock />
       {/* Native drag-region hit testing follows document order. Keep these
           no-drag controls after every workspace titlebar, outside BackendGate. */}
       {/* Top-right corner on every page and platform: account, then the notifications bell. */}

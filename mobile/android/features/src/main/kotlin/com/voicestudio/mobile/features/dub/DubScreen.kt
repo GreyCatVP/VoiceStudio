@@ -53,6 +53,8 @@ import java.io.File
     var targets by rememberSaveable {mutableStateOf(listOf<String>())}
     var voice by rememberSaveable {mutableStateOf(DubVoiceChoice.UNSELECTED)}
     var pending by remember {mutableStateOf<PendingDub?>(null)}
+    var advancedJob by remember {mutableStateOf<String?>(null)}
+    var advancedTitle by remember {mutableStateOf("")}
     var copying by remember {mutableStateOf(false)}
     var savePath by rememberSaveable {mutableStateOf<String?>(null)}
     val save=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) {uri ->
@@ -154,8 +156,12 @@ import java.io.File
                 }
             }
             val job=info.outputData.getString("job") ?: info.progress.getString("job")
-            if(info.state==WorkInfo.State.SUCCEEDED&&job!=null) Secondary("mobile.dub.download",!state.busy) {
-                vm.run {shareFile(context,sharedDownload(context,vm.api!!,"/dub/download/${VoiceStudioApi.segment(job)}",if(inputType=="audio") "m4a" else "mkv"),"application/octet-stream")}
+            if(info.state==WorkInfo.State.SUCCEEDED&&job!=null) {
+                Secondary("mobile.dub.download",!state.busy) {
+                    vm.run {shareFile(context,sharedDownload(context,vm.api!!,"/dub/download/${VoiceStudioApi.segment(job)}",if(inputType=="audio") "m4a" else "mkv"),"application/octet-stream")}
+                }
+                Secondary("mobile.dub_advanced.exports",!state.busy) {advancedJob=job;advancedTitle=sourceName.orEmpty()}
+                ReportButton(vm) {ReportSubjects.computerDub(job)}
             }
             }}
             HorizontalDivider()
@@ -173,8 +179,15 @@ import java.io.File
                         savePath=file.absolutePath
                         save.launch(item.filename.substringBeforeLast('.').ifBlank {item.id}+"."+file.extension)
                     }},
-                    share={vm.run {shareFile(context,sharedDownload(context,vm.api!!,dubDownloadPath(job),"mkv"),"application/octet-stream")}})
+                    share={vm.run {shareFile(context,sharedDownload(context,vm.api!!,dubDownloadPath(job),"mkv"),"application/octet-stream")}},
+                    advanced={advancedJob=job;advancedTitle=item.filename.ifBlank {item.id}},
+                    report=if(LocalContentReportClient.current!=null) {{vm.reports.open(ReportSubjects.computerDub(job))}} else null)
                 if(index<state.dubHistory.lastIndex) HorizontalDivider()
+            }
+        }
+        advancedJob?.let {job ->
+            androidx.compose.ui.window.Dialog(onDismissRequest={advancedJob=null},properties=androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth=false)) {
+                Surface(Modifier.fillMaxSize(),color=role("canvas")) {ComputerDubAdvancedScreen(vm,job,advancedTitle) {advancedJob=null}}
             }
         }
     }
@@ -205,7 +218,7 @@ private fun dubDownloadPath(job: String) = "/dub/download/${VoiceStudioApi.segme
     }
 }
 
-@Composable fun DubHistoryRow(item: DubHistory, enabled: Boolean, download: ()->Unit, share: ()->Unit) {
+@Composable fun DubHistoryRow(item: DubHistory, enabled: Boolean, download: ()->Unit, share: ()->Unit, report: (()->Unit)? = null, advanced: (()->Unit)? = null) {
     val name=item.filename.ifBlank {item.id}
     Row(Modifier.fillMaxWidth().padding(VSTheme.inset),verticalAlignment=Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
@@ -216,5 +229,7 @@ private fun dubDownloadPath(job: String) = "/dub/download/${VoiceStudioApi.segme
         }
         IconAction("mobile.dub.download_file",VSIcons.Download,enabled,mapOf("name" to name),download)
         IconAction("mobile.dub.share_file",Icons.Default.Share,enabled,mapOf("name" to name),share)
+        advanced?.let {IconAction("mobile.dub_advanced.exports",Icons.Default.Settings,onClick=it)}
+        report?.let {IconAction("mobile.report.action",Icons.Default.Warning,onClick=it)}
     }
 }

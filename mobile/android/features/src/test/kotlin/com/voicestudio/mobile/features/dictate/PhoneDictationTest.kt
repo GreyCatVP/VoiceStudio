@@ -24,9 +24,11 @@ class PhoneDictationTest {
     }
     @Test fun microphoneEndsGracefullyAndKeepsFinalTranscript() = runTest {
         val failures=mutableListOf<Throwable>()
-        val controller=PhoneDictation(Engine(),this,{failures+=it},DictationAudioSource {_,send ->send(byteArrayOf(0,0,0,64),4)})
+        val saved=mutableListOf<String>()
+        val controller=PhoneDictation(Engine(),this,{failures+=it},DictationAudioSource {_,send ->send(byteArrayOf(0,0,0,64),4)},completed={saved+=it})
         controller.start(model);advanceUntilIdle()
         assertEquals("complete",controller.text.value);assertFalse(controller.active.value);assertTrue(failures.isEmpty())
+        controller.close();advanceUntilIdle();assertEquals(listOf("complete"),saved)
     }
     @Test fun lifecycleCloseCancelsCaptureAndReleasesSource() = runTest {
         var released=false

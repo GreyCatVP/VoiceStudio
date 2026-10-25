@@ -99,6 +99,13 @@ jobs:
           codesign --verify --deep --strict "$APP"
           codesign -dvv "$APP" 2>&1 | grep -qx "TeamIdentifier=$TEAM_ID"
           test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$APP/Info.plist")" = "$VOICESTUDIO_IOS_BUILD_NUMBER"
+          # App Store Connect rejects any embedded framework without both version keys.
+          for plist in "$APP"/Frameworks/*.framework/Info.plist; do
+            [ -e "$plist" ] || continue
+            for key in CFBundleShortVersionString CFBundleVersion; do
+              /usr/libexec/PlistBuddy -c "Print $key" "$plist" >/dev/null || { echo "$plist is missing $key"; exit 1; }
+            done
+          done
 
       - name: Upload to TestFlight
         env:

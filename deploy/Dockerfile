@@ -2,7 +2,10 @@
 # CUDA variant; CI also builds a ROCm/AMD variant (issue #1165) by overriding:
 #   BASE_IMAGE=rocm/pytorch:rocm7.2.4_ubuntu24.04_py3.12_pytorch_release_2.8.0
 #   GPU_FLAVOR=rocm
-# Both bases ship torch/torchaudio 2.8.0 preinstalled; the dependency install
+# and an arm64 NVIDIA variant (DGX Spark / Grace, #2831) on a native arm64
+# runner, from the cuda-arm64-base stage below:
+#   BASE_IMAGE=cuda-arm64-base   (GPU_FLAVOR stays cuda)
+# Every base ships torch/torchaudio 2.8.0 preinstalled; the dependency install
 # below deliberately preserves them (see the GPU_FLAVOR guard).
 ARG BASE_IMAGE=pytorch/pytorch:2.8.0-cuda12.8-cudnn9-runtime
 
@@ -26,6 +29,40 @@ RUN bun install --frozen-lockfile
 COPY frontend/ ./frontend/
 COPY electron/ ./electron/
 RUN bun run --cwd electron build:web
+
+# ==========================================
+# arm64 NVIDIA base (#2831): built only when BASE_IMAGE=cuda-arm64-base
+# ==========================================
+# pytorch/pytorch publishes amd64 images only, so this stage assembles the same
+# torch 2.8.0 stack for linux/arm64 (SBSA: DGX Spark / GB10, GH200, GB200).
+# PyTorch's cu128 index has no aarch64 2.8.0 build; cu129 has all three wheels
+# for cp312. The aarch64 torch wheel bundles its CUDA and cuDNN 9 libraries
+# (unlike x86_64, it declares no nvidia-* dependencies), so plain Ubuntu
+# suffices; the host driver comes from the NVIDIA Container Toolkit. BuildKit
+# skips this stage entirely for the amd64 CUDA and ROCm builds.
+#
+# Jetson (L4T) is not covered: it needs JetPack's own torch builds.
+FROM ubuntu:24.04 AS cuda-arm64-base
+ENV DEBIAN_FRONTEND=noninteractive \
+    PIP_BREAK_SYSTEM_PACKAGES=1 \
+    NVIDIA_VISIBLE_DEVICES=all \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility
+# python3-dev + pkg-config/cmake/libopus-dev: sphn (via demucs) and miniaudio
+# publish no aarch64 wheels and build from source; sphn's Opus binding needs
+# libopus.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-dev \
+    python3-pip \
+    pkg-config \
+    cmake \
+    libopus-dev \
+    && rm -rf /var/lib/apt/lists/*
+# Same trio as deploy/torch-constraints.txt, from the cu129 index only (no
+# PyPI fallback, so no other index can supply a torch build).
+RUN python3 -m pip install --no-cache-dir \
+    --index-url https://download.pytorch.org/whl/cu129 \
+    torch==2.8.0+cu129 torchaudio==2.8.0 torchvision==0.23.0
 
 # ==========================================
 # Runtime Stage: Python & PyTorch Backend
@@ -70,6 +107,7 @@ RUN python3 -m pip install --no-cache-dir uv
 # Copy python packaging specs (README.md required by hatchling metadata)
 COPY pyproject.toml uv.lock README.md ./
 COPY deploy/torch-constraints.txt ./deploy/torch-constraints.txt
+COPY deploy/uv-overrides.txt ./deploy/uv-overrides.txt
 
 # Install the project (non-editable — no need for -e in containers).
 # Uses `uv` for exponentially faster resolution than plain pip.
@@ -91,8 +129,20 @@ COPY deploy/torch-constraints.txt ./deploy/torch-constraints.txt
 # stays put — an ABI mismatch at import (#1357). The pins carry no local
 # segment, so they match the base image's +cu128 / +rocm6.4 builds rather than
 # replacing them.
+#
+# --override: `[tool.uv] override-dependencies` lifts caps that block security
+# releases (gradio's `pillow<13`), but `uv pip install` applies it only when run
+# from the project directory with a recent uv; pass it explicitly (#3275).
 RUN uv pip install --python "$(command -v python3)" --no-cache \
-    --constraint deploy/torch-constraints.txt .
+    --constraint deploy/torch-constraints.txt \
+    --override deploy/uv-overrides.txt .
+
+# Guard: every security override must be what the image actually installed.
+RUN python3 -c "from importlib.metadata import version; from packaging.requirements import Requirement; \
+    reqs = [Requirement(l.strip()) for l in open('deploy/uv-overrides.txt') if l.strip() and not l.lstrip().startswith('#')]; \
+    bad = [f'{r.name} {version(r.name)} does not satisfy {r}' for r in reqs if not r.specifier.contains(version(r.name), prereleases=True)]; \
+    assert not bad, bad; \
+    print('uv overrides applied:', ', '.join(f'{r.name} {version(r.name)}' for r in reqs))"
 
 # Guard (fails the build, not the user at runtime): assert the dependency
 # install did NOT replace the base image's GPU torch. A future dep bump that
@@ -157,4 +207,8 @@ VOLUME ["/app/omnivoice_data"]
 # Bind to 0.0.0.0 for external access. The entrypoint reads the manifest default
 # (or OMNIVOICE_PORT) and forwards any explicit Uvicorn options after the image.
 ENV OMNIVOICE_BIND_HOST=0.0.0.0
+# Late on purpose: a new commit changes this arg every build, and nothing above may
+# be invalidated by it. Shown in bug reports to tell builds of one version apart.
+ARG BUILD_COMMIT=unknown
+ENV OMNIVOICE_BUILD_COMMIT=${BUILD_COMMIT}
 ENTRYPOINT ["python3", "backend/docker_entrypoint.py"]

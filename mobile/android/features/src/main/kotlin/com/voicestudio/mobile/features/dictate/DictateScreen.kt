@@ -25,7 +25,7 @@ import kotlinx.coroutines.CancellationException
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     val api=vm.api ?: return
-    val controller=remember(api) {DictationController(api,scope,vm::fail)}
+    val controller=remember(api) {DictationController(api,scope,vm::fail,completed={vm.phone.saveTranscript(it)})}
     val transcript by controller.text.collectAsState()
     val active by controller.active.collectAsState()
     val lifecycle=LocalLifecycleOwner.current
@@ -62,18 +62,20 @@ import kotlinx.coroutines.CancellationException
                 Info("mobile.simple.info",key,params=params)
             }
         }
-        Secondary("mobile.simple.retry",!checking) {scope.launch {check()}}
-        Text(transcript,modifier=Modifier.fillMaxWidth().heightIn(min=VSTheme.touchTarget*3).semantics {liveRegion=LiveRegionMode.Polite})
+        if(!ready&&!checking) Secondary("mobile.simple.retry") {scope.launch {check()}}
+        DictationTranscript(transcript)
     }, controls={
-        MicControl(active,ready,tap={holding=false;if(active) controller.finish() else start()},hold={holding=true;holdStart()},release={if(holding) {holding=false;controller.finish()}})
-        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(VSTheme.gap,androidx.compose.ui.Alignment.CenterHorizontally)) {
-            IconAction("mobile.dictate.copy",VSIcons.Copy,transcript.isNotBlank()) {context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(null,transcript))}
-            IconAction("mobile.speak.share",androidx.compose.material.icons.Icons.Default.Share,transcript.isNotBlank()) {shareText(context,transcript)}
-        }
+        DictationControls(transcript,active,ready,
+            copy={context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(null,transcript))},
+            share={shareText(context,transcript)},
+            tap={holding=false;if(active) controller.finish() else start()},hold={holding=true;holdStart()},
+            release={if(holding) {holding=false;controller.finish()}})
     })
 }
 
-@Composable fun DictateScreen(vm: StudioViewModel) {
+@Composable fun DictateScreen(vm: StudioViewModel,onHistory: ()->Unit = {}) {
+    Column {
+    Secondary("transcriptions.title",onClick=onHistory)
     com.voicestudio.mobile.features.models.TaskLocation(vm,"dictate",setOf("asr-stream")) {location,model ->
         if(location==com.voicestudio.mobile.local.RunLocation.COMPUTER) ComputerDictateScreen(vm)
         else {
@@ -81,4 +83,5 @@ import kotlinx.coroutines.CancellationException
             PhoneDictateScreen(vm,model,location==com.voicestudio.mobile.local.RunLocation.PHONE&&model?.let {phone.canRun(it,vm.phone.ramBytes)}==true)
         }
     }
+}
 }

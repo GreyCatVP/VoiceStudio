@@ -2,6 +2,11 @@ package com.voicestudio.mobile
 
 import android.app.Application
 import android.os.Bundle
+import android.content.Intent
+import android.content.pm.ShortcutInfo
+import android.content.pm.ShortcutManager
+import android.graphics.drawable.Icon
+import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -16,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -34,18 +40,37 @@ import com.voicestudio.mobile.features.voices.VoicesScreen
 import com.voicestudio.mobile.features.dub.DubScreen
 import com.voicestudio.mobile.features.dictate.DictateScreen
 import com.voicestudio.mobile.features.settings.SettingsScreen
+import com.voicestudio.mobile.network.ContentReportClient
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 class VoiceStudioApplication:Application()
 class MainActivity:ComponentActivity() {
+    private var incoming by mutableStateOf<Intent?>(null)
+    override fun onNewIntent(intent: Intent) {super.onNewIntent(intent);incoming=intent}
     override fun onCreate(savedInstanceState:Bundle?) {
         setTheme(R.style.AppTheme)
         super.onCreate(savedInstanceState);enableEdgeToEdge()
-        setContent {StudioApp()}
+        incoming=intent
+        val l=L10n.load(this,Locale.getDefault().toLanguageTag())
+        val shortcuts=listOf("speak","dictate").map {route ->
+            ShortcutInfo.Builder(this,route).setShortLabel(l.t("mobile.integration.shortcut_$route"))
+                .setIcon(Icon.createWithResource(this,android.R.drawable.ic_btn_speak_now))
+                .setIntent(Intent(Intent.ACTION_VIEW,Uri.parse("voicestudio://workspace/$route"),this,MainActivity::class.java)).build()
+        }
+        // Publishing shortcuts writes to disk (@WorkerThread), so keep it off the main thread.
+        val manager=getSystemService(ShortcutManager::class.java)
+        lifecycleScope.launch(Dispatchers.IO) {manager.dynamicShortcuts=shortcuts}
+        setContent {StudioApp(incomingIntent=incoming,onIncomingConsumed={incoming=null})}
     }
 }
 
-@Composable fun StudioApp(vm:StudioViewModel = viewModel()) {
+/** Reports go to VoiceStudio's app API: the dev server for debug builds, production for release. */
+fun contentReportClient()=ContentReportClient(BuildConfig.CONTENT_REPORTS_URL,BuildConfig.VERSION_NAME)
+
+@Composable fun StudioApp(vm:StudioViewModel = viewModel(), reportClient:ContentReportClient? = remember {contentReportClient()},incomingIntent: Intent?=null,onIncomingConsumed: ()->Unit={}) {
     val prefs by vm.preferences.collectAsStateWithLifecycle()
     val state by vm.state.collectAsStateWithLifecycle()
     val context=LocalContext.current
@@ -62,26 +87,31 @@ class MainActivity:ComponentActivity() {
         }
     }
     val direction=if(Locale.forLanguageTag(locale).language=="ar") LayoutDirection.Rtl else LayoutDirection.Ltr
-    CompositionLocalProvider(LocalL10n provides l,LocalLayoutDirection provides direction) {
+    val snackbars=remember {SnackbarHostState()}
+    CompositionLocalProvider(LocalL10n provides l,LocalLayoutDirection provides direction,LocalContentReportClient provides reportClient) {
         VoiceStudioTheme(ThemePreferences(prefs.mode,prefs.lightPalette,prefs.darkPalette)) {
+            CompositionLocalProvider(LocalScreenTitleProvided provides true) {
             key(state.connectionId) {
             val initialRoute=remember {if(state.error?.key=="mobile.connect.error_session_expired") "connect" else "home"}
             val nav=rememberNavController()
+            var received by remember {mutableStateOf<PhoneIncoming?>(null)}
+            LaunchedEffect(incomingIntent,state.loading) {
+                if(!state.loading&&incomingIntent!=null) {
+                    try {PhoneIncoming.read(context,incomingIntent)?.let {payload ->
+                        received=payload
+                        nav.navigate(if(payload.text==null&&payload.file==null) payload.route ?: "incoming" else "incoming") {launchSingleTop=true}
+                    }} catch(e:Exception) {vm.fail(e)}
+                    onIncomingConsumed()
+                }
+            }
             val back by nav.currentBackStackEntryAsState()
             val route=back?.destination?.route ?: "home"
+            var activeWorkspace by rememberSaveable {mutableStateOf("home")}
+            LaunchedEffect(route) {if(isWorkspace(route)) activeWorkspace=route}
             val dismissKeyboard=rememberKeyboardDismiss()
-            Scaffold(containerColor=role("canvas"),bottomBar={
-                NavigationBar(containerColor=role("chrome"),contentColor=role("toolbarForeground")) {
-                    val tabs=listOf("home","voices","dub","dictate","settings")
-                    tabs.forEach {tab ->
-                        val label=if(tab=="home") l.t("nav.home") else if(tab=="connect") l.t("mobile.tabs.connect") else l.t("mobile.tabs.$tab")
-                        NavigationBarItem(selected=route==tab || (tab=="home" && (route=="speak" || route.startsWith("voice/") || route.startsWith("host-voice/") || route.startsWith("project"))),onClick={dismissKeyboard();nav.navigate(tab) {popUpTo(nav.graph.startDestinationId) {saveState=true};launchSingleTop=true;restoreState=tab!="home"}},
-                            icon={Icon(when(tab) {"home" -> Icons.Default.Home;"speak" -> Icons.Default.PlayArrow;"voices" -> Icons.Default.Person;"dub" -> Icons.AutoMirrored.Filled.List;"dictate" -> Icons.Default.Edit;"connect" -> Icons.Default.Add;else -> Icons.Default.Settings},contentDescription=label)},
-                            label=if(LocalDensity.current.fontScale<=1.5f) {{Text(label)}} else null,
-                            colors=NavigationBarItemDefaults.colors(indicatorColor=role("messageSurface"),selectedIconColor=role("messageAction"),selectedTextColor=role("toolbarForeground"),unselectedIconColor=role("textMuted"),unselectedTextColor=role("textMuted")))
-                    }
-                }
-            }) {padding ->
+            Scaffold(containerColor=role("canvas"),snackbarHost={SnackbarHost(snackbars)},
+                topBar={StudioTopBar(route,onBack={dismissKeyboard();nav.navigateUp()},onProjects={dismissKeyboard();nav.navigate("projects")})},
+                bottomBar={StudioDock(if(isWorkspace(route)) route else activeWorkspace) {tab -> dismissKeyboard();activeWorkspace=tab;nav.navigate(tab) {popUpTo(nav.graph.startDestinationId) {saveState=true};launchSingleTop=true;restoreState=tab!="home"}}}) {padding ->
                 Surface(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).dismissKeyboardOnTap(),color=role("canvas")) {
                     Column {
                     state.error?.let {error ->
@@ -121,19 +151,34 @@ class MainActivity:ComponentActivity() {
                         composable("host-voice/{id}") {entry -> SpeakScreen(vm,initialComputerVoiceID=entry.arguments?.getString("id"))}
                         composable("voice/{id}") {entry -> SpeakScreen(vm,entry.arguments?.getString("id"))}
                         composable("speak") {SpeakScreen(vm)}
+                        composable("design") {VoiceDesignScreen(vm)}
+                        composable("stories") {ProductionScreen(vm,"stories")}
+                        composable("audiobook") {ProductionScreen(vm,"audiobook")}
+                        composable("batch") {com.voicestudio.mobile.features.dub.BatchDubScreen(vm)}
+                        composable("workflows") {WorkflowsScreen(vm)}
+                        composable("incoming") {received?.let {PhoneIncomingScreen(vm,it)}}
+                        composable("calls") {CallsScreen(vm)}
+                        composable("local-api") {LocalAPIScreen(vm,onVoices={nav.navigate("voices")})}
+                        composable("gallery") {GalleryScreen(vm) {nav.navigate(it)}}
+                        composable("preset/{model}/{speaker}") {entry -> SpeakScreen(vm,initialPhonePreset=entry.arguments?.getString("speaker")?.toIntOrNull(),initialPhoneModelID=entry.arguments?.getString("model"))}
+                        composable("tools") {VoiceToolsScreen(vm)}
                         composable("voices") {VoicesScreen(vm)}
                         composable("dub") {DubScreen(vm)}
-                        composable("dictate") {DictateScreen(vm)}
+                        composable("dictate") {DictateScreen(vm,onHistory={nav.navigate("transcriptions")})}
+                        composable("transcriptions") {TranscriptsScreen(vm,onDictate={nav.navigate("dictate")})}
+                        composable("handoff") {HandoffScreen(vm)}
                     }
                     }
                     }
                 }
             }
             }
+            }
             if(!state.loading&&prefs.consent==null) AlertDialog(shape=MaterialTheme.shapes.large,onDismissRequest={vm.consent(false)},title={Text(tr("consent.title"))},
                 text={Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(VSTheme.gap)) {Text(tr("consent.body"));Text(tr("mobile.consent.phone_note"))}},
                 confirmButton={TextButton(shape=MaterialTheme.shapes.small,onClick={vm.consent(true)}) {Text(tr("consent.yes"))}},
                 dismissButton={TextButton(shape=MaterialTheme.shapes.small,onClick={vm.consent(false)}) {Text(tr("consent.no"))}})
+            ContentReportHost(vm,snackbars)
         }
     }
 }

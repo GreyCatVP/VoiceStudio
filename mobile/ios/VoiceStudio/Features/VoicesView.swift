@@ -8,6 +8,11 @@ private struct VoiceEntry: Identifiable {
     let phone: PhoneVoice?
     init(_ voice: PhoneVoice) { id = "phone:"+voice.id.uuidString; name = voice.name; phone = voice }
     init(_ voice: Profile) { id = voice.id; name = voice.name; phone = nil }
+    /// A phone voice reports the catalogue model that made it; the computer reports no engine for a clone.
+    var reportSubject: ContentReportSubject {
+        if let phone { return .phone(.clone, id: phone.id.uuidString, repo: phone.modelRepo, revision: phone.modelRevision) }
+        return .computer(.clone, id: id, engine: nil)
+    }
 }
 struct VoicesView: View {
     @Environment(AppModel.self) private var model
@@ -19,6 +24,7 @@ struct VoicesView: View {
     @State private var deleting: VoiceEntry?
     @State private var name = ""
     @State private var hostScope: UUID?
+    @State private var reporting: ContentReportSubject?
     private var entries: [VoiceEntry] { model.phone.voices.map(VoiceEntry.init) + model.profiles.map(VoiceEntry.init) }
     private var filtered: [VoiceEntry] { entries.filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) } }
     var body: some View {
@@ -40,6 +46,7 @@ struct VoicesView: View {
                             Text(String(entry.name.prefix(1)).uppercased()).frame(width: 44,height: 44).background(theme.color("input"),in: Circle()).accessibilityHidden(true)
                             VStack(alignment: .leading,spacing: 4) {
                                 Text(entry.name).lineLimit(1)
+                                if let attribution = entry.phone?.sourceAttribution { Text([attribution["author"],attribution["license"],attribution["name"]].compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(theme.color("textMuted")).textSelection(.enabled) }
                                 Text(model.t(entry.phone == nil ? "mobile.simple.computer" : "mobile.simple.phone")).font(.caption).foregroundStyle(theme.color("textMuted"))
                             }.frame(maxWidth: .infinity,alignment: .leading)
                             Button(model.t("common.play"), systemImage: "play.fill") {
@@ -52,6 +59,7 @@ struct VoicesView: View {
                             }.labelStyle(.iconOnly).studioButton(.tertiary)
                             Menu {
                                 Button(model.t("mobile.voices.rename"),systemImage: "pencil") { name = entry.name; renamed = entry }
+                                ReportButton(subject: entry.reportSubject, reporting: $reporting, context: entry.name)
                                 Button(model.t("common.delete"),systemImage: "trash",role: .destructive) { deleting = entry }
                             } label: { Label(model.t("mobile.ios.more_actions"),systemImage: "ellipsis") }
                                 .labelStyle(.iconOnly).studioButton(.tertiary).frame(minWidth: 44,minHeight: 44).accessibilityIdentifier("voices.actions."+entry.id)
@@ -77,6 +85,7 @@ struct VoicesView: View {
         }
         .task { await model.phone.refresh() }
         .refreshable { await model.phone.refresh(); if model.connection.client != nil { await model.perform { model.profiles = try await model.api().profiles() } } }
+        .contentReportSheet($reporting)
         .fullScreenCover(isPresented: $creating) { NavigationStack { CloneView() }.environment(model) }
         .sheet(item: $renamed) { entry in
             NavigationStack {
@@ -119,8 +128,9 @@ struct CloneView: View {
     @State private var recordingTask: Task<Void,Never>?
     @State private var running = false
     @State private var progress = 0.0
-    private var asr: PhoneModel? { model.phone.selectedModel("clone",.asr) }
-    private var ready: Bool { asr.map(model.phone.ready) ?? false }
+    private var asr: PhoneModel? { model.phone.selectedModel("clone-asr",.asr) }
+    private var cloneModel: PhoneModel? { model.phone.selectedModel("clone",.clone) }
+    private var ready: Bool { (asr.map(model.phone.ready) ?? false) && (cloneModel.map(model.phone.ready) ?? false) }
     private var route: TaskRoute { LocalRouting.route(preference: preference,installed: ready,paired: model.connection.client != nil) }
     var body: some View {
         Form {
@@ -148,13 +158,15 @@ struct CloneView: View {
             } footer: { Text(model.t("clone.reference_hint")) }
             .listRowBackground(theme.color("surface"))
             if route == .download {
-                Section { LocalDownloadPrompt(items: asr.map { [$0] } ?? [], feature: "mobile.tabs.voices") }
+                Section { LocalDownloadPrompt(items: [asr,cloneModel].compactMap { $0 }, feature: "mobile.tabs.voices") }
                     .listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
             }
             if route != .computer {
                 Section {
+                    Text(model.t("mobile.calls.clone_hint")).font(.subheadline).foregroundStyle(theme.color("textMuted"))
                     DisclosureGroup(model.t("mobile.simple.more")) {
-                        ChoicePicker(label: model.t("mobile.local.models"), selection: Binding(get: { asr?.id ?? "" }, set: { model.phone.chooseModel("clone",$0) }), options: model.phone.candidates(.asr).map { SelectionOption(id: $0.id, title: $0.name, subtitle: model.t("mobile.simple." + $0.capability.rawValue), enabled: $0.fits()) })
+                        ChoicePicker(label: model.t("mobile.simple.clone"), selection: Binding(get: { cloneModel?.id ?? "" }, set: { model.phone.chooseModel("clone",$0) }), options: model.phone.candidates(.clone).map { SelectionOption(id: $0.id,title: $0.name,enabled: $0.fits()) })
+                        ChoicePicker(label: model.t("mobile.simple.asr"), selection: Binding(get: { asr?.id ?? "" }, set: { model.phone.chooseModel("clone-asr",$0) }), options: model.phone.candidates(.asr).map { SelectionOption(id: $0.id, title: $0.name, enabled: $0.fits()) })
                     }
                 }.listRowBackground(theme.color("surface"))
             }
@@ -190,8 +202,8 @@ struct CloneView: View {
             defer { running = false }
             await model.perform(onPhone: route == .phone) {
                 if route == .phone {
-                    guard let asr, let engine = model.phone.engine, let store = model.phone.voiceStore else { throw ClientError("mobile.local.model_required") }
-                    _ = try await store.create(name: name,source: audio.url,consent: consent,asr: asr,engine: engine,decoder: AVPhoneAudioDecoder(),progress: { value in await MainActor.run { progress = value.fraction } })
+                    guard let asr, let cloneModel, let engine = model.phone.engine, let store = model.phone.voiceStore else { throw ClientError("mobile.local.model_required") }
+                    _ = try await store.create(name: name,source: audio.url,consent: consent,asr: asr,cloneModel: cloneModel,engine: engine,decoder: AVPhoneAudioDecoder(),progress: { value in await MainActor.run { progress = value.fraction } })
                     await model.phone.refresh()
                 } else {
                     let access = audio.url.startAccessingSecurityScopedResource(); defer { if access { audio.url.stopAccessingSecurityScopedResource() } }

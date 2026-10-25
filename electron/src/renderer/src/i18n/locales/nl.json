@@ -1,4 +1,18 @@
 {
+  "cloneEmotion": {
+    "title": "Emotie",
+    "off": "Uit",
+    "text": "Beschrijving",
+    "vector": "Schuifregelaars",
+    "happy": "Blijdschap",
+    "angry": "Woede",
+    "sad": "Verdriet",
+    "afraid": "Angst",
+    "disgusted": "Afkeer",
+    "melancholic": "Melancholie",
+    "surprised": "Verrassing",
+    "calm": "Kalmte"
+  },
   "cloneQuality": {
     "title": "Audiokwaliteit",
     "precision": "WAV-precisie",
@@ -7,7 +21,7 @@
     "hint24": "Meer precisie voor bewerken en mixen.",
     "hint32": "Behoudt de volledige precisie. Grotere bestanden, geen betere stem.",
     "effort": "Stem verfijnen",
-    "effortHint": "Meer rondes duren langer; de stem klinkt niet altijd beter.",
+    "effortHint": "Minder rondes kunnen de kwaliteit verlagen; meer rondes duren langer.",
     "mastering": "Volume gelijkmaken",
     "masteringHint": "Maakt het geluid evenwichtiger en gelijkmatiger.",
     "nextTake": "Voor je volgende opname.",
@@ -20,7 +34,8 @@
     "preset16": "Standaard",
     "preset24": "Voor bewerking",
     "preset32": "Origineel",
-    "sizeUnknown": "De grootte wordt na het genereren getoond."
+    "sizeUnknown": "De grootte wordt na het genereren getoond.",
+    "sampleRate": "{{rate}} kHz"
   },
   "presetVoice": {
     "label": "Voorgeprogrammeerde stem"
@@ -96,12 +111,19 @@
     "brand_by": "{{brand}} door",
     "all": "Allen",
     "allContributors": "Alle bijdragers",
+    "coreMaintainer": "Kernbeheerder",
     "title": "VoiceStudio.sh Open source",
     "design": "Ontwerp een stem op basis van een beschrijving.",
     "dub": "Vertaal en dub audio of video.",
     "stories": "Maak scènes met meerdere stemmen.",
     "audiobook": "Maak luisterboeken met hoofdstukken.",
-    "transcribe": "Zet opnamen om in tekst."
+    "transcribe": "Zet opnamen om in tekst.",
+    "creatorCoreTeam": "Maker en kernteam",
+    "coreTeam": "Kernteam",
+    "maintainerPalash": "Palash Debnath",
+    "maintainerShimul": "Shimul Debnath",
+    "follow": "Volgen",
+    "website": "Website"
   },
   "twilioIntegration": {
     "exposureWarning": "Inschakelen opent een aparte lokale poort die je tunnel op internet publiceert. Alleen verzoeken die met je Twilio Auth Token zijn ondertekend worden geaccepteerd; de rest van VoiceStudio blijft privé.",
@@ -365,11 +387,13 @@
     "inactive": "Inactief",
     "translation": "Vertaling",
     "diarisation": "Diarisatie",
-    "localDevice": "Lokaal apparaat"
+    "localDevice": "Lokaal apparaat",
+    "localShort": "Lokaal"
   },
   "paneActions": {
     "collapse": "Paneel inklappen",
-    "edit": "Stemprofiel bewerken"
+    "edit": "Stemprofiel bewerken",
+    "expand": "Paneel uitklappen"
   },
   "modelSettings": {
     "models": "Modellen",
@@ -378,7 +402,9 @@
     "select": "Selecteer",
     "selected": "Geselecteerd",
     "change": "Engine wijzigen",
-    "failed": "De engine kon niet worden gewijzigd. Probeer opnieuw."
+    "failed": "De engine kon niet worden gewijzigd. Probeer opnieuw.",
+    "empty": "Nog geen engines of modellen voor deze categorie.",
+    "modelsInstalled": "{{installed}} van {{count}} geïnstalleerd"
   },
   "modelMaintenance": {
     "download": "Downloaden",
@@ -460,6 +486,8 @@
     "paste_failed": "Toegang tot het klembord is geblokkeerd. Plak rechtstreeks in het tekstveld met het toetsenbord.",
     "prompt": "Prompt",
     "language": "Taal",
+    "take_language_next": "Nieuwe opnames gebruiken {{language}}",
+    "take_language_used": "Taal van deze opname",
     "steps": "Stappen",
     "voice_source": "Stembron",
     "reference_audio": "Referentieaudio",
@@ -504,7 +532,7 @@
     "preset_anxious_whisper": "🤫 Fluister",
     "preset_surprised_woman": "😲 Verrast",
     "preset_elderly_story": "👴 Ouderling",
-    "preset_sichuan": "🌶️四川话",
+    "preset_sichuan": "Sichuan",
     "prompt_placeholder": "Wat moet deze stem zeggen?",
     "design_placeholder": "Beschrijf de stem en typ wat er staat...",
     "speed": "Snelheid",
@@ -534,6 +562,28 @@
     "opt_high_pitch": "hoge toon",
     "opt_very_high_pitch": "zeer hoge toon",
     "opt_whisper": "fluisteren",
+    "opt_american_accent": "Amerikaans accent",
+    "opt_british_accent": "Brits accent",
+    "opt_australian_accent": "Australisch accent",
+    "opt_canadian_accent": "Canadees accent",
+    "opt_indian_accent": "Indiaas accent",
+    "opt_chinese_accent": "Chinees accent",
+    "opt_korean_accent": "Koreaans accent",
+    "opt_japanese_accent": "Japans accent",
+    "opt_portuguese_accent": "Portugees accent",
+    "opt_russian_accent": "Russisch accent",
+    "dialect_henan": "Henan-dialect",
+    "dialect_shaanxi": "Shaanxi-dialect",
+    "dialect_sichuan": "Sichuan-dialect",
+    "dialect_guizhou": "Guizhou-dialect",
+    "dialect_yunnan": "Yunnan-dialect",
+    "dialect_guilin": "Guilin-dialect",
+    "dialect_jinan": "Jinan-dialect",
+    "dialect_shijiazhuang": "Shijiazhuang-dialect",
+    "dialect_gansu": "Gansu-dialect",
+    "dialect_ningxia": "Ningxia-dialect",
+    "dialect_qingdao": "Qingdao-dialect",
+    "dialect_dongbei": "Noordoost-Chinees dialect",
     "style_placeholder": "bijv. fluisteren",
     "stop_playback": "Afspelen stoppen",
     "describe_label": "Beschrijf je stem",
@@ -614,10 +664,15 @@
     "replace_reference": "Referentie vervangen",
     "keep_reference": "Huidige referentie behouden",
     "new_reference": "Nieuwe referentie: {{name}}",
-    "replace_reference_hint": "Opslaan vervangt het referentievoorbeeld van deze stem. De vastgezette opname en de verificatie van je eigen stem worden gewist, omdat de nieuwe clip van een andere spreker kan zijn. Laat het transcript leeg om de nieuwe clip automatisch te transcriberen."
+    "replace_reference_hint": "Opslaan vervangt het referentievoorbeeld van deze stem. De vastgezette opname en de verificatie van je eigen stem worden gewist, omdat de nieuwe clip van een andere spreker kan zijn. Laat het transcript leeg om de nieuwe clip automatisch te transcriberen.",
+    "cannotCloneUseDesign": "Dit model kan geen stem klonen. Beschrijf er een in Stemontwerp of kies een model dat kan klonen.",
+    "savedTab": "Opgeslagen",
+    "recentsTab": "Recent"
   },
   "designWorkspace": {
     "title": "Ontwerpen",
+    "takes_show": "Recente opnames tonen",
+    "saved_empty": "Opgeslagen ontwerpen verschijnen hier.",
     "save_failed": "Kan stemprofiel niet opslaan",
     "engine_cannot_design": "{{engine}} kan geen stemmen ontwerpen, omdat het een referentieclip nodig heeft. Kies een engine die stemontwerp ondersteunt, zoals OmniVoice, of kloon in plaats daarvan een stem.",
     "engine_cannot_reuse_sample": "{{engine}} kan geen referentieaudio gebruiken en deze opgeslagen stem dus niet opnieuw maken uit het voorbeeld. Kies een engine die stemklonen ondersteunt, zoals OmniVoice."
@@ -897,6 +952,7 @@
     "mirror_failed": "Voordracht overnemen mislukt: {{message}}",
     "cinematic_no_llm": "Deze kwaliteit vereist een LLM-provider. Configureer deze bij LLM-providers om door te gaan.",
     "dialect_not_applied": "Het gekozen dialect heeft een LLM nodig — zet de engine op OpenAI/Ollama of kies Cinematic-kwaliteit.",
+    "dialect_used": "Deze engine schrijft alleen {{variant}}. Gebruik een LLM-vertaalengine om het gekozen dialect toe te passen.",
     "translate_errors": "{{errorCount}}/{{totalCount}} segment(en) mislukt: {{firstError}}",
     "translate_degraded": "Alle {{totalCount}} segment(en) vertaald — {{count}} gebruiken de gewone vertaling omdat de polijststap is overgeslagen ({{reason}})",
     "translated_segments": "Vertaald {{count}} segment(en) → {{lang}}",
@@ -988,7 +1044,9 @@
     "play": "Afspelen",
     "pause": "Pauzeren",
     "seek": "Afspeelpositie",
-    "missing": "Audiobestand ontbreekt."
+    "missing": "Audiobestand ontbreekt.",
+    "now_playing": "Nu aan het spelen",
+    "kind_convert": "Stemconversie"
   },
   "logs": {
     "no_tauri_log": "Nog geen Tauri-inlogschijf: start via de desktop-build om er een te maken",
@@ -1479,6 +1537,12 @@
     "submit_failed": "Het indieningsformulier kon niet worden geopend.",
     "submit_preset": "Preset indienen",
     "submit_voice": "Stem indienen",
+    "community_packs": "Pakketten",
+    "community_all_packs": "Alle",
+    "community_language": "Taal",
+    "community_all_languages": "Alle talen",
+    "community_new": "Nieuw",
+    "community_author_profile": "{{author}} op GitHub",
     "zone_community": "Community",
     "import_persona": "Importeer een .ovsvoice-personabundel",
     "persona_imported": "Geïmporteerd \"{{name}}\"{{unverified}}.",
@@ -1558,7 +1622,10 @@
     "aec_description": "Verwijder VoiceStudio-weergave uit de microfoon.",
     "aec_row_title": "Echo-onderdrukking voor dicteren inschakelen",
     "aec_experimental": "Experimenteel",
-    "aec_hint": "Laat je dicteren tijdens een voorbeeld, dub of video zonder de audio van de app te transcriberen. Voegt enige verwerking toe; laat uit als je niet tijdens afspelen dicteert."
+    "aec_hint": "Laat je dicteren tijdens een voorbeeld, dub of video zonder de audio van de app te transcriberen. Voegt enige verwerking toe; laat uit als je niet tijdens afspelen dicteert.",
+    "cleanup_title": "Tekst opschonen",
+    "spoken_punctuation": "Gesproken leestekens",
+    "spoken_punctuation_desc": "Zeg “comma”, “period”, “question mark”, “new line” om het te typen. Alleen Engels."
   },
   "tools": {
     "title": "Gereedschap",
@@ -1634,7 +1701,8 @@
     "select_item": "{{name}} selecteren",
     "delete_selected": "Selectie verwijderen ({{count}})",
     "deleted_count": "Verwijderd: {{count}}",
-    "delete_warning": "Dit kan niet ongedaan worden gemaakt. Projecten en transcripties worden verwijderd. Bij het verwijderen van stemmen of opnamen wordt ook hun opgeslagen audio verwijderd. Geëxporteerde bestanden en voltooide audiorenders blijven bewaard."
+    "delete_warning": "Dit kan niet ongedaan worden gemaakt. Projecten en transcripties worden verwijderd. Bij het verwijderen van stemmen of opnamen wordt ook hun opgeslagen audio verwijderd. Geëxporteerde bestanden en voltooide audiorenders blijven bewaard.",
+    "draft_changed": "Je concept is gewijzigd tijdens het laden van dit project. Bevestig opnieuw om het te vervangen."
   },
   "projectActions": {
     "delete": "‘{{name}}’ verwijderen? Dit kan niet ongedaan worden gemaakt.",
@@ -1665,7 +1733,6 @@
     "title": "Verhalen-editor",
     "subtitle": "Audioboek met meerdere sporen en stemmen per personage",
     "cast": "Gegoten",
-    "castTitle": "Cast: wijs een stem toe aan elk personage",
     "addCharacter": "Karakter toevoegen",
     "character": "Karakter",
     "characterName": "Karakternaam",
@@ -1714,7 +1781,6 @@
     "addFirst": "Eerste regel toevoegen",
     "linePlaceholder": "Voer een dialoog of verhaal in... gebruik [pauze 0,5s] voor een stille pauze",
     "text": "tekst",
-    "voice": "stem",
     "defaultVoice": "Standaard",
     "inlineVoice": "Inline stem instellen",
     "inlineVoiceHint": "Wissel van stem voor de gemarkeerde tekst (of plaats een schakelaar bij de cursor)",
@@ -1745,7 +1811,19 @@
     "global_speed_apply": "Voor alle regels gebruiken",
     "deleteProjectConfirm": "Dit project permanent verwijderen?",
     "moveUp": "Omhoog",
-    "moveDown": "Omlaag"
+    "moveDown": "Omlaag",
+    "voiceLabel": "Stem",
+    "scriptSubtitle": "Schrijf regel voor regel en geef elk personage een eigen stem.",
+    "speedHint": "Voor regels zonder eigen snelheid.",
+    "castEmpty": "Voeg personages toe en kies wie elke regel uitspreekt.",
+    "speaker": "Spreker",
+    "speakerNone": "Verteller",
+    "speakerChip": "Spreker: {{name}}",
+    "voiceChip": "Stem: {{name}}",
+    "toneChip": "Toon en snelheid: {{speed}}",
+    "lineVoice": "Regelstem",
+    "chapterHeading": "Hoofdstuktitel",
+    "lineActions": "Regelacties"
   },
   "audiobook": {
     "cast": "Cast",
@@ -1800,6 +1878,10 @@
     "open_cache_failed": "De hoofdstukcache kon niet worden geopend",
     "progress_summary": "{{current}} van {{total}} hoofdstukken aan het synthetiseren",
     "eta": "~{{time}} resterend",
+    "eta_estimating": "Resterende tijd schatten…",
+    "realtime": "{{rate}}× realtime",
+    "realtime_hint": "Seconden audio per seconde renderen",
+    "stalled": "Al {{time}} geen voortgang. De engine hangt mogelijk: bekijk Logboeken → Backend, of stop en maak later opnieuw. Voltooide delen blijven bewaard.",
     "chapter_n": "Hoofdstuk {{n}}",
     "cached_tag": "in cache",
     "failed_tag": "mislukt",
@@ -1872,7 +1954,9 @@
     "deepl_base_url_help": "Aangepast DeepL API-eindpunt (standaard: https://api.deepl.com/v2). Wijzigen voor proxy/zelf-gehost.",
     "microsoft_base_url_help": "Aangepast Azure Translator-eindpunt (standaard: https://api.cognitive.microsofttranslator.com).",
     "region": "Regio",
-    "aws_profile": "AWS-profiel"
+    "aws_profile": "AWS-profiel",
+    "deepl_key_placeholder": "DeepL API-sleutel",
+    "microsoft_key_placeholder": "Microsoft API-sleutel"
   },
   "about": {
     "architecture": "Architectuur",
@@ -1956,6 +2040,7 @@
     "original": "Origineel",
     "dub_suffix": "(kopiëren)",
     "bg_audio": "Achtergrondaudio",
+    "bg_level": "Achtergrondvolume",
     "mix_bg_video": "Mix muziek/FX onder elk nagesynchroniseerde nummer",
     "subs_in_video": "Ondertiteling in video",
     "hardsub": "Ondertitels in beeld branden (hardsub)",
@@ -2052,6 +2137,7 @@
     "setup_access": "Sta schrijftoegang toe tot de gegevensmap van de app en probeer het opnieuw.",
     "setup_unsupported_platform": "Deze Intel-Mac kan de lokale AI-backend niet uitvoeren — PyTorch levert geen macOS-Intel-wheels. Verbind hieronder een externe backend; geen lokale installatie nodig.",
     "setup_wrong_architecture": "Dit is de Intel-versie (x64) van VoiceStudio die via Rosetta op een Mac met Apple Silicon draait, dus de lokale AI-backend kan niet worden geïnstalleerd. Sluit de app, installeer de Apple Silicon-DMG (arm64) eroverheen en open hem opnieuw — je stemmen en projecten blijven behouden.",
+    "setup_missing_system_library": "Op dit Windows-systeem ontbreekt het Microsoft Visual C++ 2015-2022 Redistributable (x64) dat de PyTorch-audio-extensie nodig heeft. Installeer het via Microsoft en druk daarna op Opnieuw proberen.",
     "download_apple_silicon": "Apple Silicon-versie downloaden",
     "ready": "Engine gereed",
     "show_log": "Logboek tonen",
@@ -2073,8 +2159,25 @@
     "port_in_use_short": "Poort {{port}} is bezet",
     "proxy_bypass_help": "Sluit VoiceStudio volledig af, stel in een terminal HTTP_PROXY/HTTPS_PROXY in op je proxy-URL en NO_PROXY op de uitgesloten hosts en start VoiceStudio vanuit die terminal. Opnieuw proberen in de geopende app laadt geen nieuwe omgevingsvariabelen.",
     "hint_spawn_blocked": "Je besturingssysteem of beveiligingssoftware weigerde de lokale engine te starten. Voeg de runtimemap van VoiceStudio toe aan de uitzonderingen van je antivirus (Windows: Windows-beveiliging → Virus- en bedreigingsbeveiliging → Instellingen beheren → Uitsluitingen), controleer dat de map niet in een met de cloud gesynchroniseerde map zoals OneDrive staat en probeer het opnieuw.",
+    "hint_smart_app_control": "Slimme app-beheer van Windows heeft de lokale engine geblokkeerd. Het kent geen uitzonderingen per app, dus een uitsluiting in je antivirus helpt niet. Zet het uit via Windows-beveiliging → App- en browserbeheer → Instellingen voor Slimme app-beheer (Windows kan het zonder reset niet weer inschakelen), of verbind VoiceStudio met een engine op een andere computer en probeer het opnieuw.",
     "hint_slow_start": "De engine was nog aan het opstarten toen de wachttijd verstreek. Trage computers, vooral zonder aparte GPU, en de eerste start na een installatie (de antivirus scant elk nieuw bestand) kunnen enkele minuten duren. Sluit geheugenintensieve apps en probeer het opnieuw; latere starts gaan veel sneller.",
-    "hint_synced_folder": "Deze locatie staat in een met de cloud gesynchroniseerde map (OneDrive, Dropbox, iCloud Drive, Google Drive). Alleen-online-plaatsaanduidingen en bestandsvergrendeling breken de Python-omgeving. Verplaats VoiceStudio naar een gewone lokale map (bijvoorbeeld C:\\VoiceStudio op Windows of ~/VoiceStudio op macOS en Linux) en stel het opnieuw in."
+    "hint_synced_folder": "Deze locatie staat in een met de cloud gesynchroniseerde map (OneDrive, Dropbox, iCloud Drive, Google Drive). Alleen-online-plaatsaanduidingen en bestandsvergrendeling breken de Python-omgeving. Verplaats VoiceStudio naar een gewone lokale map (bijvoorbeeld C:\\VoiceStudio op Windows of ~/VoiceStudio op macOS en Linux) en stel het opnieuw in.",
+    "cause_smart_app_control": "Slimme app-beheer van Windows heeft de engine geblokkeerd",
+    "cause_spawn_blocked": "Beveiligingssoftware heeft het starten van de engine geblokkeerd",
+    "cause_native_crash": "De engine is tijdens het starten gecrasht (native fout)",
+    "cause_missing_env": "De Python-omgeving ontbreekt of is onvolledig",
+    "cause_permission": "Geen schrijfrechten voor de enginemap",
+    "cause_synced_folder": "De enginemap staat in een met de cloud gesynchroniseerde map",
+    "cause_slow_start": "De engine is nog bezig met starten op een trage computer",
+    "choose_folder": "Andere map kiezen",
+    "copy_diagnostics": "Diagnose kopiëren",
+    "diagnostics_copied": "Diagnose gekopieerd",
+    "details": "Details",
+    "pill_starting": "Starten",
+    "pill_recovering": "Herstellen",
+    "pill_failed": "Mislukt",
+    "pill_repeats": "{{count}} keer achter elkaar",
+    "offline_bar": "Engine bezig, verbinding wordt automatisch hersteld"
   },
   "bootstrap": {
     "checking": "Omgeving controleren…",
@@ -2085,6 +2188,10 @@
     "download_rate": "{{rate}}/s",
     "eta": "~{{time}} resterend",
     "downloads_complete": "Downloads voltooid · pakketten installeren",
+    "download_source": "Van {{host}}",
+    "download_stalled": "Geen gegevens van {{host}} sinds {{seconds}} s",
+    "download_stalled_generic": "Geen downloadgegevens sinds {{seconds}} s",
+    "download_stalled_hint": "Voltooide bestanden blijven bewaard als je annuleert en opnieuw probeert. Een VPN of proxy kan helpen.",
     "verifying": "Omgeving controleren…",
     "clean_retry": "Wissen & Opnieuw proberen",
     "clean_retry_confirm": "Hiermee wordt de Python-omgeving opnieuw opgebouwd met hergebruik van geverifieerde downloads. Doorgaan?",
@@ -2319,7 +2426,9 @@
     "not_included": "Niet in je abonnement",
     "plan_ends": "tot {{date}}",
     "details_failed": "Je accountgegevens konden niet worden geladen ({{reason}}).",
-    "retry": "Opnieuw proberen"
+    "retry": "Opnieuw proberen",
+    "manage_profile": "Profiel beheren",
+    "manage_plan": "Abonnement beheren"
   },
   "cloudsync": {
     "unavailable": "Synchronisatie is nu niet beschikbaar.",
@@ -2367,7 +2476,8 @@
     "storage_temp": "Tijdelijke bestanden",
     "change": "Wijzigen…",
     "reset_default": "Resetten naar standaard",
-    "region_label": "Downloadregio"
+    "region_label": "Downloadregio",
+    "free_space": "{{free}} GB vrij op deze schijf, ongeveer {{needed}} GB nodig"
   },
   "asr_missing": {
     "message": "Er is geen spraak-naar-tekstmodel geïnstalleerd — deze functie heeft er een nodig om audio te transcriberen.",
@@ -2509,7 +2619,18 @@
     "staleTitle": "Update beschikbaar",
     "staleMessage": "U gebruikt VoiceStudio {{current}}, maar {{latest}} is al uit — deze bug is daar mogelijk al verholpen. De nieuwste versie bekijken voordat u rapporteert?",
     "staleView": "Update bekijken",
-    "staleFileAnyway": "Toch rapporteren"
+    "staleFileAnyway": "Toch rapporteren",
+    "summary_label": "Wat ging er mis?",
+    "summary_placeholder": "Eén regel, bijvoorbeeld: nasynchronisatie stopt bij 40%",
+    "summary_required": "Voeg eerst een beschrijving van één regel toe.",
+    "sent_title": "Wat wordt verzonden",
+    "sent_app": "App-versie en build",
+    "sent_system": "Besturingssysteem, GPU, geheugen en vrije schijfruimte",
+    "sent_engines": "Welke engines actief zijn",
+    "sent_logs": "Recente enginelogregels, zonder het pad van je thuismap en tokens",
+    "sent_pages": "Namen van onlangs bezochte pagina’s",
+    "not_sent": "Nooit verzonden: je audio, tekst of stemmen. Bestandsnamen kunnen in logs of je beschrijving staan, dus controleer de GitHub-voorbeeldweergave voordat je verzendt.",
+    "submit": "GitHub-issue openen"
   },
   "crash": {
     "notice_unclean": "De vorige sessie is {{ago}} geleden zonder nette afsluiting geëindigd. Dit is vaak onschuldig — de machine sliep, de app werd geforceerd gesloten of een VM/container stopte.",
@@ -2652,6 +2773,15 @@
     "vol": "Vol",
     "vol_title": "Volume (0–200%)",
     "search_placeholder": "Zoek tekst…",
+    "replace_placeholder": "Vervangen door…",
+    "replace": "Vervangen",
+    "replace_all": "Alles vervangen",
+    "find_next": "Volgende treffer",
+    "find_prev": "Vorige treffer",
+    "find_count": "{{current}} van {{total}}",
+    "find_none": "Geen treffers",
+    "replace_done_one": "{{count}} treffer vervangen",
+    "replace_done_other": "{{count}} treffers vervangen",
     "all_speakers": "Alle luidsprekers",
     "select_all_title": "Selecteer alles gefilterd",
     "sel_count": "{{count}} gekozen",
@@ -2844,6 +2974,7 @@
     "latencyMs": "{{ms}} ms",
     "none_ready_title": "Spraaksynthese is niet gereed",
     "none_ready_body": "VoiceStudio kan automatisch de beste compatibele optie voor dit apparaat instellen.",
+    "set_up": "Instellen",
     "active": "Engine: {{name}}",
     "none": "Geen engine actief",
     "localInstallRequired": "Installeer deze engine op de backendcomputer via localhost of de installatiehandleiding. Installatie op afstand is uitgeschakeld.",
@@ -2860,7 +2991,8 @@
     "balanced": "Gebalanceerd",
     "quality": "Kwaliteit",
     "hint": "Geldt voor OmniVoice-sampling en Faster-Whisper / NLLB-decodering. Andere engines behouden hun instellingen.",
-    "auto": "Auto"
+    "auto": "Auto",
+    "autoHint": "Kiest het beste niveau voor deze computer."
   },
   "recording": {
     "input_device": "Invoerapparaat",
@@ -2899,12 +3031,14 @@
     "windows_app_control_blocked": "Windows-toepassingsbeheer heeft een vereist bestand geblokkeerd. Vraag je beheerder de vertrouwde VoiceStudio-runtime toe te staan en start de app opnieuw.",
     "audio_io_failed": "De audio kon niet worden gelezen of opgeslagen. Controleer het bestandsformaat, de vrije schijfruimte en de bestandsrechten. Controleer de map bij Instellingen → Opslag.",
     "no_audio_track": "Dit bestand heeft geen audiotrack, dus er is geen spraak om te transcriberen, na te synchroniseren of te klonen. Kies een video- of audiobestand met geluid.",
+    "source_language_required": "Spraakherkenning heeft niet gemeld in welke taal deze video gesproken is, dus hij kan hier niet worden vertaald. Open de video in Nasynchronisatie en kies de brontaal, of kies een spraakherkenningsmodel dat de taal detecteert.",
     "transcription_media_tool": "Voor transcriptie is ffmpeg nodig, dat VoiceStudio niet kon vinden of uitvoeren. Open Instellingen → Audiotools en gebruik Downloaden/Herstellen, of installeer ffmpeg (macOS: brew install ffmpeg; Windows: winget install Gyan.FFmpeg; Linux: je pakketbeheerder) en herstart VoiceStudio. Je kunt ook FFMPEG_PATH naar een ffmpeg-bestand laten wijzen.",
     "transcription_pipe_lost": "De backend verloor tijdens de transcriptie zijn uitvoerkanaal naar de app (broken pipe). Herstart VoiceStudio en probeer het opnieuw.",
     "gpu_oom": "De GPU heeft geen geheugen meer. Sluit andere GPU-intensieve apps of ontlaad modellen en probeer het opnieuw. Je kunt ook CPU kiezen in Instellingen → Prestaties en apparaat of een kleinere TTS-engine selecteren.",
     "host_memory_exhausted": "De computer heeft geen geheugen meer. Sluit andere geheugenintensieve apps en browsertabs, ontlaad ongebruikte modellen, genereer een kortere passage of kies een lichtere TTS-engine.",
     "engine_dependency_missing": "Een Python-pakket dat deze engine nodig heeft is niet geïnstalleerd, dus de engine kon niet starten. Open de Modelcatalogus, selecteer de engine en gebruik Installeren / Repareren en start VoiceStudio daarna opnieuw.",
     "reference_stt_missing": "Deze stem heeft geen transcriptie en er is geen spraak-naar-tekstmodel geïnstalleerd om er een te maken. Typ wat de referentieclip zegt in het transcriptievak (clips tot 20 seconden) of installeer een spraak-naar-tekstmodel in de Modelcatalogus, selecteer het en genereer opnieuw.",
+    "install_speech_model": "Spraakherkenningsmodel installeren",
     "proxy_gateway_error": "Een proxy of gateway tussen jou en VoiceStudio antwoordde met HTTP {{status}} in plaats van de backend. De backend is mogelijk nog bezig. Verhoog de lees-timeout van de proxy (bij nginx proxy_read_timeout) voor lange generaties en controleer daarna Instellingen → Logboeken → Backend.",
     "route_not_found": "De draaiende VoiceStudio-backend heeft geen {{route}}-endpoint. Start VoiceStudio opnieuw zodat app en backend overeenkomen; blijft het probleem, werk dan beide bij naar dezelfde versie."
   },
@@ -2922,12 +3056,25 @@
     "open_in_browser": "Openen in browser",
     "qr_alt": "QR voor {{ip}}",
     "pin": "Pincode:",
-    "connect": "Verbinden"
+    "connect": "Verbinden",
+    "self_check": "Zelftest",
+    "listening_on": "Luistert op {{host}}:{{port}}",
+    "recheck": "Opnieuw controleren",
+    "address_ok": "Luistert",
+    "address_down": "Reageert niet",
+    "firewall_hint": "Geen verbinding? Gebruik dezelfde wifi, sta VoiceStudio toe in je firewall (privénetwerk op Windows) en zet vpn uit."
   },
   "repairAgent": {
     "title": "Vraag het VoiceStudio Agent",
     "notInstalled": "Niet geïnstalleerd",
-    "noSource": "Open een beschrijfbare VoiceStudio-broncheckout zodat een agent deze kan repareren.",
+    "noSource": "Kies voor codeherstel een VoiceStudio-kopie die met git clone is gemaakt. De geïnstalleerde app kan niet worden bewerkt.",
+    "sourceRejected": {
+      "installed_app": "Dat is de geïnstalleerde app, die niet kan worden bewerkt. Kies in plaats daarvan een git clone.",
+      "not_git": "Die map is geen git clone. Een ZIP-download werkt niet; gebruik git clone.",
+      "not_voicestudio": "Geen VoiceStudio-kloon gevonden in die map.",
+      "read_only": "VoiceStudio kan niet naar die map schrijven. Kies een map van jezelf."
+    },
+    "chooseFailed": "Die map kon niet worden gebruikt. Probeer het opnieuw of kies een andere.",
     "noneFound": "Installeer Codex, Claude Code, OpenCode of Pi voor lokale reparatie.",
     "ready": "Gereed",
     "placeholder": "Wat ging er mis? Voeg stappen, zichtbare fouten of verwacht gedrag toe.",
@@ -3380,6 +3527,8 @@
     "hint": "Gebruik doorgaans de standaardwaarden. Sturing bepaalt de invloed van de instructie; de andere instellingen veranderen hoe het model geluid opbouwt. Wijzig één instelling tegelijk."
   },
   "languagePicker": {
+    "dialectFollowsVoice": "{{model}} heeft één model voor het {{language}}, dus het accent volgt de referentiestem.",
+    "dialectUsed": "{{model}} spreekt alleen {{variant}}.",
     "auto": "Automatisch",
     "unavailable": "Niet ondersteund",
     "unsupportedBy": "Niet ondersteund door {{model}}",
@@ -3390,7 +3539,11 @@
     "unknown": "Taalondersteuning onbekend",
     "error": "Talen konden niet worden gecontroleerd",
     "modelLanguages": "Talen voor dit model",
-    "changeModel": "Model wijzigen"
+    "changeModel": "Model wijzigen",
+    "recent": "Recent",
+    "available": "Beschikbaar",
+    "showAll": "Alle talen tonen",
+    "hideUnsupported": "Niet-ondersteunde talen verbergen"
   },
   "modelLicense": {
     "title": "Modelvoorwaarden",
@@ -3520,6 +3673,10 @@
     "detailsFailed": "De licentiegegevens konden niet worden geladen. Sluit dit venster en probeer het opnieuw."
   },
   "mobile": {
+    "home": {
+      "subtitle": "Jouw open-source, volledig lokale alternatief voor ElevenLabs — kloon en ontwerp stemmen, dub video’s, dicteer, transcribeer en maak luisterboeken in 646 talen.",
+      "brought_by": "Mogelijk gemaakt door"
+    },
     "tabs": {
       "speak": "Spreken",
       "voices": "Stemmen",
@@ -3797,7 +3954,7 @@
       "capture_slow": "Deze telefoon kon microfoonaudio niet snel genoeg verwerken. Sluit andere apps of gebruik je computer.",
       "preset_voice": "Stem {{number}}",
       "transfer": "{{received}} van {{total}}",
-      "privacy": "Taken op het apparaat blijven op deze telefoon. Alleen modeldownloads en je gekoppelde computer gebruiken het netwerk.",
+      "privacy": "Taken op het apparaat blijven op deze telefoon. Alleen modeldownloads, meldingen die je zelf verstuurt en je gekoppelde computer gebruiken het netwerk.",
       "computer_feature": "Deze functie draait momenteel op je computer. Je kunt Spreken en Dicteren op deze telefoon gebruiken zonder te koppelen.",
       "accepted": "Licentie geaccepteerd",
       "not_accepted": "Licentie niet geaccepteerd",
@@ -3861,6 +4018,293 @@
     },
     "consent": {
       "phone_note": "Opgeslagen op deze telefoon. Er wordt niets verzonden."
+    },
+    "report": {
+      "action": "Melden",
+      "title": "Dit resultaat melden",
+      "reason": "Wat is er mis mee?",
+      "reasons": {
+        "sexual": "Seksuele inhoud",
+        "hateful": "Haatdragend of beledigend",
+        "impersonation": "Imitatie of een stem gekloond zonder toestemming",
+        "misleading": "Misleidend of schadelijk",
+        "other": "Iets anders"
+      },
+      "note": "Details (optioneel)",
+      "include_text": "De tekst die ik invoerde meesturen",
+      "disclosure": "Stuurt je reden, notitie, de app-versie en het gebruikte model naar het VoiceStudio-team. Er wordt geen audio, account of apparaat-ID verstuurd.",
+      "send": "Melding versturen",
+      "sending": "Versturen…",
+      "sent": "Melding verstuurd. Bedankt.",
+      "failed": "De melding kon niet worden verstuurd. Controleer je verbinding en probeer het opnieuw.",
+      "retry": "Opnieuw proberen",
+      "rate_limited": "Te veel meldingen vanaf dit netwerk. Probeer het later opnieuw.",
+      "invalid": "Deze melding kon niet worden verstuurd. Werk de app bij en probeer het opnieuw."
+    },
+    "production": {
+      "new": "Nieuw project",
+      "script_hint": "Gebruik # Hoofdstuktitel voor hoofdstukken en [voice:Name] aan het begin van een regel om van personage te wisselen. Alleen platte tekst; andere markeringen worden voorgelezen.",
+      "conversion_hint": "Kies een audiofragment van maximaal 30 seconden. De conversie transcribeert het en spreekt het uit met de gekozen stem; de oorspronkelijke uitvoering blijft niet behouden.",
+      "normalize_text": "Tekst opschonen"
+    },
+    "calls": {
+      "remote_control": "Oproepbediening voor gekoppelde apparaten toestaan",
+      "remote_control_hint": "Laat telefoons die met een API-sleutel zijn geverifieerd oproepen starten en beheren. Oproepinstellingen blijven op deze computer.",
+      "hint": "Oproepen lopen via je gekoppelde computer en het ingestelde Twilio-nummer. Schakel daar eerst oproepbediening in.",
+      "authentication": "Koppel met de API-sleutel van de computer. Een deelpincode geeft geen toestemming voor oproepen.",
+      "billing": "De gesprekskosten van Twilio zijn van toepassing.",
+      "clone_hint": "Whisper schrijft je opname uit. Een apart kloonmodel maakt vóór het opslaan een gekloond voorbeeld; beide modellen zijn nodig."
+    },
+    "host": {
+      "title": "Spraak-API van telefoon",
+      "hint": "Bied de geselecteerde geïnstalleerde stem aan via een OpenAI-compatibel spraakeindpunt en MCP (2025-11-25). Werkt alleen met dit scherm open en de app actief.",
+      "lan": "Lokaal netwerk toestaan",
+      "lan_hint": "Uit: alleen deze telefoon. Aan: apparaten in je netwerk kunnen verbinden met het tijdelijke Bearer-token. Houd het token geheim.",
+      "start": "Server starten",
+      "copy": "Bearer-token kopiëren",
+      "running": "Server actief",
+      "capabilities_hint": "Stel alleen de geïnstalleerde modellen en gekozen stem beschikbaar. Spraak, transcriptie en vertaling draaien op deze telefoon zolang dit scherm openblijft.",
+      "allow_speech": "Spraakgeneratie toestaan",
+      "allow_transcription": "Transcriptie toestaan",
+      "allow_translation": "Vertaling toestaan",
+      "voice_source": "Stembron",
+      "preset": "Vooraf ingestelde stemmen",
+      "saved": "Opgeslagen stemmen",
+      "audio_hint": "Transcriptie accepteert base64 PCM16 mono-WAV van 8–24 kHz, tot 30 seconden."
+    },
+    "books": {
+      "import_failed": "Dit boek kon niet worden geïmporteerd. Gebruik een niet-versleutelde EPUB, tekst-PDF of UTF-8-tekst (maximaal 64 MB).",
+      "no_text": "Geen leesbare tekst gevonden. Gescande pdf’s hebben tekstherkenning nodig vóór het importeren.",
+      "export_failed": "Audio kon niet worden geëxporteerd. M4B ondersteunt maximaal 255 hoofdstukken.",
+      "invalid_controls": "Gebruik snelheden van 0,5 tot 2, pauzes tot 30 seconden en niet-lege uitspraakregels.",
+      "controls_hint": "Importeer EPUB, tekst-PDF of TXT. Voeg [pause:0.5] toe voor stilte in seconden; begin een regel met [speed:1.25] om de snelheid te wijzigen. Ongewijzigde regels hergebruiken opgeslagen audio.",
+      "line_speed": "Regelsnelheid",
+      "restore_recipe": "Opgeslagen stemrecept bewerken",
+      "save_recipe_copy": "Opslaan als nieuwe stem"
+    },
+    "editing": {
+      "undo": "Ongedaan maken",
+      "redo": "Opnieuw",
+      "subtitles": "Ondertitels",
+      "import_subtitles": "SRT / VTT importeren",
+      "export_srt": "SRT exporteren",
+      "export_vtt": "VTT exporteren",
+      "source_text": "Brontekst",
+      "original": "Originele audio",
+      "generated": "Gegenereerde audio",
+      "split_at": "Splitsen bij",
+      "split": "Segment splitsen",
+      "merge": "Samenvoegen met volgende",
+      "replace_subtitles": "Ondertiteltijdlijn vervangen?",
+      "replace": "Vervangen",
+      "replace_subtitles_detail": "Dit vervangt de segmenttijdlijn voor deze taal. Andere talen moeten mogelijk opnieuw worden vertaald. Je kunt dit ongedaan maken voordat je genereert.",
+      "preview_unavailable": "Genereer dit segment voordat je de audio beluistert.",
+      "subtitle_invalid": "Kies een geldig SRT- of VTT-bestand met segmenten van maximaal 30 seconden.",
+      "subtitle_missing": "Vertaal alle segmenten voordat je ondertitels exporteert.",
+      "split_invalid": "Kies een splitspunt binnen het segment met voldoende tekst aan beide kanten.",
+      "merge_invalid": "Voeg aangrenzende segmenten samen met dezelfde stem en een totale duur van maximaal 30 seconden.",
+      "waveform": "Audiogolfvorm"
+    },
+    "jobs": {
+      "title": "Verwerking op de telefoon",
+      "checkpointed": "Voltooide stappen worden opgeslagen. Annuleer en hervat wanneer nodig.",
+      "power_paused": "Verwerking gepauzeerd om de batterij te beschermen of de telefoon te laten afkoelen. Hervat als de omstandigheden verbeteren.",
+      "background_paused": "Op de achtergrond gepauzeerd. Open deze taak opnieuw en hervat vanaf de opgeslagen stappen.",
+      "requesting_gpu": "GPU-toegang op de achtergrond aanvragen…",
+      "requesting_cpu": "CPU-tijd op de achtergrond aanvragen…",
+      "continued_gpu": "GPU-voortzetting toegestaan; iOS kan de taak nog steeds pauzeren of beëindigen.",
+      "continued_cpu": "CPU-voortzetting toegestaan; iOS kan de taak nog steeds pauzeren of beëindigen.",
+      "switching_cpu": "Voortgang opslaan en GPU vrijgeven voordat de CPU doorgaat…",
+      "background_limited": "iOS beperkt de achtergrondtijd. Voltooide stappen blijven opgeslagen als de tijd afloopt.",
+      "background_requestable": "Deze telefoon ondersteunt GPU-aanvragen op de achtergrond. Elke taak heeft nog goedkeuring van iOS nodig.",
+      "gpu_unavailable": "GPU op de achtergrond is hier niet beschikbaar. Gebruik de CPU of open opnieuw om opgeslagen stappen te hervatten.",
+      "cpu_fallback": "CPU-voortzetting toestaan als GPU op de achtergrond niet beschikbaar is",
+      "cpu_tradeoff": "De CPU is langzamer en kan meer batterij gebruiken. Op de voorgrond wordt normaal de GPU gebruikt.",
+      "cpu_unavailable": "De geïnstalleerde versie kan dit model niet op de CPU voortzetten. Opgeslagen stappen kunnen op de voorgrond worden hervat.",
+      "resume_checkpoint": "Opgeslagen taak hervatten",
+      "foreground_service": "Een voorgrondservice houdt deze taak actief zolang Android dat toestaat."
+    },
+    "flow": {
+      "import_media": "Audio of video importeren",
+      "template_clean": "Opschonen en voorlezen",
+      "template_translate": "Vertalen en voorlezen",
+      "template_transcribe": "Transcriberen en vertalen",
+      "contains": "Doorgaan als tekst bevat (hoofdlettergevoelig)",
+      "skip": "Indien afwezig, {{count}} stappen overslaan",
+      "skip_label": "Stappen overslaan indien afwezig",
+      "retries": "Nieuwe pogingen: {{count}}",
+      "retries_label": "Nieuwe pogingen na een fout",
+      "step_transcribe": "Media transcriberen",
+      "step_condition": "Voorwaarde"
+    },
+    "integration": {
+      "received": "Ontvangen inhoud",
+      "review": "Controleer de gedeelde inhoud voordat je een taak start. Niets start automatisch.",
+      "shortcut_speak": "Voorlezen openen",
+      "shortcut_dictate": "Dicteren openen",
+      "widget_description": "Opent voorlezen of dicteren. Opnemen begint pas wanneer je op Start tikt.",
+      "text": "Tekst"
+    },
+    "export": {
+      "failed": "Audio kon niet worden geëxporteerd. Controleer de vrije opslagruimte en probeer opnieuw."
+    },
+    "processing": {
+      "audio_editor": "Audio-editor",
+      "hint": "Offline spraakbewerking: 24 kHz mono. De bron blijft ongewijzigd.",
+      "select_audio": "Audio kiezen",
+      "fade_in": "Fade-in (seconden)",
+      "fade_out": "Fade-out (seconden)",
+      "gain_db": "Versterking (dB)",
+      "normalize": "Piek normaliseren",
+      "target_peak": "Doelpiek (dBFS)",
+      "noise_gate": "Ruispoort",
+      "gate_threshold": "Poortdrempel (dBFS)",
+      "process": "Bewerkingen toepassen",
+      "result": "Bewerkte audio",
+      "peak": "Piek",
+      "changed_settings": "Instellingen gewijzigd. Pas de bewerkingen toe om de bijgewerkte audio te beluisteren of te exporteren.",
+      "preview_hint": "De bronvoorvertoning speelt maximaal 30 seconden vanaf het begin van de uitsnede.",
+      "invalid": "Controleer de snijtijden, fadeduur en audioniveaus.",
+      "segment_gain": "Segmentvolume",
+      "mute": "Segment dempen",
+      "record_consent": "Ik heb toestemming om deze opname voor stemconversie te gebruiken.",
+      "merge_levels": "Gebruik dezelfde volume- en dempinstellingen voordat je segmenten samenvoegt."
+    },
+    "transcripts": {
+      "hint": "Transcribeer op deze telefoon audio of video van maximaal vier uur. Voltooide delen worden opgeslagen zodat je verder kunt gaan.",
+      "edited_hint": "Het oorspronkelijke transcript blijft bewaard. Herstel het na tekstwijzigingen om ondertitels met tijdcodes te exporteren."
+    },
+    "workflowParity": {
+      "bind_hint": "Kies stemmen opnieuw nadat je JSON hebt verplaatst. Vertaling gebruikt het gekozen telefoonmodel. Voeg audio opnieuw toe; conversie ondersteunt clips tot 30 seconden.",
+      "bind_voices": "Kies een lokale stem voor elke spreek- of conversiestap.",
+      "branch_template": "Ja-/nee-workflow",
+      "choose_next": "Volgende stap kiezen",
+      "export_json": "Desktop-JSON exporteren",
+      "graph_hint": "Verbind elke kaart met de volgende stap. Beide routes van een voorwaarde mogen samenkomen. Elke route moet Einde bereiken.",
+      "import_json": "Desktop-JSON importeren",
+      "incompatible_merge": "Deze stappen wisselen onverenigbare tekst of audio uit. Samenkomende routes moeten hetzelfde waardetype dragen.",
+      "input_type": "Invoer",
+      "invalid_graph": "Verbind alle stappen van één invoer tot Einde. Voorwaarden vereisen een Ja- en een Nee-route; lussen zijn niet toegestaan.",
+      "invalid_language": "Kies de bron- en doeltaal voor elke vertaalstap.",
+      "next_route": "Volgende stap",
+      "no_route": "Nee-route",
+      "runs": "Opgeslagen uitvoeringen",
+      "saved_steps": "{{count}} bezochte stappen opgeslagen",
+      "single_input": "Gebruik één script of audiobron per workflow. Splits desktopbatches vóór het importeren.",
+      "source_language": "Brontaal",
+      "unsupported": "Deze telefoon kan de node {{kind}} niet uitvoeren. Verwijder of vervang deze op de desktop vóór het importeren.",
+      "unsupported_settings": "Niet-ondersteunde workflowinstellingen of waarden buiten bereik.",
+      "yes_route": "Ja-route",
+      "auto_voice_language": "Opgeslagen telefoonstemmen herkennen de taal uit de tekst. Kies Auto als spreektaal."
+    },
+    "galleryCopy": {
+      "action": "Naar deze telefoon kopiëren",
+      "ready": "Naar deze telefoon gekopieerd",
+      "requires_host": "Gebruik eerst een stem op je computer en kopieer daarna de referentie naar deze telefoon.",
+      "confirm": "Referentieaudio en transcript van deze stem downloaden van je gekoppelde computer? Ga alleen verder als je eigenaar bent van de stem of toestemming hebt en de licentie zult naleven.",
+      "unavailable": "Kopiëren vereist maximaal 30 seconden referentieaudio en een niet-leeg transcript."
+    },
+    "dub_advanced": {
+      "ass": "Opgemaakte ondertitels (.ass)",
+      "background_hint": "Achtergrond mengen vereist een geïsoleerd spoor dat je computer heeft gemaakt.",
+      "cast": "Rolverdeling",
+      "cast_checked": "Ik heb de sprekerlabels en stemmen gecontroleerd",
+      "clips": "Clips per segment (.zip)",
+      "color": "Ondertitelkleur",
+      "computer_hint": "Wordt op je gekoppelde computer uitgevoerd met de geïnstalleerde engines.",
+      "cyan": "Cyaan",
+      "detect": "Sprekers detecteren op computer",
+      "detect_hint": "Gebruikt geïnstalleerde computermodellen. Analyse kan segmenten wijzigen; controleer de rolverdeling en genereer elke doeltaal opnieuw.",
+      "dual": "Dubbel (vertaald + origineel)",
+      "export_limit": "Pakketten zijn beperkt tot in totaal 1 GiB en 512 MiB per bestand.",
+      "exports": "Exporteer opties",
+      "font_size": "Lettergrootte",
+      "generate_first": "Genereer deze taal voordat je exporteert.",
+      "install_on_computer": "Installeer eerst de modellen voor sprekerherkenning op je computer.",
+      "invalid_cast": "De sprekeranalyse is onvolledig of ongeldig.",
+      "invalid_export": "Deze exportopties zijn ongeldig.",
+      "keep_cast": "Huidige stem van rol behouden",
+      "manual_cast_hint": "Wijs sprekerlabels toe op je telefoon. Gebruik de computer voor automatische detectie.",
+      "merge_speakers": "Segmenten met verschillende sprekers kunnen niet worden samengevoegd.",
+      "missing_translation": "De vertaling omvat niet alle segmenten. Probeer opnieuw met dezelfde bron.",
+      "multi_audio": "Video met meerdere audiosporen",
+      "multi_audio_hint": "Bevat alle gegenereerde talen. De gekozen taal wordt standaard afgespeeld.",
+      "replace_overrides": "Stemmen van afzonderlijke regels vervangen",
+      "review_cast": "Controleer de gedetecteerde labels en kies voor elke spreker een stem.",
+      "source_voice": "Stem van deze spreker",
+      "speaker": "Spreker",
+      "stems": "Nagesynchroniseerde + originele audio (.zip)",
+      "stems_hint": "De oorspronkelijke opname is niet gescheiden. Gebruik de computer voor een geïsoleerd achtergrondspoor.",
+      "timing": "Timing",
+      "top": "Ondertitels bovenaan plaatsen",
+      "video_required": "Genereer een video voordat je meerdere audiosporen exporteert.",
+      "white": "Wit",
+      "yellow": "Geel"
+    },
+    "handoff": {
+      "title": "Projectoverdracht en back-up",
+      "hint": "Maak back-ups van bewerkbare projecten en verplaats ze tussen telefoons en computers. Importeren maakt nieuwe kopieën.",
+      "permission": "Ik heb toestemming om de meegeleverde stemopnamen te gebruiken.",
+      "inbox": "Ontvangen projecten",
+      "receive": "Ontvangen",
+      "imported": "Project geïmporteerd",
+      "failed": "Projectoverdracht mislukt.",
+      "invalid": "Niet-ondersteund of beschadigd projectarchief.",
+      "too_large": "Archieflimiet: totaal 1 GB, 512 MB per bestand.",
+      "voices_required": "Bevestig toestemming voordat je stemopnamen importeert of verstuurt.",
+      "compatibility": "Dit apparaat gebruikt compatibele geïnstalleerde modellen. Instellingen per engine en rendercaches van andere apparaten blijven in het archief.",
+      "import": "Importeren",
+      "export": "Exporteren",
+      "send": "Versturen"
     }
+  },
+  "failureCause": {
+    "details": "Details",
+    "fixes": "Voorgestelde oplossingen",
+    "vram": {
+      "title": "De GPU heeft geen geheugen meer",
+      "fix1": "Sluit andere GPU-apps",
+      "fix2": "Kies CPU of een kleinere engine"
+    },
+    "model_missing": {
+      "title": "Het model is niet gedownload",
+      "fix1": "Download het in de Modelcatalogus",
+      "fix2": "Gebruik Herstel om het te installeren"
+    },
+    "busy": {
+      "title": "De engine is bezig",
+      "fix1": "Wacht tot de huidige taak klaar is",
+      "fix2": "Probeer het zo meteen opnieuw"
+    },
+    "timeout": {
+      "title": "De generatie is verlopen",
+      "fix1": "Probeer een korter fragment",
+      "fix2": "Verhoog de proxy-timeout"
+    },
+    "bad_response": {
+      "title": "Onverwacht antwoord van de server",
+      "fix1": "Controleer de backend in Instellingen > Logboeken",
+      "fix2": "Start VoiceStudio opnieuw en probeer het nog eens"
+    }
+  },
+  "modelInstall": {
+    "queued": "Wacht op start…",
+    "downloading": "Downloaden…",
+    "downloadingPct": "Downloaden · {{pct}}%",
+    "finishing": "Controleren en installeren…",
+    "cancelling": "Annuleren…",
+    "cancelled": "Download geannuleerd",
+    "failed": "Download mislukt",
+    "ready": "Klaar voor gebruik",
+    "bytes": "{{done}} van {{total}}",
+    "speed": "{{rate}}/s",
+    "eta": "nog {{time}}",
+    "downloadAgain": "Opnieuw downloaden",
+    "nextDisk": "Niet genoeg schijfruimte. Maak ruimte vrij of verplaats de modelmap via Instellingen → Opslag en probeer het opnieuw.",
+    "nextGated": "Dit model vereist toegang via Hugging Face. Vraag die aan op de modelpagina, voeg je token toe via Instellingen → Inloggegevens en probeer het opnieuw.",
+    "nextNetwork": "De downloadserver is niet bereikbaar. Controleer verbinding, proxy of mirror via Instellingen → Netwerk en probeer het opnieuw.",
+    "nextMemory": "Dit apparaat heeft te weinig geheugen. Kies een lichter profiel via Instellingen → Prestaties en probeer het opnieuw.",
+    "downloads": "Downloads",
+    "activeCount": "Lopende downloads: {{count}}"
   }
 }

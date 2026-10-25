@@ -27,6 +27,10 @@ permissions:
 jobs:
   guard:
     name: Scam guard
+    # Review bots comment on every PR event and each comment used to take a runner
+    # (171 queued at once). Bots cannot be the scammers this guards against; every
+    # human author, including repository members, is still checked.
+    if: ${{ github.event.sender.type != 'Bot' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:

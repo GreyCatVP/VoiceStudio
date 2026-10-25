@@ -171,7 +171,7 @@ def _bundle_metadata(profile: dict, **extra) -> dict:
 
 
 @router.post("/export/{profile_id}")
-def export_profile(profile_id: str):
+def export_profile(profile_id: str, stored: bool = False):
     """Export a voice profile as a downloadable .omnivoice bundle (ZIP)."""
     with db_conn() as conn:
         row = conn.execute(
@@ -182,10 +182,15 @@ def export_profile(profile_id: str):
         raise HTTPException(status_code=404, detail="Voice profile not found")
 
     profile = dict(row)
+    if stored:
+        # Mobile copies use a bounded stored archive; legacy exports keep deflate.
+        assets = [_voice_asset(profile.get(key)) for key in ("ref_audio_path", "locked_audio_path") if profile.get(key)]
+        if any(path and path.is_file() and path.stat().st_size > 32 * 1024 * 1024 for path in assets):
+            raise HTTPException(status_code=413, detail="Voice reference is too large for a phone copy")
 
     # Build the ZIP bundle in memory
     buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_STORED if stored else zipfile.ZIP_DEFLATED) as zf:
         # Metadata
         metadata = _bundle_metadata(
             profile, created_at=profile.get("created_at"), exported_at=time.time(),
@@ -208,6 +213,8 @@ def export_profile(profile_id: str):
                 ext = os.path.splitext(locked_path)[1] or ".wav"
                 zf.write(str(full_locked), f"locked_audio{ext}")
 
+    if stored and buf.tell() > 64 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Voice bundle is too large for a phone copy")
     buf.seek(0)
     safe_name = "".join(
         c if c.isalnum() or c in "-_ " else "" for c in profile.get("name", "voice")

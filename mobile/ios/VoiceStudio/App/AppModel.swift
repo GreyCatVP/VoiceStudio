@@ -17,6 +17,12 @@ import BackgroundTasks
     var history: [HistoryItem] { get { hostState.history } set { hostState.history = newValue } }
     var dubHistory: [DubHistoryItem] { get { hostState.dubHistory } set { hostState.dubHistory = newValue } }
     var error: ClientError?
+    /// A short confirmation key (e.g. `mobile.report.sent`) shown above the tabs.
+    var notice: String?
+    /// Content-report drafts per result, kept in memory until sent.
+    let reports = ContentReports(client: ContentReportClient(baseURL: ContentReportClient.baseURL(info: Bundle.main.infoDictionary)), appVersion: ContentReportClient.appVersion(info: Bundle.main.infoDictionary))
+    /// The engine each computer take was generated with, from the host's engine inventory (memory only).
+    @ObservationIgnored var computerEngines: [String: String] = [:]
     var busy = false
     @ObservationIgnored private var activityCount = 0
     var consentAnswered: Bool

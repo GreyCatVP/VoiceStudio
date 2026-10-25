@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.voicestudio.mobile.designsystem.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -24,11 +25,14 @@ import kotlinx.coroutines.*
 import java.io.File
 
 @Composable fun VoicesScreen(vm:StudioViewModel) {
-    TaskLocation(vm,"clone",setOf("asr")) {location,model -> VoicesContent(vm,location,model)}
+    TaskLocation(vm,"clone",setOf("clone"),dependencies=setOf("asr")) {location,model -> VoicesContent(vm,location,model)}
 }
 @Composable private fun VoicesContent(vm:StudioViewModel,location: RunLocation,model: PhoneModel?) {
     val state by vm.state.collectAsState()
     val phone by vm.phone.state.collectAsState()
+    val preferences by vm.preferences.collectAsState()
+    val asr=phone.models.filter {it.capability=="asr"}.let {items -> items.firstOrNull {it.id==preferences.phoneModels["clone-asr"]} ?: items.firstOrNull {phone.canRun(it,vm.phone.ramBytes)} ?: items.firstOrNull()}
+    val cloneReady=model?.let {it.capability=="clone"&&phone.canRun(it,vm.phone.ramBytes)}==true&&asr?.let {phone.canRun(it,vm.phone.ramBytes)}==true
     val profiles=phone.voices.map {Profile("phone:"+it.id,it.name,audioUrl=it.id)}+state.profiles
     fun local(profile: Profile)=phone.voices.firstOrNull {"phone:"+it.id==profile.id}
     val context=LocalContext.current
@@ -63,14 +67,22 @@ import java.io.File
     val pick=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) {uri ->
         if(uri!=null) scope.launch {try {sample?.let {File(it).delete()};sample=copyMedia(context,uri,"audio").absolutePath} catch(e:Exception) {vm.fail(e)}}
     }
-    Screen {
+    Screen(bottomBar=if(!cloning&&profiles.isEmpty()) {{
+        Action("mobile.voices.new_clone",!state.busy&&phone.progress==null) {cloning=true}
+    }} else null,centerContent=!cloning&&profiles.isEmpty()&&!state.catalogLoading) {
         ScreenTitle("mobile.tabs.voices")
-        if(!cloning) Action("mobile.voices.new_clone",!state.busy&&phone.progress==null) {cloning=true}
+        if(!cloning&&profiles.isNotEmpty()) Action("mobile.voices.new_clone",!state.busy&&phone.progress==null) {cloning=true}
         if(cloning) {
         if(location!=RunLocation.COMPUTER) {
-            if(model!=null&&!phone.canRun(model,vm.phone.ramBytes)) MissingModelsCard(vm,"mobile.tabs.voices",listOf(model))
+            Text(tr("mobile.calls.clone_hint"),color=role("textMuted"))
+            if(!cloneReady) MissingModelsCard(vm,"mobile.tabs.voices",listOfNotNull(model,asr))
             Secondary("mobile.simple.more") {more=!more}
-            if(more) TaskModelPicker(vm,"clone",setOf("asr"),model)
+            if(more) {
+                Heading("mobile.simple.clone")
+                TaskModelPicker(vm,"clone",setOf("clone"),model)
+                Heading("mobile.simple.asr")
+                TaskModelPicker(vm,"clone-asr",setOf("asr"),asr)
+            }
         }
         Field("mobile.voices.name_label",name,{name=it.take(200)})
         Info("mobile.voices.consent_title","mobile.voices.consent_body")
@@ -81,12 +93,22 @@ import java.io.File
             Secondary("common.stop") {try {sample=recorder.stop().absolutePath;recording=false} catch(e:Exception) {recording=false;sample=null;vm.fail(e)}}
         } else Secondary("mobile.voices.record",onClick=record)
         if(sample!=null&&!recording) Text(tr("mobile.android.sample_ready"))
-        Action("mobile.voices.new_clone",permission&&sample!=null&&name.isNotBlank()&&!state.busy&&!recording&&phone.progress==null&&(location==RunLocation.COMPUTER||(model!=null&&phone.canRun(model,vm.phone.ramBytes)))) {
+        Action("mobile.voices.new_clone",permission&&sample!=null&&name.isNotBlank()&&!state.busy&&!recording&&phone.progress==null&&(location==RunLocation.COMPUTER||cloneReady)) {
             if(location==RunLocation.COMPUTER) {vm.clone(name,File(sample!!));sample=null;name="";permission=false;cloning=false}
-            else vm.phone.clone(name,File(sample!!),model!!,permission) {sample=null;name="";permission=false;cloning=false}
+            else vm.phone.clone(name,File(sample!!),asr!!,model!!,permission) {sample=null;name="";permission=false;cloning=false}
         }
         Secondary("common.cancel",!recording) {vm.phone.cancelInference();cloning=false;sample?.let {File(it).delete()};sample=null}
         }
+        if(!cloning) {
+        if(profiles.isEmpty()&&!state.catalogLoading) {
+            Column(Modifier.fillMaxWidth().heightIn(min=320.dp),horizontalAlignment=Alignment.CenterHorizontally,
+                verticalArrangement=Arrangement.spacedBy(8.dp,Alignment.CenterVertically)) {
+                Icon(Icons.Default.Person,null,Modifier.size(40.dp),tint=role("textMuted"))
+                Text(tr("mobile.simple.empty_voices"),style=MaterialTheme.typography.titleMedium)
+                Text(tr("clone.reference_hint"),style=MaterialTheme.typography.bodyMedium,color=role("textMuted"),
+                    textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+            }
+        } else {
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) {Field("mobile.voices.search",query,{query=it})}
             IconAction("common.refresh",Icons.Default.Refresh,!state.busy,onClick=vm::refresh)
@@ -95,7 +117,6 @@ import java.io.File
         val matches=profiles.filter {it.name.contains(query,true)}
         if(query.isNotBlank() && matches.isEmpty()) SearchEmpty(query)
         else if(state.catalogLoading) InlineLoading()
-        else if(profiles.isEmpty()) EmptyState("mobile.simple.empty_voices",Icons.Default.Person)
         Group {
             matches.forEach {profile ->
                 var menu by remember {mutableStateOf(false)}
@@ -103,6 +124,7 @@ import java.io.File
                     Surface(shape=androidx.compose.foundation.shape.CircleShape,color=role("messageSurface")) {Text(profile.name.take(1).uppercase(),Modifier.padding(VSTheme.inset))}
                     Column(Modifier.weight(1f)) {
                         Text(profile.name,style=MaterialTheme.typography.titleMedium)
+                        local(profile)?.sourceAttribution?.let {credit ->Text(listOfNotNull(credit["author"],credit["license"],credit["name"]).joinToString(" · "),style=MaterialTheme.typography.bodySmall,color=role("textMuted"))}
                         LocationBadge(local(profile)!=null)
                     }
                     IconAction("player.play",Icons.Default.PlayArrow,profile.audioUrl!=null) {preview=profile.audioUrl}
@@ -111,11 +133,16 @@ import java.io.File
                         DropdownMenu(expanded=menu,onDismissRequest={menu=false},shape=MaterialTheme.shapes.large,containerColor=role("surfaceOverlay")) {
                             DropdownMenuItem(text={Text(tr("mobile.voices.rename"))},onClick={menu=false;edit=profile;editName=profile.name})
                             DropdownMenuItem(text={Text(tr("common.delete"))},onClick={menu=false;delete=profile})
+                            if(LocalContentReportClient.current!=null) DropdownMenuItem(text={Text(tr("mobile.report.action"))},
+                                leadingIcon={Icon(Icons.Default.Warning,contentDescription=null)},modifier=Modifier.heightIn(min=VSTheme.touchTarget),
+                                onClick={menu=false;val voice=local(profile);vm.reports.open(if(voice!=null) ReportSubjects.phoneClone(voice) else ReportSubjects.computerClone(profile))})
                         }
                     }
                 }
                 HorizontalDivider()
             }
+        }
+        }
         }
         preview?.let {id ->
             val voice=phone.voices.firstOrNull {it.id==id}

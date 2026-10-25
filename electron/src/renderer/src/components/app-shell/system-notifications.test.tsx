@@ -34,10 +34,21 @@ vi.mock('@/lib/api/client', () => ({
   apiJson: vi.fn(async () => ({ notifications: [] })),
   apiFetch: vi.fn(),
 }));
+// The downloads section has its own query and tests (download-activity.test.tsx).
+const downloads = vi.hoisted(() => ({ items: [] as unknown[], active: 0 }));
+vi.mock('./download-activity', () => ({
+  useDownloadActivity: () => ({ ...downloads, pending: null }),
+  DownloadActivityList: ({ activity }: { activity: { items: unknown[] } }) =>
+    activity.items.length ? <section aria-label="downloads">downloads</section> : null,
+}));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, values?: { version?: string }) =>
-      values?.version ? `${key} ${values.version}` : key,
+    t: (key: string, values?: { version?: string; count?: number }) =>
+      values?.version
+        ? `${key} ${values.version}`
+        : values?.count !== undefined
+          ? `${key} ${values.count}`
+          : key,
   }),
 }));
 
@@ -45,6 +56,8 @@ import { SystemNotifications } from './system-notifications';
 
 describe('SystemNotifications desktop updates', () => {
   beforeEach(() => {
+    downloads.items = [];
+    downloads.active = 0;
     mocks.navigate.mockReset();
     mocks.listener = undefined;
     mocks.state = {
@@ -121,5 +134,26 @@ describe('SystemNotifications desktop updates', () => {
     expect(warning).toHaveTextContent('settings.storage');
     fireEvent.click(warning!);
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith({ to: '/settings/storage' }));
+  });
+
+  test('counts running downloads in the bell and lists them first', async () => {
+    mocks.state = {
+      status: 'idle',
+      currentVersion: '0.5.2',
+      channel: 'stable',
+      progress: 0,
+    } as UpdateState;
+    downloads.items = [{ key: 'a' }, { key: 'b' }];
+    downloads.active = 2;
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <SystemNotifications enabled />
+      </QueryClientProvider>,
+    );
+    const bell = await screen.findByRole('button', { name: /modelInstall.activeCount 2/ });
+    expect(bell).toHaveTextContent('2');
+    fireEvent.click(bell);
+    expect(await screen.findByRole('region', { name: 'downloads' })).toBeInTheDocument();
+    expect(screen.queryByText('logs.all_clear')).not.toBeInTheDocument();
   });
 });

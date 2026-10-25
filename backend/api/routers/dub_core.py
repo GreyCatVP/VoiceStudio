@@ -25,6 +25,10 @@ from core.failure import InvalidMediaFileError
 from core import event_bus
 from schemas.requests import CleanupSegmentsRequest, DubIngestUrlRequest, ParseSubtitleTextRequest
 from services.srt_parser import CUE_SOURCE_FIELDS, CUE_SOURCE_ID
+from services.dub_language import (
+    DUB_SOURCE_LANG_CODES as _DUB_SOURCE_LANG_CODES,
+    detected_source_language as _detected_source_lang,
+)
 from services.model_manager import get_model, _gpu_pool, _cpu_pool, get_diarization_pipeline, offload_tts_for_asr, restore_tts_after_asr, should_preload_tts_asr, release_device_cache
 from services.asr_backend import (
     ASR_TRANSCRIBE_TIMEOUT_S,
@@ -41,7 +45,7 @@ from services.segmentation import (
     assign_speakers_from_diarization,
     assign_speakers_from_turns,
     assign_speakers_heuristic,
-    resplit_segments_by_diarization,
+    label_segments_by_diarization,
     resplit_segments_by_turns,
     _words_from_whisper,
     clean_up_segments,
@@ -357,6 +361,7 @@ async def dub_import_srt(job_id: str, file: UploadFile = File(...)):
             job.get("speaker_clones"),
         )
         replace_source_segments(job, segments)
+        job.pop("source_lang_detection_missing", None)
         job["segment_clones"] = segment_clones
         # A pooled speaker clone is keyed only by a display label. Replacement
         # cues can reuse that label without overlapping the original speaker, so
@@ -516,6 +521,7 @@ def dub_use_downloaded_captions(job_id: str):
     source_lang = job.get("source_lang_override") or _detected_source_lang(caption_lang)
     with dub_pipeline._dub_jobs_lock:
         replace_source_segments(job, segments)
+        job.pop("source_lang_detection_missing", None)
         job["source_lang"] = source_lang
         job["full_transcript"] = " ".join(segment["text"] for segment in segments)
         # Caption files contain timing and text, but no trustworthy speaker or
@@ -730,27 +736,6 @@ def _dub_upload_disk_error() -> HTTPException:
         },
     )
 
-# Source-language choices exposed by the first-party dub UI, plus every
-# language code Whisper can write back after auto-detection. A restored job
-# may reuse that detected value as the next upload's override, so rejecting our
-# own persisted codes strands otherwise valid dubbing sessions (#1737).
-# Keeping this an allow-list still rejects language names and private-use
-# BCP-47 tags. Values are normalized to lowercase below.
-_DUB_SOURCE_LANG_CODES = frozenset({
-    "af", "sq", "am", "ar", "hy", "az", "eu", "be", "bn", "bs", "bg",
-    "my", "ca", "cmn-hans", "cmn-hant", "hr", "cs", "da", "nl", "en",
-    "et", "fi", "fr", "gl", "ka", "de", "el", "gu", "ht", "ha", "haw",
-    "he", "hi", "hu", "is", "id", "it", "ja", "jw", "kn", "kk", "km",
-    "ko", "ku", "ky", "lo", "la", "lv", "lt", "mk", "ms", "ml", "mt",
-    "mi", "mr", "mn", "ne", "no", "ps", "fa", "pl", "pt", "pa", "ro",
-    "ru", "sm", "gd", "sr", "sn", "sd", "si", "sk", "sl", "so", "es",
-    "su", "sw", "sv", "tg", "ta", "te", "th", "tr", "uk", "ur", "uz",
-    "vi", "cy", "xh", "yi", "yo", "zu",
-    "as", "ba", "bo", "br", "fo", "lb", "ln", "mg", "nn", "oc", "sa",
-    "tk", "tl", "tt", "yue", "zh",
-})
-
-
 def _source_lang_override(value: str | None) -> str | None:
     """Normalize a user-selected source language; auto/und means detect.
 
@@ -779,13 +764,12 @@ def _source_lang_override(value: str | None) -> str | None:
     return code
 
 
-def _detected_source_lang(value: str | None) -> str:
-    """Normalize an ASR language without truncating valid three-letter codes."""
-    code = (value or "en").split("_", 1)[0].strip().lower()
-    if code in _DUB_SOURCE_LANG_CODES:
-        return code
-    short = code[:2]
-    return short if short in _DUB_SOURCE_LANG_CODES else "en"
+
+
+def _source_language_state(job: dict, detected_lang: str | None) -> dict:
+    """Persist unknown ASR detection explicitly; the user's source override wins."""
+    source = job.get("source_lang_override") or _detected_source_lang(detected_lang)
+    return {"source_lang": source, "source_lang_detection_missing": source is None}
 
 
 @router.post("/dub/upload")
@@ -1237,11 +1221,192 @@ def _recover_from_phrase_embeddings(
         return None
 
 
+async def _reanalyze_speakers(job_id: str, job: dict, num_speakers: Optional[int], cancelled):
+    """Refresh acoustic labels on existing cues; never rerun ASR or rewrite text."""
+    import copy
+    from services.speaker_clone import auto_profile_id, build_cast_sources, extract_speaker_clones
+    from services.diarization_native import NativeSortformer
+    from api.routers.dub_generate import resolve_consistent_ref
+
+    warnings = []
+    with dub_pipeline._dub_jobs_lock:
+        snapshot = copy.deepcopy(job)
+        revision = segments_revision(job)
+
+    def is_cancelled():
+        return cancelled.is_set() or bool(job.get("aborted")) or task_manager.is_cancelled(job_id)
+
+    def analyze():
+        reference_run = None
+        committed = False
+        offloaded = False
+        try:
+            if is_cancelled():
+                return None
+            audio = snapshot.get("vocals_path") or snapshot.get("audio_path")
+            if not audio or not os.path.isfile(audio):
+                audio = snapshot.get("audio_path")
+            if not audio or not os.path.isfile(audio):
+                raise RuntimeError("No audio available for speaker analysis")
+            offload_tts_for_asr()
+            offloaded = True
+            pipeline, _error = _diarization_pipeline_checked()
+            if pipeline is None:
+                raise RuntimeError("The selected installed diarization model is unavailable")
+            options = {"num_speakers":num_speakers} if num_speakers else {}
+            native = isinstance(pipeline, NativeSortformer)
+            hint_warning = None
+            if native:
+                options.pop("num_speakers",None)
+                options.update(job_id=job_id,cancel_check=is_cancelled)
+                if num_speakers:
+                    hint_warning = {"source":"diarization","detail":
+                        "The selected native diarizer detects speakers automatically; the requested speaker count was ignored.",
+                        "speaker_hint":{"requested":num_speakers,"status":"ignored"}}
+            diarization = pipeline(audio,**options)
+            if is_cancelled():
+                return None
+            # Assign overlap labels only. Splitting or fresh ASR would discard
+            # manually corrected words, translated rows, IDs and cue timings.
+            segments = assign_speakers_from_diarization(copy.deepcopy(snapshot["segments"]),diarization)
+            directory = _safe_job_dir(job_id)
+            if not directory:
+                raise RuntimeError("Job directory not found")
+            reference_run = dub_pipeline.new_reference_run_dir(directory)
+            # Keep edited cue boundaries, but never pool a cue containing more
+            # than one acoustic speaker into a supposedly single-speaker voice.
+            def cue_identity(row, index):
+                return str(row["id"]) if row.get("id") is not None else str(index)
+
+            ambiguous = set()
+            has_speech = False
+            source_cues = []
+            for index, row in enumerate(segments):
+                overlaps = {label for turn, _, label in diarization.itertracks(yield_label=True)
+                            if min(row["end"],turn.end) > max(row["start"],turn.start)}
+                has_speech = has_speech or bool(overlaps)
+                if len(overlaps) != 1:
+                    ambiguous.add(cue_identity(row,index))
+                else:
+                    source_cues.append({**row,"text":row.get("text_original") or row["text"]})
+            if not has_speech:
+                raise RuntimeError("No speakers detected on the existing cues")
+            speakers = extract_speaker_clones(audio,source_cues,reference_run,
+                labels_source="audiocpp-sortformer" if native else "pyannote",strict=True)
+            segment_refs = copy.deepcopy(snapshot.get("segment_clones") or {})
+            preserved_bindings = {}
+            # Old automatic per-cue clips spanning multiple new speakers cannot
+            # remain a default. Explicit selections keep the old audio under a
+            # distinct key so other cues do not accidentally inherit it.
+            explicit = {row.get("profile_id") for index,row in enumerate(snapshot["segments"])
+                        if row.get("profile_id") != "auto-seg:"+cue_identity(row,index)}
+            for identity in ambiguous:
+                reference = segment_refs.pop(identity,None)
+                binding = "auto-seg:"+identity
+                if reference and binding in explicit:
+                    key = "reanalysis-"+uuid.uuid4().hex
+                    segment_refs[key] = reference
+                    preserved_bindings[binding] = "auto-seg:"+key
+            sources = build_cast_sources(segments,speakers,segment_refs)
+
+            def rebind(row, speaker, old_speaker, identity):
+                result = dict(row)
+                result["speaker_id"] = speaker
+                voice = row.get("profile_id") or ""
+                own_default = identity in ambiguous and voice == "auto-seg:"+identity
+                if not voice or voice == auto_profile_id(old_speaker) or own_default:
+                    result["profile_id"] = auto_profile_id(speaker) if speaker in sources else ""
+                elif voice in preserved_bindings:
+                    result["profile_id"] = preserved_bindings[voice]
+                elif voice.startswith("auto:"):
+                    # An explicit other-speaker selection names the OLD label.
+                    # Preserve its exact audio as a cross-reference before the
+                    # new label map replaces the old pooled source references.
+                    if voice not in preserved_bindings:
+                        reference = resolve_consistent_ref(snapshot,voice[len("auto:"):])
+                        if not reference or not reference.get("ref_audio"):
+                            raise RuntimeError("An explicitly selected source voice is unavailable")
+                        key = "reanalysis-"+uuid.uuid4().hex
+                        segment_refs[key] = reference
+                        preserved_bindings[voice] = "auto-seg:"+key
+                    result["profile_id"] = preserved_bindings[voice]
+                return result
+
+            old_by_id = {cue_identity(row,index):row for index,row in enumerate(snapshot["segments"])}
+            segments = [rebind(row,row.get("speaker_id") or "Speaker 1",
+                               old_by_id[cue_identity(row,index)].get("speaker_id") or "Speaker 1",
+                               cue_identity(row,index))
+                        for index,row in enumerate(segments)]
+            with dub_pipeline._dub_jobs_lock:
+                if is_cancelled():
+                    return None
+                if _get_job(job_id) is not job:
+                    return None
+                if segments_revision(job) != revision:
+                    return copy.deepcopy(job)
+                candidate = copy.deepcopy(job)
+                replace_source_segments(candidate,segments)
+                candidate.update(speaker_clones=speakers,segment_clones=segment_refs,
+                           cast_sources=sources,
+                           ref_run=os.path.basename(reference_run))
+                _save_job(job_id,candidate,strict=True)
+                job.update(candidate)
+                committed = True
+                if hint_warning:
+                    warnings.append(hint_warning)
+                elif num_speakers and len({row["speaker_id"] for row in segments}) != num_speakers:
+                    warnings.append({"source":"diarization","detail":
+                        "The detected speakers on the existing cue boundaries differ from the requested count.",
+                        "speaker_hint":{"requested":num_speakers,"status":"approximate"}})
+                if ambiguous:
+                    warnings.append({"source":"speaker_clone","detail":
+                        "Some cues lack a single verified speaker; their audio was excluded from new source-voice references."})
+                return copy.deepcopy(job)
+        finally:
+            # This finally runs on the worker, after all native work finishes,
+            # even if the SSE waiter disconnects while inference is running.
+            if reference_run and not committed:
+                dub_pipeline.discard_reference_run(reference_run,job)
+            if committed and snapshot.get("ref_run") and reference_run:
+                previous = os.path.join(os.path.dirname(reference_run),os.path.basename(str(snapshot["ref_run"])))
+                if previous != reference_run:
+                    dub_pipeline.discard_reference_run(previous,job)
+            if offloaded:
+                try:
+                    restore_tts_after_asr()
+                except Exception:
+                    logger.exception("Could not restore TTS placement after speaker analysis")
+
+    loop = asyncio.get_running_loop()
+    future = loop.run_in_executor(_gpu_pool,analyze)
+    try:
+        async for ping in _ping_while(future):
+            yield ping
+        result = future.result()
+        if result is None:
+            yield _sse_event("aborted",{})
+            return
+        for warning in warnings:
+            yield _sse_event("warning",warning)
+        yield _sse_event("final",{
+            "segments":result["segments"],
+            # Unknown stays unknown (None): guessing "en" would let the client
+            # translate from the wrong language past the missing-source check.
+            "source_lang":result.get("source_lang_override") or result.get("source_lang"),
+            "full_transcript":result.get("full_transcript") or "",
+            "speaker_clones":result.get("cast_sources",{}),"cast_sources":result.get("cast_sources",{}),
+        })
+        yield _sse_event("done",{})
+    finally:
+        cancelled.set()
+
+
 @router.get("/dub/transcribe-stream/{job_id}", dependencies=[Depends(reject_cross_site_get)])
 async def dub_transcribe_stream(
     job_id: str,
     num_speakers: Optional[int] = None,
     per_segment_refs: bool = True,
+    reanalyze_speakers: bool = False,
 ):
     """Stream per-chunk segments via SSE, then emit diarized final pass.
 
@@ -1249,6 +1414,10 @@ async def dub_transcribe_stream(
     as in-stream `error` events rather than HTTP errors, because EventSource
     on the client can't read non-2xx response bodies — a 503 there surfaces
     as an opaque "network error" instead of the actionable message we want.
+
+    `reanalyze_speakers` explicitly refreshes acoustic labels and source voices
+    on existing cues without rerunning ASR or replacing edited text/timings.
+    Ordinary reconnects continue to replay completed transcription results.
 
     `num_speakers` is an optional hint passed straight to pyannote. Left unset,
     pyannote auto-detects the count — but its auto-detect can collapse a
@@ -1262,6 +1431,8 @@ async def dub_transcribe_stream(
     # Clamp to a sane range; ignore anything non-positive / absurd so a bad
     # query string can never break the diarization call. None → auto-detect.
     num_speakers = _clamp_num_speakers(num_speakers)
+    import threading
+    _speaker_cancelled = threading.Event()
 
     # VRAM guard: _gen_body unloads the ASR backend on its normal completion
     # path only — a crash mid-stream, an early `return` (e.g. "audio load
@@ -1345,10 +1516,20 @@ async def dub_transcribe_stream(
         # running a second whole-file ASR pass. This is deliberately gated by
         # an explicit completion marker so partial work and imported subtitle
         # rows still take their established paths.
+        if reanalyze_speakers:
+            if not job or not isinstance(job.get("segments"),list) or not job["segments"]:
+                yield _sse_event("error",{"code":"dub_transcript_required",
+                    "detail":"Transcribe the source before analyzing its speakers."})
+                yield _sse_event("done",{})
+            else:
+                async for event in _reanalyze_speakers(job_id,job,num_speakers,_speaker_cancelled):
+                    yield event
+            return
+
         if job and job.get("transcription_complete") and isinstance(job.get("segments"), list):
             yield _sse_event("final", {
                 "segments": job["segments"],
-                "source_lang": job.get("source_lang") or "en",
+                "source_lang": job.get("source_lang_override") or job.get("source_lang"),
                 "full_transcript": job.get("full_transcript") or "",
                 "speaker_clones": job.get("cast_sources", {}),
                 "cast_sources": job.get("cast_sources", {}),
@@ -2056,10 +2237,10 @@ async def dub_transcribe_stream(
                     diar = diar_pipe(asr_audio_target, num_speakers=num_speakers)
                 else:
                     diar = diar_pipe(asr_audio_target)
-                assigned = assign_speakers_from_diarization(all_segments, diar)
-                # #486: split any segment that spans two speakers' turns at the
-                # word boundary (single-speaker segments pass through unchanged).
-                resplit = resplit_segments_by_diarization(assigned, all_words, diar)
+                # #486: label, then split any segment that spans two speakers'
+                # turns at the word boundary (single-speaker segments pass
+                # through unchanged).
+                resplit = label_segments_by_diarization(all_segments, all_words, diar)
                 recovered = _recover_from_phrase_embeddings(
                     diar_pipe,
                     resplit,
@@ -2314,9 +2495,7 @@ async def dub_transcribe_stream(
                 )
                 replace_source_segments(job, final_segs)
                 job.update(commit)
-                job["source_lang"] = job.get("source_lang_override") or _detected_source_lang(
-                    detected_lang
-                )
+                job.update(_source_language_state(job, detected_lang))
                 job["full_transcript"] = " ".join(s.get("text", "") for s in final_segs)
                 job["transcription_complete"] = True
                 _save_job(job_id, job)
@@ -2405,6 +2584,7 @@ async def dub_transcribe_stream(
             yield _sse_event("error", stream_failure(transcription_failure_code(exc)))
             yield _sse_event("done", {})
         finally:
+            _speaker_cancelled.set()
             _asr_work.stop()
             if _ref_run["dir"] and not _ref_run["committed"]:
                 dub_pipeline.discard_reference_run(_ref_run["dir"], _get_job(job_id))
@@ -2562,9 +2742,7 @@ async def dub_transcribe(job_id: str, num_speakers: Optional[int] = None):
             except Exception as e:
                 logger.warning("Failed to unload ASR backend: %s", e)
 
-        detected["source_lang"] = job.get("source_lang_override") or _detected_source_lang(
-            detected_lang
-        )
+        detected.update(_source_language_state(job, detected_lang))
 
         scene_cuts = job.get("scene_cuts") or []
         segments = segment_transcript(result, duration=job.get("duration", 0.0), scene_cuts=scene_cuts)
@@ -2592,7 +2770,12 @@ async def dub_transcribe(job_id: str, num_speakers: Optional[int] = None):
                     diarization = diar_pipe(diar_target, num_speakers=num_speakers)
                 else:
                     diarization = diar_pipe(diar_target)
-                segments = assign_speakers_from_diarization(segments, diarization)
+                # Same label-then-split as the SSE endpoint (#486, #3419):
+                # labelling alone merged a short reply into the previous
+                # speaker's line for the CLI and phone companion.
+                segments = label_segments_by_diarization(
+                    segments, _words_from_whisper(result), diarization,
+                )
             except Exception:
                 logger.exception("Pyannote diarization failed during inference. Falling back to heuristic.")
                 segments = assign_speakers_heuristic(segments, num_speakers)
