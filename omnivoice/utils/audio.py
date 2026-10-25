@@ -24,6 +24,8 @@ inference post-processing.
 
 import logging
 import math
+import os
+from typing import Optional
 
 import numpy as np
 import torch
@@ -60,6 +62,83 @@ def clone_ref_transcript_too_long_message(duration_s: float) -> str:
         f"{CLONE_REF_TEXT_MAX_SECONDS:.0f} seconds. Trim both the audio and "
         "transcript to the same 3-10 second passage, or omit the transcript "
         "so VoiceStudio can pick and transcribe the best passage automatically."
+    )
+
+
+# Host-RAM cost of encoding a reference with the Higgs audio tokenizer on the
+# CPU (#3340). Measured fresh-process peak RSS growth, inference mode, 24 kHz:
+# 5 s -> 1.06 GB, 10 s -> 1.36 GB, 20 s -> 2.17 GB, i.e. a fixed working set
+# plus a per-second term. The DAC acoustic encoder runs its first blocks at the
+# full sample rate, so the cost is linear in clip length.
+REF_ENCODE_BASE_BYTES = 750 * 1024 ** 2
+REF_ENCODE_BYTES_PER_SECOND = 72 * 1024 ** 2
+# Set to 1 to skip the pre-encode memory check (e.g. a host whose memory
+# probe under-reports what it can actually allocate).
+REF_ENCODE_MEMORY_CHECK_ENV = "OMNIVOICE_SKIP_REF_MEMORY_CHECK"
+
+
+class ReferenceEncodeMemoryError(MemoryError):
+    """The reference cannot be encoded in the memory this host has free.
+
+    A ``MemoryError`` so every layer that recognizes host-RAM exhaustion (the
+    failure classifier's HOST_MEMORY_EXHAUSTED remedy, the clone-prompt cache's
+    no-retry rule) treats it as exactly that.
+    """
+
+
+def reference_encode_bytes(duration_s: float) -> int:
+    """Estimated peak host RAM needed to encode a ``duration_s`` reference."""
+    return int(REF_ENCODE_BASE_BYTES + max(0.0, duration_s) * REF_ENCODE_BYTES_PER_SECOND)
+
+
+def _allocatable_bytes() -> Optional[int]:
+    """Free physical RAM plus free swap/page file, or None when unknown."""
+    try:
+        import psutil
+
+        free = int(psutil.virtual_memory().available)
+        try:
+            free += int(psutil.swap_memory().free)
+        except Exception:  # noqa: BLE001 — swap unknown: physical RAM alone
+            pass
+        return free
+    except Exception:  # noqa: BLE001 — no probe: never block on a guess
+        return None
+
+
+def check_reference_encode_memory(duration_s: float, device_type: str, probe=_allocatable_bytes) -> None:
+    """Refuse a CPU reference encode that cannot fit, before it starts (#3340).
+
+    On a CPU-only host the encode allocates from system RAM, and running out
+    there is not reliably a Python exception: on Windows the backend died with
+    an access violation inside the DAC encoder's activation, taking every
+    in-flight job with it. Refusing up front turns that into an actionable
+    error the user can recover from.
+
+    The budget is free RAM **plus free swap**, so the check only refuses when
+    the encode cannot fit even with paging. It never refuses on a guess: no
+    probe, a non-CPU device, or the opt-out env var all skip it. One garbage
+    collection is tried before refusing, since the freed Python objects may be
+    exactly the room the encode needs.
+    """
+    if device_type != "cpu" or os.environ.get(REF_ENCODE_MEMORY_CHECK_ENV) == "1":
+        return
+    need = reference_encode_bytes(duration_s)
+    free = probe()
+    if free is None or free >= need:
+        return
+    import gc
+
+    gc.collect()
+    free = probe()
+    if free is None or free >= need:
+        return
+    gib = 1024 ** 3
+    raise ReferenceEncodeMemoryError(
+        f"Not enough free memory to prepare this {duration_s:.0f}-second voice "
+        f"reference on the CPU (needs about {need / gib:.1f} GB, "
+        f"{free / gib:.1f} GB free). Use a shorter reference clip (3-10 "
+        "seconds) or close other memory-heavy apps, then try again."
     )
 
 

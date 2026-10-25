@@ -1410,8 +1410,16 @@ def _get_clone_prompt(
                 # layer turns a device OOM into the actionable GPU_OOM message
                 # ("close other GPU-heavy apps or unload models…"), which is a far
                 # better answer than walking into a native fault.
-                from core.failure import is_gpu_oom
+                from core.failure import is_gpu_oom, is_host_oom
 
+                if not is_gpu_oom(e) and is_host_oom(e):
+                    # #3340: the same rule for system RAM. The inline path
+                    # repeats this encode on the same CPU, and a CPU-only
+                    # Windows host that ran out there died with an access
+                    # violation inside the DAC encoder rather than raising.
+                    # There are no allocator caches to drop on the host, so
+                    # surface the HOST_MEMORY_EXHAUSTED remedy now.
+                    raise
                 if is_gpu_oom(e):
                     logger.warning(
                         "voice-clone prompt precompute hit a device OOM (%s) — "

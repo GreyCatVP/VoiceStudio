@@ -591,7 +591,9 @@ def is_host_oom(error: BaseException | str) -> bool:
         if id(current) in seen:
             continue
         seen.add(id(current))
-        if type(current).__name__ == "MemoryError":
+        # isinstance, so a MemoryError subclass raised to explain itself (the
+        # reference-encode preflight, #3340) keeps the host-RAM remedy.
+        if isinstance(current, MemoryError):
             return True
         # OSError.winerror carries the number even when the text is localized.
         if getattr(current, "winerror", None) == 8:

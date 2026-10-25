@@ -104,7 +104,7 @@ receive a stable `docs_topic` and a safe fallback message, never private excepti
 | Topic | Recovery |
 | --- | --- |
 | `GPU_ARCH_UNSUPPORTED` | The installed PyTorch build cannot run kernels on this GPU. Select CPU in Settings → Performance & Device, or use a PyTorch build compatible with the GPU. |
-| `HOST_MEMORY_EXHAUSTED` | The machine ran out of system memory, so the engine could not finish. Close other memory-heavy apps, unload unused models with **Flush models**, render a shorter passage, or select a lighter TTS engine. On Windows, enlarging the page file also helps. A CPU-only machine has no GPU memory to free — this is RAM, not VRAM. |
+| `HOST_MEMORY_EXHAUSTED` | The machine ran out of system memory, so the engine could not finish. Close other memory-heavy apps, unload unused models with **Flush models**, render a shorter passage, or select a lighter TTS engine. On Windows, enlarging the page file also helps. A CPU-only machine has no GPU memory to free — this is RAM, not VRAM. Preparing a voice-clone reference on the CPU takes about 0.75 GB plus 0.07 GB per second of clip, so VoiceStudio refuses up front when free RAM plus swap cannot hold it: use a 3-10 second reference. Set `OMNIVOICE_SKIP_REF_MEMORY_CHECK=1` to skip that check. |
 | `WINDOWS_APP_CONTROL_BLOCKED` | Windows application control blocked a required file. Ask the administrator to allow the trusted VoiceStudio runtime, then restart the app. |
 | `AUDIO_IO_FAILED` | Check the audio format, free disk space, and file permissions; review the folder in Settings → Storage. |
 | `ENGINE_DEPENDENCY_MISSING` | A Python package the engine imports is not installed. Open Model Catalogue, select the engine and use **Install / Repair**, then restart VoiceStudio. Terminal: retrying the same request fails the same way. |
@@ -1013,6 +1013,20 @@ Where the forensics live: `omnivoice.log`, `run_sentinel.json`, and
 (`~/Library/Application Support/OmniVoice` on macOS, `%APPDATA%\OmniVoice` on
 Windows, `~/.omnivoice` on Linux, or `$OMNIVOICE_DATA_DIR` — the Docker image
 mounts it as the `omnivoice_data` volume).
+
+### Google Colab: the UI loads but every action fails with 403
+
+The [Colab notebook](../../notebooks/OmniVoice_Studio_Colab.ipynb) opens the UI
+through Colab's port proxy, on a per-session
+`https://<id>-3900-colab.googleusercontent.com` address. The backend refuses
+browser API calls from host names and origins it does not know (DNS-rebinding
+and cross-site protection), so the notebook's launch cell (cell 5) asks Colab
+for that proxy address and starts the backend with exactly that origin in
+`OMNIVOICE_ALLOWED_ORIGINS` and that host in `OMNIVOICE_ALLOWED_HOSTS`. No other
+origin is trusted. If you see 403s, the backend was started some other way or
+by an older copy of the notebook: stop it (`!kill $(lsof -t -i:3900)`), then
+re-run cells 5 and 6 from the browser. Most API routes have no `/api` prefix
+(`/generate`, `/profiles`, …), so `curl …/api/generate` returning 404 is expected.
 
 ## 14d. "Can't reach the local VoiceStudio backend" when the backend never started
 
