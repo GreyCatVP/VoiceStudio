@@ -76,6 +76,7 @@ export function SecondarySidebar({
   libraryLabel,
   collapsed: controlledCollapsed,
   onCollapsedChange,
+  tabsInHeader = false,
 }: {
   title: string;
   icon: LucideIcon;
@@ -93,6 +94,11 @@ export function SecondarySidebar({
   collapsed?: boolean;
   /** Lets the page re-home the footer's content while the pane is collapsed. */
   onCollapsedChange?: (collapsed: boolean) => void;
+  /**
+   * Show the controls/library tabs in the header row instead of the title, for
+   * pages whose title bar and tabs already name the workspace.
+   */
+  tabsInHeader?: boolean;
 }) {
   const { t } = useTranslation();
   const fullscreen = useWindowFullscreen();
@@ -116,89 +122,13 @@ export function SecondarySidebar({
     if (controlledCollapsed === undefined) setUncontrolledCollapsed(resolved);
     onCollapsedChange?.(resolved);
   };
-  const dimensions = WIDTHS[size];
-  const resize = usePaneResize({
-    storageKey: `voicestudio.secondary-sidebar.${size}`,
-    side: 'left',
-    ...dimensions,
-    enabled: !collapsed,
-  });
-  return (
-    <aside
-      ref={resize.host}
-      aria-label={title}
-      data-slot="secondary-sidebar"
-      data-size={size}
-      data-variant={variant}
-      data-collapsed={collapsed || undefined}
-      style={
-        {
-          '--secondary-sidebar-width': `${resize.width}px`,
-        } as CSSProperties
-      }
-      className={cn(
-        'secondary-sidebar relative [--pane-resize-display:flex] @max-[40rem]:[--pane-resize-display:none] flex min-h-0 shrink-0 flex-col border-r border-border/55 bg-[color-mix(in_oklab,var(--muted)_13%,var(--background))] [container-type:inline-size]',
-        collapsed
-          ? 'w-11'
-          : 'w-[var(--secondary-sidebar-width)] @max-[40rem]:max-h-[40%] @max-[40rem]:w-full @max-[40rem]:border-r-0 @max-[40rem]:border-b',
-      )}
-    >
-      {!collapsed && (
-        <div
-          {...resize.separatorProps}
-          aria-label={title}
-          className="group/resize absolute inset-y-0 -right-1 z-20 [display:var(--pane-resize-display)] w-2 cursor-col-resize touch-none items-center justify-center outline-none"
-        >
-          <span className="h-10 w-px rounded-full bg-border/0 transition-[height,background-color,box-shadow] duration-150 group-hover/resize:h-16 group-hover/resize:bg-primary/45 group-hover/resize:shadow-[0_0_8px_var(--primary)] group-focus-visible/resize:h-16 group-focus-visible/resize:bg-primary" />
-        </div>
-      )}
-      <div
-        ref={headerRef}
-        data-slot="secondary-sidebar-header"
-        style={lightsInset ? { paddingInlineStart: lightsInset + 12 } : undefined}
-        className={cn(
-          'workspace-titlebar flex h-12 shrink-0 items-center gap-2.5 border-b border-border/45',
-          collapsed ? 'px-1' : 'px-3',
-        )}
-      >
-        {!collapsed && (
-          <>
-            <span className="grid size-7 shrink-0 place-items-center rounded-lg border border-border/45 bg-background/50 text-primary shadow-[inset_0_1px_0_rgb(255_255_255/7%)]">
-              <Icon aria-hidden="true" className="size-4" />
-            </span>
-            <span
-              className="min-w-0 flex-1 truncate text-sm font-semibold tracking-[-0.014em] text-foreground/95"
-              title={title}
-            >
-              {title}
-            </span>
-            {meta !== undefined && meta !== null && (
-              <span className="shrink-0 rounded-md border border-border/40 bg-muted/55 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
-                {meta}
-              </span>
-            )}
-          </>
-        )}
-        {!collapsed && (
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            aria-label={t('paneActions.collapse')}
-            title={t('paneActions.collapse')}
-            aria-expanded
-            onClick={() => setCollapsed(true)}
-            className="text-muted-foreground hover:bg-accent/60 hover:text-foreground"
-          >
-            <PanelLeftCloseIcon />
-          </Button>
-        )}
-      </div>
-      {library != null && !collapsed && (
+  const headerTabs = tabsInHeader && library != null;
+  const tabList = (className: string) => (
         <div
           role="tablist"
           aria-label={title}
           data-slot="secondary-sidebar-tabs"
-          className="flex shrink-0 gap-1 border-b border-border/45 px-2.5 py-2"
+          className={cn('flex min-w-0 shrink-0 gap-1', className)}
           onKeyDown={(event) => {
             if (event.altKey || event.ctrlKey || event.metaKey) return;
             const tabs = [
@@ -251,7 +181,86 @@ export function SecondarySidebar({
             </button>
           ))}
         </div>
+  );
+  const dimensions = WIDTHS[size];
+  const resize = usePaneResize({
+    storageKey: `voicestudio.secondary-sidebar.${size}`,
+    side: 'left',
+    ...dimensions,
+    enabled: !collapsed,
+  });
+  return (
+    <aside
+      ref={resize.host}
+      aria-label={title}
+      data-slot="secondary-sidebar"
+      data-size={size}
+      data-variant={variant}
+      data-collapsed={collapsed || undefined}
+      style={
+        {
+          '--secondary-sidebar-width': `${resize.width}px`,
+        } as CSSProperties
+      }
+      className={cn(
+        'secondary-sidebar relative [--pane-resize-display:flex] @max-[40rem]:[--pane-resize-display:none] flex min-h-0 shrink-0 flex-col border-r border-border/55 bg-[color-mix(in_oklab,var(--muted)_13%,var(--background))] [container-type:inline-size]',
+        collapsed
+          ? 'w-11'
+          : 'w-[var(--secondary-sidebar-width)] @max-[40rem]:max-h-[40%] @max-[40rem]:w-full @max-[40rem]:border-r-0 @max-[40rem]:border-b',
       )}
+    >
+      {!collapsed && (
+        <div
+          {...resize.separatorProps}
+          aria-label={title}
+          className="group/resize absolute inset-y-0 -right-1 z-20 [display:var(--pane-resize-display)] w-2 cursor-col-resize touch-none items-center justify-center outline-none"
+        >
+          <span className="h-10 w-px rounded-full bg-border/0 transition-[height,background-color,box-shadow] duration-150 group-hover/resize:h-16 group-hover/resize:bg-primary/45 group-hover/resize:shadow-[0_0_8px_var(--primary)] group-focus-visible/resize:h-16 group-focus-visible/resize:bg-primary" />
+        </div>
+      )}
+      <div
+        ref={headerRef}
+        data-slot="secondary-sidebar-header"
+        style={lightsInset ? { paddingInlineStart: lightsInset + 12 } : undefined}
+        className={cn(
+          'workspace-titlebar flex h-12 shrink-0 items-center gap-2.5 border-b border-border/45',
+          collapsed ? 'px-1' : 'px-3',
+        )}
+      >
+        {!collapsed && headerTabs && tabList('flex-1')}
+        {!collapsed && !headerTabs && (
+          <>
+            <span className="grid size-7 shrink-0 place-items-center rounded-lg border border-border/45 bg-background/50 text-primary shadow-[inset_0_1px_0_rgb(255_255_255/7%)]">
+              <Icon aria-hidden="true" className="size-4" />
+            </span>
+            <span
+              className="min-w-0 flex-1 truncate text-sm font-semibold tracking-[-0.014em] text-foreground/95"
+              title={title}
+            >
+              {title}
+            </span>
+            {meta !== undefined && meta !== null && (
+              <span className="shrink-0 rounded-md border border-border/40 bg-muted/55 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
+                {meta}
+              </span>
+            )}
+          </>
+        )}
+        {!collapsed && (
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label={t('paneActions.collapse')}
+            title={t('paneActions.collapse')}
+            aria-expanded
+            onClick={() => setCollapsed(true)}
+            className="text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+          >
+            <PanelLeftCloseIcon />
+          </Button>
+        )}
+      </div>
+      {library != null && !collapsed && !headerTabs && tabList('border-b border-border/45 px-2.5 py-2')}
       {library != null && (
         <div
           role="tabpanel"
