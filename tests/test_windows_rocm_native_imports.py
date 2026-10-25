@@ -21,7 +21,7 @@ recipe = probe.load_recipe()
 versions = probe.expected_versions(recipe)
 probe.validate_target = lambda: None
 probe.metadata.version = versions.__getitem__
-probe.util.find_spec = lambda name: SimpleNamespace(submodule_search_locations=['unused'])
+probe.package_root = lambda name: __import__('pathlib').Path('unused')
 probe.sha256 = lambda path: recipe['ctranslate2']['binary_sha256']
 probe.initialize_dll_search = lambda: None
 probe.sysconfig.get_platform = lambda: 'win-amd64'

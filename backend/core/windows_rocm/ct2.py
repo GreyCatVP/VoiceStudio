@@ -2,12 +2,11 @@
 import sys
 import time
 from importlib import metadata, util
-from pathlib import Path
 from threading import RLock
 
 from .artifacts import sha256
 from .recipe import expected_versions, load_recipe, recipe_identity, validate_target
-from .runtime import initialize_dll_search
+from .runtime import initialize_dll_search, package_root
 from .verify import verify_environment
 
 _VERIFIED = set()
@@ -40,18 +39,22 @@ def hip_ct2_available():
         pins = expected_versions(recipe)
         if {name: metadata.version(name) for name in pins} != pins:
             return False
-        spec = util.find_spec("ctranslate2")
-        if not spec or not spec.submodule_search_locations:
+        root = package_root("ctranslate2")
+        if root is None:
             return False
-        binary = Path(next(iter(spec.submodule_search_locations))) / "ctranslate2.dll"
+        binary = root / "ctranslate2.dll"
         digest = sha256(binary)
         if digest != recipe["ctranslate2"]["binary_sha256"]:
             return False
         identity = (recipe_identity(), sys.executable, tuple(pins.items()), digest)
         with _VERIFY_LOCK:
             if identity not in _VERIFIED:
-                if time.monotonic() - _FAILED.get(identity, float("-inf")) < 5:
-                    return False  # Share a failed child across one catalogue refresh.
+                if identity in _FAILED:
+                    # A failed native probe can take up to 90 s and runs from
+                    # catalogue refreshes; repeating it on every refresh would
+                    # stall the UI. It is retried after a restart, a recipe or
+                    # package change (new identity), or a backend restart (setup rerun).
+                    return False
                 # Never discover native GPUs in a catalogue/UI probe. Timeout,
                 # crash and invalid/CPU reports all fail in the bounded child.
                 try:

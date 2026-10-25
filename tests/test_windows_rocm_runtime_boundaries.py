@@ -81,3 +81,14 @@ def test_explicit_manual_windows_hsa_override_keeps_existing_behavior(monkeypatc
         is_available=lambda: True, get_arch_list=lambda: ["gfx1100"],
     ))
     assert arch_unsupported(torch) is None
+
+
+def test_package_root_ignores_a_stray_folder_in_the_working_directory(tmp_path, monkeypatch):
+    """A ``ctranslate2/`` folder in the cwd must not decide which DLL dirs load."""
+    from core.windows_rocm import runtime
+
+    (tmp_path / "ctranslate2").mkdir()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.syspath_prepend(str(tmp_path))
+    root = runtime.package_root("ctranslate2")
+    assert root is None or tmp_path not in root.parents

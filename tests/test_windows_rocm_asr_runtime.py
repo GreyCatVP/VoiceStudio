@@ -22,6 +22,8 @@ def hip(monkeypatch, tmp_path):
     version = ct2.metadata.version
     pins = expected_versions(recipe)
     monkeypatch.setattr(ct2.metadata, "version", lambda name: pins[name] if name in pins else version(name))
+    monkeypatch.setattr(ct2, "package_root", lambda name: tmp_path)
+    # faster_whisper is a fake module here; its presence check uses find_spec.
     monkeypatch.setattr(ct2.util, "find_spec", lambda name: SimpleNamespace(submodule_search_locations=[str(tmp_path)]))
     monkeypatch.setattr(ct2, "sha256", lambda path: recipe["ctranslate2"]["binary_sha256"])
     initialized = []
@@ -169,6 +171,7 @@ def test_failed_native_child_never_imports_ct2_in_availability(hip, monkeypatch,
         assert not ok and "Windows" in reason
         assert "rocm" not in cls.runtime_gpu_compat()
     assert len(calls) == 1, "one failed child must not repeat for every catalogue row/profile"
-    monkeypatch.setattr(hip.ct2, "time", SimpleNamespace(monotonic=lambda: float("inf")))
     monkeypatch.setattr(hip.ct2, "verify_environment", lambda: None)
-    assert hip.ct2.hip_ct2_available(), "a temporary native failure remains retryable"
+    assert not hip.ct2.hip_ct2_available(), "a failed probe is not re-run on every refresh"
+    hip.ct2._FAILED.clear()  # what a backend restart after rerunning setup does
+    assert hip.ct2.hip_ct2_available(), "a fresh process verifies again"

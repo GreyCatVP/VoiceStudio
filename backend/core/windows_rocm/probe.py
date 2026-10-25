@@ -3,14 +3,13 @@
 import json
 import sys
 import sysconfig
-from importlib import metadata, util
-from pathlib import Path
+from importlib import metadata
 
 from .artifacts import sha256
 from .failures import VerificationFailure, failure_report
 from .native import import_native
 from .recipe import expected_versions, load_recipe, validate_target
-from .runtime import initialize_dll_search
+from .runtime import initialize_dll_search, package_root
 from .verify import validate_report
 
 
@@ -25,10 +24,10 @@ def probe():
         raise VerificationFailure(
             "package_version", "Installed packages differ from the pinned Windows ROCm recipe; rerun setup"
         )
-    spec = util.find_spec("ctranslate2")
-    if not spec or not spec.submodule_search_locations:
+    root = package_root("ctranslate2")
+    if root is None:
         raise VerificationFailure("package_missing", "Pinned HIP CTranslate2 is missing")
-    binary = Path(next(iter(spec.submodule_search_locations))) / "ctranslate2.dll"
+    binary = root / "ctranslate2.dll"
     try:
         binary_hash = sha256(binary)
     except FileNotFoundError as exc:
