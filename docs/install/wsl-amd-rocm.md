@@ -69,7 +69,10 @@ predates ROCDXG.
 The working distro (`VoiceStudio`) is always a **copy** of one of these
 (`wsl --import --vhd` copies the file), so breaking it costs nothing: reset and
 you are back. The examples use `G:\WSL`; change `$Root` in the scripts for
-another drive. Budget **~60 GB** free: ROCm alone is ~14 GB, because rocBLAS,
+another drive. The scripts are also maintained as files in
+[esdedev/voicestudio-wsl-rocm](https://github.com/esdedev/voicestudio-wsl-rocm);
+cloning that repository to `G:\WSL` gives the layout below with nothing to
+copy and paste. Budget **~60 GB** free: ROCm alone is ~14 GB, because rocBLAS,
 MIOpen and hipBLASLt ship kernels for every GPU architecture.
 
 ```text
