@@ -2610,6 +2610,7 @@ def _outetts_speaker_file(ref_audio: str) -> str:
         speaker = processor.create_speaker_from_whisper(
             _outetts_reference_array(ref_audio), whisper_model=whisper_dir,
         )
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         tmp = f"{path}.{os.getpid()}.{uuid.uuid4().hex}.tmp"
         try:
             processor.save_speaker(speaker, tmp)
