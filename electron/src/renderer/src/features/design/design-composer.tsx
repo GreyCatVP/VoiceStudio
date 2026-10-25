@@ -9,6 +9,7 @@ import { EngineLanguagePicker } from '@/features/clone/engine-language-picker';
 import { QualityControls } from '@/features/clone/quality-controls';
 import { VoiceControls } from '@/features/clone/action-bar';
 import type { DesignBlocker, UseGenerateClone } from '@/hooks/use-generate';
+import { cn } from '@/lib/utils';
 
 /**
  * The Voice Design composer: output language, quality and voice controls, and
@@ -49,7 +50,7 @@ export function DesignComposer({
       )
     : t('clone.synthesize');
   return (
-    <div className="@container/composer mx-auto w-full max-w-4xl shrink-0 px-6 pb-4">
+    <div className="@container/composer mx-auto w-full max-w-4xl shrink-0 px-6 pt-3 pb-4">
       {needsSetup && <EngineSetupStatus setup={setup} id={statusId} />}
       {(blocker === 'design' || blocker === 'cloning') && !isGenerating && (
         <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2 px-1 text-sm text-muted-foreground">
@@ -103,7 +104,10 @@ export function DesignComposer({
           ) : (
             <Button
               size="lg"
-              className="h-10 min-w-44 justify-between gap-3 overflow-hidden rounded-lg ps-4 pe-3 @max-[28rem]/composer:flex-1"
+              className={cn(
+                'h-10 min-w-44 gap-3 overflow-hidden rounded-lg ps-4 pe-3 @max-[28rem]/composer:flex-1',
+                isGenerating ? 'justify-between' : 'justify-center',
+              )}
               disabled={!ready || isGenerating || blocker !== null}
               aria-busy={isGenerating}
               aria-label={label}
