@@ -127,6 +127,10 @@ def resolve_model(model_name: str | None = None) -> Path | None:
     direct = Path(target)
     if direct.is_file():
         return _model_path(direct)
+    if direct.is_absolute() or direct.parent != Path("."):
+        # An explicit path that is missing must not silently load a
+        # same-named model from another cache; only bare names are searched.
+        return None
 
     filename = direct.name if direct.suffix in (".bin", ".gguf") else f"ggml-{target}.bin"
 

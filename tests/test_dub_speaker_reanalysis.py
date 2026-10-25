@@ -324,3 +324,14 @@ def test_mixed_cue_default_is_rebound_but_explicit_cross_cue_selection_survives(
     selected = job['segments'][1]['profile_id'].removeprefix('auto-seg:')
     assert selected != identity
     assert job['segment_clones'][selected] == old_reference
+
+
+@pytest.mark.parametrize(('override', 'expected'), [(None, None), ('fr', 'fr')])
+def test_speaker_refresh_keeps_an_unknown_source_language_unknown(reanalysis, override, expected):
+    client,job,_,_,_,_ = reanalysis
+    job['source_lang'] = None
+    job['source_lang_detection_missing'] = True
+    job['source_lang_override'] = override
+    result = events(client.get('/dub/transcribe-stream/job?reanalyze_speakers=true'))
+    final = next(data for event,data in result if event=='final')
+    assert final['source_lang'] == expected

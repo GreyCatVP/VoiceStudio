@@ -30,7 +30,7 @@ import { effectiveSamplingSteps } from '@/lib/audio/quality';
 import { cachedTtsLanguagesSupported } from '@/lib/language-options';
 import { tr } from '@/lib/i18n-text';
 import { queryKeys } from '@/lib/query';
-import { cloneSettingsStore } from '@/lib/store/clone-settings';
+import { cloneSettingsStore, DEFAULT_CLONE_SETTINGS } from '@/lib/store/clone-settings';
 import { setLatestOutput } from '@/lib/store/output';
 import { referenceStore } from '@/lib/store/reference';
 import { beginAppActivity } from '@/lib/app-activity';
@@ -399,7 +399,22 @@ function useGenerateController(): UseGenerateClone {
         setLatestOutput(result, design?.text ?? settings.text);
         recordActionBreadcrumb(`generate:${reportMode}:complete`);
         toast.success(tr('tts.generationComplete'), { position: 'top-right' });
-        if (!design) rememberTake(result.id, settings);
+        if (!design)
+          // Record what was actually rendered: a take sent without emotion (an
+          // engine without IndexTTS2 controls, or Off) is saved as neutral, so
+          // reusing it later never adds emotion the recording did not use.
+          rememberTake(
+            result.id,
+            'emoText' in input || 'emoVector' in input
+              ? settings
+              : {
+                  ...settings,
+                  emotionMode: DEFAULT_CLONE_SETTINGS.emotionMode,
+                  emotionText: DEFAULT_CLONE_SETTINGS.emotionText,
+                  emotionAlpha: DEFAULT_CLONE_SETTINGS.emotionAlpha,
+                  emotionVector: [...DEFAULT_CLONE_SETTINGS.emotionVector],
+                },
+          );
         void Promise.all([
           queryClient.invalidateQueries({ queryKey: queryKeys.history }),
           queryClient.invalidateQueries({ queryKey: ['loaded-models'] }),
