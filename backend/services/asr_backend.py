@@ -586,22 +586,29 @@ def load_align_model(language_code: str, device: str):
     language — WhisperX bundles them for ~20 major languages only, and the
     caller then keeps Whisper's own (looser) word timestamps."""
     key = (language_code, device)
-    if key in _ALIGN_CACHE:
-        return _ALIGN_CACHE[key]
     try:
-        import whisperx
+        offline = _alignment_offline()
+        cached = _ALIGN_CACHE.get(key)
+        if cached is not None:
+            if offline:
+                _ensure_alignment_tokenizer(offline=True)
+            return cached
+        if offline:
+            _module, model, metadata = _load_installed_align_model(language_code, device)
+        else:
+            import whisperx
 
-        model, metadata = whisperx.load_align_model(
-            language_code=language_code, device=device,
-        )
+            model, metadata = whisperx.load_align_model(
+                language_code=language_code, device=device,
+            )
         _ALIGN_CACHE[key] = (model, metadata)
-    except Exception as e:  # noqa: BLE001 — missing aligner is normal, not fatal
+    except Exception as error:
         logger.info(
             "no wav2vec2 aligner for language=%r (%s); "
             "falling back to Whisper's native word timestamps",
-            language_code, e,
+            language_code, error,
         )
-        _ALIGN_CACHE[key] = None
+        return None
     return _ALIGN_CACHE[key]
 
 
@@ -3023,21 +3030,53 @@ class _UnsupportedAlignmentLanguage(ValueError):
     pass
 
 
-def _load_installed_align_model(language: str, device: str):
-    """Load a supported aligner on request, without WhisperX's pyannote ASR."""
-    import importlib
-    import nltk
-    from core.config import DATA_DIR
-
-    offline = any(
+def _alignment_offline() -> bool:
+    """Read either offline switch at call time, not from cached library state."""
+    return any(
         os.environ.get(name, "").strip().upper() in {"1", "ON", "YES", "TRUE"}
         for name in ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE")
     )
+
+
+def _ensure_alignment_tokenizer(offline: bool) -> None:
+    """Prepare sentence splitting without allowing an offline NLTK download."""
+    import nltk
+    from core.config import DATA_DIR
+
+    nltk_dir = Path(DATA_DIR) / "nltk_data"
+    if str(nltk_dir) not in nltk.data.path:
+        nltk.data.path.insert(0, str(nltk_dir))
+    try:
+        nltk.data.load("tokenizers/punkt/english.pickle")
+    except LookupError:
+        if offline:
+            raise _OptionalAlignmentUnavailable(
+                "NLTK punkt_tab is missing while offline; "
+                "connect to download it on the next word-timestamp transcription"
+            )
+        nltk_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            downloaded = nltk.download("punkt_tab", download_dir=str(nltk_dir), quiet=True)
+            if not downloaded:
+                raise _OptionalAlignmentUnavailable("NLTK punkt_tab download returned no data")
+            nltk.data.load("tokenizers/punkt/english.pickle")
+        except (LookupError, OSError, RuntimeError) as exc:
+            raise _OptionalAlignmentUnavailable(
+                f"Forced alignment needs NLTK punkt_tab data ({exc}); "
+                "check the connection and retry transcription"
+            ) from exc
+
+
+def _load_installed_align_model(language: str, device: str):
+    """Load a supported aligner on request, without WhisperX's pyannote ASR."""
+    import importlib
+
+    offline = _alignment_offline()
     align_module = importlib.import_module("whisperx.alignment")
     torch_models = align_module.DEFAULT_ALIGN_MODELS_TORCH
     hf_models = align_module.DEFAULT_ALIGN_MODELS_HF
     if language not in torch_models and language not in hf_models:
-        raise _UnsupportedAlignmentLanguage(f"Windows ROCm alignment is not configured for {language!r}")
+        raise _UnsupportedAlignmentLanguage(f"Forced alignment is not configured for {language!r}")
     label = {'en': 'English', 'pl': 'Polish'}.get(language, language)
     if language in torch_models:
         import torch
@@ -3097,28 +3136,7 @@ def _load_installed_align_model(language: str, device: str):
                 raise _OptionalAlignmentUnavailable(f"downloaded {label} alignment snapshot is incomplete")
         kwargs = {"model_name": snapshot}
 
-    nltk_dir = Path(DATA_DIR) / "nltk_data"
-    if str(nltk_dir) not in nltk.data.path:
-        nltk.data.path.insert(0, str(nltk_dir))
-    try:
-        nltk.data.load("tokenizers/punkt/english.pickle")
-    except LookupError:
-        if offline:
-            raise _OptionalAlignmentUnavailable(
-                "NLTK punkt_tab is missing while offline; "
-                "connect to download it on the next word-timestamp transcription"
-            )
-        nltk_dir.mkdir(parents=True, exist_ok=True)
-        try:
-            downloaded = nltk.download("punkt_tab", download_dir=str(nltk_dir), quiet=True)
-            if not downloaded:
-                raise _OptionalAlignmentUnavailable("NLTK punkt_tab download returned no data")
-            nltk.data.load("tokenizers/punkt/english.pickle")
-        except (LookupError, OSError, RuntimeError) as exc:
-            raise _OptionalAlignmentUnavailable(
-                f"Forced alignment needs NLTK punkt_tab data ({exc}); "
-                "check the connection and retry transcription"
-            ) from exc
+    _ensure_alignment_tokenizer(offline)
     try:
         model, metadata = align_module.load_align_model(language, device, **kwargs)
     except Exception as exc:

@@ -38,6 +38,11 @@ Zwykłe koło CTranslate2 z PyPI nie uzyskuje HIP przez samą instalację AMD Py
 [Kontrakt utrzymania](../maintainers/windows-rocm.md) opisuje wymagane kontrole.
 Silniki w osobnych środowiskach nadal mają własne piny i znaczniki weryfikacji.
 
+Każda z flag `HF_HUB_OFFLINE` i `TRANSFORMERS_OFFLINE` chroni też opcjonalny
+alignment w dotychczasowych ścieżkach CPU/CUDA/MPS, nie tylko transkrypcję HIP.
+Brak wag lub danych Punkt zachowuje natywne czasy słów bez pobierania. Po
+doinstalowaniu brakujących danych lub wyłączeniu trybu offline ponów próbę bez restartu.
+
 Konfiguracja źródłowa zmienia tylko środowisko danego checkoutu:
 
 ```powershell

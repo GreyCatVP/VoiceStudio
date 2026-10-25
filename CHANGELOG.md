@@ -9,6 +9,7 @@ metadata and the backend fallback mirror it.
 ## [Unreleased]
 
 **Highlights**
+- Honor offline alignment caches on every device and retry missing assets without restarting (#2607) — thanks @Pates2004!
 - Initialize Torch before dependent native imports during runtime verification (#2607) — thanks @Metonya!
 - Preserve sequential-only audio decoding and cropping in the torchaudio 2.9 compatibility adapter (#2607) — thanks @Pates2004!
 - Honor both offline switches before optional ROCm word-alignment downloads (#2607) — thanks @Pates2004!

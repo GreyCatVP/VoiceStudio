@@ -62,6 +62,12 @@ Hugging Face snapshot and NLTK boundaries. Missing optional assets must retain
 native word timings without a network attempt or CPU inference fallback;
 complete caches must still allow the requested GPU aligner.
 
+`test_asr_alignment_offline.py` applies the same contract to generic CPU/CUDA/MPS
+alignment. Check Punkt before using an already-cached model, cache successful
+loads rather than missing optional assets, and allow retry after assets become
+available or offline mode changes. Online delegation and the selected device
+remain unchanged; this does not enable any gated Windows HIP heavy pipeline.
+
 For the separate Electron integration also run its `runtime-project.test.ts`,
 `tests/test_electron_rocm_probes.py`, typecheck and packaging contracts. Test
 default/Linux/macOS branches as well as Windows opt-in; no GPU is required for

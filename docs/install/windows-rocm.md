@@ -37,6 +37,11 @@ Stock PyPI CTranslate2 does not gain HIP support by installing AMD PyTorch.
 The [maintainer contract](../maintainers/windows-rocm.md) documents update gates.
 Sidecar engines still have separate pins and verification markers.
 
+Either `HF_HUB_OFFLINE` or `TRANSFORMERS_OFFLINE` also protects optional alignment
+on existing CPU/CUDA/MPS routes, not just the HIP transcription path. Missing
+checkpoint or Punkt data keeps native word timings without a download. After
+installing the missing assets or leaving offline mode, retry without restarting.
+
 Source setup changes only that checkout's environment:
 
 ```powershell
