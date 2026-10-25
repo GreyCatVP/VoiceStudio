@@ -1019,7 +1019,8 @@
     "pause": "Pausieren",
     "seek": "Wiedergabeposition",
     "missing": "Audiodatei fehlt.",
-    "now_playing": "Wird abgespielt"
+    "now_playing": "Wird abgespielt",
+    "kind_convert": "Stimmumwandlung"
   },
   "logs": {
     "no_tauri_log": "Noch kein Tauri-Log auf der Festplatte – starten Sie es über den Desktop-Build, um eines zu erstellen",

@@ -1019,7 +1019,8 @@
     "pause": "一時停止",
     "seek": "再生位置",
     "missing": "音声ファイルが見つかりません。",
-    "now_playing": "再生中"
+    "now_playing": "再生中",
+    "kind_convert": "音声変換"
   },
   "logs": {
     "no_tauri_log": "ディスク上にまだ Tauri ログがありません — デスクトップ ビルド経由で起動してログを作成します",

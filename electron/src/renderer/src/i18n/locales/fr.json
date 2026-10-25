@@ -1021,7 +1021,8 @@
     "pause": "Mettre en pause",
     "seek": "Position de lecture",
     "missing": "Le fichier audio est introuvable.",
-    "now_playing": "En cours de lecture"
+    "now_playing": "En cours de lecture",
+    "kind_convert": "Conversion de voix"
   },
   "logs": {
     "no_tauri_log": "Pas encore de connexion Tauri sur le disque - lancez-le via la version de bureau pour en produire un",

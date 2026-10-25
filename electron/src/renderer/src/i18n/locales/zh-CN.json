@@ -369,7 +369,8 @@
     "play": "播放",
     "pause": "暂停",
     "missing": "音频文件缺失。",
-    "now_playing": "正在播放"
+    "now_playing": "正在播放",
+    "kind_convert": "语音转换"
   },
   "synthesisState": {
     "preparing": "准备中…",

@@ -547,3 +547,36 @@ it.each([
     engine.design = undefined;
   },
 );
+
+it.each([
+  ['an engine without emotion controls', false, 'none'],
+  ['IndexTTS2 with text emotion', true, 'text'],
+] as const)(
+  'saves the emotion a take actually used (%s)',
+  async (_name, supportsEmotion, saved) => {
+    engine.emotion = supportsEmotion;
+    patchCloneSettings({
+      text: 'A cloned voice line.',
+      selectedProfileId: 'speaker-emotion',
+      emotionMode: 'text',
+      emotionText: 'gently reassuring',
+      autoPlay: false,
+    });
+    vi.mocked(generateClone)
+      .mockReset()
+      .mockResolvedValue({ id: `take-${saved}` } as Awaited<ReturnType<typeof generateClone>>);
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <GenerationProvider>
+          <Consumer name="saved-emotion" />
+        </GenerationProvider>
+      </QueryClientProvider>,
+    );
+    fireEvent.click(screen.getByText('saved-emotion:idle'));
+    await waitFor(() => {
+      const records = JSON.parse(localStorage.getItem('voicestudio.take-settings.v1') ?? '{}');
+      expect(records[`take-${saved}`]?.emotionMode).toBe(saved);
+    });
+    engine.emotion = undefined;
+  },
+);

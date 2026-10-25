@@ -114,3 +114,47 @@ it('turns a refused install request into a failed view with the reason', async (
   expect(result.current.repoId).toBe('c/d');
   expect(result.current.view).toMatchObject({ stage: 'failed', reason: 'Not enough disk space' });
 });
+
+it('follows a download started elsewhere and reports it ready when it lands', async () => {
+  const onReady = vi.fn();
+  jobs.data = { jobs: [{ repo_id: 'a/b', state: 'downloading', bytes_done: 1, total_bytes: 4 }] };
+  const { result, rerender } = renderHook(() => useModelInstall('a/b', { onReady }), { wrapper });
+  await waitFor(() => expect(result.current.active).toBe(true));
+  api.mockImplementation(async (path: string) =>
+    path === '/models' ? { models: [{ repo_id: 'a/b', installed: true }] } : {},
+  );
+  jobs.data = { jobs: [] };
+  rerender();
+  await waitFor(() => expect(onReady).toHaveBeenCalledWith('a/b'));
+  expect(api).not.toHaveBeenCalledWith('/models/install', expect.anything());
+});
+
+it('reads a download cancelled elsewhere as cancelled, never ready', async () => {
+  const onReady = vi.fn();
+  jobs.data = { jobs: [{ repo_id: 'a/b', state: 'downloading', bytes_done: 1, total_bytes: 4 }] };
+  const { result, rerender } = renderHook(() => useModelInstall('a/b', { onReady }), { wrapper });
+  await waitFor(() => expect(result.current.active).toBe(true));
+  // Cancelled between two polls: the job is simply gone and the catalogue
+  // still lists the model as not installed.
+  api.mockImplementation(async (path: string) =>
+    path === '/models' ? { models: [{ repo_id: 'a/b', installed: false }] } : {},
+  );
+  jobs.data = { jobs: [] };
+  rerender();
+  await waitFor(() => expect(result.current.view?.stage).toBe('cancelled'));
+  expect(onReady).not.toHaveBeenCalled();
+});
+
+it('treats a cancelling job seen from another control as a cancel', async () => {
+  const onReady = vi.fn();
+  jobs.data = { jobs: [{ repo_id: 'a/b', state: 'downloading', bytes_done: 1, total_bytes: 4 }] };
+  const { result, rerender } = renderHook(() => useModelInstall('a/b', { onReady }), { wrapper });
+  await waitFor(() => expect(result.current.active).toBe(true));
+  jobs.data = { jobs: [{ repo_id: 'a/b', state: 'cancelling', bytes_done: 1, total_bytes: 4 }] };
+  rerender();
+  jobs.data = { jobs: [] };
+  rerender();
+  await waitFor(() => expect(result.current.view?.stage).toBe('cancelled'));
+  expect(onReady).not.toHaveBeenCalled();
+  expect(api).not.toHaveBeenCalledWith('/models', expect.anything());
+});

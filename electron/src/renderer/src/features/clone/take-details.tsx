@@ -156,7 +156,12 @@ export function TakeDetails({ item }: { item: HistoryItem }) {
             <AudioLinesIcon className="size-4 text-muted-foreground" aria-hidden="true" />
             {t('clone.output_title')}
           </p>
-          <WaveformPlayer src={audioUrl(item.audio_path)} source="history" height={64} />
+          <WaveformPlayer
+            src={audioUrl(item.audio_path)}
+            source={'take-' + item.id}
+            durationHint={item.duration_seconds ?? undefined}
+            height={64}
+          />
         </div>
       )}
       <SaveTakeProfile key={item.id + '-save'} item={item} />

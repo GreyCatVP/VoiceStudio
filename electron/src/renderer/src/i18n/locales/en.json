@@ -629,7 +629,8 @@
     "volume": "Volume",
     "exit_fullscreen": "Exit full screen",
     "unavailable": "Playback unavailable",
-    "now_playing": "Now playing"
+    "now_playing": "Now playing",
+    "kind_convert": "Voice conversion"
   },
   "common": {
     "close": "Close",

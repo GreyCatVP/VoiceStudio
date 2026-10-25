@@ -1021,7 +1021,8 @@
     "pause": "Pausa",
     "seek": "Posizione di riproduzione",
     "missing": "Il file audio è mancante.",
-    "now_playing": "In riproduzione"
+    "now_playing": "In riproduzione",
+    "kind_convert": "Conversione vocale"
   },
   "logs": {
     "no_tauri_log": "Nessun accesso Tauri ancora sul disco: avvia tramite la build desktop per produrne uno",

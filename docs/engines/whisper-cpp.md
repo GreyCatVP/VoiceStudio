@@ -35,7 +35,10 @@ Automatic ASR selection is unchanged: whisper.cpp is used only when you pick it.
   `OMNIVOICE_WHISPER_CPP_DIR` selects its directory. Legacy `main` executables
   are accepted only in an explicitly selected or package-local directory.
 - **Models:** `backend/engines/whisper_cpp/models/`, `~/.cache/whisper/`, or the
-  existing Hugging Face cache for `ggerganov/whisper.cpp`.
+  existing Hugging Face cache for `ggerganov/whisper.cpp`. Only a bare model
+  name (such as `ggml-base.bin`) is searched there; a path in
+  `OMNIVOICE_WHISPER_CPP_MODEL` that does not exist is reported as missing
+  instead of loading a same-named model from another folder.
 
 ## Source language and translation
 

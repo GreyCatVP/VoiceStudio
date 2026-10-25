@@ -1019,7 +1019,8 @@
     "pause": "Pauzeren",
     "seek": "Afspeelpositie",
     "missing": "Audiobestand ontbreekt.",
-    "now_playing": "Nu aan het spelen"
+    "now_playing": "Nu aan het spelen",
+    "kind_convert": "Stemconversie"
   },
   "logs": {
     "no_tauri_log": "Nog geen Tauri-inlogschijf: start via de desktop-build om er een te maken",
