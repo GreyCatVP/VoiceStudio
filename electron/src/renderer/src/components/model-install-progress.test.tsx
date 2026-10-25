@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import '@/i18n';
 import { InstallProgress } from './model-install-progress';
@@ -114,4 +114,23 @@ it('keeps an unexplained failure to one line and a cancelled download calm', () 
   expect(screen.getByRole('status')).toHaveTextContent('Download cancelled');
   fireEvent.click(screen.getByRole('button', { name: 'Download again' }));
   expect(onRetry).toHaveBeenCalledOnce();
+});
+
+it('counts the retry cooldown down locally and then enables Retry', () => {
+  vi.useFakeTimers();
+  try {
+    render(
+      <InstallProgress
+        view={describeInstall({ repo_id: 'a/b', state: 'failed', retry_after_seconds: 2 })}
+        onRetry={() => undefined}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Retry in 2s' })).toBeDisabled();
+    act(() => vi.advanceTimersByTime(1000));
+    expect(screen.getByRole('button', { name: 'Retry in 1s' })).toBeDisabled();
+    act(() => vi.advanceTimersByTime(1000));
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeEnabled();
+  } finally {
+    vi.useRealTimers();
+  }
 });
