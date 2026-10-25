@@ -19,6 +19,7 @@
     <a href="https://github.com/debpalash/VoiceStudio/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/debpalash/VoiceStudio/ci.yml?branch=main" alt="CI" /></a>
     <a href="https://github.com/debpalash/VoiceStudio/releases/latest"><img src="https://img.shields.io/github/v/release/debpalash/VoiceStudio" alt="Последний релиз" /></a>
     <a href="../../LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="AGPL-3.0" /></a>
+    <a href="https://supermetry.com"><img src="https://app.supermetry.com/px/zfjiv7psp4ed.svg?c=VoiceStudio&style=stats" alt="просмотры" /></a>
   </p>
 </div>
 
@@ -74,6 +75,14 @@ curl -fsSL https://voicestudio.sh/install | sh -s -- --uninstall
 ```
 
 В Windows выполните `irm https://voicestudio.sh/install | iex` в PowerShell.
+
+Если `voicestudio.sh/install` недоступен или возвращает 404, запустите тот же скрипт
+прямо из репозитория или клонируйте его и выполните `scripts/install.sh`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/debpalash/VoiceStudio/main/scripts/install.sh | sh
+```
+
 Для загрузки релиза нужны curl и утилита для SHA-256. Для `--main` нужны Git,
 Node.js 22+, Bun, Rust/Cargo и инструменты сборки для вашей платформы; см.
 [требования и поведение установщика](../../docs/install/script.md).
@@ -134,17 +143,16 @@ bun run dev
 | Помощь с установкой | [Устранение неполадок](../../docs/install/troubleshooting.md) · [Загрузка моделей](../../docs/downloading-models.md) |
 | Модели и качество звука | [Руководства по движкам](../../docs/engines/README.md) · [Тесты производительности](../../docs/benchmarks.md) |
 | Интеграции | [Локальный API](../../docs/speech-platform.md) · [MCP](../../docs/mcp.md) · [Примеры](../../examples/README.md) |
-| Разработка | [Участие в проекте](../../.github/CONTRIBUTING.md) · [Electron](../../electron/README.md) · [Список изменений](../../CHANGELOG.md) |
+| Приложения для телефона (предварительная версия, работают офлайн) | [iOS и Android](../../docs/mobile.md) |
+| Разработка | [Участие в проекте](../../.github/CONTRIBUTING.md) ([как подписать CLA](../../.github/CONTRIBUTING.md#contribution-licensing) для первого PR) · [Electron](../../electron/README.md) · [Список изменений](../../CHANGELOG.md) |
 
 Навыки для агентов: `npx skills add debpalash/VoiceStudio` — выберите **voicestudio** для работы со звуком или **voicestudio-maintainer** для сопровождения репозитория.
 
 ## Спонсоры
 
-<a href="https://forms.gle/2PYCvd39hbwijzX37"><img src="../../docs/media/sponsor-slot.svg" alt="Ваш бренд — подайте заявку на место избранного спонсора VoiceStudio" width="640" /></a>
+Спонсорство оплачивает время мейнтейнера, инструменты разработки, инфраструктуру релизов и оборудование для тестов; оно даёт признание, а не функции.
 
-**Станьте избранным партнёром.** [Подать заявку на платное размещение](https://forms.gle/2PYCvd39hbwijzX37) · [Написать нам](mailto:partner@voicestudio.sh)
-
-Поддержать разработку: [Ko-fi](https://ko-fi.com/debpalash) · [PayPal](https://paypal.me/palashCoder) · [Подробнее о спонсорстве](../../SPONSORS.md)
+[GitHub Sponsors](https://github.com/sponsors/debpalash) · [Ko-fi](https://ko-fi.com/debpalash) · [PayPal](https://paypal.me/palashCoder) · [Уровни и признание](../../SPONSORS.md) · [Запросить признание](https://github.com/debpalash/VoiceStudio/issues/new?template=sponsor.yml)
 
 ## Лицензия и ответственное использование
 
