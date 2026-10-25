@@ -17,8 +17,10 @@ For another device on the same network — e.g. opening the web UI on your phone
 You can also drive this from **Settings → Sharing & Remote Access**.
 
 The address list is ordered best first: the address of your active Wi-Fi or
-Ethernet connection, then other physical adapters, then virtual ones (Docker,
-WSL/Hyper-V, VirtualBox/VMware, VPNs). Adapters that are down are left out.
+Ethernet connection (even when a VPN owns the default route), then other physical
+adapters, then virtual ones (Docker,
+WSL/Hyper-V, VirtualBox/VMware), then VPN and Tailscale addresses. Adapters
+that are down are left out.
 
 ### "Could not connect" from the other device
 

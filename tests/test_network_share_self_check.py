@@ -48,6 +48,36 @@ def test_default_route_address_ranks_first_even_on_a_bridge():
     assert _lan(fake, primary="192.168.1.42") == ["192.168.1.42", "10.0.0.9"]
 
 
+def test_full_tunnel_vpn_on_the_default_route_never_ranks_first():
+    """A VPN owning the default route must not push the Wi-Fi address down."""
+    fake = {
+        "utun4": [_addr("10.8.0.2")],
+        "Wi-Fi": [_addr("192.168.1.42")],
+        "docker0": [_addr("172.17.0.1")],
+    }
+    assert _lan(fake, primary="10.8.0.2") == ["192.168.1.42", "172.17.0.1", "10.8.0.2"]
+
+
+def test_windows_vpn_adapters_and_cgnat_rank_after_the_lan():
+    fake = {
+        "Cisco AnyConnect Secure Mobility Client": [_addr("10.20.30.40")],
+        "OpenVPN TAP-Windows6": [_addr("10.9.0.6")],
+        "Ethernet 3": [_addr("100.72.1.9")],
+        "Wi-Fi": [_addr("192.168.1.42")],
+    }
+    for primary in ("10.20.30.40", "10.9.0.6", "100.72.1.9"):
+        assert _lan(fake, primary=primary)[0] == "192.168.1.42"
+
+
+def test_point_to_point_links_are_tunnels_whatever_their_name():
+    fake = {"corpnet0": [_addr("10.1.2.3")], "en0": [_addr("192.168.1.42")]}
+    stats = {
+        "corpnet0": SimpleNamespace(isup=True, flags="up,pointopoint,running"),
+        "en0": SimpleNamespace(isup=True, flags="up,broadcast,running"),
+    }
+    assert _lan(fake, stats=stats, primary="10.1.2.3") == ["192.168.1.42", "10.1.2.3"]
+
+
 def test_private_addresses_come_before_public_ones_on_physical_adapters():
     fake = {"eth0": [_addr("81.2.69.160")], "eth1": [_addr("192.168.1.42")]}
     assert _lan(fake) == ["192.168.1.42", "81.2.69.160"]
@@ -118,6 +148,26 @@ def test_self_check_reports_bind_port_and_listener_per_address(monkeypatch):
     }
     # A network change since enabling replaces the stale address list.
     assert ns.get_state().lan_addresses == ["127.0.0.1", "192.0.2.1"]
+
+
+def test_overlapping_check_cannot_mix_addresses_and_results(monkeypatch):
+    """Results are paired with the address list that was probed."""
+    state = ns.ShareState(True, 3901, "123456", ["192.168.1.42", "172.17.0.1"])
+    monkeypatch.setattr(ns, "_runtime", ns._ShareRuntime(state=state))
+    monkeypatch.setattr(ns, "lan_ipv4_addresses", lambda: ["192.168.1.42", "172.17.0.1"])
+
+    async def probe(address, _port):
+        # Another check replaces the list while this one is probing.
+        state.lan_addresses = ["10.0.0.7"]
+        await asyncio.sleep(0)
+        return address == "192.168.1.42"
+
+    monkeypatch.setattr(ns, "_accepts_connections", probe)
+    result = asyncio.run(ns.self_check(SimpleNamespace(state=SimpleNamespace())))
+    assert result["addresses"] == [
+        {"address": "192.168.1.42", "listening": True},
+        {"address": "172.17.0.1", "listening": False},
+    ]
 
 
 def test_closed_port_is_reported_as_not_listening():

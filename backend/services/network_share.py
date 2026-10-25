@@ -169,22 +169,29 @@ def _set_mcp_lan_hosts(app, addresses: list[str], *, enabled: bool) -> None:
 
 
 # Adapters that exist only on this machine (container bridges, VM host-only
-# networks) or tunnel to somewhere else (VPNs, overlays). Their addresses are
-# listed after the real Wi-Fi/Ethernet address, never first: a phone on the
-# same Wi-Fi cannot reach 172.17.0.1 or 192.168.56.1 (#3415). They are kept
-# rather than dropped because a bridged setup (Hyper-V external switch, a
-# Linux br0) can carry the real LAN address under such a name; the
-# default-route address always ranks first regardless of its name.
+# networks). Their addresses are listed after the real Wi-Fi/Ethernet
+# address: a phone on the same Wi-Fi cannot reach 172.17.0.1 or 192.168.56.1
+# (#3415). They are kept rather than dropped because a bridged setup
+# (Hyper-V external switch, a Linux br0) can carry the real LAN address under
+# such a name, so the default-route address on one still ranks first.
 _VIRTUAL_ADAPTER_PREFIXES = (
     "docker", "br-", "veth", "virbr", "vboxnet", "vmnet", "vnic", "lxc", "lxd",
-    "cni", "flannel", "podman", "utun", "tun", "tap", "wg", "tailscale", "zt",
-    "ham", "awdl", "llw", "anpi", "gif", "stf", "bridge", "ipsec", "ppp",
+    "cni", "flannel", "podman", "awdl", "llw", "anpi", "gif", "stf", "bridge",
 )
 _VIRTUAL_ADAPTER_WORDS = (
     "virtual", "vethernet", "hyper-v", "wsl", "vmware", "virtualbox", "host-only",
-    "tailscale", "zerotier", "hamachi", "radmin", "wireguard", "openvpn", "vpn",
-    "tap-windows", "npcap", "loopback", "docker", "nordlynx", "proton",
+    "npcap", "loopback", "docker",
 )
+# Tunnels (VPNs, overlays) lead somewhere else, never to the local Wi-Fi.
+# A full-tunnel VPN owns the default route, so its address must not win the
+# default-route rank: it is always listed last.
+_TUNNEL_ADAPTER_PREFIXES = ("utun", "tun", "tap", "wg", "ppp", "ipsec", "zt", "ham")
+_TUNNEL_ADAPTER_WORDS = (
+    "tailscale", "zerotier", "hamachi", "radmin", "wireguard", "openvpn", "vpn",
+    "tap-windows", "anyconnect", "cisco", "fortinet", "forticlient", "globalprotect",
+    "pangp", "juniper", "pulse", "nordlynx", "proton", "mullvad", "tunnel",
+)
+_CGNAT = ipaddress.IPv4Network("100.64.0.0/10")  # Tailscale and carrier NAT
 # Any address works as the probe target: connect() on a UDP socket only asks
 # the kernel which source address its route would use. No packet is sent.
 _ROUTE_PROBE_TARGET = ("192.0.2.1", 9)  # TEST-NET-1 (RFC 5737)
@@ -195,6 +202,24 @@ def _is_virtual_adapter(name: str) -> bool:
     return lowered.startswith(_VIRTUAL_ADAPTER_PREFIXES) or any(
         word in lowered for word in _VIRTUAL_ADAPTER_WORDS
     )
+
+
+def _is_tunnel(name: str, address: ipaddress.IPv4Address, stats: dict) -> bool:
+    """Whether an address sits on a VPN/overlay tunnel rather than the LAN.
+
+    Uses the adapter name, the CGNAT range Tailscale and carrier NAT use, and
+    the point-to-point flag psutil reports on macOS and Linux (every
+    utun/tun/ppp/WireGuard link has it; Windows reports no flags).
+    """
+    lowered = name.strip().lower()
+    if lowered.startswith(_TUNNEL_ADAPTER_PREFIXES) or any(
+        word in lowered for word in _TUNNEL_ADAPTER_WORDS
+    ):
+        return True
+    if address in _CGNAT:
+        return True
+    flags = str(getattr(stats.get(name), "flags", "") or "")
+    return "pointopoint" in flags.split(",")
 
 
 def _default_route_ipv4() -> Optional[str]:
@@ -226,9 +251,10 @@ def lan_ipv4_addresses() -> list:
     """IPv4 addresses another device may use to reach this machine, best first.
 
     The share panel shows one QR code per address and users scan the first
-    one, so order matters (#3415): the default-route address, then private
-    (RFC 1918) addresses on physical adapters, then other physical addresses,
-    then container/VM/VPN adapters. Loopback, link-local and addresses on
+    one, so order matters (#3415): the default-route address (unless a VPN
+    owns the route), then private (RFC 1918) addresses on physical adapters,
+    then other physical addresses, then container/VM adapters, then VPN and
+    overlay tunnels. Loopback, link-local and addresses on
     adapters that are down are never listed.
     """
     try:
@@ -253,7 +279,9 @@ def lan_ipv4_addresses() -> list:
             if ip in seen:
                 continue
             seen.add(ip)
-            if ip == primary:
+            if _is_tunnel(name, parsed, stats):
+                rank = 4
+            elif ip == primary:
                 rank = 0
             elif _is_virtual_adapter(name):
                 rank = 3
@@ -301,16 +329,18 @@ async def self_check(app) -> dict:
                 state.lan_addresses = current
                 _set_mcp_lan_hosts(app, current, enabled=True)
     port = state.share_port
+    # Probe and report one snapshot: an overlapping check may replace
+    # state.lan_addresses while these probes are awaited.
+    addresses = list(state.lan_addresses)
     results = await asyncio.gather(
-        *(_accepts_connections(address, port) for address in state.lan_addresses)
+        *(_accepts_connections(address, port) for address in addresses)
     )
     return {
         "enabled": True,
         "bind_host": SHARE_BIND_HOST,
         "share_port": port,
         "addresses": [
-            {"address": address, "listening": ok}
-            for address, ok in zip(state.lan_addresses, results)
+            {"address": address, "listening": ok} for address, ok in zip(addresses, results)
         ],
     }
 
