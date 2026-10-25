@@ -143,18 +143,16 @@ bun run dev
 | 설치 도움말 | [문제 해결](../../docs/install/troubleshooting.md) · [모델 다운로드](../../docs/downloading-models.md) |
 | 모델과 음질 | [엔진 가이드](../../docs/engines/README.md) · [벤치마크](../../docs/benchmarks.md) |
 | 연동 | [로컬 API](../../docs/speech-platform.md) · [MCP](../../docs/mcp.md) · [예제](../../examples/README.md) |
-| 휴대폰 컴패니언 (프리뷰) | [iOS 및 Android 앱](../../docs/mobile.md) |
+| 휴대폰 앱 (프리뷰, 오프라인 실행) | [iOS 및 Android](../../docs/mobile.md) |
 | 개발 | [기여하기](../../.github/CONTRIBUTING.md) (첫 PR을 위한 [CLA 서명 안내](../../.github/CONTRIBUTING.md#contribution-licensing)) · [Electron](../../electron/README.md) · [변경 기록](../../CHANGELOG.md) |
 
 에이전트 스킬: `npx skills add debpalash/VoiceStudio` — 오디오 워크플로에는 **voicestudio**를, 저장소 유지 관리에는 **voicestudio-maintainer**를 선택하세요.
 
 ## 후원사
 
-<a href="https://forms.gle/2PYCvd39hbwijzX37"><img src="../../docs/media/sponsor-slot.svg" alt="여러분의 브랜드 — VoiceStudio 공식 후원사 자리에 지원하세요" width="640" /></a>
+후원금은 메인테이너의 작업 시간, 개발 도구, 릴리스 인프라와 테스트 하드웨어에 쓰입니다. 후원으로 얻는 것은 기능이 아니라 크레딧입니다.
 
-**공식 파트너가 되어 주세요.** [유료 게재 신청](https://forms.gle/2PYCvd39hbwijzX37) · [이메일 문의](mailto:partner@voicestudio.sh)
-
-개발 후원: [GitHub Sponsors](https://github.com/sponsors/debpalash) · [Ko-fi](https://ko-fi.com/debpalash) · [PayPal](https://paypal.me/palashCoder) · [후원 안내](../../SPONSORS.md)
+[GitHub Sponsors](https://github.com/sponsors/debpalash) · [Ko-fi](https://ko-fi.com/debpalash) · [PayPal](https://paypal.me/palashCoder) · [등급과 크레딧](../../SPONSORS.md) · [크레딧 요청](https://github.com/debpalash/VoiceStudio/issues/new?template=sponsor.yml)
 
 ## 라이선스와 책임 있는 사용
 
