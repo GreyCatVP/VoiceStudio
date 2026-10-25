@@ -7,7 +7,7 @@
     "hint24": "Mer precision för redigering och mixning.",
     "hint32": "Behåller full precision. Större filer, inte bättre röst.",
     "effort": "Röstförfining",
-    "effortHint": "Fler omgångar tar längre tid; rösten blir inte alltid bättre.",
+    "effortHint": "Färre omgångar kan sänka kvaliteten; fler tar längre tid.",
     "mastering": "Jämna ut volymen",
     "masteringHint": "Gör ljudet mer balanserat och jämnt.",
     "nextTake": "För din nästa inspelning.",

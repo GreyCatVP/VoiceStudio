@@ -7,7 +7,7 @@
     "hint24": "Độ chính xác cao hơn để chỉnh sửa và phối âm.",
     "hint32": "Giữ nguyên độ chính xác tối đa. Tệp lớn hơn, giọng nói không hay hơn.",
     "effort": "Tinh chỉnh giọng nói",
-    "effortHint": "Nhiều lượt hơn sẽ mất thêm thời gian; giọng nói có thể không hay hơn.",
+    "effortHint": "Ít lượt hơn có thể làm giảm chất lượng; nhiều lượt hơn sẽ mất thêm thời gian.",
     "mastering": "Cân bằng âm lượng",
     "masteringHint": "Giúp âm thanh cân bằng và đồng đều hơn.",
     "nextTake": "Áp dụng cho bản thu tiếp theo.",

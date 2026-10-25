@@ -7,7 +7,7 @@
     "hint24": "Plus de précision pour le montage et le mixage.",
     "hint32": "Conserve toute la précision. Fichiers plus gros, sans améliorer la voix.",
     "effort": "Affiner la voix",
-    "effortHint": "Plus de passes prennent plus de temps, sans forcément améliorer la voix.",
+    "effortHint": "Moins de passes peut dégrader la qualité, davantage prend plus de temps.",
     "mastering": "Équilibrer le volume",
     "masteringHint": "Rend le son plus équilibré et régulier.",
     "nextTake": "Pour votre prochain enregistrement.",

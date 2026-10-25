@@ -7,7 +7,7 @@
     "hint24": "Düzenleme ve miks için daha fazla hassasiyet.",
     "hint32": "Tam hassasiyeti korur. Dosyalar büyür, sesin kendisi iyileşmez.",
     "effort": "Sesi iyileştirme",
-    "effortHint": "Daha fazla geçiş daha uzun sürer; ses daha iyi olmayabilir.",
+    "effortHint": "Daha az geçiş kaliteyi düşürebilir; daha fazla geçiş daha uzun sürer.",
     "mastering": "Ses düzeyini dengele",
     "masteringHint": "Sesi daha dengeli ve tutarlı hale getirir.",
     "nextTake": "Bir sonraki kaydınız için.",

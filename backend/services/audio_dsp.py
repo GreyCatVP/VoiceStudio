@@ -210,6 +210,23 @@ def trim_speech_padding(audio_tensor: torch.Tensor, sample_rate: int) -> torch.T
     end = min(audio_tensor.shape[-1], int(voiced[-1].item()) + 1 + margin)
     return audio_tensor[..., start:end]
 
+#: Samples per block for the numpy stages. Long takes are processed in blocks
+#: so temporary memory stays bounded (a 30-minute take at 24 kHz is 43 M
+#: samples; whole-take float64 temporaries needed several GB).
+_CHUNK_SAMPLES = 1 << 18
+
+
+def _box_mean(values, width: int):
+    """Centered moving average over ``width`` frames, shrinking at the edges."""
+    import numpy as np
+
+    n = values.shape[0]
+    csum = np.concatenate(([0.0], np.cumsum(values)))
+    lo = np.clip(np.arange(n) - width // 2, 0, n)
+    hi = np.clip(np.arange(n) + width - width // 2, 0, n)
+    return (csum[hi] - csum[lo]) / np.maximum(hi - lo, 1)
+
+
 def level_speech(
     audio_tensor: torch.Tensor,
     sample_rate: int,
@@ -222,56 +239,67 @@ def level_speech(
 ) -> torch.Tensor:
     """Even out phrase-to-phrase loudness without touching syllable dynamics.
 
-    A slow leveler, not a compressor (#3412): it measures short-term speech
-    loudness over ``window_ms`` and moves each passage ``amount`` of the way
-    toward the take's gated average, by at most ``max_gain_db``. The gain is
-    smoothed over ``smooth_ms`` in both directions, so it cannot follow single
-    syllables: transients and peaks keep their shape (no flattening) and the
-    gain never "breathes" between words (no pumping). Pauses, breaths and
-    decay tails hold the gain of the speech before them instead of being
-    boosted toward speech level, which is what made fast compression sound
-    padded and reverberant.
+    A slow leveler, not a compressor (#3412). Speech is told apart from pauses
+    and tails with a short 50 ms gate, then each speech frame's loudness is
+    the mean of the *speech* frames within ``window_ms``, so a phrase ending
+    into silence is not measured as quieter. Each passage moves ``amount`` of
+    the way toward the take's speech average, by at most ``max_gain_db``.
+    Pauses, breaths and decay tails hold the gain of the speech before them,
+    so they are never boosted toward speech level (the padded, reverberant
+    sound of the old compressor). The gain is smoothed over ``smooth_ms`` in
+    both directions, so it cannot follow single syllables: peaks keep their
+    shape and the gain never "breathes" between words.
 
-    Level-independent (only relative levels matter) and pure numpy, so it
-    behaves the same with or without pedalboard. A silent clip is returned
-    unchanged.
+    Level-independent (only relative levels matter, plus the optional fixed
+    ``target_db`` for the speech average), pure numpy and processed in blocks
+    of ``_CHUNK_SAMPLES``. A silent clip is returned unchanged.
     """
     if audio_tensor.numel() == 0:
         return audio_tensor
     import numpy as np
 
-    x = audio_tensor.detach().cpu().double().numpy()
-    n = x.shape[-1]
-    power = (x.reshape(-1, n) ** 2).mean(axis=0)
+    source = audio_tensor.detach().cpu()
+    n = source.shape[-1]
+    flat = source.reshape(-1, n)
     hop = max(1, int(sample_rate * 0.01))
+    step = max(1, _CHUNK_SAMPLES // hop) * hop
     frames = -(-n // hop)
-    padded = np.zeros(frames * hop)
-    padded[:n] = power
-    frame_power = padded.reshape(frames, hop).mean(axis=1)
+    frame_power = np.empty(frames)
+    for start in range(0, n, step):
+        power = (flat[:, start:start + step].double().numpy() ** 2).mean(axis=0)
+        count = -(-power.shape[0] // hop)
+        padded = np.zeros(count * hop)
+        padded[:power.shape[0]] = power
+        first = start // hop
+        frame_power[first:first + count] = padded.reshape(count, hop).mean(axis=1)
+
+    # Speech gate like EBU R128 on a short 50 ms window, which keeps tails and
+    # pauses out of it: a floor 40 dB under the loudest moment (never below
+    # -70 dBFS), then a relative gate 25 dB under the speech average. Both are
+    # relative, so the result does not depend on input level. A clip that
+    # never rises above the -50 dBFS silence floor shared with
+    # normalize_audio is left alone.
+    short_power = _box_mean(frame_power, 5)
+    short_db = 10.0 * np.log10(short_power + 1e-20)
+    if not short_db.max() > -50.0:
+        return audio_tensor
+    floor_db = max(-70.0, short_db.max() - 40.0)
+    average_db = 10.0 * np.log10(short_power[short_db > floor_db].mean())
+    speech = short_db > max(floor_db, average_db - 25.0)
+    speech_db = 10.0 * np.log10(frame_power[speech].mean() + 1e-20)
 
     win = max(1, round(window_ms / 10.0))
-    csum = np.concatenate(([0.0], np.cumsum(frame_power)))
-    lo = np.clip(np.arange(frames) - win // 2, 0, frames)
-    hi = np.clip(np.arange(frames) + win - win // 2, 0, frames)
-    short_term = (csum[hi] - csum[lo]) / np.maximum(hi - lo, 1)
-    level_db = 10.0 * np.log10(short_term + 1e-20)
-
-    # Gate like EBU R128: an absolute floor (the -50 dBFS silence floor shared
-    # with normalize_audio), then a relative gate below the speech average.
-    active = level_db > -50.0
-    if not active.any():
-        return audio_tensor
-    average_db = 10.0 * np.log10(short_term[active].mean())
-    active &= level_db > average_db - 20.0
-    speech_db = 10.0 * np.log10(short_term[active].mean())
+    speech_power = _box_mean(np.where(speech, frame_power, 0.0), win)
+    speech_share = _box_mean(speech.astype(float), win)
+    level_db = 10.0 * np.log10(speech_power / np.maximum(speech_share, 1e-12) + 1e-20)
 
     gain_db = np.clip(amount * (speech_db - level_db), -max_gain_db, max_gain_db)
     if target_db is not None:
         gain_db += target_db - speech_db
     # Hold the last speech gain across pauses (leading pauses take the first).
-    idx = np.where(active, np.arange(frames), -1)
+    idx = np.where(speech, np.arange(frames), -1)
     idx = np.maximum.accumulate(idx)
-    idx[idx < 0] = int(np.argmax(active))
+    idx[idx < 0] = int(np.argmax(speech))
     gain_db = gain_db[idx]
 
     alpha = np.exp(-1.0 / max(1.0, smooth_ms / 10.0))
@@ -282,23 +310,26 @@ def level_speech(
         gain_db[order] = g
 
     centers = np.arange(frames) * hop + hop / 2.0
-    sample_gain = 10.0 ** (np.interp(np.arange(n), centers, gain_db) / 20.0)
-    out = x * sample_gain
-    return torch.from_numpy(out).to(dtype=audio_tensor.dtype, device=audio_tensor.device)
+    out = torch.empty_like(flat)
+    for start in range(0, n, step):
+        stop = min(n, start + step)
+        gain = 10.0 ** (np.interp(np.arange(start, stop), centers, gain_db) / 20.0)
+        out[:, start:stop] = torch.from_numpy(flat[:, start:stop].double().numpy() * gain)
+    return out.reshape(source.shape).to(audio_tensor.device)
 
 
-def _sliding_min(values, radius: int):
-    """Minimum of ``values[i - radius : i + radius + 1]`` for every i, in O(n).
+def _window_min(values, before: int, after: int):
+    """Minimum of ``values[i - before : i + after + 1]`` for every i, in O(n).
 
     van Herk/Gil-Werman: block-wise prefix and suffix minima, so it stays
-    linear for long takes without SciPy.
+    linear without SciPy.
     """
     import numpy as np
 
-    width = 2 * radius + 1
+    width = before + after + 1
     n = values.shape[0]
-    tail = (-(n + 2 * radius)) % width
-    padded = np.pad(values, (radius, radius + tail), constant_values=np.inf)
+    tail = (-(n + width - 1)) % width
+    padded = np.pad(values, (before, after + tail), constant_values=np.inf)
     blocks = padded.reshape(-1, width)
     prefix = np.minimum.accumulate(blocks, axis=1).ravel()
     suffix = np.minimum.accumulate(blocks[:, ::-1], axis=1)[:, ::-1].ravel()
@@ -320,30 +351,44 @@ def peak_limit(
     2 ms compressor at -10 dBFS in front of the brickwall and adds makeup
     gain, so every speech peak between -10 and 0 dBFS was flattened. This one
     leaves audio below ``threshold_db`` bit-identical and only dips the gain
-    around samples that would cross it, ramping over ``lookahead_ms`` before
-    and holding ``release_ms`` after so the dip is smooth and inaudible.
-    The ramp is a moving average of a sliding minimum whose window covers
-    every averaged point, so the output never exceeds the ceiling.
+    around samples that would cross it: the dip starts at most
+    ``lookahead_ms`` before an over and holds ``release_ms`` after it, then
+    ramps back. The gain is a moving average (radius r) of a minimum taken
+    over r ahead and r + hold behind, so every averaged value is at or below
+    the gain each over needs and the output never exceeds the ceiling.
+    Processed in overlapping blocks of ``_CHUNK_SAMPLES``; the result equals
+    a single pass.
     """
     if audio_tensor.numel() == 0:
         return audio_tensor
     import numpy as np
 
-    x = audio_tensor.detach().cpu().double().numpy()
-    n = x.shape[-1]
-    peak = np.abs(x.reshape(-1, n)).max(axis=0)
+    source = audio_tensor.detach().cpu()
+    n = source.shape[-1]
+    flat = source.reshape(-1, n)
     ceiling = 10.0 ** (threshold_db / 20.0)
-    if not peak.max() > ceiling:
+    step = max(1, _CHUNK_SAMPLES)
+    if not any(flat[:, s:s + step].abs().max().item() > ceiling for s in range(0, n, step)):
         return audio_tensor
-    gain = np.minimum(1.0, ceiling / np.maximum(peak, 1e-12))
-    ramp = max(1, int(sample_rate * lookahead_ms / 1000.0))
-    hold = max(0, int(sample_rate * release_ms / 1000.0))
-    held = _sliding_min(gain, ramp + hold)
-    csum = np.concatenate(([0.0], np.cumsum(np.pad(held, ramp, mode="edge"))))
-    smooth = (csum[2 * ramp + 1:] - csum[:-(2 * ramp + 1)]) / (2 * ramp + 1)
-    out = x * np.minimum(smooth, gain)  # min() only absorbs float rounding
-    return torch.from_numpy(out).to(dtype=audio_tensor.dtype, device=audio_tensor.device)
 
+    ramp = max(1, int(sample_rate * lookahead_ms / 2000.0))
+    hold = max(0, int(sample_rate * release_ms / 1000.0))
+    before, after = 2 * ramp + hold, 2 * ramp  # samples one output depends on
+    out = flat.clone()
+    for start in range(0, n, step):
+        stop = min(n, start + step)
+        lo, hi = max(0, start - before), min(n, stop + after)
+        block = flat[:, lo:hi].double().numpy()
+        gain = np.minimum(1.0, ceiling / np.maximum(np.abs(block).max(axis=0), 1e-12))
+        if gain.min() >= 1.0:
+            continue
+        held = _window_min(gain, ramp + hold, ramp)
+        csum = np.concatenate(([0.0], np.cumsum(np.pad(held, ramp, mode="edge"))))
+        smooth = (csum[2 * ramp + 1:] - csum[:-(2 * ramp + 1)]) / (2 * ramp + 1)
+        keep = slice(start - lo, stop - lo)
+        applied = np.minimum(smooth, gain)[keep]  # min() only absorbs float rounding
+        out[:, start:stop] = torch.from_numpy(block[:, keep] * applied)
+    return out.reshape(source.shape).to(audio_tensor.device)
 
 _NUMPY_STAGES = {
     "leveler": (level_speech, ("target_db", "window_ms", "amount", "max_gain_db", "smooth_ms")),

@@ -7,7 +7,7 @@
     "hint24": "Większa precyzja do edycji i miksowania.",
     "hint32": "Zachowuje pełną precyzję. Większe pliki, bez poprawy samego głosu.",
     "effort": "Dopracowanie głosu",
-    "effortHint": "Więcej przebiegów trwa dłużej; głos nie musi brzmieć lepiej.",
+    "effortHint": "Mniej przebiegów może obniżyć jakość; więcej trwa dłużej.",
     "mastering": "Wyrównaj głośność",
     "masteringHint": "Zapewnia bardziej zrównoważony i równomierny dźwięk.",
     "nextTake": "Dla następnego nagrania.",

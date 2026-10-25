@@ -7,7 +7,7 @@
     "hint24": "Mais precisão para edição e mixagem.",
     "hint32": "Mantém toda a precisão. Arquivos maiores, sem melhorar a voz.",
     "effort": "Refinamento da voz",
-    "effortHint": "Mais etapas levam mais tempo; a voz pode não melhorar.",
+    "effortHint": "Menos etapas podem reduzir a qualidade; mais etapas levam mais tempo.",
     "mastering": "Equilibrar volume",
     "masteringHint": "Torna o som mais equilibrado e uniforme.",
     "nextTake": "Para a próxima gravação.",

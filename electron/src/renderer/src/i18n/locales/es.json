@@ -7,7 +7,7 @@
     "hint24": "Más precisión para editar y mezclar.",
     "hint32": "Conserva toda la precisión. Archivos más grandes, sin mejorar la voz.",
     "effort": "Refinamiento de voz",
-    "effortHint": "Más pasadas tardan más; la voz puede no sonar mejor.",
+    "effortHint": "Menos pasadas pueden reducir la calidad; más pasadas tardan más.",
     "mastering": "Equilibrar volumen",
     "masteringHint": "Hace que el sonido sea más equilibrado y uniforme.",
     "nextTake": "Para tu próxima grabación.",

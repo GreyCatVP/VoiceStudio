@@ -7,7 +7,7 @@
     "hint24": "Più precisione per il montaggio e il missaggio.",
     "hint32": "Mantiene la precisione completa. File più grandi, non una voce migliore.",
     "effort": "Rifinitura della voce",
-    "effortHint": "Più passaggi richiedono più tempo; la voce potrebbe non migliorare.",
+    "effortHint": "Meno passaggi possono ridurre la qualità; più passaggi richiedono più tempo.",
     "mastering": "Bilancia il volume",
     "masteringHint": "Rende il suono più equilibrato e uniforme.",
     "nextTake": "Per la prossima registrazione.",

@@ -7,7 +7,7 @@
     "hint24": "Presisi tambahan untuk menyunting dan mencampur audio.",
     "hint32": "Mempertahankan presisi penuh. Berkas lebih besar, bukan suara lebih baik.",
     "effort": "Penyempurnaan suara",
-    "effortHint": "Lebih banyak tahap perlu waktu lebih lama; suara belum tentu lebih baik.",
+    "effortHint": "Tahap yang lebih sedikit dapat menurunkan kualitas; lebih banyak tahap perlu waktu lebih lama.",
     "mastering": "Ratakan volume",
     "masteringHint": "Membuat suara lebih seimbang dan konsisten.",
     "nextTake": "Untuk rekaman berikutnya.",

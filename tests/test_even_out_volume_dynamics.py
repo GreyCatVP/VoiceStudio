@@ -154,3 +154,80 @@ class TestLimiterIsACeiling:
         assert out.abs().max().item() <= 10 ** (-1 / 20) + 1e-6
         quiet = _phrases(audio)[1]  # 18 dB below the loud phrase: no overs
         assert np.allclose(_phrases(out)[1], quiet)
+
+    def test_attenuation_starts_within_the_lookahead_before_a_peak(self):
+        """An isolated over must not duck the speech before it by the hold time."""
+        t = np.arange(SR) / SR
+        audio = 0.1 * np.sin(2 * np.pi * 200 * t)
+        peak = SR // 2
+        audio[peak] = 2.0
+        audio = torch.from_numpy(audio.astype(np.float32)).unsqueeze(0)
+        out = peak_limit(audio, SR, threshold_db=-1.0, lookahead_ms=5.0, release_ms=40.0)
+        def gain(i):
+            return abs(out[0, i].item() / audio[0, i].item())
+
+        before = peak - int(0.006 * SR)  # just outside the 5 ms lookahead
+        before += int(np.argmax(np.abs(audio[0, before - 60:before].numpy()))) - 60
+        assert gain(before) == pytest.approx(1.0, abs=1e-6)
+        assert out[0, peak].abs().item() <= 10 ** (-1 / 20) + 1e-6
+        after = peak + int(0.06 * SR)  # recovered after ramp + hold
+        assert gain(after) == pytest.approx(1.0, abs=1e-6)
+
+
+def _sustained_then_tail():
+    """A loud passage, then one 1.5 s sustained phrase and a 1 s room tail."""
+    rng = np.random.default_rng(3)
+    t = np.arange(int(1.5 * SR)) / SR
+    phrase = sum(np.sin(2 * np.pi * 140 * k * t) / k for k in range(1, 10))
+    phrase *= 10 ** (-24 / 20) / np.sqrt(np.mean(phrase ** 2))
+    n_tail = SR
+    tail = (rng.standard_normal(n_tail) * 10 ** (-54 / 20)
+            * np.exp(-np.arange(n_tail) / (0.3 * SR)))
+    loud = _speech_like((-14.0,)).squeeze(0).numpy()
+    x = np.concatenate([loud, phrase, tail]).astype(np.float32)
+    return torch.from_numpy(x).unsqueeze(0), len(loud), len(phrase)
+
+
+class TestLevelerPauses:
+    def test_tail_after_a_sustained_phrase_keeps_the_phrase_gain(self):
+        """The tail must not inherit a gain picked up while the window drained."""
+        audio, start, n_phrase = _sustained_then_tail()
+        out = level_speech(audio, SR)
+        end = start + n_phrase
+        body = slice(end - SR // 2, end - SR // 10)
+        tail = slice(end + int(0.05 * SR), end + int(0.6 * SR))
+        x, y = audio[0].double().numpy(), out[0].double().numpy()
+        before = _rms_db(x[tail]) - _rms_db(x[body])
+        after = _rms_db(y[tail]) - _rms_db(y[body])
+        assert abs(after - before) < 1.0
+
+
+class TestLongTakes:
+    @pytest.mark.parametrize("stage", ["leveler", "limiter"])
+    def test_chunked_output_matches_one_pass(self, stage, monkeypatch):
+        import services.audio_dsp as dsp
+
+        audio = _speech_like(LOUD_TAKE * 3).repeat(2, 1)
+        audio = audio * (10 ** (3 / 20) / audio.abs().max())  # overs to limit
+        fn = level_speech if stage == "leveler" else peak_limit
+        whole = fn(audio, SR)
+        monkeypatch.setattr(dsp, "_CHUNK_SAMPLES", 4801)
+        chunked = fn(audio, SR)
+        assert torch.allclose(whole, chunked, atol=1e-6)
+
+    @pytest.mark.parametrize("stage", ["leveler", "limiter"])
+    def test_memory_stays_bounded_on_a_long_take(self, stage):
+        """A 10-minute take needs about one output copy, not many float64 copies."""
+        import tracemalloc
+
+        rng = np.random.default_rng(0)
+        n = 600 * SR
+        audio = torch.from_numpy((rng.standard_normal(n) * 0.3).astype(np.float32)).unsqueeze(0)
+        fn = level_speech if stage == "leveler" else peak_limit
+        tracemalloc.start()
+        try:
+            fn(audio, SR)
+            peak = tracemalloc.get_traced_memory()[1]
+        finally:
+            tracemalloc.stop()
+        assert peak < 2 * audio.numel() * audio.element_size()
