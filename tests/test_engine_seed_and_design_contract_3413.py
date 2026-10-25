@@ -71,24 +71,29 @@ def test_engines_that_ignore_instruct_cannot_design():
         assert tts.voice_design_support(cls) is False, cls.__name__
 
 
+def _probe(flag, calls):
+    import torch
+
+    class Probe:
+        sample_rate = 24000
+        supports_generation_seed = flag
+
+        def generate(self, text, **kw):
+            calls.append(kw)
+            return torch.ones(1, 2400) * 0.1
+
+    return Probe()
+
+
 def test_the_seed_reaches_audiocpp_and_gguf_through_generate():
     from api.routers.generation import _run_backend_inference
-    import torch
 
     for module, name in (("engines.audiocpp", "AudioCPPBackend"),
                          ("engines.omnivoice_gguf", "OmniVoiceGGUFBackend")):
         cls = getattr(importlib.import_module(module), name)
         calls = []
-
-        class Probe:
-            sample_rate = 24000
-            supports_generation_seed = cls.supports_generation_seed
-
-            def generate(self, text, **kw):
-                calls.append(kw)
-                return torch.ones(1, 2400) * 0.1
-
-        _run_backend_inference(Probe(), "Hello.", "English", None, None, "male", None,
+        _run_backend_inference(_probe(cls.supports_generation_seed, calls), "Hello.",
+                               "English", None, None, "male", None,
                                32, 2, 1, True, True, 1234, "raw")
         assert calls[-1].get("seed") == 1234, name
 
