@@ -316,7 +316,9 @@ it.each([
     function DesignConsumer() {
       const state = useGenerateClone();
       return (
-        <button onClick={() => void state.generateDesign({ text: 'Hi', instruct: 'male', seed: 1 })}>
+        <button
+          onClick={() => void state.generateDesign({ text: 'Hi', instruct: 'male', seed: 1 })}
+        >
           blocker {state.designBlocker ?? 'none'} {String(state.canGenerateDesign)}
         </button>
       );
@@ -340,14 +342,49 @@ it.each([
 );
 
 it.each([
-  ['a saved design voice with a sample', { ref_audio_path: 'design.wav' }, false, true, 'none', true],
-  ['a locked design voice', { is_locked: 1, locked_audio_path: 'locked.wav' }, false, true, 'none', true],
+  [
+    'a saved design voice with a sample',
+    { ref_audio_path: 'design.wav' },
+    false,
+    true,
+    'none',
+    true,
+  ],
+  [
+    'a locked design voice',
+    { is_locked: 1, locked_audio_path: 'locked.wav' },
+    false,
+    true,
+    'none',
+    true,
+  ],
   ['a saved design voice without a sample', {}, false, true, 'design', false],
   // KittenTTS / Supertonic-3 ignore reference audio: the saved voice would
   // silently become a preset one, so the re-render stays blocked.
-  ['a saved sample on a preset-only engine', { ref_audio_path: 'design.wav' }, false, false, 'cloning', false],
-  ['a saved sample on an undeclared preset-only engine', { ref_audio_path: 'design.wav' }, null, false, 'cloning', false],
-  ['a locked take on a preset-only engine', { is_locked: 1, locked_audio_path: 'locked.wav' }, false, false, 'cloning', false],
+  [
+    'a saved sample on a preset-only engine',
+    { ref_audio_path: 'design.wav' },
+    false,
+    false,
+    'cloning',
+    false,
+  ],
+  [
+    'a saved sample on an undeclared preset-only engine',
+    { ref_audio_path: 'design.wav' },
+    null,
+    false,
+    'cloning',
+    false,
+  ],
+  [
+    'a locked take on a preset-only engine',
+    { is_locked: 1, locked_audio_path: 'locked.wav' },
+    false,
+    false,
+    'cloning',
+    false,
+  ],
   ['a sampleless design on a preset-only engine', {}, false, false, 'design', false],
 ] as const)(
   're-renders %s only when the engine can clone its sample',
@@ -404,8 +441,18 @@ it.each([
 ] as const)(
   'a preset-only engine generates without a clip or profile (supports_voice_design=%s)',
   async (design, sent) => {
-    Object.assign(engine, { design, cloning: false, presets: ['expr-voice-2-f'], vocabulary: 'freeform' });
-    patchCloneSettings({ text: 'Preset script', instruct: 'calm', selectedProfileId: null, autoPlay: false });
+    Object.assign(engine, {
+      design,
+      cloning: false,
+      presets: ['expr-voice-2-f'],
+      vocabulary: 'freeform',
+    });
+    patchCloneSettings({
+      text: 'Preset script',
+      instruct: 'calm',
+      selectedProfileId: null,
+      autoPlay: false,
+    });
     vi.mocked(generateClone).mockReset().mockRejectedValue(new Error('stop'));
     render(
       <QueryClientProvider client={new QueryClient()}>
@@ -419,10 +466,20 @@ it.each([
     // can't design; it never reaches a preset voice anyway (#3413).
     await waitFor(() =>
       expect(generateClone).toHaveBeenCalledWith(
-        expect.objectContaining({ text: 'Preset script', instruct: sent, profileId: null, refAudio: null }),
+        expect.objectContaining({
+          text: 'Preset script',
+          instruct: sent,
+          profileId: null,
+          refAudio: null,
+        }),
         expect.anything(),
       ),
     );
-    Object.assign(engine, { design: undefined, cloning: undefined, presets: undefined, vocabulary: undefined });
+    Object.assign(engine, {
+      design: undefined,
+      cloning: undefined,
+      presets: undefined,
+      vocabulary: undefined,
+    });
   },
 );
