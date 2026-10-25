@@ -38,7 +38,9 @@ Automatic ASR selection is unchanged: whisper.cpp is used only when you pick it.
   existing Hugging Face cache for `ggerganov/whisper.cpp`. Only a bare model
   name (such as `ggml-base.bin`) is searched there; a path in
   `OMNIVOICE_WHISPER_CPP_MODEL` that does not exist is reported as missing
-  instead of loading a same-named model from another folder.
+  instead of loading a same-named model from another folder. This also applies
+  to explicitly selected current-directory paths such as `./ggml-base.bin`
+  or `.\ggml-base.bin`; use the bare name for a local cache search.
 
 ## Source language and translation
 
