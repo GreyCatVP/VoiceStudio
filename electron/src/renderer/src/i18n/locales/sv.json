@@ -2963,7 +2963,8 @@
     "balanced": "Balanserad",
     "quality": "Kvalitet",
     "hint": "Gäller OmniVoice sampling och Faster-Whisper / NLLB avkodning. Andra motorer behåller sina nuvarande inställningar.",
-    "auto": "Auto"
+    "auto": "Auto",
+    "autoHint": "Väljer den bästa nivån för den här datorn."
   },
   "recording": {
     "input_device": "Inmatningsenhet",

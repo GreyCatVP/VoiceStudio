@@ -2963,7 +2963,8 @@
     "balanced": "バランス",
     "quality": "品質",
     "hint": "OmniVoice のサンプリングと Faster-Whisper / NLLB のデコードに適用されます。他のエンジンは現在の設定を維持します。",
-    "auto": "自動"
+    "auto": "自動",
+    "autoHint": "このコンピューターに最適なレベルを選びます。"
   },
   "recording": {
     "input_device": "入力デバイス",

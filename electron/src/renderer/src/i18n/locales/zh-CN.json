@@ -2963,7 +2963,8 @@
     "balanced": "均衡",
     "quality": "质量",
     "hint": "适用于 OmniVoice 采样和 Faster-Whisper / NLLB 解码。其他引擎保留当前设置。",
-    "auto": "自动"
+    "auto": "自动",
+    "autoHint": "为这台电脑选择最佳级别。"
   },
   "recording": {
     "input_device": "输入设备",

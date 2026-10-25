@@ -2963,7 +2963,8 @@
     "balanced": "Ausgewogen",
     "quality": "Qualität",
     "hint": "Gilt für OmniVoice-Sampling und Faster-Whisper / NLLB-Dekodierung. Andere Engines behalten ihre aktuellen Einstellungen.",
-    "auto": "Auto"
+    "auto": "Auto",
+    "autoHint": "Wählt die beste Stufe für diesen Computer."
   },
   "recording": {
     "input_device": "Eingabegerät",

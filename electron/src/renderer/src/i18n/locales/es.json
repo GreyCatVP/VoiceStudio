@@ -2965,7 +2965,8 @@
     "balanced": "Equilibrado",
     "quality": "Calidad",
     "hint": "Se aplica al muestreo OmniVoice y a la decodificación Faster-Whisper/NLLB. Otros motores mantienen su configuración actual.",
-    "auto": "Auto"
+    "auto": "Auto",
+    "autoHint": "Elige el mejor nivel para este equipo."
   },
   "recording": {
     "input_device": "Dispositivo de entrada",

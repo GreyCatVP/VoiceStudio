@@ -2963,7 +2963,8 @@
     "balanced": "Cân bằng",
     "quality": "Chất lượng",
     "hint": "Áp dụng cho lấy mẫu OmniVoice và giải mã Faster-Whisper / NLLB. Các công cụ khác giữ nguyên cài đặt hiện tại của chúng.",
-    "auto": "Tự động"
+    "auto": "Tự động",
+    "autoHint": "Chọn mức tốt nhất cho máy tính này."
   },
   "recording": {
     "input_device": "Thiết bị đầu vào",

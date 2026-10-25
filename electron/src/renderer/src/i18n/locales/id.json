@@ -2963,7 +2963,8 @@
     "balanced": "Seimbang",
     "quality": "Kualitas",
     "hint": "Berlaku untuk sampling OmniVoice dan decoding Faster-Whisper / NLLB. Mesin lain mempertahankan pengaturannya.",
-    "auto": "Otomatis"
+    "auto": "Otomatis",
+    "autoHint": "Memilih level terbaik untuk komputer ini."
   },
   "recording": {
     "input_device": "Perangkat masukan",

@@ -197,7 +197,7 @@ export function SystemNotifications({
         render={
           <Button
             variant="ghost"
-            size="icon-xs"
+            size={titlebar ? 'icon-sm' : 'icon-xs'}
             className={cn(
               'relative shrink-0 text-muted-foreground hover:text-foreground',
               titlebar && 'app-no-drag',

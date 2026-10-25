@@ -2963,7 +2963,8 @@
     "balanced": "균형",
     "quality": "품질",
     "hint": "OmniVoice 샘플링과 Faster-Whisper / NLLB 디코딩에 적용됩니다. 다른 엔진은 현재 설정을 유지합니다.",
-    "auto": "자동"
+    "auto": "자동",
+    "autoHint": "이 컴퓨터에 가장 알맞은 수준을 고릅니다."
   },
   "recording": {
     "input_device": "입력 장치",

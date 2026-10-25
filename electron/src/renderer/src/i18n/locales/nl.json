@@ -2963,7 +2963,8 @@
     "balanced": "Gebalanceerd",
     "quality": "Kwaliteit",
     "hint": "Geldt voor OmniVoice-sampling en Faster-Whisper / NLLB-decodering. Andere engines behouden hun instellingen.",
-    "auto": "Auto"
+    "auto": "Auto",
+    "autoHint": "Kiest het beste niveau voor deze computer."
   },
   "recording": {
     "input_device": "Invoerapparaat",

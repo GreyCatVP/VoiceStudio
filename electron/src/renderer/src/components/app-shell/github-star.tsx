@@ -48,7 +48,7 @@ export function GithubStar() {
             target="_blank"
             rel="noopener noreferrer"
             aria-label={t('support.star_github')}
-            className="github-star-shortcut app-no-drag inline-flex h-8 shrink-0 items-stretch text-xs font-semibold focus-visible:outline-2 focus-visible:outline-ring"
+            className="github-star-shortcut app-no-drag inline-flex shrink-0 items-stretch text-xs font-medium focus-visible:outline-2 focus-visible:outline-ring"
             onClick={(event) => {
               const bridge = getBridge();
               if (!bridge) return;

@@ -2963,7 +2963,8 @@
     "balanced": "Dengeli",
     "quality": "Kalite",
     "hint": "OmniVoice örnekleme ve Faster-Whisper / NLLB kod çözme için geçerlidir. Diğer motorlar mevcut ayarlarını korur.",
-    "auto": "Otomatik"
+    "auto": "Otomatik",
+    "autoHint": "Bu bilgisayar için en iyi seviyeyi seçer."
   },
   "recording": {
     "input_device": "Giriş aygıtı",
