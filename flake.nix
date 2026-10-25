@@ -19,64 +19,64 @@
           allowUnfree = true;
         };
       }));
+
+      # Native libraries Electron and the Python wheels load at runtime on Linux.
+      linuxLibsFor = pkgs: with pkgs; [
+        alsa-lib
+        at-spi2-atk
+        at-spi2-core
+        atk
+        cairo
+        cups
+        dbus
+        expat
+        glib
+        gtk3
+        libGL
+        libdrm
+        libgbm
+        libpulseaudio
+        libx11
+        libxkbcommon
+        libxcomposite
+        libxdamage
+        libxext
+        libxfixes
+        libxrandr
+        libxcb
+        libxtst
+        mesa
+        nspr
+        nss
+        openssl
+        pango
+        systemd
+        vulkan-loader
+        wayland
+        xdotool
+        zlib
+      ];
+
+      nativeDepsFor = pkgs:
+        if pkgs.stdenv.hostPlatform.isDarwin then [ pkgs.apple-sdk ] else linuxLibsFor pkgs;
+
+      commonPackagesFor = pkgs: (with pkgs; [
+        bun
+        nodejs_22
+        uv
+        rustc
+        cargo
+        pkg-config
+        ffmpeg
+        git
+      ]) ++ nativeDepsFor pkgs;
     in
     {
       devShells = forAllSystems (pkgs:
         let
           env = self.packages.${pkgs.stdenv.hostPlatform.system} or {};
-
-          linuxLibs = with pkgs; [
-            alsa-lib
-            at-spi2-atk
-            at-spi2-core
-            atk
-            cairo
-            cups
-            dbus
-            expat
-            glib
-            gtk3
-            libGL
-            libdrm
-            libgbm
-            libpulseaudio
-            libx11
-            libxkbcommon
-            libxcomposite
-            libxdamage
-            libxext
-            libxfixes
-            libxrandr
-            libxcb
-            libxtst
-            mesa
-            nspr
-            nss
-            openssl
-            pango
-            systemd
-            vulkan-loader
-            wayland
-            xdotool
-            zlib
-          ];
-
-          darwinLibs = if pkgs.stdenv.hostPlatform.isDarwin then [
-            pkgs.apple-sdk
-          ] else [];
-
-          nativeDeps = if pkgs.stdenv.hostPlatform.isDarwin then darwinLibs else linuxLibs;
-
-          commonPackages = with pkgs; [
-            bun
-            nodejs_22
-            uv
-            rustc
-            cargo
-            pkg-config
-            ffmpeg
-            git
-          ] ++ nativeDeps;
+          linuxLibs = linuxLibsFor pkgs;
+          commonPackages = commonPackagesFor pkgs;
         in
         {
           default = pkgs.mkShell {
@@ -94,73 +94,25 @@
 
       packages = forAllSystems (pkgs:
         let
-          linuxLibs = with pkgs; [
-            alsa-lib
-            at-spi2-atk
-            at-spi2-core
-            atk
-            cairo
-            cups
-            dbus
-            expat
-            glib
-            gtk3
-            libGL
-            libdrm
-            libgbm
-            libpulseaudio
-            libx11
-            libxkbcommon
-            libxcomposite
-            libxdamage
-            libxext
-            libxfixes
-            libxrandr
-            libxcb
-            libxtst
-            mesa
-            nspr
-            nss
-            openssl
-            pango
-            systemd
-            vulkan-loader
-            wayland
-            xdotool
-            zlib
-          ];
-
-          commonPackages = with pkgs; [
-            bun
-            nodejs_22
-            uv
-            rustc
-            cargo
-            pkg-config
-            ffmpeg
-            git
-          ] ++ (if pkgs.stdenv.hostPlatform.isLinux then linuxLibs else [ pkgs.apple-sdk ]);
-
-          fhsEnv = if pkgs.stdenv.hostPlatform.isLinux then
-            pkgs.buildFHSEnv {
-              name = "voicestudio-fhs";
-              targetPkgs = pkgs: commonPackages ++ (with pkgs; [
-                gcc
-                gnumake
-                binutils
-                zsync
-                zlib
-              ]);
-              profile = ''
-                export OMNIVOICE_PORT="''${OMNIVOICE_PORT:-3900}"
-                export UV_PYTHON_PREFERENCE="only-managed"
-              '';
-              runScript = "bash";
-            }
-          else
-            null;
+          fhsEnv = pkgs.buildFHSEnv {
+            name = "voicestudio-fhs";
+            targetPkgs = pkgs: commonPackagesFor pkgs ++ (with pkgs; [
+              gcc
+              gnumake
+              binutils
+              zsync
+              zlib
+            ]);
+            # uv must use its own managed CPython, not a Nix store Python.
+            # No OMNIVOICE_PORT here: an explicit port disables the app's
+            # fallback when the default backend port is reserved.
+            profile = ''
+              export UV_PYTHON_PREFERENCE="only-managed"
+            '';
+            runScript = "bash";
+          };
         in
-        pkgs.lib.optionalAttrs (fhsEnv != null) {
+        pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
           default = fhsEnv;
           fhs = fhsEnv;
         }

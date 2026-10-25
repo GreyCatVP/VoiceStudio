@@ -141,7 +141,7 @@ updates instead of the in-app updater.
 
 ### Nix / NixOS
 
-VoiceStudio provides an official Nix Flake with reproducible development shells and an FHS environment. See the [Nix / NixOS guide](nix.md):
+A community-maintained Nix flake provides development shells and an FHS environment for running from source (not tested in CI). See the [Nix / NixOS guide](nix.md):
 
 ```bash
 nix develop .#fhs   # recommended for NixOS

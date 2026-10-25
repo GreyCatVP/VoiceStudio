@@ -1,6 +1,6 @@
 # VoiceStudio — Running and Developing with Nix / NixOS
 
-VoiceStudio provides an official Nix Flake (`flake.nix`) that supplies reproducible development shells and an FHS environment with all native dependencies configured for Nix and NixOS users.
+The repository includes a community-maintained Nix flake (`flake.nix`) with development shells and, on Linux, an FHS environment that provides the native libraries VoiceStudio needs. It is a way to build and run from source; it is not exercised by CI, and the release installers remain the supported install path.
 
 ## Prerequisites
 
@@ -10,7 +10,7 @@ VoiceStudio provides an official Nix Flake (`flake.nix`) that supplies reproduci
 
 ### 1. NixOS / FHS Environment (Recommended for NixOS)
 
-On NixOS, dynamically loaded Python packages (such as PyTorch and WhisperX wheels managed by `uv`) expect standard Linux filesystem paths (`/lib64`, `/usr/lib`). The flake provides an FHS environment that handles this transparently:
+On NixOS, dynamically loaded Python packages (such as the PyTorch and WhisperX wheels `uv` installs) expect standard Linux filesystem paths (`/lib64`, `/usr/lib`). The flake's FHS environment (Linux only) provides them, and makes `uv` use its own managed CPython:
 
 ```bash
 # Clone the repository
