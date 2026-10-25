@@ -407,8 +407,11 @@ def profile_state(choice: str | None = None) -> dict:
         # The renderer mirrors the TTS preset only for these engines.
         "tts_tiered_engines": sorted(TIERED_TTS_ENGINES),
         "targets": {
-            family: _PERFORMANCE_TARGETS[family][effective[family]]
-            for family in _PERFORMANCE_TARGETS
+            **{
+                family: _PERFORMANCE_TARGETS[family][effective[family]]
+                for family in _PERFORMANCE_TARGETS
+            },
+            **({"asr": {"engine": "mlx-whisper"}} if asr_engine == "mlx-whisper" else {}),
         },
         "selections": selections,
         "plan": plan,

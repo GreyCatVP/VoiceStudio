@@ -364,3 +364,24 @@ def test_shared_plan_applies_metal_whisper_without_a_ctranslate2_selection(monke
     assert profiles.activate_performance_tier("max") == {"asr": pick}
     assert selected == []
     assert writes == [("asr_backend", "mlx-whisper")]
+
+
+def test_metal_whisper_advertises_no_decoding_effort_it_cannot_apply(monkeypatch):
+    from core import prefs
+    from services import asr_backend, diarization_runtime, tts_backend
+
+    values = {"performance_profile": {"global": "max"}}
+    monkeypatch.setattr(prefs, "get", lambda key, default=None: values.get(key, default))
+    monkeypatch.setattr(tts_backend, "active_backend_id", lambda: "omnivoice")
+    monkeypatch.setattr(diarization_runtime, "installed_backends", lambda: set())
+    monkeypatch.setattr(asr_backend, "active_backend_id", lambda: "mlx-whisper")
+    monkeypatch.delenv("ASR_MODEL", raising=False)
+
+    state = profiles.profile_state()
+
+    assert "asr" in state["applicable_families"]
+    assert state["targets"]["asr"] == {"engine": "mlx-whisper"}
+    assert state["selections"]["asr"] == {
+        "engine": "mlx-whisper",
+        "model": "mlx-community/whisper-large-v3-mlx",
+    }
