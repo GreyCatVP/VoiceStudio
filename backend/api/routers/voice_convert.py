@@ -143,6 +143,9 @@ _WHISPER_NAME_TO_CODE = {name: code for code, name in _WHISPER_LANGUAGES.items()
     "letzeburgesch": "lb", "pushto": "ps", "panjabi": "pa", "moldavian": "ro",
     "moldovan": "ro", "sinhalese": "si", "castilian": "es", "mandarin": "zh",
     "filipino": "tl", "farsi": "fa",
+    # Names the Electron language picker uses for these Whisper languages.
+    "standard arabic": "ar", "norwegian bokmål": "no", "norwegian nynorsk": "nn",
+    "plateau malagasy": "mg", "jv": "jw", "nb": "no",
 }
 
 

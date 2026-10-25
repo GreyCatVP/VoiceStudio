@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { LanguagePicker } from '@/features/clone/language-picker';
+import { CONVERT_SOURCE_LANGUAGES } from './convert-languages';
 import { PipelineFailure } from '@/components/pipeline-failure';
 import { AgentFixButton } from '@/components/agent-fix-button';
 import { ProfileAvatar } from '@/components/profile-avatar';
@@ -211,6 +212,8 @@ export function ConvertVoice() {
         <div>
           <LanguagePicker
             value={language}
+            supportedOptions={CONVERT_SOURCE_LANGUAGES}
+            recentsScope="convert-source-language"
             disabled={busy}
             onValueChange={(value) => {
               invalidate();

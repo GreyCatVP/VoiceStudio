@@ -586,6 +586,31 @@ def test_whisper_language_maps_names_and_keeps_auto():
     assert _whisper_language("Auto") is None
     assert _whisper_language("") is None
     assert _whisper_language(None) is None
+    assert _whisper_language("Standard Arabic") == "ar"
+
+
+def test_convert_picker_offers_exactly_the_pinnable_languages():
+    """The Convert picker enables only names the backend pins; anything else
+    would silently auto-detect after an explicit choice."""
+    import json
+    from pathlib import Path
+    from api.routers.voice_convert import _whisper_language
+
+    root = Path(__file__).resolve().parents[1]
+    picker = json.loads((root / "electron/src/shared/languages.json").read_text("utf-8"))
+    pinnable = {name for name in picker if _whisper_language(name)}
+    source = (
+        root / "electron/src/renderer/src/features/tools/convert-languages.ts"
+    ).read_text("utf-8")
+    offered = set(re.findall(r"^  '([^']+)',$", source, re.M))
+    assert offered == pinnable
+
+    # LanguagePicker also enables any name sharing an ISO code with an offered
+    # one; each of those must pin too.
+    codes = json.loads((root / "electron/src/shared/language-codes.json").read_text("utf-8"))
+    offered_codes = {codes.get(name.lower()) for name in offered} - {None}
+    leaked = [n for n in picker if codes.get(n.lower()) in offered_codes and n not in pinnable]
+    assert not leaked
 
 
 def test_convert_pins_explicit_source_language(client, monkeypatch, clone_profile):
