@@ -2990,7 +2990,13 @@
     "open_in_browser": "Відкрити в браузері",
     "qr_alt": "QR для {{ip}}",
     "pin": "PIN-код:",
-    "connect": "Підключитися"
+    "connect": "Підключитися",
+    "self_check": "Самоперевірка",
+    "listening_on": "Прослуховується {{host}}:{{port}}",
+    "recheck": "Перевірити ще раз",
+    "address_ok": "Слухає",
+    "address_down": "Не відповідає",
+    "firewall_hint": "Не підключається? Використовуйте ту саму мережу Wi-Fi, дозвольте VoiceStudio у брандмауері (приватна мережа у Windows) і вимкніть VPN."
   },
   "repairAgent": {
     "title": "Запитати VoiceStudio Agent",

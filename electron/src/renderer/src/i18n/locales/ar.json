@@ -2994,7 +2994,13 @@
     "open_in_browser": "فتح في المتصفح",
     "qr_alt": "QR لـ {{ip}}",
     "pin": "رقم التعريف الشخصي:",
-    "connect": "اتصال"
+    "connect": "اتصال",
+    "self_check": "فحص ذاتي",
+    "listening_on": "يستمع على {{host}}:{{port}}",
+    "recheck": "افحص مجددًا",
+    "address_ok": "يستمع",
+    "address_down": "لا يستجيب",
+    "firewall_hint": "تعذّر الاتصال؟ استخدم شبكة Wi-Fi نفسها، واسمح لـ VoiceStudio عبر جدار الحماية (شبكة خاصة في Windows)، وأوقف VPN."
   },
   "repairAgent": {
     "title": "اسأل VoiceStudio Agent",

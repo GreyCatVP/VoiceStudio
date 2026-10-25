@@ -2990,7 +2990,13 @@
     "open_in_browser": "Открыть в браузере",
     "qr_alt": "QR для {{ip}}",
     "pin": "ПРИКОЛОТЬ:",
-    "connect": "Подключиться"
+    "connect": "Подключиться",
+    "self_check": "Самопроверка",
+    "listening_on": "Прослушивается {{host}}:{{port}}",
+    "recheck": "Проверить снова",
+    "address_ok": "Слушает",
+    "address_down": "Не отвечает",
+    "firewall_hint": "Не подключается? Используйте ту же сеть Wi-Fi, разрешите VoiceStudio в брандмауэре (частная сеть в Windows) и отключите VPN."
   },
   "repairAgent": {
     "title": "Спросить VoiceStudio Agent",

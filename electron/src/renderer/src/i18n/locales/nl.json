@@ -2986,7 +2986,13 @@
     "open_in_browser": "Openen in browser",
     "qr_alt": "QR voor {{ip}}",
     "pin": "Pincode:",
-    "connect": "Verbinden"
+    "connect": "Verbinden",
+    "self_check": "Zelftest",
+    "listening_on": "Luistert op {{host}}:{{port}}",
+    "recheck": "Opnieuw controleren",
+    "address_ok": "Luistert",
+    "address_down": "Reageert niet",
+    "firewall_hint": "Geen verbinding? Gebruik dezelfde wifi, sta VoiceStudio toe in je firewall (privénetwerk op Windows) en zet vpn uit."
   },
   "repairAgent": {
     "title": "Vraag het VoiceStudio Agent",

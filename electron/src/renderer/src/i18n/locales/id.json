@@ -2986,7 +2986,13 @@
     "open_in_browser": "Buka di peramban",
     "qr_alt": "QR untuk {{ip}}",
     "pin": "PIN:",
-    "connect": "Hubungkan"
+    "connect": "Hubungkan",
+    "self_check": "Pemeriksaan mandiri",
+    "listening_on": "Mendengarkan di {{host}}:{{port}}",
+    "recheck": "Periksa lagi",
+    "address_ok": "Mendengarkan",
+    "address_down": "Tidak merespons",
+    "firewall_hint": "Tidak bisa terhubung? Gunakan Wi-Fi yang sama, izinkan VoiceStudio di firewall (jaringan Pribadi di Windows), dan matikan VPN."
   },
   "repairAgent": {
     "title": "Tanya VoiceStudio Agent",

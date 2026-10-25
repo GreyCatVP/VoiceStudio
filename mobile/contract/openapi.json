@@ -18042,6 +18042,23 @@
     "summary": "Clear Tauri Logs"
    }
   },
+  "/system/network/check": {
+   "get": {
+    "description": "Self-check for LAN sharing: bind address, port and per-address listener probe.",
+    "operationId": "network_check_system_network_check_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Network Check"
+   }
+  },
   "/system/network/disable": {
    "post": {
     "operationId": "network_disable_system_network_disable_post",

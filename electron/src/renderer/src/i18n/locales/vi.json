@@ -2986,7 +2986,13 @@
     "open_in_browser": "Mở trong trình duyệt",
     "qr_alt": "QR cho {{ip}}",
     "pin": "mã PIN:",
-    "connect": "Kết nối"
+    "connect": "Kết nối",
+    "self_check": "Tự kiểm tra",
+    "listening_on": "Đang lắng nghe tại {{host}}:{{port}}",
+    "recheck": "Kiểm tra lại",
+    "address_ok": "Đang lắng nghe",
+    "address_down": "Không phản hồi",
+    "firewall_hint": "Không kết nối được? Dùng cùng Wi-Fi, cho phép VoiceStudio qua tường lửa (mạng Riêng tư trên Windows) và tắt VPN."
   },
   "repairAgent": {
     "title": "Hỏi VoiceStudio Agent",

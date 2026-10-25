@@ -2986,7 +2986,13 @@
     "open_in_browser": "在浏览器中打开",
     "qr_alt": "{{ip}} 的二维码",
     "pin": "PIN：",
-    "connect": "连接"
+    "connect": "连接",
+    "self_check": "自检",
+    "listening_on": "正在监听 {{host}}:{{port}}",
+    "recheck": "重新检查",
+    "address_ok": "正在监听",
+    "address_down": "无响应",
+    "firewall_hint": "无法连接？请使用同一 Wi-Fi，在防火墙中允许 VoiceStudio（Windows 上选择专用网络），并关闭 VPN。"
   },
   "repairAgent": {
     "title": "询问 VoiceStudio Agent",

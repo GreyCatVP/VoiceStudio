@@ -2986,7 +2986,13 @@
     "open_in_browser": "在瀏覽器中開啟",
     "qr_alt": "{{ip}} 的二維碼",
     "pin": "密碼：",
-    "connect": "連線"
+    "connect": "連線",
+    "self_check": "自我檢查",
+    "listening_on": "正在監聽 {{host}}:{{port}}",
+    "recheck": "重新檢查",
+    "address_ok": "正在監聽",
+    "address_down": "沒有回應",
+    "firewall_hint": "無法連線？請使用同一個 Wi-Fi，在防火牆中允許 VoiceStudio（Windows 請選擇私人網路），並關閉 VPN。"
   },
   "repairAgent": {
     "title": "詢問 VoiceStudio Agent",

@@ -2986,7 +2986,13 @@
     "open_in_browser": "Im Browser öffnen",
     "qr_alt": "QR für {{ip}}",
     "pin": "PIN:",
-    "connect": "Verbinden"
+    "connect": "Verbinden",
+    "self_check": "Selbsttest",
+    "listening_on": "Lauscht auf {{host}}:{{port}}",
+    "recheck": "Erneut prüfen",
+    "address_ok": "Lauscht",
+    "address_down": "Antwortet nicht",
+    "firewall_hint": "Keine Verbindung? Dasselbe WLAN nutzen, VoiceStudio in der Firewall zulassen (unter Windows: privates Netzwerk) und VPN ausschalten."
   },
   "repairAgent": {
     "title": "VoiceStudio Agent fragen",

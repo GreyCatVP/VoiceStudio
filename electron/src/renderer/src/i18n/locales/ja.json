@@ -2986,7 +2986,13 @@
     "open_in_browser": "ブラウザで開く",
     "qr_alt": "{{ip}} の QR",
     "pin": "PIN:",
-    "connect": "接続"
+    "connect": "接続",
+    "self_check": "セルフチェック",
+    "listening_on": "{{host}}:{{port}} で待ち受け中",
+    "recheck": "再確認",
+    "address_ok": "待ち受け中",
+    "address_down": "応答なし",
+    "firewall_hint": "接続できない場合は、同じ Wi-Fi を使い、ファイアウォールで VoiceStudio を許可し（Windows ではプライベート ネットワーク）、VPN をオフにしてください。"
   },
   "repairAgent": {
     "title": "VoiceStudio Agent に相談",

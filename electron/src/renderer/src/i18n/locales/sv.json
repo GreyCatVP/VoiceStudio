@@ -2986,7 +2986,13 @@
     "open_in_browser": "Öppna i webbläsaren",
     "qr_alt": "QR för {{ip}}",
     "pin": "PIN:",
-    "connect": "Anslut"
+    "connect": "Anslut",
+    "self_check": "Självtest",
+    "listening_on": "Lyssnar på {{host}}:{{port}}",
+    "recheck": "Kontrollera igen",
+    "address_ok": "Lyssnar",
+    "address_down": "Svarar inte",
+    "firewall_hint": "Går det inte att ansluta? Använd samma wifi, tillåt VoiceStudio i brandväggen (privat nätverk i Windows) och stäng av VPN."
   },
   "repairAgent": {
     "title": "Fråga VoiceStudio Agent",

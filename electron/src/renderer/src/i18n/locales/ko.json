@@ -2986,7 +2986,13 @@
     "open_in_browser": "브라우저에서 열기",
     "qr_alt": "{{ip}}에 대한 QR",
     "pin": "핀:",
-    "connect": "연결"
+    "connect": "연결",
+    "self_check": "자체 점검",
+    "listening_on": "{{host}}:{{port}}에서 수신 대기 중",
+    "recheck": "다시 확인",
+    "address_ok": "수신 대기 중",
+    "address_down": "응답 없음",
+    "firewall_hint": "연결되지 않나요? 같은 Wi-Fi를 사용하고, 방화벽에서 VoiceStudio를 허용하고(Windows에서는 개인 네트워크), VPN을 끄세요."
   },
   "repairAgent": {
     "title": "VoiceStudio Agent에게 물어보기",

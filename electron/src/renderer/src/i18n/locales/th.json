@@ -2986,7 +2986,13 @@
     "open_in_browser": "เปิดในเบราว์เซอร์",
     "qr_alt": "คิวอาร์สำหรับ {{ip}}",
     "pin": "พิน:",
-    "connect": "เชื่อมต่อ"
+    "connect": "เชื่อมต่อ",
+    "self_check": "ตรวจสอบตนเอง",
+    "listening_on": "กำลังรอฟังที่ {{host}}:{{port}}",
+    "recheck": "ตรวจสอบอีกครั้ง",
+    "address_ok": "กำลังรอฟัง",
+    "address_down": "ไม่ตอบสนอง",
+    "firewall_hint": "เชื่อมต่อไม่ได้? ใช้ Wi-Fi เดียวกัน อนุญาต VoiceStudio ในไฟร์วอลล์ (เครือข่ายส่วนตัวบน Windows) และปิด VPN"
   },
   "repairAgent": {
     "title": "ถาม VoiceStudio Agent",

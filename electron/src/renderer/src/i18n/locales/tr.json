@@ -2986,7 +2986,13 @@
     "open_in_browser": "Tarayıcıda aç",
     "qr_alt": "{{ip}} için QR",
     "pin": "PIN:",
-    "connect": "Bağlan"
+    "connect": "Bağlan",
+    "self_check": "Öz denetim",
+    "listening_on": "{{host}}:{{port}} dinleniyor",
+    "recheck": "Yeniden denetle",
+    "address_ok": "Dinleniyor",
+    "address_down": "Yanıt vermiyor",
+    "firewall_hint": "Bağlanamıyor musunuz? Aynı Wi-Fi'yi kullanın, VoiceStudio'ya güvenlik duvarında izin verin (Windows'ta Özel ağ) ve VPN'i kapatın."
   },
   "repairAgent": {
     "title": "VoiceStudio Agent’a sor",

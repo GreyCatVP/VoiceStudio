@@ -2986,7 +2986,13 @@
     "open_in_browser": "ब्राउज़र में खोलें",
     "qr_alt": "{{ip}} के लिए क्यूआर",
     "pin": "पिन:",
-    "connect": "कनेक्ट करें"
+    "connect": "कनेक्ट करें",
+    "self_check": "स्व-जाँच",
+    "listening_on": "{{host}}:{{port}} पर सुन रहा है",
+    "recheck": "फिर से जाँचें",
+    "address_ok": "सुन रहा है",
+    "address_down": "जवाब नहीं दे रहा",
+    "firewall_hint": "कनेक्ट नहीं हो रहा? एक ही Wi-Fi इस्तेमाल करें, फ़ायरवॉल में VoiceStudio को अनुमति दें (Windows पर निजी नेटवर्क), और VPN बंद करें।"
   },
   "repairAgent": {
     "title": "VoiceStudio Agent से पूछें",

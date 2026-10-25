@@ -2990,7 +2990,13 @@
     "open_in_browser": "Otwórz w przeglądarce",
     "qr_alt": "QR dla {{ip}}",
     "pin": "PIN:",
-    "connect": "Połącz"
+    "connect": "Połącz",
+    "self_check": "Autotest",
+    "listening_on": "Nasłuchuje na {{host}}:{{port}}",
+    "recheck": "Sprawdź ponownie",
+    "address_ok": "Nasłuchuje",
+    "address_down": "Nie odpowiada",
+    "firewall_hint": "Brak połączenia? Użyj tej samej sieci Wi-Fi, zezwól na VoiceStudio w zaporze (sieć prywatna w Windows) i wyłącz VPN."
   },
   "repairAgent": {
     "title": "Zapytaj VoiceStudio Agent",
