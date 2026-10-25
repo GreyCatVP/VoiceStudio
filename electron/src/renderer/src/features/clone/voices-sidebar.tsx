@@ -1,6 +1,7 @@
 import { useNavigate } from '@tanstack/react-router';
 import { AudioPreviewButton } from '@/components/audio-preview-button';
 import { PlayInDockButton } from '@/components/now-playing-dock';
+import { takePlaybackKind } from '@/lib/audio/playback-kind';
 import { ProfileAvatar } from '@/components/profile-avatar';
 import { setWorkspace } from '@/lib/store/workspace';
 import { openTake, reuseTake, useSelectedTake } from '@/lib/store/takes';
@@ -458,7 +459,8 @@ function TakeRow({ item, onStar, onReuse, onDelete }: TakeRowProps) {
             src={audioUrl(item.audio_path)}
             source={'take-' + item.id}
             title={displayTitle(item.text)}
-            subtitle={workspaceLabel}
+            kind={takePlaybackKind(item.mode)}
+            duration={item.duration_seconds}
           />
         )}
         <Button

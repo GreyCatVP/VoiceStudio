@@ -2,6 +2,7 @@ import { ProjectHandoff } from './project-handoff';
 import { SecondarySidebar } from '@/components/workspace-sidebar';
 import { WorkspaceHeader } from '@/components/app-shell/workspace-header';
 import { PlayInDockButton } from '@/components/now-playing-dock';
+import { takePlaybackKind } from '@/lib/audio/playback-kind';
 import { PipelineFailure } from '@/components/pipeline-failure';
 import { ProfileAvatar } from '@/components/profile-avatar';
 import { getBridge } from '@/components/bridge';
@@ -820,9 +821,10 @@ export function ProjectsPage() {
                         <>
                           <PlayInDockButton
                             src={apiPath('/audio/' + encodeURIComponent(row.take.audio_path))}
-                            source={'projects-take-' + row.take.id}
+                            source={'take-' + row.take.id}
                             title={row.name}
-                            subtitle={row.subtitle}
+                            kind={takePlaybackKind(row.take.mode)}
+                            duration={row.take.duration_seconds}
                           />
                           <Button
                             size="sm"
@@ -848,7 +850,7 @@ export function ProjectsPage() {
                           src={apiPath('/audio/' + encodeURIComponent(row.render.output))}
                           source={'projects-render-' + row.render.job_id}
                           title={row.name}
-                          subtitle={row.subtitle}
+                          kind={row.render.type === 'story' ? 'story' : 'audiobook'}
                         />
                       )}
                       {row.projectKind && (

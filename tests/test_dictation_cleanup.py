@@ -228,3 +228,15 @@ def test_platform_stream_polisher_keeps_plain_polish():
     platform = cw._PlatformWebSocket.__new__(cw._PlatformWebSocket)
     polish = cw._final_polisher(platform, "en")
     assert polish("um hello comma world", "en") == "Um hello comma world."
+
+
+def test_recovery_language_unknown_does_not_inherit_english_hint():
+    # Silent-model recovery: an English sherpa model failed and the fallback
+    # recognizer (Parakeet) reports no language. Its Portuguese/German text
+    # must not be cleaned with English-only filler rules (#3432 review).
+    from api.routers import capture_ws as cw
+
+    polish = cw._final_polisher(object(), "en")
+    assert polish("um I think so") == "I think so."
+    assert polish("um carro azul", None) == "Um carro azul."
+    assert polish("er ist hier", None) == "Er ist hier."

@@ -1019,7 +1019,8 @@
     "pause": "暫停",
     "seek": "跳轉",
     "missing": "音訊檔案遺失。",
-    "now_playing": "正在播放"
+    "now_playing": "正在播放",
+    "kind_convert": "語音轉換"
   },
   "logs": {
     "no_tauri_log": "磁碟上尚未有 Tauri 登入 — 透過桌面建置啟動以產生一個",

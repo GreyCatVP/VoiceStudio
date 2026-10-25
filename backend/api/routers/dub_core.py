@@ -1389,7 +1389,10 @@ async def _reanalyze_speakers(job_id: str, job: dict, num_speakers: Optional[int
         for warning in warnings:
             yield _sse_event("warning",warning)
         yield _sse_event("final",{
-            "segments":result["segments"],"source_lang":result.get("source_lang") or "en",
+            "segments":result["segments"],
+            # Unknown stays unknown (None): guessing "en" would let the client
+            # translate from the wrong language past the missing-source check.
+            "source_lang":result.get("source_lang_override") or result.get("source_lang"),
             "full_transcript":result.get("full_transcript") or "",
             "speaker_clones":result.get("cast_sources",{}),"cast_sources":result.get("cast_sources",{}),
         })

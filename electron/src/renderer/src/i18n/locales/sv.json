@@ -1019,7 +1019,8 @@
     "pause": "Pausa",
     "seek": "Uppspelningsposition",
     "missing": "Ljudfilen saknas.",
-    "now_playing": "Spelas nu"
+    "now_playing": "Spelas nu",
+    "kind_convert": "Röstkonvertering"
   },
   "logs": {
     "no_tauri_log": "Ingen Tauri-inloggningsskiva än - starta via skrivbordsbygget för att skapa en",

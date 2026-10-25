@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CheckIcon,
@@ -78,6 +79,56 @@ export function InstallProgressBar({ view, label }: { view: InstallView; label: 
   );
 }
 
+/**
+ * Seconds left of a retry cooldown, counted down locally: the job list stops
+ * polling once nothing is downloading, so the server value would freeze.
+ */
+export function useRetryCountdown(seconds: number) {
+  const [left, setLeft] = useState(seconds);
+  useEffect(() => {
+    setLeft(seconds);
+    if (seconds <= 0) return;
+    const deadline = Date.now() + seconds * 1000;
+    const timer = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setLeft(remaining);
+      if (!remaining) clearInterval(timer);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [seconds]);
+  return left;
+}
+
+/** Retry, disabled with a live "Retry in Ns" while the backend cools down. */
+export function RetryButton({
+  seconds,
+  disabled = false,
+  onClick,
+  size = 'xs',
+  variant = 'outline',
+}: {
+  seconds: number;
+  disabled?: boolean;
+  onClick: () => void;
+  size?: 'xs' | 'sm';
+  variant?: 'outline' | 'default';
+}) {
+  const { t } = useTranslation();
+  const left = useRetryCountdown(seconds);
+  return (
+    <Button
+      type="button"
+      size={size}
+      variant={variant}
+      disabled={disabled || left > 0}
+      onClick={onClick}
+    >
+      <RefreshCwIcon />
+      {left > 0 ? t('modelMaintenance.retryAfter', { seconds: left }) : t('common.retry')}
+    </Button>
+  );
+}
+
 function RecoveryButton({ view }: { view: InstallView }) {
   const { t } = useTranslation();
   if (!view.recovery) return null;
@@ -146,20 +197,7 @@ export function InstallProgress({
         </p>
         {next && <p className="text-muted-foreground">{t(next)}</p>}
         <div className="flex flex-wrap gap-1">
-          {onRetry && (
-            <Button
-              type="button"
-              size="xs"
-              variant="outline"
-              disabled={busy || view.retryAfter > 0}
-              onClick={onRetry}
-            >
-              <RefreshCwIcon />
-              {view.retryAfter > 0
-                ? t('modelMaintenance.retryAfter', { seconds: view.retryAfter })
-                : t('common.retry')}
-            </Button>
-          )}
+          {onRetry && <RetryButton seconds={view.retryAfter} disabled={busy} onClick={onRetry} />}
           <RecoveryButton view={view} />
           {onDismiss && (
             <Button type="button" size="xs" variant="ghost" onClick={onDismiss}>

@@ -1019,7 +1019,8 @@
     "pause": "Tạm dừng",
     "seek": "Vị trí phát",
     "missing": "Không tìm thấy tệp âm thanh.",
-    "now_playing": "Đang phát"
+    "now_playing": "Đang phát",
+    "kind_convert": "Chuyển đổi giọng nói"
   },
   "logs": {
     "no_tauri_log": "Chưa có bản đăng nhập Tauri nào trên đĩa - khởi chạy thông qua bản dựng máy tính để bàn để tạo một bản ghi",

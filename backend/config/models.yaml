@@ -336,6 +336,21 @@ models:
       - "hift.pt"
       - "CosyVoice-BlankEN/model.safetensors"
 
+  - repo_id: "Lourdle/Fun-CosyVoice3-0.5B-2512-GGUF"
+    label: "CosyVoice 3 0.5B Q4_K_M (native GGUF/Vulkan)"
+    role: TTS
+    engines: [cosyvoice-gguf]
+    size_gb: 0.9
+    required_files:
+      - "CosyVoice3-2512_Q4_K_M.gguf"
+      - "frontend-onnx/campplus.int8.onnx"
+      - "frontend-onnx/speech_tokenizer_v3.int8.onnx"
+    allow_patterns:
+      - "CosyVoice3-2512_Q4_K_M.gguf"
+      - "frontend-onnx/campplus.int8.onnx"
+      - "frontend-onnx/speech_tokenizer_v3.int8.onnx"
+    note: "Optional, pinned community GGUF port. Q4_K_M can sound muffled; review the upstream model card and component terms. Native runtime must be built separately."
+
   - repo_id: "lj1995/GPT-SoVITS"
     label: "GPT-SoVITS pretrained weights"
     role: TTS

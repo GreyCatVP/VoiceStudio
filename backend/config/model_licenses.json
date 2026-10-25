@@ -2996,6 +2996,65 @@
       }
     },
     {
+      "id": "Lourdle/Fun-CosyVoice3-0.5B-2512-GGUF",
+      "license": "apache-2.0 (upstream model-card metadata)",
+      "commercial_use": false,
+      "review_status": "unreviewed",
+      "credit": "Lourdle/Fun-CosyVoice3-0.5B-2512-GGUF",
+      "source_url": "https://huggingface.co/Lourdle/Fun-CosyVoice3-0.5B-2512-GGUF",
+      "evidence_url": "https://huggingface.co/Lourdle/Fun-CosyVoice3-0.5B-2512-GGUF/tree/ab01740bbbfcc059fd748163787554f7c8977e64",
+      "revision": "ab01740bbbfcc059fd748163787554f7c8977e64",
+      "engines": [
+        "cosyvoice-gguf"
+      ],
+      "configured_at": "backend/config/models.yaml",
+      "notes": "Upstream metadata reports Apache-2.0; component provenance, redistribution obligations, commercial inference, and output terms have not been independently cleared. This GGUF is a community conversion and its model card notes occasional muffled audio.",
+      "runtime_revision": "ab01740bbbfcc059fd748163787554f7c8977e64",
+      "runtime_pin_scope": "central",
+      "runtime_pin_source": "backend/services/hf_revisions.py",
+      "component_closure": "incomplete",
+      "commercial_inference": "unknown",
+      "commercial_outputs": "unknown",
+      "documents": [],
+      "artifacts": [],
+      "required_components": [
+        "CosyVoice3-2512_Q4_K_M.gguf",
+        "campplus.int8.onnx",
+        "speech_tokenizer_v3.int8.onnx",
+        "Lourdle/cosyvoice.cpp pinned runtime",
+        "GGML/Vulkan and ONNX Runtime notices"
+      ],
+      "upstream_access": "unknown",
+      "audit_observations": {
+        "commercial_inference": {
+          "status": "unreviewed",
+          "scope": "Selected quantized model and local runtime; all required components and use must be assessed."
+        },
+        "output_terms": {
+          "status": "not_assessed",
+          "ownership_or_all_rights_cleared": false
+        },
+        "sources": [
+          {
+            "url": "https://huggingface.co/Lourdle/Fun-CosyVoice3-0.5B-2512-GGUF/tree/ab01740bbbfcc059fd748163787554f7c8977e64",
+            "checked_at": "2026-10-24",
+            "method": "read_primary_source"
+          }
+        ],
+        "open_questions": [
+          "Governing terms for converted weights and components",
+          "Attribution and redistribution duties for GGML and ONNX Runtime",
+          "Reference voice and input rights, consent, training-provenance scope"
+        ],
+        "identified_components": [
+          "CosyVoice3-2512 Q4_K_M GGUF",
+          "CAM++ int8 ONNX",
+          "CosyVoice v3 speech tokenizer ONNX",
+          "community C++ runtime"
+        ]
+      }
+    },
+    {
       "id": "csukuangfj/kitten-mini-en-v0_1-fp16",
       "license": "apache-2.0; gpl-3.0",
       "commercial_use": false,

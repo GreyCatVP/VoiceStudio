@@ -1019,7 +1019,8 @@
     "pause": "일시정지",
     "seek": "탐색",
     "missing": "오디오 파일이 없습니다.",
-    "now_playing": "재생 중"
+    "now_playing": "재생 중",
+    "kind_convert": "음성 변환"
   },
   "logs": {
     "no_tauri_log": "아직 디스크에 Tauri 로그가 없습니다. 데스크탑 빌드를 통해 실행하여 생성하세요.",

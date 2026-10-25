@@ -1023,7 +1023,8 @@
     "pause": "Wstrzymaj",
     "seek": "Pozycja odtwarzania",
     "missing": "Brak pliku audio.",
-    "now_playing": "Teraz odtwarzane"
+    "now_playing": "Teraz odtwarzane",
+    "kind_convert": "Konwersja głosu"
   },
   "logs": {
     "no_tauri_log": "Brak jeszcze logowania Tauri na dysku — uruchom go za pomocą wersji desktopowej, aby go utworzyć",

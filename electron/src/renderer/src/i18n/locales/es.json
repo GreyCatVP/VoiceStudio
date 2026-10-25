@@ -1021,7 +1021,8 @@
     "pause": "Pausar",
     "seek": "Buscar posición",
     "missing": "Falta el archivo de audio.",
-    "now_playing": "Reproduciendo"
+    "now_playing": "Reproduciendo",
+    "kind_convert": "Conversión de voz"
   },
   "logs": {
     "no_tauri_log": "Aún no hay ningún registro de Tauri en el disco: inicie a través de la compilación de escritorio para producir uno",

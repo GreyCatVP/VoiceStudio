@@ -196,3 +196,17 @@ def test_rejected_translation_never_launches_the_cli(tmp_path, monkeypatch, m, s
         m.WhisperCppBackend().transcribe(str(audio), task="translate")
 
     assert launched == []
+
+
+def test_missing_explicit_model_path_never_loads_a_same_named_cached_model(tmp_path, monkeypatch, m):
+    """A missing explicit path resolves to None instead of another cache's weights."""
+    cache_dir = tmp_path / ".cache" / "whisper"
+    cache_dir.mkdir(parents=True)
+    (cache_dir / "ggml-base.bin").write_bytes(b"other weights")
+    monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
+    monkeypatch.setenv(m.MODEL_ENV, str(tmp_path / "chosen" / "ggml-base.bin"))
+
+    assert m.resolve_model() is None
+    # A bare name still searches the caches.
+    monkeypatch.setenv(m.MODEL_ENV, "ggml-base.bin")
+    assert m.resolve_model() == cache_dir / "ggml-base.bin"
