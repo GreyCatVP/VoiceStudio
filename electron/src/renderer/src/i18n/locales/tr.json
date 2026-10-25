@@ -2991,7 +2991,13 @@
   "repairAgent": {
     "title": "VoiceStudio Agent’a sor",
     "notInstalled": "Yüklü değil",
-    "noSource": "Bir ajanın onarabilmesi için yazılabilir bir VoiceStudio kaynak çalışma kopyası açın.",
+    "noSource": "Kodu onarmak için git clone ile oluşturulmuş bir VoiceStudio kopyası seçin. Yüklü uygulama düzenlenemez.",
+    "sourceRejected": {
+      "installed_app": "Bu, düzenlenemeyen yüklü uygulama. Bunun yerine bir git clone seçin.",
+      "not_git": "Bu klasör bir git clone değil. ZIP indirmesi çalışmaz; git clone kullanın.",
+      "not_voicestudio": "Bu klasörde VoiceStudio kopyası bulunamadı.",
+      "read_only": "VoiceStudio bu klasöre yazamıyor. Size ait bir klasör seçin."
+    },
     "noneFound": "Yerel onarım için Codex, Claude Code, OpenCode veya Pi yükleyin.",
     "ready": "Hazır",
     "placeholder": "Ne yanlış gitti? Adımları, görünen hataları veya beklenen davranışı ekleyin.",

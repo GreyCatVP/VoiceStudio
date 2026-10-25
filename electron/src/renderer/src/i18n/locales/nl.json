@@ -2991,7 +2991,13 @@
   "repairAgent": {
     "title": "Vraag het VoiceStudio Agent",
     "notInstalled": "Niet geïnstalleerd",
-    "noSource": "Open een beschrijfbare VoiceStudio-broncheckout zodat een agent deze kan repareren.",
+    "noSource": "Kies voor codeherstel een VoiceStudio-kopie die met git clone is gemaakt. De geïnstalleerde app kan niet worden bewerkt.",
+    "sourceRejected": {
+      "installed_app": "Dat is de geïnstalleerde app, die niet kan worden bewerkt. Kies in plaats daarvan een git clone.",
+      "not_git": "Die map is geen git clone. Een ZIP-download werkt niet; gebruik git clone.",
+      "not_voicestudio": "Geen VoiceStudio-kloon gevonden in die map.",
+      "read_only": "VoiceStudio kan niet naar die map schrijven. Kies een map van jezelf."
+    },
     "noneFound": "Installeer Codex, Claude Code, OpenCode of Pi voor lokale reparatie.",
     "ready": "Gereed",
     "placeholder": "Wat ging er mis? Voeg stappen, zichtbare fouten of verwacht gedrag toe.",

@@ -2991,7 +2991,13 @@
   "repairAgent": {
     "title": "詢問 VoiceStudio Agent",
     "notInstalled": "未安裝",
-    "noSource": "請開啟可寫入的 VoiceStudio 原始碼簽出目錄，讓代理進行修復。",
+    "noSource": "若要修復程式碼，請選擇用 git clone 取得的 VoiceStudio 副本。已安裝的應用程式無法編輯。",
+    "sourceRejected": {
+      "installed_app": "這是已安裝的應用程式，無法編輯。請改選 git clone 的資料夾。",
+      "not_git": "此資料夾不是 git clone。ZIP 下載無法使用，請使用 git clone。",
+      "not_voicestudio": "此資料夾中找不到 VoiceStudio 複本。",
+      "read_only": "VoiceStudio 無法寫入此資料夾。請選擇你自己的資料夾。"
+    },
     "noneFound": "安裝 Codex、Claude Code、OpenCode 或 Pi 以使用本機修復。",
     "ready": "就緒",
     "placeholder": "出了什麼問題？請加入操作步驟、可見錯誤或預期行為。",

@@ -2991,7 +2991,13 @@
   "repairAgent": {
     "title": "VoiceStudio Agent fragen",
     "notInstalled": "Nicht installiert",
-    "noSource": "Öffnen Sie eine beschreibbare VoiceStudio-Quelle zum Auschecken, damit ein Agent sie reparieren kann.",
+    "noSource": "Wählen Sie für Code-Reparaturen eine mit git clone erstellte VoiceStudio-Kopie. Die installierte App kann nicht bearbeitet werden.",
+    "sourceRejected": {
+      "installed_app": "Das ist die installierte App, die nicht bearbeitet werden kann. Wählen Sie stattdessen einen git clone.",
+      "not_git": "Dieser Ordner ist kein git clone. Ein ZIP-Download funktioniert nicht; verwenden Sie git clone.",
+      "not_voicestudio": "In diesem Ordner wurde kein VoiceStudio-Klon gefunden.",
+      "read_only": "VoiceStudio kann in diesen Ordner nicht schreiben. Wählen Sie einen eigenen Ordner."
+    },
     "noneFound": "Installieren Sie Codex, Claude Code, OpenCode oder Pi, um die lokale Reparatur zu verwenden.",
     "ready": "Bereit",
     "placeholder": "Was ist schiefgelaufen? Ergänze Schritte, sichtbare Fehler oder das erwartete Verhalten.",

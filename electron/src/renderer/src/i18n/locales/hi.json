@@ -2991,7 +2991,13 @@
   "repairAgent": {
     "title": "VoiceStudio Agent से पूछें",
     "notInstalled": "इंस्टॉल नहीं है",
-    "noSource": "एजेंट को सुधार करने देने के लिए लिखने योग्य VoiceStudio स्रोत चेकआउट खोलें।",
+    "noSource": "कोड ठीक करने के लिए git clone से बनी VoiceStudio कॉपी चुनें। इंस्टॉल किया गया ऐप बदला नहीं जा सकता।",
+    "sourceRejected": {
+      "installed_app": "यह इंस्टॉल किया गया ऐप है, जिसे बदला नहीं जा सकता। इसके बजाय git clone चुनें।",
+      "not_git": "यह फ़ोल्डर git clone नहीं है। ZIP डाउनलोड काम नहीं करेगा; git clone इस्तेमाल करें।",
+      "not_voicestudio": "इस फ़ोल्डर में VoiceStudio क्लोन नहीं मिला।",
+      "read_only": "VoiceStudio इस फ़ोल्डर में लिख नहीं सकता। अपना फ़ोल्डर चुनें।"
+    },
     "noneFound": "स्थानीय सुधार के लिए Codex, Claude Code, OpenCode या Pi इंस्टॉल करें।",
     "ready": "तैयार",
     "placeholder": "क्या गलत हुआ? चरण, दिखाई देने वाली त्रुटियाँ या अपेक्षित व्यवहार जोड़ें।",

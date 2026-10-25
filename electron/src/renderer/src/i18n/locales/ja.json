@@ -2991,7 +2991,13 @@
   "repairAgent": {
     "title": "VoiceStudio Agent に相談",
     "notInstalled": "未インストール",
-    "noSource": "エージェントが修復できるよう、書き込み可能な VoiceStudio のソースチェックアウトを開いてください。",
+    "noSource": "コードを修復するには、git clone で作成した VoiceStudio のコピーを選んでください。インストール済みアプリは編集できません。",
+    "sourceRejected": {
+      "installed_app": "これはインストール済みアプリのため編集できません。git clone したフォルダーを選んでください。",
+      "not_git": "このフォルダーは git clone ではありません。ZIP ダウンロードは使えません。git clone を使ってください。",
+      "not_voicestudio": "このフォルダーに VoiceStudio のクローンが見つかりません。",
+      "read_only": "VoiceStudio はこのフォルダーに書き込めません。自分のフォルダーを選んでください。"
+    },
     "noneFound": "ローカル修復を使うには Codex、Claude Code、OpenCode、または Pi をインストールしてください。",
     "ready": "準備完了",
     "placeholder": "何が起きましたか？手順、表示されたエラー、期待する動作を入力してください。",

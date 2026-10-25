@@ -2991,7 +2991,13 @@
   "repairAgent": {
     "title": "ถาม VoiceStudio Agent",
     "notInstalled": "ยังไม่ได้ติดตั้ง",
-    "noSource": "เปิดสำเนาซอร์สโค้ด VoiceStudio ที่เขียนได้เพื่อให้เอเจนต์ซ่อมแซม",
+    "noSource": "หากต้องการซ่อมโค้ด ให้เลือกสำเนา VoiceStudio ที่สร้างด้วย git clone แอปที่ติดตั้งแล้วแก้ไขไม่ได้",
+    "sourceRejected": {
+      "installed_app": "นี่คือแอปที่ติดตั้งแล้ว ซึ่งแก้ไขไม่ได้ โปรดเลือก git clone แทน",
+      "not_git": "โฟลเดอร์นี้ไม่ใช่ git clone ไฟล์ ZIP ใช้ไม่ได้ ให้ใช้ git clone",
+      "not_voicestudio": "ไม่พบสำเนา VoiceStudio ในโฟลเดอร์นี้",
+      "read_only": "VoiceStudio เขียนลงโฟลเดอร์นี้ไม่ได้ โปรดเลือกโฟลเดอร์ของคุณเอง"
+    },
     "noneFound": "ติดตั้ง Codex, Claude Code, OpenCode หรือ Pi เพื่อใช้การซ่อมแซมในเครื่อง",
     "ready": "พร้อม",
     "placeholder": "เกิดอะไรขึ้น? เพิ่มขั้นตอน ข้อผิดพลาดที่เห็น หรือพฤติกรรมที่คาดหวัง",

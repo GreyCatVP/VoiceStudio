@@ -2991,7 +2991,13 @@
   "repairAgent": {
     "title": "VoiceStudio Agent에게 물어보기",
     "notInstalled": "설치되지 않음",
-    "noSource": "에이전트가 수정할 수 있도록 쓰기 가능한 VoiceStudio 소스 체크아웃을 여세요.",
+    "noSource": "코드를 수정하려면 git clone으로 만든 VoiceStudio 사본을 선택하세요. 설치된 앱은 편집할 수 없습니다.",
+    "sourceRejected": {
+      "installed_app": "설치된 앱이라 편집할 수 없습니다. 대신 git clone 폴더를 선택하세요.",
+      "not_git": "이 폴더는 git clone이 아닙니다. ZIP 다운로드는 사용할 수 없으니 git clone을 사용하세요.",
+      "not_voicestudio": "이 폴더에서 VoiceStudio 클론을 찾지 못했습니다.",
+      "read_only": "VoiceStudio가 이 폴더에 쓸 수 없습니다. 본인 소유 폴더를 선택하세요."
+    },
     "noneFound": "로컬 복구를 사용하려면 Codex, Claude Code, OpenCode 또는 Pi를 설치하세요.",
     "ready": "준비됨",
     "placeholder": "무엇이 잘못되었나요? 단계, 표시된 오류 또는 예상 동작을 추가하세요.",

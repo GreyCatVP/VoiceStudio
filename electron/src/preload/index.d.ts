@@ -214,6 +214,8 @@ export interface RepairAgentState {
   exitCode?: number | null;
   workspaceAvailable: boolean;
   workspacePath?: string;
+  /** Set only on a chooseWorkspace reply whose picked folder was rejected. */
+  workspaceError?: 'installed_app' | 'not_git' | 'not_voicestudio' | 'read_only';
 }
 export type RepairAgentEvent =
   | { sessionId: string; type: 'output'; text: string }

@@ -2991,7 +2991,13 @@
   "repairAgent": {
     "title": "Tanya VoiceStudio Agent",
     "notInstalled": "Belum terpasang",
-    "noSource": "Buka checkout sumber VoiceStudio yang dapat ditulis agar agen dapat memperbaikinya.",
+    "noSource": "Untuk memperbaiki kode, pilih salinan VoiceStudio yang dibuat dengan git clone. Aplikasi terpasang tidak bisa diedit.",
+    "sourceRejected": {
+      "installed_app": "Itu aplikasi terpasang, yang tidak bisa diedit. Pilih git clone sebagai gantinya.",
+      "not_git": "Folder itu bukan git clone. Unduhan ZIP tidak berfungsi; gunakan git clone.",
+      "not_voicestudio": "Tidak ada klon VoiceStudio di folder itu.",
+      "read_only": "VoiceStudio tidak bisa menulis ke folder itu. Pilih folder milik Anda."
+    },
     "noneFound": "Pasang Codex, Claude Code, OpenCode, atau Pi untuk perbaikan lokal.",
     "ready": "Siap",
     "placeholder": "Apa yang salah? Tambahkan langkah, galat yang terlihat, atau perilaku yang diharapkan.",

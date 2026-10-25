@@ -2999,7 +2999,13 @@
   "repairAgent": {
     "title": "اسأل VoiceStudio Agent",
     "notInstalled": "غير مثبّت",
-    "noSource": "افتح نسخة قابلة للكتابة من مصدر VoiceStudio ليتمكن الوكيل من إصلاحها.",
+    "noSource": "لإصلاح الشيفرة، اختر نسخة من VoiceStudio أُنشئت باستخدام git clone. لا يمكن تعديل التطبيق المثبّت.",
+    "sourceRejected": {
+      "installed_app": "هذا هو التطبيق المثبّت ولا يمكن تعديله. اختر نسخة git clone بدلًا منه.",
+      "not_git": "هذا المجلد ليس نسخة git clone. تنزيل ZIP لا يكفي؛ استخدم git clone.",
+      "not_voicestudio": "لم يُعثر على نسخة VoiceStudio في هذا المجلد.",
+      "read_only": "لا يستطيع VoiceStudio الكتابة في هذا المجلد. اختر مجلدًا تملكه."
+    },
     "noneFound": "ثبّت Codex أو Claude Code أو OpenCode أو Pi لاستخدام الإصلاح المحلي.",
     "ready": "جاهز",
     "placeholder": "ما الذي حدث؟ أضف الخطوات أو الأخطاء الظاهرة أو السلوك المتوقع.",

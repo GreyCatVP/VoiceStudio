@@ -66,8 +66,7 @@ token never appears in agent arguments, configuration or output.
 Explicit source diagnosis and code repair require a writable VoiceStudio source checkout and must follow its
 `AGENTS.md`, `CLAUDE.md`, `CONTEXT.md`, and installed skills. Source builds select the current
 checkout automatically. Packaged builds ask the user to choose a checkout only when source work is
-actually required and remember that location. The picker rejects read-only folders and unrelated
-repositories.
+actually required and remember that location (see [Source checkout](#source-checkout)).
 
 The repair prompt prohibits opening an issue, pushing, publishing, merging, or creating a pull
 request. A successful fix ends with a review prompt so the user can inspect the diff and targeted
@@ -113,6 +112,35 @@ Bug reports include the scrubbed backend exception class when available, from
 streaming error frames or parsed API error responses. This distinguishes otherwise
 identical generic engine failures; absent or non-text class values are omitted.
 
+## Source checkout
+
+Code repair edits VoiceStudio's source, so the agent needs your own copy of the repository: a
+*source checkout*. The installed app (for example `/Applications/VoiceStudio.app`,
+`C:\Program Files\VoiceStudio` or the AppImage) holds packaged files, not source, and cannot be
+edited. A ZIP download from GitHub is not a checkout either, because it has no git history to diff
+against. Make one with:
+
+```sh
+git clone https://github.com/debpalash/VoiceStudio.git
+```
+
+Then turn on **Allow source-code repair**, click **Choose folder…** and pick the new `VoiceStudio` folder.
+Choosing the folder you ran `git clone` in, or any folder inside the clone, also works: VoiceStudio
+finds the clone root. Picking does not need a build, a Python environment or `bun install`.
+
+A rejected folder shows the reason under the picker:
+
+| Message | Fix |
+| --- | --- |
+| That's the installed app | Pick your `git clone` folder instead. |
+| That folder isn't a git clone | Run the `git clone` command above; a ZIP download does not work. |
+| No VoiceStudio clone found | Pick the clone itself, or the folder holding exactly one clone. |
+| VoiceStudio can't write to that folder | Clone into a folder you own, such as your home or Documents folder. |
+
+The check is the same on macOS, Windows and Linux: the folder must be inside a git repository whose
+root contains `backend/main.py`, `electron/package.json` and `package.json`, and VoiceStudio must be
+able to create (and immediately remove) a file there. Verification:
+`electron/src/main/source-checkout.test.ts` and `voice-studio-agent.test.tsx`.
 
 ## Short audiobook test
 

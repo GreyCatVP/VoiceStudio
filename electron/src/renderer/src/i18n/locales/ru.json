@@ -2995,7 +2995,13 @@
   "repairAgent": {
     "title": "Спросить VoiceStudio Agent",
     "notInstalled": "Не установлено",
-    "noSource": "Откройте доступную для записи копию исходного кода VoiceStudio, чтобы агент мог внести исправления.",
+    "noSource": "Чтобы исправить код, выберите копию VoiceStudio, созданную через git clone. Установленное приложение изменить нельзя.",
+    "sourceRejected": {
+      "installed_app": "Это установленное приложение, его нельзя изменить. Выберите git clone.",
+      "not_git": "Эта папка не является git clone. ZIP-архив не подойдёт; используйте git clone.",
+      "not_voicestudio": "В этой папке не найден клон VoiceStudio.",
+      "read_only": "VoiceStudio не может записывать в эту папку. Выберите свою папку."
+    },
     "noneFound": "Установите Codex, Claude Code, OpenCode или Pi для локального исправления.",
     "ready": "Готов",
     "placeholder": "Что пошло не так? Укажите шаги, видимые ошибки или ожидаемое поведение.",
