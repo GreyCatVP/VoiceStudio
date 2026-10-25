@@ -1,17 +1,86 @@
 // @vitest-environment node
 import { afterEach, expect, it, vi } from 'vitest';
-import { execFile } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
 import {
   RUNTIME_IMPORT_PROBE,
   RUNTIME_PROBE_TIMEOUT_MS,
   runtimeDependenciesReady,
   runtimePython,
 } from './runtime-project';
-vi.mock('node:child_process', () => ({ execFile: vi.fn() }));
+vi.mock('node:child_process', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('node:child_process')>()),
+  execFile: vi.fn(),
+}));
+
+const python = ['python3', 'python'].find(
+  (candidate) =>
+    spawnSync(candidate, ['-I', '-S', '-c', 'import sys; print(sys.version_info[0])'], {
+      encoding: 'utf8',
+      timeout: 10_000,
+      windowsHide: true,
+    }).stdout?.trim() === '3',
+);
+const nativeImportFixture = [
+  'import builtins, sys, types',
+  'packages = {"torch", "torchaudio", "torchvision", "fastapi", "uvicorn", "omnivoice", "faster_whisper", "sentencepiece"}',
+  'native_ready = False',
+  'imported = []',
+  'original_import = builtins.__import__',
+  'def import_fixture(name, *args, **kwargs):',
+  '    global native_ready',
+  '    if name not in packages:',
+  '        return original_import(name, *args, **kwargs)',
+  '    if name == sys.argv[2]:',
+  '        raise ImportError("Broken dependency: " + name)',
+  '    if name in {"torchaudio", "torchvision", "omnivoice", "faster_whisper"} and not native_ready:',
+  '        raise ImportError("Native DLLs unavailable before torch initialization: " + name)',
+  '    if name == "torch":',
+  '        native_ready = True',
+  '    imported.append(name)',
+  '    return types.ModuleType(name)',
+  'builtins.__import__ = import_fixture',
+  'exec(sys.argv[1])',
+  'assert set(imported) == packages, imported',
+  'print(",".join(imported))',
+].join('\n');
 afterEach(() => {
   vi.clearAllMocks();
   vi.unstubAllEnvs();
 });
+
+it.skipIf(!python).each(['none', 'torch', 'faster_whisper'])(
+  'initializes native DLLs before dependent imports (broken dependency: %s)',
+  async (brokenModule) => {
+    let failure = '';
+    vi.mocked(execFile).mockImplementation(((
+      _command: unknown,
+      args: string[],
+      options: { env: NodeJS.ProcessEnv },
+      callback: (error: Error | null) => void,
+    ) => {
+      const result = spawnSync(
+        python!,
+        ['-I', '-S', '-c', nativeImportFixture, args[1]!, brokenModule],
+        {
+          encoding: 'utf8',
+          env: options.env,
+          timeout: 10_000,
+          windowsHide: true,
+        },
+      );
+      failure = result.stderr;
+      callback(result.status === 0 ? null : new Error(result.stderr));
+    }) as never);
+
+    expect(await runtimeDependenciesReady('/selected-runtime'), failure).toBe(
+      brokenModule === 'none',
+    );
+    expect(failure).toEqual(
+      brokenModule === 'none' ? '' : expect.stringContaining(`Broken dependency: ${brokenModule}`),
+    );
+  },
+);
+
 it.each([null, new Error('No module named uvicorn'), new Error('ETIMEDOUT'), new Error('ENOENT')])(
   'validates imports using the selected interpreter and fails closed (%s)',
   async (error) => {

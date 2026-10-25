@@ -18,8 +18,11 @@ zachowują dotychczasowe ścieżki. Oficjalny aktualizator nie gwarantuje zachow
 nieopublikowanej poprawki.
 
 Konfigurator sprawdza wykonanie HIP i CTranslate2 przed zapisaniem gotowości.
-Nie instaluje sterownika, WSL, narzędzi C++ ani deweloperskiego SDK. Wznowienie
-oraz naprawa są jawne i muszą zachowywać dane. Zmiana pełnego znacznika receptury
+Nie instaluje sterownika, WSL, narzędzi C++ ani deweloperskiego SDK.
+Test importów inicjalizuje Torch przed faster-whisper i innymi zależnościami
+natywnymi, aby ładowanie DLL odpowiadało kolejności startu backendu. Nie nadaje
+to zwykłemu kołu CUDA CTranslate2 obsługi HIP.
+Wznowienie oraz naprawa są jawne i muszą zachowywać dane. Zmiana pełnego znacznika receptury
 wymaga naprawy starszego eksperymentalnego środowiska; samo sprawdzenie gotowości
 go nie przebudowuje.
 Konfigurator desktopowy i naprawa pomijają zapisane w lockfile pakiety CUDA Torch

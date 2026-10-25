@@ -19,6 +19,9 @@ Do not use the official updater expecting it to preserve an unpublished patch.
 Setup checks HIP execution and CTranslate2 before writing readiness. It does
 not install drivers, WSL, Visual Studio Build Tools or the development SDK.
 Interrupted setup and repair remain explicit and must preserve user data.
+Runtime import verification initializes Torch before faster-whisper and other
+native dependants, so their DLL lookup matches the backend startup order. This
+does not make the ordinary CUDA CTranslate2 wheel compatible with HIP.
 Older experimental readiness markers require explicit repair after the complete
 recipe stamp changes; checking readiness does not rewrite a runtime.
 Desktop setup and repair exclude the lockfile's CUDA Torch and NVIDIA runtime

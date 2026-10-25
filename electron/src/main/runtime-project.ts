@@ -135,7 +135,7 @@ export const WIN_ARM64_PYTHON_REQUEST = 'cpython-3.11-windows-x86_64';
 export const RUNTIME_REPAIR_PACKAGES = ['torch', 'torchaudio', 'torchvision'] as const;
 export const RUNTIME_NATIVE_IMPORT_PROBE = 'import torch, torchaudio, torchvision';
 export const RUNTIME_IMPORT_PROBE =
-  'import fastapi, uvicorn, omnivoice, faster_whisper, sentencepiece, torch, torchaudio, torchvision';
+  'import torch, fastapi, uvicorn, omnivoice, faster_whisper, sentencepiece, torchaudio, torchvision';
 const WINDOWS_ROCM_PROBE = [
   'import torch',
   'if not torch.version.hip or not torch.cuda.is_available():',

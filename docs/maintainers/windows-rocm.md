@@ -202,6 +202,40 @@ validate this exact branch offline
 with an empty cache, and complete the existing hardware/accessibility gates.
 Do not upload local audits, installations, models, diagnostic logs or SDK copies.
 
+## Coordinating overlapping Windows ROCm contributions
+
+[PR #3045](https://github.com/debpalash/VoiceStudio/pull/3045) proposes a newer,
+modular source/Electron provisioning implementation. Compare it with this draft;
+do not concatenate both installers or replace its newer security requirements
+with older sidecar specifications. Its recipe is not identical to #2600: it also
+requires the development SDK package. A working older runtime without that
+package must not be presented as passing the newer readiness contract.
+
+Preserve these independently reviewed boundaries when reconciling the branches:
+
+| Boundary | Existing reference | Required evidence |
+| --- | --- | --- |
+| Native startup | `RUNTIME_IMPORT_PROBE`, `runtime-dependencies.test.ts` | Torch initialization before dependent imports; broken Torch/Whisper still fail readiness |
+| Sidecar completion | Commit `c9891f655`, atomic marker tests in `test_sidecar_install.py` | Interrupted writes and failed replacement never expose a new valid marker; preserve old content and allow retry |
+| Sidecar GPU recipes | `test_sidecar_install.py`, VoxCPM2/CosyVoice subprocess tests | Main-runtime HIP does not certify a CPU-only sidecar; retain each engine's dependency/security/version boundaries |
+| Optional alignment | Commits `8e04c16e9` and `4c3c8f48f`, `test_asr_windows_rocm_ct2.py` | Preserve transcript coverage across sentence splits, native timing fallback and both offline switches; alignment-only evidence is not full WhisperX approval |
+| Audio compatibility | Commit `51e4eb33c`, `test_pyannote_audio_compat.py` | Retain real GSM610/G721/G723 decode/crop regressions; do not replace existing sequential-only codec handling |
+
+An offline comparison of #3045 head `0ed1d7984` passed 280 focused Python tests
+with one platform skip. With existing RX 9070 XT packages, its DLL initializer
+and direct, checksummed CT2 float16 speech inference passed on HIP. Its complete
+readiness probe correctly rejected the missing development SDK package. This is
+not clean provisioning, a fully matched #3045 runtime, packaged execution or
+validation of its complete ASR adapter. No package installation was used to make
+the comparison pass. Broader hardware/engine/NVDA gates remain open.
+
+[PR #2908](https://github.com/debpalash/VoiceStudio/pull/2908) is source-only and
+explicitly leaves faster-whisper on CPU. The community
+[gfx1030 recipe](https://github.com/Jhonalon13/voicestudio-rocm-windows) uses a
+different, third-party package stack and binary application patching. Treat it
+as separate device evidence, not a drop-in replacement or proof that every
+engine works on every Radeon. Neither report replaces the release gates above.
+
 ## Model-free MIOpen diagnostic
 
 Run the evaluated interpreter with `scripts/smoke_windows_rocm.py --miopen`.
