@@ -29,6 +29,19 @@ unlisted GPUs, including RX 6700 XT, are outside this recipe's supported scope.
 Do not use Linux ROCm wheel indexes or an `HSA_OVERRIDE_GFX_VERSION` remap to
 claim support for those systems. A standalone HIP SDK on PATH is insufficient.
 
+### What setup downloads, and how it is checked
+
+Setup downloads only from AMD's `repo.radeon.com` (the SDK and PyTorch wheels)
+and the OpenNMT/CTranslate2 GitHub release (the HIP CTranslate2 archive). Every
+one of those files has a SHA-256 in the recipe, and setup refuses a file whose
+bytes differ. Every other package keeps the version your environment already
+has, so the overlay never quietly upgrades dependencies.
+
+Before this release, `OMNIVOICE_TORCH_VARIANT=rocm` was ignored on Windows. It
+now selects this stack. If it is already set on a machine with a working CUDA
+or CPU runtime, the app shows the setup screen instead of switching on its
+own; nothing downloads until you start setup there.
+
 ## Source setup
 
 From the repository root, after the normal
