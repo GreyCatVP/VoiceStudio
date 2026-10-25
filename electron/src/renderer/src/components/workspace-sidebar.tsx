@@ -1,9 +1,51 @@
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import {
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 import { PanelLeftCloseIcon, PanelLeftOpenIcon, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { usePaneResize } from '@/hooks/use-pane-resize';
 import { cn } from '@/lib/utils';
+import { isMac } from '@/components/bridge';
+import { useWindowFullscreen } from '@/hooks/use-window-fullscreen';
+
+/**
+ * How far a titlebar row must inset its content to clear the macOS traffic
+ * lights. Measured, not assumed: the lights reach past the slim rail into a
+ * column beside it, but never into one further right.
+ */
+function useTrafficLightInset(enabled: boolean) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [inset, setInset] = useState(0);
+  useLayoutEffect(() => {
+    const row = ref.current;
+    if (!enabled || !row) return setInset(0);
+    const measure = () =>
+      setInset(
+        Math.max(0, Math.ceil(MAC_TRAFFIC_LIGHTS_INLINE_END - row.getBoundingClientRect().left)),
+      );
+    measure();
+    // The row moves when a column before it resizes (rail collapse, pane drag).
+    const observer = new ResizeObserver(measure);
+    const column = row.parentElement;
+    for (let node = column?.previousElementSibling; node; node = node.previousElementSibling) {
+      observer.observe(node);
+    }
+    observer.observe(row);
+    window.addEventListener('resize', measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [enabled]);
+  return [ref, inset] as const;
+}
+import { MAC_TRAFFIC_LIGHTS_INLINE_END } from '@shared/utils/windowChrome';
 
 const WIDTHS = {
   default: { minimum: 248, initial: 280, maximum: 515, reserve: 480 },
@@ -30,6 +72,9 @@ export function SecondarySidebar({
   variant = 'controls',
   meta,
   footer,
+  library,
+  libraryLabel,
+  collapsed: controlledCollapsed,
   onCollapsedChange,
 }: {
   title: string;
@@ -41,17 +86,34 @@ export function SecondarySidebar({
   meta?: ReactNode;
   /** Pinned below the scrolling content — never scrolls out of view. */
   footer?: ReactNode;
+  /** Saved items beside the controls. A render callback receives visibility so retained panes can cancel hidden work. */
+  library?: ReactNode | ((active: boolean) => ReactNode);
+  libraryLabel?: string;
+  /** Controls the collapsed state when the parent owns a shared pane shortcut. */
+  collapsed?: boolean;
   /** Lets the page re-home the footer's content while the pane is collapsed. */
   onCollapsedChange?: (collapsed: boolean) => void;
 }) {
   const { t } = useTranslation();
-  const [collapsed, setCollapsedState] = useState(false);
+  const fullscreen = useWindowFullscreen();
+  const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(false);
+  const collapsed = controlledCollapsed ?? uncontrolledCollapsed;
+  // Collapsed, the header row is an empty drag strip, so nothing needs to clear the lights.
+  const [headerRef, lightsInset] = useTrafficLightInset(isMac() && !fullscreen && !collapsed);
+  const [view, setView] = useState<'controls' | 'library'>('controls');
+  const [libraryVisited, setLibraryVisited] = useState(false);
+  const tabsId = useId();
+  const chooseView = (next: 'controls' | 'library') => {
+    if (next === 'library') setLibraryVisited(true);
+    setView(next);
+  };
+  const showLibrary = library != null && view === 'library';
   // Notify from the event handler, never from inside a state updater: updaters
   // must stay pure (StrictMode runs them twice, which would double-fire this).
   const setCollapsed = (next: boolean | ((value: boolean) => boolean)) => {
     const resolved = typeof next === 'function' ? next(collapsed) : next;
     if (resolved === collapsed) return;
-    setCollapsedState(resolved);
+    if (controlledCollapsed === undefined) setUncontrolledCollapsed(resolved);
     onCollapsedChange?.(resolved);
   };
   const dimensions = WIDTHS[size];
@@ -91,10 +153,12 @@ export function SecondarySidebar({
         </div>
       )}
       <div
+        ref={headerRef}
         data-slot="secondary-sidebar-header"
+        style={lightsInset ? { paddingInlineStart: lightsInset + 12 } : undefined}
         className={cn(
           'workspace-titlebar flex h-12 shrink-0 items-center gap-2.5 border-b border-border/45 bg-background/30 shadow-[0_1px_0_color-mix(in_oklab,var(--foreground)_2%,transparent)] backdrop-blur-xl',
-          collapsed ? 'justify-center px-1' : 'px-3',
+          collapsed ? 'px-1' : 'px-3',
         )}
       >
         {!collapsed && (
@@ -115,31 +179,110 @@ export function SecondarySidebar({
             )}
           </>
         )}
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          aria-label={t(collapsed ? 'paneActions.expand' : 'paneActions.collapse')}
-          title={t(collapsed ? 'paneActions.expand' : 'paneActions.collapse')}
-          aria-expanded={!collapsed}
-          onClick={() => setCollapsed((value) => !value)}
-          className="text-muted-foreground hover:bg-accent/60 hover:text-foreground"
-        >
-          {collapsed ? <PanelLeftOpenIcon /> : <PanelLeftCloseIcon />}
-        </Button>
+        {!collapsed && (
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label={t('paneActions.collapse')}
+            title={t('paneActions.collapse')}
+            aria-expanded
+            onClick={() => setCollapsed(true)}
+            className="text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+          >
+            <PanelLeftCloseIcon />
+          </Button>
+        )}
       </div>
+      {library != null && !collapsed && (
+        <div
+          role="tablist"
+          aria-label={title}
+          data-slot="secondary-sidebar-tabs"
+          className="flex shrink-0 gap-1 border-b border-border/45 px-2.5 py-2"
+          onKeyDown={(event) => {
+            if (event.altKey || event.ctrlKey || event.metaKey) return;
+            const tabs = [
+              ...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
+            ];
+            const current = tabs.findIndex((tab) => tab === event.target);
+            if (current < 0) return;
+            const forward =
+              getComputedStyle(event.currentTarget).direction === 'rtl'
+                ? 'ArrowLeft'
+                : 'ArrowRight';
+            const backward = forward === 'ArrowRight' ? 'ArrowLeft' : 'ArrowRight';
+            const next =
+              event.key === 'Home'
+                ? 0
+                : event.key === 'End'
+                  ? 1
+                  : event.key === forward || event.key === backward
+                    ? 1 - current
+                    : null;
+            if (next === null) return;
+            event.preventDefault();
+            chooseView(next === 0 ? 'controls' : 'library');
+            tabs[next]?.focus();
+          }}
+        >
+          {(
+            [
+              ['controls', title],
+              ['library', libraryLabel ?? title],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              id={`${tabsId}-${value}`}
+              aria-controls={`${tabsId}-panel-${value}`}
+              aria-selected={view === value}
+              tabIndex={view === value ? 0 : -1}
+              onClick={() => chooseView(value)}
+              className={cn(
+                'h-7 min-w-0 flex-1 truncate rounded-md px-2 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring',
+                view === value
+                  ? 'bg-accent/80 text-foreground'
+                  : 'text-muted-foreground hover:bg-accent/45 hover:text-foreground',
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+      {library != null && (
+        <div
+          role="tabpanel"
+          id={`${tabsId}-panel-library`}
+          aria-labelledby={`${tabsId}-library`}
+          hidden={!showLibrary || collapsed}
+          className={cn('flex min-h-0 flex-1 flex-col', (!showLibrary || collapsed) && 'hidden')}
+        >
+          {libraryVisited
+            ? typeof library === 'function'
+              ? library(showLibrary && !collapsed)
+              : library
+            : null}
+        </div>
+      )}
       <div
-        hidden={collapsed}
+        hidden={collapsed || showLibrary}
+        role={library != null ? 'tabpanel' : undefined}
+        id={library != null ? `${tabsId}-panel-controls` : undefined}
+        aria-labelledby={library != null ? `${tabsId}-controls` : undefined}
         data-slot="secondary-sidebar-content"
         className={cn(
           'studio-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain p-3.5 text-[13px] [scroll-padding-block:0.875rem] [scrollbar-gutter:stable] [&>*]:min-w-0 [&>section]:w-full [&>section]:shrink-0 [&_button]:max-w-full [&_h2]:tracking-[-0.012em] [&_h3]:tracking-[-0.01em] [&_input]:max-w-full [&_label]:leading-5 [&_p]:leading-[1.55] [&_summary]:rounded-lg [&_summary]:outline-none [&_summary]:transition-[color,background-color] [&_summary]:duration-150 [&_summary:hover]:text-foreground [&_summary:focus-visible]:ring-2 [&_summary:focus-visible]:ring-ring/35 [&_textarea]:max-w-full',
           VARIANT_STYLES[variant],
-          collapsed && 'hidden',
+          (collapsed || showLibrary) && 'hidden',
           className,
         )}
       >
         {children}
       </div>
-      {footer !== undefined && footer !== null && !collapsed && (
+      {footer !== undefined && footer !== null && !collapsed && !showLibrary && (
         <div
           data-slot="secondary-sidebar-footer"
           className="flex min-h-0 max-h-[70%] flex-col space-y-3 border-t border-border/55 bg-background/40 p-3.5 text-[13px] backdrop-blur-xl"
@@ -150,10 +293,12 @@ export function SecondarySidebar({
       {collapsed && (
         <button
           type="button"
-          title={title}
+          title={`${t('paneActions.expand')} · ${title}`}
           aria-label={title}
+          aria-expanded={false}
+          data-slot="secondary-sidebar-expand"
           onClick={() => setCollapsed(false)}
-          className="group mx-auto my-2 flex min-h-0 flex-1 flex-col items-center gap-2 rounded-lg px-1.5 py-2 text-muted-foreground outline-none transition-[color,background-color,border-color] hover:bg-accent/65 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+          className="group mx-1 my-2 flex min-h-0 flex-1 flex-col items-center gap-2.5 rounded-lg px-1 py-2 text-muted-foreground outline-none transition-[color,background-color,border-color] hover:bg-accent/65 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
         >
           <span className="grid size-7 shrink-0 place-items-center rounded-md border border-border/45 bg-background/45 text-primary">
             <Icon aria-hidden="true" className="size-4" />
@@ -161,6 +306,10 @@ export function SecondarySidebar({
           <span className="min-h-0 truncate text-[11px] font-semibold tracking-[0.01em] [writing-mode:vertical-rl] [text-orientation:mixed]">
             {title}
           </span>
+          <PanelLeftOpenIcon
+            aria-hidden="true"
+            className="mt-auto size-4 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+          />
         </button>
       )}
     </aside>
