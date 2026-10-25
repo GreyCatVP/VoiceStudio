@@ -160,8 +160,17 @@ for these engines, `true` for engines that design, and `null` when an engine
 doesn't declare it.
 
 On every engine, a detail you pick holds until your description says something
-different about it, and **Reset to description** drops all picks. Choosing a
-saved voice or a starting point replaces the description.
+different about it, and **Reset to description** drops all picks; it appears
+once a pick or a saved voice overrides a written description. Choosing a
+saved voice or a starting point replaces the description. Accent and
+Chinese-dialect details keep their model tokens (such as `四川话`) in the
+request, while the app shows them in your interface language.
+
+An open take lists the language it was rendered in. When the composer is set
+to a different language, the take says which one new takes will use, and the
+take pane moves to each new take as it renders. In narrow windows the take
+pane opens as a drawer over the script; **Recent takes** next to the voice name
+reopens it.
 
 Choosing a saved designed voice re-renders it from its saved sample, so it
 sounds the same every time. Changing a detail, the description or the seed
