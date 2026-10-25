@@ -3,6 +3,7 @@
 import importlib
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -39,15 +40,22 @@ def test_repair_installs_official_stack_then_verified_ct2_and_rechecks(installer
     monkeypatch.setattr(installer, "verify_environment", verify)
     monkeypatch.setattr(installer, "download_archive", lambda *a: events.append("download"))
     monkeypatch.setattr(installer, "checked_wheel", checked)
-    monkeypatch.setattr(installer, "run_install", lambda command: events.append(command))
+    requirements = []
+
+    def run(command):
+        events.append(command)
+        if "-r" in command:  # read while the temporary directory still exists
+            requirements.extend(Path(command[command.index("-r") + 1]).read_text().splitlines())
+
+    monkeypatch.setattr(installer, "run_install", run)
     assert installer.provision("uv-custom")["ready"]
     assert events[:3] == ["verify", "download", "checksum"]
     stack, ct2 = events[3:5]
     assert stack[:6] == ["uv-custom", "--no-config", "pip", "install", "--python", sys.executable]
-    assert "--reinstall-package" in stack
-    urls = [arg for arg in stack if arg.startswith("https://")]
-    assert len(urls) == 7
-    assert all(arg.startswith("https://repo.radeon.com/rocm/windows/rocm-rel-7.2.1/") for arg in urls)
+    assert "--reinstall-package" in stack and "--constraints" in stack and "--constraints" in ct2
+    assert len(requirements) == 7
+    assert all(line.startswith("https://repo.radeon.com/rocm/windows/rocm-rel-7.2.1/")
+               and " --hash=sha256:" in line for line in requirements)
     assert ct2[-1].endswith("ctranslate2-4.8.2-cp312-cp312-win_amd64.whl")
     assert events[-1] == "verify"
 

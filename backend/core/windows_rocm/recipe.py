@@ -2,11 +2,14 @@
 
 import hashlib
 import json
+import re
 import sys
 import sysconfig
 from pathlib import Path
 
 from .failures import VerificationFailure
+
+_SHA256 = re.compile(r"[0-9a-f]{64}")
 
 RECIPE_PATH = Path(__file__).resolve().parents[3] / "scripts" / "windows-rocm-recipe.json"
 
@@ -16,6 +19,13 @@ def load_recipe(path=None):
     recipe = json.loads(Path(path or RECIPE_PATH).read_text(encoding="utf-8"))
     if recipe["schema_version"] != 1:
         raise RuntimeError("Unsupported Windows ROCm recipe schema")
+    # Every AMD artifact is pinned by content, not just by name: a version pin
+    # alone would install whatever bytes the host serves under that filename.
+    for section in ("torch", "runtime"):
+        hashes = recipe[section].get("wheel_sha256") or {}
+        for name in recipe[section]["wheel_files"]:
+            if not _SHA256.fullmatch(str(hashes.get(name, ""))):
+                raise RuntimeError(f"Windows ROCm recipe has no valid sha256 for {name}")
     return recipe
 
 

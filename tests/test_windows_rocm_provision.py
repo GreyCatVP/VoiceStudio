@@ -81,3 +81,66 @@ def test_duplicate_member_refused(tmp_path):
         archive, config = archive_fixture(tmp_path, [(member, b"wheel"), (member, b"wheel")])
     with pytest.raises(RuntimeError, match="exactly one"):
         module("artifacts").checked_wheel(archive, tmp_path, config)
+
+
+# ── Supply-chain pinning (maintainer security review of #3045) ───────────────
+
+def test_every_amd_artifact_is_hash_pinned():
+    recipe = module("recipe").load_recipe()
+    for section in ("torch", "runtime"):
+        assert set(recipe[section]["wheel_files"]) == set(recipe[section]["wheel_sha256"])
+
+
+@pytest.mark.parametrize("bad", [None, "", "abc", "Z" * 64])
+def test_recipe_without_a_valid_hash_is_refused(tmp_path, bad):
+    recipe = module("recipe")
+    data = recipe.load_recipe()
+    name = data["torch"]["wheel_files"][0]
+    if bad is None:
+        del data["torch"]["wheel_sha256"][name]
+    else:
+        data["torch"]["wheel_sha256"][name] = bad
+    path = tmp_path / "recipe.json"
+    path.write_text(json.dumps(data))
+    with pytest.raises(RuntimeError, match="sha256"):
+        recipe.load_recipe(path)
+
+
+def test_requirements_carry_a_hash_for_every_url():
+    install = module("install")
+    recipe = module("recipe").load_recipe()
+    lines = install.hashed_requirements(recipe).splitlines()
+    assert len(lines) == sum(len(recipe[s]["wheel_files"]) for s in ("torch", "runtime"))
+    for line in lines:
+        url, flag = line.split(" --hash=sha256:")
+        assert url.startswith("https://repo.radeon.com/") and len(flag) == 64
+
+
+class _Dist:
+    def __init__(self, name, version):
+        self.metadata = {"Name": name}
+        self.version = version
+
+
+def test_constraints_pin_everything_but_the_overlay():
+    install = module("install")
+    text = install.constraints_text([
+        _Dist("numpy", "2.2.6"), _Dist("PyYAML", "6.0.2"), _Dist("torch", "2.8.0"),
+        _Dist("torchaudio", "2.8.0"), _Dist("rocm-sdk-core", "7.2.1"), _Dist("rocm", "7.2.1"),
+        _Dist("ctranslate2", "4.6.0"), _Dist("triton-windows", "3.4.0"),
+    ])
+    assert text.splitlines() == ["numpy==2.2.6", "PyYAML==6.0.2"]
+
+
+def test_install_command_applies_constraints_and_never_disables_hash_checks(tmp_path, monkeypatch):
+    install = module("install")
+    command = install.install_command("uv", ["-r", "req.txt"], ["torch"], tmp_path / "c.txt",
+                                      build_isolation_off=("rocm",))
+    assert command[command.index("--constraints") + 1] == str(tmp_path / "c.txt")
+    assert "--no-verify-hashes" not in command
+    assert command[command.index("--no-build-isolation-package") + 1] == "rocm"
+    seen = {}
+    monkeypatch.setenv("UV_NO_VERIFY_HASHES", "1")
+    monkeypatch.setattr(install.subprocess, "run", lambda cmd, **kw: seen.update(kw))
+    install.run_install(command)
+    assert "UV_NO_VERIFY_HASHES" not in seen["env"]
