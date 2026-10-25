@@ -13,6 +13,7 @@ import {
   windowsRocmRecipeMatches,
   WINDOWS_ROCM_IMPORT_PREFIX,
   WINDOWS_ROCM_MODULE,
+  RUNTIME_TORCH_MARKER,
   WINDOWS_ROCM_PYTHON_REQUEST,
 } from './runtime-windows-rocm';
 import { clearCtranslate2ExecutableStack } from '../../scripts/native-compat.mjs';
@@ -268,7 +269,11 @@ export async function runtimeDownloadHosts(
 ): Promise<Map<string, string>> {
   const lock = await readFile(join(bundle, 'uv.lock'), 'utf8');
   const rocm = resolveTorchVariant(process.env, platform, arch).variant === 'rocm';
-  const rocmHost = new URL(process.env.OMNIVOICE_TORCH_INDEX || ROCM_TORCH_INDEX).host;
+  // Windows ROCm installs from AMD's repository (the recipe), not PyTorch's index.
+  const rocmHost =
+    platform === 'win32'
+      ? 'repo.radeon.com'
+      : new URL(process.env.OMNIVOICE_TORCH_INDEX || ROCM_TORCH_INDEX).host;
   return setupDownloadHosts(lock, {
     pytorchIndex: cpuTorchApplies(platform, arch),
     overrides: rocm
@@ -485,7 +490,15 @@ export async function runtimeDependenciesReady(
   project: string,
   onFailure?: (detail: string) => void,
 ): Promise<boolean> {
-  const windowsRocm = windowsRocmSelected();
+  let windowsRocm: boolean;
+  try {
+    windowsRocm = windowsRocmSelected();
+  } catch (error) {
+    // ROCm requested on a host that cannot run it (Windows ARM64): not ready,
+    // with the reason, instead of a rejected readiness check.
+    onFailure?.(error instanceof Error ? error.message : String(error));
+    return false;
+  }
   if (windowsRocm && !(await windowsRocmReady(project, onFailure))) return false;
   const env: NodeJS.ProcessEnv = { ...process.env };
   delete env.PYTHONHOME;
@@ -971,6 +984,7 @@ export async function installRuntime(
   }
   signal.throwIfAborted();
   await writeFile(join(project, '.runtime-ready'), await dependencyStamp(bundle, torch.variant));
+  await writeFile(join(project, RUNTIME_TORCH_MARKER), windowsRocm ? 'windows-rocm' : torch.variant);
   await rm(join(project, '.runtime-installing'), { force: true });
 }
 

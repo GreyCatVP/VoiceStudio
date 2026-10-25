@@ -20,6 +20,30 @@ export function windowsRocmSelected(
   return true;
 }
 
+/**
+ * Non-throwing form of {@link windowsRocmSelected} for decisions that must not
+ * crash: true only when ROCm was asked for on a host that can run it.
+ */
+export function windowsRocmRequested(
+  variant = process.env.OMNIVOICE_TORCH_VARIANT?.trim().toLowerCase(),
+  platform = process.platform,
+  arch: string = process.arch,
+): boolean {
+  return platform === 'win32' && variant === 'rocm' && arch === 'x64';
+}
+
+/** Records which torch build the last successful install produced. */
+export const RUNTIME_TORCH_MARKER = '.runtime-torch';
+
+/** True once an install has completed with the Windows ROCm stack. */
+export async function windowsRocmInstalled(project: string): Promise<boolean> {
+  try {
+    return (await readFile(join(project, RUNTIME_TORCH_MARKER), 'utf8')).trim() === 'windows-rocm';
+  } catch {
+    return false;
+  }
+}
+
 export async function windowsRocmStamp(bundle: string): Promise<Buffer> {
   return Buffer.concat([
     Buffer.from(':python=cp312:win-amd64:'),
