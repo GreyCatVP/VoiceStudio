@@ -141,7 +141,9 @@ export function WorkspaceSidebar() {
             >
               <img src={brandIcon} alt="" className="size-6 shrink-0" />
               <span className="flex min-w-0 flex-col leading-tight">
-                <span className="truncate text-[15px] font-semibold tracking-tight">{t('app.name')}</span>
+                <span className="truncate text-[15px] font-semibold tracking-tight">
+                  {t('app.name')}
+                </span>
                 <span className="mt-0.5 truncate text-[11px] leading-none text-muted-foreground tabular-nums">
                   {versionLabel}
                 </span>

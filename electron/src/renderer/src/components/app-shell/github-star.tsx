@@ -62,9 +62,7 @@ export function GithubStar() {
           <StarIcon aria-hidden="true" className="size-3.5" />
           <span>{t('support.star_short')}</span>
         </span>
-        <span className="github-star-count">
-          {formatCount.format(stars.data ?? BUNDLED_STARS)}
-        </span>
+        <span className="github-star-count">{formatCount.format(stars.data ?? BUNDLED_STARS)}</span>
       </TooltipTrigger>
       <TooltipContent surface="theme" side="bottom">
         {t('support.star_github')}

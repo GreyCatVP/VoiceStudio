@@ -20,9 +20,7 @@ export function SupportShortcut() {
           }
         >
           <GemIcon aria-hidden="true" className="size-3.5" />
-          <span className="hidden text-xs font-medium sm:inline">
-            {t('supportPlans.get_pro')}
-          </span>
+          <span className="hidden text-xs font-medium sm:inline">{t('supportPlans.get_pro')}</span>
         </TooltipTrigger>
         <TooltipContent surface="theme" side="bottom">
           {t('supportPlans.get_pro')}
