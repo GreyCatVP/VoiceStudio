@@ -2949,6 +2949,7 @@
     "latencyMs": "{{ms}}ms",
     "none_ready_title": "La sintesi vocale non è pronta",
     "none_ready_body": "VoiceStudio può configurare automaticamente l’opzione compatibile migliore per questo dispositivo.",
+    "set_up": "Configura",
     "active": "Motore: {{name}}",
     "none": "Nessun motore attivo",
     "localInstallRequired": "Installa questo motore sul computer del backend tramite localhost o la guida alla configurazione. L’installazione remota è disabilitata.",

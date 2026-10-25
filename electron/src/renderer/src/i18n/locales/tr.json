@@ -2947,6 +2947,7 @@
     "latencyMs": "{{ms}} ms",
     "none_ready_title": "Konuşma sentezi hazır değil",
     "none_ready_body": "VoiceStudio bu cihaz için en iyi uyumlu seçeneği otomatik olarak ayarlayabilir.",
+    "set_up": "Kur",
     "active": "Motor: {{name}}",
     "none": "Etkin motor yok",
     "localInstallRequired": "Bu motoru arka uç bilgisayarında localhost veya kurulum kılavuzu üzerinden yükleyin. Uzaktan kurulum devre dışıdır.",

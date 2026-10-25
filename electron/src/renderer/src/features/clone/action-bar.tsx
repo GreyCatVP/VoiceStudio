@@ -1,4 +1,5 @@
 import { PipelineFailure } from '@/components/pipeline-failure';
+import { EngineSetupButton, EngineSetupStatus, useEngineSetup } from '@/components/engine-notice';
 import { InstallSttButton } from './install-stt-button';
 import { Progress as ProgressPrimitive } from '@base-ui/react/progress';
 import {
@@ -349,11 +350,17 @@ export function ActionBar() {
               : 'clone.generating_status',
       )
     : t('clone.synthesize');
+  // Not ready: the primary action is the setup that fixes it, not a dead Synthesize.
+  const setup = useEngineSetup('clone');
+  const needsSetup = blocker === 'engine' && !demo && !isGenerating;
 
   return (
     <section className="@container/composer">
-      {blocker && !isGenerating && (
-        <CloneReadinessNotice id={readinessId} blocker={blocker} demo={demo} />
+      {needsSetup ? (
+        <EngineSetupStatus setup={setup} id={readinessId} />
+      ) : (
+        blocker &&
+        !isGenerating && <CloneReadinessNotice id={readinessId} blocker={blocker} demo={demo} />
       )}
       {error && (
         <PipelineFailure
@@ -376,10 +383,16 @@ export function ActionBar() {
         <div className="relative ml-auto flex shrink-0 gap-2">
           {demo ? (
             <CloneDemoAction />
+          ) : needsSetup ? (
+            <EngineSetupButton
+              setup={setup}
+              primary
+              className="h-10 w-60 max-w-full shrink-0 rounded-lg px-4 shadow-sm"
+            />
           ) : (
             <Button
               size="lg"
-              className="h-10 w-60 shrink-0 justify-between overflow-hidden rounded-lg ps-4 pe-2.5 shadow-sm transition-colors"
+              className="h-10 w-60 max-w-full shrink-0 justify-between overflow-hidden rounded-lg ps-4 pe-2.5 shadow-sm transition-colors"
               onClick={() => void generate()}
               disabled={isGenerating || blocker !== null}
               aria-describedby={blocker ? readinessId : undefined}

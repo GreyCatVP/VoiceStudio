@@ -2947,6 +2947,7 @@
     "latencyMs": "{{ms}} ms",
     "none_ready_title": "Sintesis ucapan belum siap",
     "none_ready_body": "VoiceStudio dapat menyiapkan opsi kompatibel terbaik untuk perangkat ini secara otomatis.",
+    "set_up": "Siapkan",
     "active": "Mesin: {{name}}",
     "none": "Tidak ada mesin aktif",
     "localInstallRequired": "Instal mesin ini di komputer backend melalui localhost atau panduan penyiapannya. Instalasi jarak jauh dinonaktifkan.",

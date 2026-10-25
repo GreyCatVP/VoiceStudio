@@ -383,6 +383,7 @@
     "selectWithCaveat": "Switched to {{engine}} — {{reason}}",
     "none_ready_title": "Text-to-speech is not ready",
     "none_ready_body": "VoiceStudio can automatically set up the best compatible option for this device.",
+    "set_up": "Set up",
     "active": "Engine: {{name}}",
     "none": "No engine active",
     "acceptLicense": "Accept license",

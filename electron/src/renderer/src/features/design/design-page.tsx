@@ -33,32 +33,23 @@ import { apiJson, describeError, profileAudioUrl } from '@/lib/api/client';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
-import { PipelineFailure } from '@/components/pipeline-failure';
-import { EngineNotice } from '@/components/engine-notice';
+import { DesignComposer } from './design-composer';
 import {
   ChevronDownIcon,
   HistoryIcon,
-  LoaderCircleIcon,
   PencilIcon,
-  PlayIcon,
   SaveIcon,
   ShuffleIcon,
   SlidersHorizontalIcon,
   SparklesIcon,
   RotateCcwIcon,
-  XIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Link } from '@tanstack/react-router';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useGenerateClone } from '@/hooks/use-generate';
 import { OutputPanel } from '@/features/clone/output-panel';
-import { QualityControls } from '@/features/clone/quality-controls';
-import { VoiceControls } from '@/features/clone/action-bar';
-import { EngineLanguagePicker } from '@/features/clone/engine-language-picker';
 import { queryKeys } from '@/lib/query';
-import { cn } from '@/lib/utils';
 import { cloneSettingsStore } from '@/lib/store/clone-settings';
 import type { Profile } from '@/lib/api/types';
 import { CATEGORIES, PRESETS } from '@shared/utils/constants';
@@ -150,21 +141,6 @@ export function DesignPage() {
       setSaving(false);
     }
   };
-  const generationLabel = generation.isGenerating
-    ? t(
-        generation.stage === 'loading'
-          ? generation.modelStage
-            ? `synthesisState.${generation.modelStage}`
-            : 'synthesisState.loading'
-          : generation.stage === 'receiving'
-            ? 'synthesisState.receiving'
-            : generation.stage === 'preparing'
-              ? 'synthesisState.preparing'
-              : 'clone.generating_status',
-      )
-    : t('clone.synthesize');
-  const generationProgress =
-    generation.stage === 'loading' ? generation.modelProgress : generation.progress;
   const identityRecipe =
     Object.values(draft.attrs)
       .filter((value) => value && value !== 'Auto')
@@ -516,118 +492,22 @@ export function DesignPage() {
             />
           </div>
           <OutputPanel />
-          <div className="mx-auto w-full max-w-4xl shrink-0 px-6 pb-4">
-            {designBlocker === 'engine' && !generation.isGenerating && (
-              <div className="mb-3">
-                <EngineNotice operation="design" compact />
-              </div>
-            )}
-            {(designBlocker === 'design' || designBlocker === 'cloning') &&
-              !generation.isGenerating && (
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1 text-sm text-muted-foreground">
-                  <p role="status">
-                    {t(
-                      designBlocker === 'cloning'
-                        ? 'designWorkspace.engine_cannot_reuse_sample'
-                        : 'designWorkspace.engine_cannot_design',
-                      {
-                        engine: activeEngine?.display_name ?? '',
-                      },
-                    )}
-                  </p>
-                  <Link
-                    to="/settings/models/$family"
-                    params={{ family: 'tts' }}
-                    className={buttonVariants({ variant: 'ghost', size: 'xs' })}
-                  >
-                    {t('engineSidebar.tts')}
-                  </Link>
-                </div>
-              )}
-            {designBlocker === 'loading' && !generation.isGenerating && (
-              <p className="mb-3 px-1 text-sm text-muted-foreground" role="status">
-                {t('preferences.loading')}
-              </p>
-            )}
-            {generation.error && (
-              <PipelineFailure
-                className="mb-3"
-                fallback={generation.error}
-                onDismiss={generation.clearError}
-              />
-            )}
-            <div className="glass-panel relative grid min-h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 overflow-hidden rounded-xl border border-border/60 bg-muted/30 p-3 max-md:grid-cols-[1fr_auto]">
-              <div className="min-w-0 justify-self-start">
-                <div className="flex items-center gap-1">
-                  <EngineLanguagePicker operation="tts" />
-                  <QualityControls size="sm" disabled={generation.isGenerating} />
-                  <VoiceControls size="icon-sm" />
-                </div>
-              </div>
-              <span
-                role={generation.isGenerating ? 'status' : undefined}
-                className="min-w-24 text-center text-xs tabular-nums text-muted-foreground max-md:hidden"
-              >
-                {generation.isGenerating
-                  ? `${generationProgress == null ? '' : `${Math.round(generationProgress)}% · `}${generation.elapsedSeconds.toFixed(1)}s`
-                  : null}
-              </span>
-              <div className="flex w-64 justify-end gap-2 justify-self-end">
-                <Button
-                  className="h-10 w-52 shrink-0 overflow-hidden rounded-lg px-4"
-                  disabled={
-                    !draft.text.trim() ||
-                    // Free-form engines take the description itself, not its mapping.
-                    (!freeform && mapper.pending) ||
-                    generation.isGenerating ||
-                    designBlocker !== null
-                  }
-                  aria-busy={generation.isGenerating}
-                  aria-label={generationLabel}
-                  onClick={() =>
-                    void generation.generateDesign({
-                      text: draft.text,
-                      instruct: designInstruct(draft, generation.instructVocabulary),
-                      recipe: designRecipe(draft),
-                      seed: designRequestSeed(draft, activeProfile),
-                      profileId: activeProfile?.id ?? null,
-                    })
-                  }
-                >
-                  {generation.isGenerating ? (
-                    <LoaderCircleIcon className="animate-spin motion-reduce:animate-none" />
-                  ) : (
-                    <PlayIcon />
-                  )}
-                  <span className="truncate">{generationLabel}</span>
-                </Button>
-                <Button
-                  size="icon-lg"
-                  className={cn('size-10 shrink-0', !generation.isGenerating && 'invisible')}
-                  variant="outline"
-                  disabled={!generation.isGenerating}
-                  onClick={generation.cancel}
-                  aria-label={t('clone.cancel_generation')}
-                >
-                  <XIcon />
-                </Button>
-              </div>
-              {generation.isGenerating && (
-                <div className="absolute inset-x-0 bottom-0 h-0.5 overflow-hidden bg-muted">
-                  <div
-                    className={
-                      generationProgress == null
-                        ? 'h-full w-full animate-pulse bg-primary motion-reduce:animate-none'
-                        : 'h-full bg-primary transition-[width] duration-200'
-                    }
-                    style={
-                      generationProgress == null ? undefined : { width: `${generationProgress}%` }
-                    }
-                  />
-                </div>
-              )}
-            </div>
-          </div>
+          <DesignComposer
+            generation={generation}
+            blocker={designBlocker}
+            // Free-form engines take the description itself, not its mapping.
+            ready={Boolean(draft.text.trim()) && (freeform || !mapper.pending)}
+            engineName={activeEngine?.display_name ?? ''}
+            onSynthesize={() =>
+              void generation.generateDesign({
+                text: draft.text,
+                instruct: designInstruct(draft, generation.instructVocabulary),
+                recipe: designRecipe(draft),
+                seed: designRequestSeed(draft, activeProfile),
+                profileId: activeProfile?.id ?? null,
+              })
+            }
+          />
         </section>
         {editingProfile && (
           <WorkspacePane

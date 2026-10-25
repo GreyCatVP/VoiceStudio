@@ -2951,6 +2951,7 @@
     "latencyMs": "{{ms}} ms",
     "none_ready_title": "Synteza mowy nie jest gotowa",
     "none_ready_body": "VoiceStudio może automatycznie skonfigurować najlepszą zgodną opcję dla tego urządzenia.",
+    "set_up": "Skonfiguruj",
     "active": "Silnik: {{name}}",
     "none": "Brak aktywnego silnika",
     "localInstallRequired": "Zainstaluj ten silnik na komputerze zaplecza przez localhost lub zgodnie z instrukcją konfiguracji. Instalacja zdalna jest wyłączona.",

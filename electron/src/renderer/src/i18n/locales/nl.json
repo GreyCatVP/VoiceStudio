@@ -2947,6 +2947,7 @@
     "latencyMs": "{{ms}} ms",
     "none_ready_title": "Spraaksynthese is niet gereed",
     "none_ready_body": "VoiceStudio kan automatisch de beste compatibele optie voor dit apparaat instellen.",
+    "set_up": "Instellen",
     "active": "Engine: {{name}}",
     "none": "Geen engine actief",
     "localInstallRequired": "Installeer deze engine op de backendcomputer via localhost of de installatiehandleiding. Installatie op afstand is uitgeschakeld.",

@@ -2947,6 +2947,7 @@
     "latencyMs": "{{ms}} ms",
     "none_ready_title": "Talsyntesen är inte redo",
     "none_ready_body": "VoiceStudio kan automatiskt konfigurera det bästa kompatibla alternativet för den här enheten.",
+    "set_up": "Konfigurera",
     "active": "Motor: {{name}}",
     "none": "Ingen motor aktiv",
     "localInstallRequired": "Installera motorn på backenddatorn via localhost eller installationsguiden. Fjärrinstallation är avstängd.",

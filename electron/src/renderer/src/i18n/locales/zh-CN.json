@@ -2947,6 +2947,7 @@
     "latencyMs": "{{ms}} 毫秒",
     "none_ready_title": "语音合成尚未就绪",
     "none_ready_body": "VoiceStudio 可以自动为此设备设置最佳兼容选项。",
+    "set_up": "设置",
     "active": "引擎：{{name}}",
     "none": "没有启用的引擎",
     "localInstallRequired": "请在后端计算机上通过 localhost 或安装指南安装此引擎。远程安装已禁用。",

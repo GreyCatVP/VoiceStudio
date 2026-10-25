@@ -2947,6 +2947,7 @@
     "latencyMs": "{{ms}} ms",
     "none_ready_title": "Sprachausgabe ist nicht bereit",
     "none_ready_body": "VoiceStudio kann automatisch die beste kompatible Option für dieses Gerät einrichten.",
+    "set_up": "Einrichten",
     "active": "Engine: {{name}}",
     "none": "Keine Engine aktiv",
     "localInstallRequired": "Installiere diese Engine auf dem Backend-Rechner über localhost oder die Einrichtungsanleitung. Die Ferninstallation ist deaktiviert.",

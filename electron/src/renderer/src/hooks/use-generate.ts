@@ -67,7 +67,7 @@ export interface DesignGenerateInput {
  * `cloning`: a saved sample would be re-rendered, but the engine ignores
  * reference audio, so it would speak with a preset voice instead.
  */
-type DesignBlocker = 'engine' | 'loading' | 'design' | 'cloning' | null;
+export type DesignBlocker = 'engine' | 'loading' | 'design' | 'cloning' | null;
 
 /**
  * True when re-rendering this linked design profile clones its saved sample

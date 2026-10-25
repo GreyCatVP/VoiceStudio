@@ -2947,6 +2947,7 @@
     "latencyMs": "{{ms}} mili giây",
     "none_ready_title": "Tổng hợp giọng nói chưa sẵn sàng",
     "none_ready_body": "VoiceStudio có thể tự động thiết lập tùy chọn tương thích tốt nhất cho thiết bị này.",
+    "set_up": "Thiết lập",
     "active": "Bộ máy: {{name}}",
     "none": "Không có bộ máy đang hoạt động",
     "localInstallRequired": "Cài đặt công cụ này trên máy chủ qua localhost hoặc hướng dẫn thiết lập. Cài đặt từ xa đã bị tắt.",
