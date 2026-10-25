@@ -13,8 +13,12 @@ export async function inspectRuntimeInterpreter(
   imports: string,
   nativeImports: string,
   repairPackages: readonly string[],
-): Promise<{ existingPython: boolean; repairPackages: string[] }> {
+  // Names system libraries the native wheels link against but the host lacks;
+  // no wheel can supply those, so they must not trigger a reinstall (#3058).
+  diagnose: () => Promise<{ missingSystemLibraries: string[] }>,
+): Promise<{ existingPython: boolean; repairPackages: string[]; missingSystemLibraries: string[] }> {
   const repairs: string[] = [];
+  let missingSystemLibraries: string[] = [];
   try {
     await run(
       python,
@@ -39,7 +43,7 @@ export async function inspectRuntimeInterpreter(
         signal.throwIfAborted();
         repairs.push('sentencepiece');
       }
-      return { existingPython: true, repairPackages: repairs };
+      return { existingPython: true, repairPackages: repairs, missingSystemLibraries };
     }
     try {
       await run(python, ['-c', imports], project);
@@ -47,7 +51,11 @@ export async function inspectRuntimeInterpreter(
       try {
         await run(python, ['-c', nativeImports], project);
       } catch {
-        repairs.push(...repairPackages);
+        // A native wheel can be missing or ABI-broken while its dist-info still
+        // convinces uv sync it is installed: reinstall only then, never for a
+        // missing SYSTEM library that gigabytes of wheels cannot supply.
+        missingSystemLibraries = (await diagnose()).missingSystemLibraries;
+        if (!missingSystemLibraries.length) repairs.push(...repairPackages);
       }
       signal.throwIfAborted();
       try {
@@ -56,9 +64,9 @@ export async function inspectRuntimeInterpreter(
         repairs.push('sentencepiece');
       }
     }
-    return { existingPython: true, repairPackages: repairs };
+    return { existingPython: true, repairPackages: repairs, missingSystemLibraries };
   } catch {
     signal.throwIfAborted();
-    return { existingPython: false, repairPackages: repairs };
+    return { existingPython: false, repairPackages: repairs, missingSystemLibraries };
   }
 }

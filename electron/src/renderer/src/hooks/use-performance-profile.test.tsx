@@ -120,6 +120,9 @@ it('finishes saving before the clone draft mirror completes', async () => {
   ).resolves.toEqual(
     expect.objectContaining({ targets: { tts: { steps: 16, postprocess: true } } }),
   );
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
   expect(mocks.clone).toHaveBeenCalled();
 
   finishMirror?.();

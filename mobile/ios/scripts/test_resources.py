@@ -25,6 +25,14 @@ class BrandResources(unittest.TestCase):
     def tearDownClass(cls):
         cls.directory.cleanup()
 
+    def test_extension_plists_have_required_installer_metadata(self):
+        for name in ("VoiceStudioShare", "VoiceStudioWidget"):
+            info = plistlib.loads((resources.IOS / name / "Info.plist").read_bytes())
+            for key in ("CFBundleName", "CFBundleIdentifier", "CFBundleExecutable", "CFBundleVersion", "CFBundleShortVersionString"):
+                self.assertTrue(info.get(key), f"{name}: missing {key}")
+            self.assertEqual(info["CFBundlePackageType"], "XPC!")
+            self.assertTrue(info["NSExtension"]["NSExtensionPointIdentifier"])
+
     def test_icon_is_opaque_1024_and_registered(self):
         icon = resources.IOS / "VoiceStudio/Resources/Assets.xcassets/AppIcon.appiconset"
         self.assertFalse((self.assets / "AppIcon.appiconset").exists())
@@ -54,9 +62,16 @@ class BrandResources(unittest.TestCase):
             for index, channel in enumerate(["red", "green", "blue", "alpha"]):
                 self.assertAlmostEqual(float(actual[channel]), int(expected[2 * index:2 * index + 2], 16) / 255)
 
+    def test_info_plist_carries_full_root_version_for_content_reports(self):
+        info = plistlib.loads((self.root / "Info.plist").read_bytes())
+        version = json.loads((resources.ROOT / "package.json").read_text())["version"]
+        self.assertEqual(info["VoiceStudioAppVersion"], version)
+        self.assertEqual(info["CFBundleShortVersionString"], resources.marketing_version(version))
+
     def test_catalogue_bundles_names_and_phone_consent_note(self):
         catalogue = json.loads((self.root / "bundle/Catalogs/models.json").read_text())
         self.assertTrue(all(model["name"].strip() for model in catalogue["models"]))
+        self.assertEqual(json.loads((self.root / "bundle/Catalogs/design.json").read_text()), json.loads((resources.ROOT / "mobile/contract/design.json").read_text()))
         shared = json.loads((self.root / "bundle/Catalogs/strings.mobile.en.json").read_text())
         self.assertEqual(shared["mobile"]["consent"]["phone_note"], "Saved on this phone. Nothing is sent.")
 

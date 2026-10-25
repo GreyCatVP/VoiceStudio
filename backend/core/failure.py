@@ -87,6 +87,24 @@ class InvalidMediaFileError(ValueError):
         super().__init__(message)
 
 
+SOURCE_LANGUAGE_REQUIRED_MESSAGE = (
+    "Speech recognition did not report which language this video is spoken in, "
+    "so batch dubbing cannot translate it. Open the video in Dubbing and choose "
+    "its source language, or select a speech recognition model that detects the "
+    "language, then try again."
+)
+
+
+class SourceLanguageRequiredError(ValueError):
+    """ASR reported no language and nobody chose one, so there is nothing to translate from."""
+
+    code = "source_language_required"
+    docs_topic = "SOURCE_LANGUAGE_REQUIRED"
+
+    def __init__(self, message: str = SOURCE_LANGUAGE_REQUIRED_MESSAGE):
+        super().__init__(message)
+
+
 def is_no_audio_stream_stderr(text: "str | bytes | None") -> bool:
     """True when ffmpeg's stderr says the input had no audio stream to extract.
 
@@ -188,6 +206,10 @@ _HINTS: dict[str, str] = {
     # stream … Error opening output files: Invalid argument", which the dub
     # page showed verbatim and which read as a disk/permission problem.
     "NO_AUDIO_TRACK": "Check that the file plays with sound in a media player. If its audio is in a separate file, choose that file instead, or merge the audio into the video first.",
+    # The ASR engine (e.g. a whisper.cpp build without language metadata)
+    # reported no language. Batch has no source picker, so Dubbing is the place
+    # to choose one; guessing English would translate the wrong language.
+    "SOURCE_LANGUAGE_REQUIRED": "Open the video in Dubbing, choose its source language and translate there, or pick a speech recognition model in Model Catalogue that detects the spoken language.",
     "INVALID_MEDIA_FILE": "Check the source in a media player. If it cannot play, wait for the download or copy to finish, free disk space if needed, then download a fresh copy and upload it again.",
     # #2929/#2678: the voice has no transcript and no speech-to-text model is
     # installed to produce one, so the only advice that works is one of those two.
@@ -486,6 +508,8 @@ _TERMINAL_FAILURE_CLASSES = frozenset({
     "WINDOWS_APP_CONTROL_BLOCKED",
     # The same file has no audio on every retry.
     "NO_AUDIO_TRACK",
+    # The same transcript reports no language on every retry.
+    "SOURCE_LANGUAGE_REQUIRED",
     # A missing package or a missing transcript model does not appear between
     # two renders of the same request.
     "ENGINE_DEPENDENCY_MISSING",
@@ -591,7 +615,9 @@ def is_host_oom(error: BaseException | str) -> bool:
         if id(current) in seen:
             continue
         seen.add(id(current))
-        if type(current).__name__ == "MemoryError":
+        # isinstance, so a MemoryError subclass raised to explain itself (the
+        # reference-encode preflight, #3340) keeps the host-RAM remedy.
+        if isinstance(current, MemoryError):
             return True
         # OSError.winerror carries the number even when the text is localized.
         if getattr(current, "winerror", None) == 8:
@@ -660,6 +686,8 @@ def classify(reason: BaseException | str) -> str:
         return "NO_AUDIO_TRACK"
     if INVALID_MEDIA_FILE_MESSAGE.lower() in low:
         return "INVALID_MEDIA_FILE"
+    if SOURCE_LANGUAGE_REQUIRED_MESSAGE.lower() in low:
+        return "SOURCE_LANGUAGE_REQUIRED"
     if "pkg_resources" in low:
         return "PKG_RESOURCES_MISSING"
     if "quarantine" in low or "is damaged" in low or "gatekeeper" in low:
@@ -1173,13 +1201,18 @@ _INCOMPLETE_CACHE_PHRASES = (
     # Matched as two fragments: the file list between them varies with the
     # transformers version and the requested weight variant.
     ("error no file named", "found in directory"),
+    # A snapshot may have all its weights but lack the audio tokenizer's
+    # processor config (#2984). Require the missing-config wording too:
+    # an AutoFeatureExtractor import/compatibility failure is not repairable
+    # by downloading model files.
+    ("can't load feature extractor for", "directory containing a preprocessor_config.json file"),
 )
 
 
 def is_incomplete_cache_message(text: str) -> bool:
-    """True when *text* is transformers reporting a snapshot with no weights.
+    """True when transformers reports missing weights or feature-extractor config.
 
-    Takes an already-lowercased string. Shared by :func:`classify` and
+    Accepts text in any case. Shared by :func:`classify` and
     model_manager's cache self-heal so the healer and the error message can
     never disagree about what an interrupted download looks like.
     """

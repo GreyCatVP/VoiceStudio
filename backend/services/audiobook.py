@@ -361,6 +361,7 @@ def synthesize_chapter(
     trim_edges: bool = False,
     lexicon: Optional[dict] = None,
     segment_cache: Optional["object"] = None,
+    on_progress: Optional[Callable[..., None]] = None,
 ):
     """Render a chapter's spans to one waveform via an injected ``synth``.
 
@@ -377,6 +378,12 @@ def synthesize_chapter(
     moment it finishes — so a one-sentence edit re-renders one segment and an
     interrupted chapter resumes from its finished segments. Pauses are
     synthesized silence and never touch the cache.
+
+    ``on_progress(done, total, audio_s=..., cached=...)`` (when given) is called
+    after every synthesized chunk and every span served from the segment cache,
+    with ``done``/``total`` in characters of this chapter's spoken text and
+    ``audio_s`` the seconds of audio that step produced (#3417). It runs on the
+    rendering thread; a failing callback never breaks the render.
 
     Returns ``(audio_tensor, duration_seconds)``. torch + chunked_tts are
     imported lazily so this module stays import-light for the pure parser path.
@@ -420,7 +427,20 @@ def synthesize_chapter(
     # gets a distinct cache slot — and therefore a distinct take — instead of
     # replaying one WAV. Always computed (cheap); inert when the cache ignores it.
     occ_counts: dict = {}
+    progress_total = sum(len(p) for ps in paragraphs_by_span for p in ps)
+    progress_done = 0
+
+    def report(done: int, audio_s: float, cached: bool) -> None:
+        if on_progress is None:
+            return
+        try:
+            on_progress(min(done, progress_total), progress_total,
+                        audio_s=audio_s, cached=cached)
+        except Exception:  # noqa: BLE001 — progress is advisory
+            pass
+
     for span, paragraphs in zip(spans, paragraphs_by_span):
+        span_end = progress_done + sum(len(p) for p in paragraphs)
         if span.text:
             occ_key = (span.voice_id, span.text, getattr(span, "speed", None))
             occ = occ_counts.get(occ_key, 0)
@@ -438,8 +458,13 @@ def synthesize_chapter(
                     rendered = []
                     for c in chunks:
                         _stop_if_abandoned()
-                        rendered.append(trace_call("synthesis", synth, c, span.voice_id, span.speed))
+                        out = trace_call("synthesis", synth, c, span.voice_id, span.speed)
+                        rendered.append(out)
                         _note_chunk_done()
+                        progress_done = min(span_end, progress_done + len(c))
+                        shape = getattr(out, "shape", None)
+                        report(progress_done,
+                               (shape[-1] / float(sample_rate)) if shape else 0.0, False)
                     # Deliberately NOT pre-filtered (#1330). Dropping the empties
                     # here both hid them — a chapter would come back short with
                     # nothing said about it — and misaligned `rendered` from
@@ -454,6 +479,14 @@ def synthesize_chapter(
                     paragraph_gap_ms)
                 if audio is not None and segment_cache is not None:
                     trace_call("cache", segment_cache.store, span, audio, nonce=occ)
+                if span_end > progress_done:
+                    # Whitespace the splitter dropped: settle the span without
+                    # feeding a zero-length "chunk" into the rate.
+                    progress_done = span_end
+                    report(progress_done, 0.0, True)
+            elif span_end > progress_done:
+                progress_done = span_end
+                report(progress_done, 0.0, True)
             if audio is not None:
                 if pending_gap_ms > 0:
                     n = int(sample_rate * pending_gap_ms / 1000.0)
@@ -465,6 +498,7 @@ def synthesize_chapter(
                 # on that split (line gap if no paragraph gap is set), else the
                 # line gap. An explicit [pause] below replaces any of them.
                 pending_gap_ms = _gap_after_span(span, line_gap_ms, paragraph_gap_ms)
+        progress_done = span_end
         if span.pause_ms_after > 0:
             pending_gap_ms = 0
             n = int(sample_rate * span.pause_ms_after / 1000.0)

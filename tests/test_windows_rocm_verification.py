@@ -83,7 +83,8 @@ def test_lifetime_dll_handles_reused_and_non_windows_noop(monkeypatch, tmp_path)
     monkeypatch.setattr(runtime, "_DLL_HANDLES", {})
     calls = []
     handle = object()
-    monkeypatch.setattr(runtime.os, "add_dll_directory", lambda path: calls.append(path) or handle)
+    # Windows-only API: absent on the macOS/Linux runners that run this test.
+    monkeypatch.setattr(runtime.os, "add_dll_directory", lambda path: calls.append(path) or handle, raising=False)
     runtime.initialize_dll_search()
     runtime.initialize_dll_search()
     assert list(runtime._DLL_HANDLES.values()) == [handle]

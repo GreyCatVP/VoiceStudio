@@ -118,7 +118,7 @@ def test_only_stable_moves_the_stable_container_tags():
     )
     assert 'CHANNEL" = stable' in run and 'promote_stable="$PROMOTE"' in run
     docker = (WORKFLOWS / "docker.yml").read_text(encoding="utf-8")
-    assert docker.count('test "$PROMOTE_STABLE" != "true"') == 2, "both flavors must refuse"
+    assert docker.count('test "$PROMOTE_STABLE" != "true"') == 3, "every flavor must refuse"
     for line in docker.splitlines():
         if "pattern={{major}}.{{minor}}" in line or "value=stable" in line:
             assert "!contains(github.ref, '-')" in line, f"beta must not move: {line.strip()}"

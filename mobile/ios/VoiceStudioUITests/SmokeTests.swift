@@ -106,8 +106,14 @@ final class SmokeTests: XCTestCase {
         XCTAssertEqual(app.switches["settings.analytics"].value as? String, "1")
         app.terminate(); app.launch()
         XCTAssertTrue(app.buttons["consent.no"].waitForExistence(timeout: 10))
-        // Swipe the sheet down, as a person would.
-        app.staticTexts["consent.title"].swipeDown(velocity: .fast)
+        // Drag the sheet down, as a person would. A single fast swipe is sometimes not
+        // registered as a dismissal on the simulator, so drag from the sheet's top edge
+        // to the bottom of the screen and repeat if the sheet is still up.
+        for _ in 0..<3 where app.buttons["consent.no"].exists {
+            let top = app.staticTexts["consent.title"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0))
+            top.press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
+            _ = app.buttons["consent.no"].waitForNonExistence(timeout: 3)
+        }
         // The phone works on its own, so dismissing the sheet lands on Home (which sits behind the sheet).
         XCTAssertTrue(app.buttons["consent.no"].waitForNonExistence(timeout: 8))
         XCTAssertTrue(app.navigationBars["Home"].waitForExistence(timeout: 5))

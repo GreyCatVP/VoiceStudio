@@ -36,6 +36,15 @@ function renderSettings() {
   return client;
 }
 
+it('marks the HuggingFace token input with a placeholder', () => {
+  renderSettings();
+  const input = document.getElementById('hf-token-input') as HTMLInputElement;
+  expect(input.placeholder).toBe('hf_…');
+  expect(document.querySelector('label[for="hf-token-input"]')?.textContent).toBe(
+    'settings.hf_token_input',
+  );
+});
+
 it('stores DeepL and Microsoft credentials only after an explicit save', async () => {
   const client = renderSettings();
   const invalidate = vi.spyOn(client, 'invalidateQueries');
@@ -77,4 +86,28 @@ it('stores DeepL and Microsoft credentials only after an explicit save', async (
   expect(invalidate).toHaveBeenCalledWith({
     queryKey: ['translation-engines'],
   });
+});
+
+it('shows a valid and an invalid badge for tested tokens', async () => {
+  mock.api.mockImplementation((path: string) =>
+    Promise.resolve(
+      path === '/api/settings/hf-token/state'
+        ? {
+            active: 'app',
+            sources: [
+              { source: 'app', set: true, whoami_ok: true, whoami_user: 'ada' },
+              { source: 'env', set: true, whoami_ok: false },
+            ],
+          }
+        : { ok: true },
+    ),
+  );
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const view = render(
+    <QueryClientProvider client={client}>
+      <CredentialSettings />
+    </QueryClientProvider>,
+  );
+  await waitFor(() => expect(within(view.container).getByText('ada')).toBeTruthy());
+  expect(within(view.container).getByText('settings.hf_token_whoami_failed')).toBeTruthy();
 });

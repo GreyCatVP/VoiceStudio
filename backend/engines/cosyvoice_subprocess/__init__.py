@@ -40,6 +40,9 @@ class CosyVoiceSubprocessBackend(SubprocessBackend):
     display_name = "CosyVoice 3 (9 langs, zero-shot, instruct, Apache-2.0)"
     gpu_compat = ("cuda", "cpu")
     _DEFAULT_SAMPLE_RATE = 24_000
+    # The sidecar seeds its own torch RNG from the request (#3413): the
+    # parent's torch.manual_seed never reaches another process.
+    supports_generation_seed = True
 
     @classmethod
     def is_available(cls) -> tuple[bool, str]:

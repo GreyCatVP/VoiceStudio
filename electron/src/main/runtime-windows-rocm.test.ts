@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { expect, it } from 'vitest';
 import {
   installRuntime,
+  RUNTIME_NATIVE_IMPORT_PROBE,
   resolveTorchVariant,
   runtimePython,
   runtimeReady,
@@ -28,7 +29,9 @@ it.each(['fresh', 'healthy', 'broken'] as const)(
     if (state === 'broken') {
       run.mockImplementation(async (_command, args) => {
         if (args[0] === 'sync') await interpreter(project);
-        if (args[0] === '-c' && args[1]?.includes('import torch'))
+        // Only the native-wheel probe is broken; the import probe now names each
+        // module on its own line, so a substring match would hit verification too.
+        if (args[0] === '-c' && args[1] === RUNTIME_NATIVE_IMPORT_PROBE)
           throw Error('broken native wheel');
         return report;
       });
