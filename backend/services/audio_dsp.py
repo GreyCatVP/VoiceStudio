@@ -8,8 +8,9 @@ cinematic, warm); a hidden reverb here used to bake echo into every non-raw
 synthesis, which field reports flagged. `apply_effects_chain()` lets callers
 build custom pipelines from a list of named effects.
 
-All effects use Spotify's `pedalboard` library. When pedalboard isn't
-installed, every function degrades gracefully (returns audio unmodified).
+Filters, compression, gate and reverb use Spotify's `pedalboard` library; when
+it isn't installed those stages are skipped (audio returned unmodified). The
+leveler and the peak limiter are pure numpy (#3412), so they always run.
 """
 import logging
 import torch
@@ -22,10 +23,13 @@ EFFECT_PRESETS = {
     "broadcast": {
         "label": "Broadcast",
         "icon": "📻",
-        "description": "Radio/podcast standard — warm, compressed, clear.",
+        "description": "Radio/podcast standard — even volume, warm and clear.",
+        # Backs the Clone "Even out volume" toggle. A slow leveler evens out
+        # passages; the old 3:1 / 5 ms / 80 ms compressor here flattened
+        # peaks and lifted decay tails (#3412). The limiter only catches overs.
         "chain": [
             {"type": "highpass", "cutoff_hz": 80},
-            {"type": "compressor", "threshold_db": -18, "ratio": 3.0, "attack_ms": 5, "release_ms": 80},
+            {"type": "leveler", "target_db": -20.0, "window_ms": 400, "amount": 0.7, "max_gain_db": 8.0, "smooth_ms": 200},
             {"type": "eq", "low_gain_db": 1.5, "mid_gain_db": 0, "high_gain_db": 2.0},
             {"type": "limiter", "threshold_db": -1.0},
         ],
@@ -206,6 +210,147 @@ def trim_speech_padding(audio_tensor: torch.Tensor, sample_rate: int) -> torch.T
     end = min(audio_tensor.shape[-1], int(voiced[-1].item()) + 1 + margin)
     return audio_tensor[..., start:end]
 
+def level_speech(
+    audio_tensor: torch.Tensor,
+    sample_rate: int,
+    *,
+    target_db: float | None = None,
+    window_ms: float = 400.0,
+    amount: float = 0.7,
+    max_gain_db: float = 8.0,
+    smooth_ms: float = 200.0,
+) -> torch.Tensor:
+    """Even out phrase-to-phrase loudness without touching syllable dynamics.
+
+    A slow leveler, not a compressor (#3412): it measures short-term speech
+    loudness over ``window_ms`` and moves each passage ``amount`` of the way
+    toward the take's gated average, by at most ``max_gain_db``. The gain is
+    smoothed over ``smooth_ms`` in both directions, so it cannot follow single
+    syllables: transients and peaks keep their shape (no flattening) and the
+    gain never "breathes" between words (no pumping). Pauses, breaths and
+    decay tails hold the gain of the speech before them instead of being
+    boosted toward speech level, which is what made fast compression sound
+    padded and reverberant.
+
+    Level-independent (only relative levels matter) and pure numpy, so it
+    behaves the same with or without pedalboard. A silent clip is returned
+    unchanged.
+    """
+    if audio_tensor.numel() == 0:
+        return audio_tensor
+    import numpy as np
+
+    x = audio_tensor.detach().cpu().double().numpy()
+    n = x.shape[-1]
+    power = (x.reshape(-1, n) ** 2).mean(axis=0)
+    hop = max(1, int(sample_rate * 0.01))
+    frames = -(-n // hop)
+    padded = np.zeros(frames * hop)
+    padded[:n] = power
+    frame_power = padded.reshape(frames, hop).mean(axis=1)
+
+    win = max(1, round(window_ms / 10.0))
+    csum = np.concatenate(([0.0], np.cumsum(frame_power)))
+    lo = np.clip(np.arange(frames) - win // 2, 0, frames)
+    hi = np.clip(np.arange(frames) + win - win // 2, 0, frames)
+    short_term = (csum[hi] - csum[lo]) / np.maximum(hi - lo, 1)
+    level_db = 10.0 * np.log10(short_term + 1e-20)
+
+    # Gate like EBU R128: an absolute floor (the -50 dBFS silence floor shared
+    # with normalize_audio), then a relative gate below the speech average.
+    active = level_db > -50.0
+    if not active.any():
+        return audio_tensor
+    average_db = 10.0 * np.log10(short_term[active].mean())
+    active &= level_db > average_db - 20.0
+    speech_db = 10.0 * np.log10(short_term[active].mean())
+
+    gain_db = np.clip(amount * (speech_db - level_db), -max_gain_db, max_gain_db)
+    if target_db is not None:
+        gain_db += target_db - speech_db
+    # Hold the last speech gain across pauses (leading pauses take the first).
+    idx = np.where(active, np.arange(frames), -1)
+    idx = np.maximum.accumulate(idx)
+    idx[idx < 0] = int(np.argmax(active))
+    gain_db = gain_db[idx]
+
+    alpha = np.exp(-1.0 / max(1.0, smooth_ms / 10.0))
+    for order in (slice(None), slice(None, None, -1)):  # zero-phase smoothing
+        g = gain_db[order].copy()
+        for i in range(1, frames):
+            g[i] = alpha * g[i - 1] + (1.0 - alpha) * g[i]
+        gain_db[order] = g
+
+    centers = np.arange(frames) * hop + hop / 2.0
+    sample_gain = 10.0 ** (np.interp(np.arange(n), centers, gain_db) / 20.0)
+    out = x * sample_gain
+    return torch.from_numpy(out).to(dtype=audio_tensor.dtype, device=audio_tensor.device)
+
+
+def _sliding_min(values, radius: int):
+    """Minimum of ``values[i - radius : i + radius + 1]`` for every i, in O(n).
+
+    van Herk/Gil-Werman: block-wise prefix and suffix minima, so it stays
+    linear for long takes without SciPy.
+    """
+    import numpy as np
+
+    width = 2 * radius + 1
+    n = values.shape[0]
+    tail = (-(n + 2 * radius)) % width
+    padded = np.pad(values, (radius, radius + tail), constant_values=np.inf)
+    blocks = padded.reshape(-1, width)
+    prefix = np.minimum.accumulate(blocks, axis=1).ravel()
+    suffix = np.minimum.accumulate(blocks[:, ::-1], axis=1)[:, ::-1].ravel()
+    start = np.arange(n)
+    return np.minimum(suffix[start], prefix[start + width - 1])
+
+
+def peak_limit(
+    audio_tensor: torch.Tensor,
+    sample_rate: int,
+    *,
+    threshold_db: float = -1.0,
+    lookahead_ms: float = 5.0,
+    release_ms: float = 40.0,
+) -> torch.Tensor:
+    """Look-ahead peak limiter: a ceiling, nothing else (#3412).
+
+    pedalboard's ``Limiter`` (JUCE) is not a ceiling: it puts a fixed 4:1,
+    2 ms compressor at -10 dBFS in front of the brickwall and adds makeup
+    gain, so every speech peak between -10 and 0 dBFS was flattened. This one
+    leaves audio below ``threshold_db`` bit-identical and only dips the gain
+    around samples that would cross it, ramping over ``lookahead_ms`` before
+    and holding ``release_ms`` after so the dip is smooth and inaudible.
+    The ramp is a moving average of a sliding minimum whose window covers
+    every averaged point, so the output never exceeds the ceiling.
+    """
+    if audio_tensor.numel() == 0:
+        return audio_tensor
+    import numpy as np
+
+    x = audio_tensor.detach().cpu().double().numpy()
+    n = x.shape[-1]
+    peak = np.abs(x.reshape(-1, n)).max(axis=0)
+    ceiling = 10.0 ** (threshold_db / 20.0)
+    if not peak.max() > ceiling:
+        return audio_tensor
+    gain = np.minimum(1.0, ceiling / np.maximum(peak, 1e-12))
+    ramp = max(1, int(sample_rate * lookahead_ms / 1000.0))
+    hold = max(0, int(sample_rate * release_ms / 1000.0))
+    held = _sliding_min(gain, ramp + hold)
+    csum = np.concatenate(([0.0], np.cumsum(np.pad(held, ramp, mode="edge"))))
+    smooth = (csum[2 * ramp + 1:] - csum[:-(2 * ramp + 1)]) / (2 * ramp + 1)
+    out = x * np.minimum(smooth, gain)  # min() only absorbs float rounding
+    return torch.from_numpy(out).to(dtype=audio_tensor.dtype, device=audio_tensor.device)
+
+
+_NUMPY_STAGES = {
+    "leveler": (level_speech, ("target_db", "window_ms", "amount", "max_gain_db", "smooth_ms")),
+    "limiter": (peak_limit, ("threshold_db", "lookahead_ms", "release_ms")),
+}
+
+
 def apply_effects_chain(audio_tensor, sample_rate: int, chain: list[dict]) -> torch.Tensor:
     """Apply a chain of named effects to an audio tensor.
 
@@ -219,10 +364,31 @@ def apply_effects_chain(audio_tensor, sample_rate: int, chain: list[dict]) -> to
         reverb      — room_size, wet_level, dry_level
         noise_gate  — threshold_db, release_ms
         eq          — low_gain_db, mid_gain_db, high_gain_db
-        limiter     — threshold_db
+        limiter     — threshold_db, lookahead_ms, release_ms (see peak_limit)
+        leveler     — target_db, window_ms, amount, max_gain_db, smooth_ms
+                      (see level_speech)
     """
     if not chain:
         return audio_tensor
+
+    if any(str(fx.get("type", "")).lower() in _NUMPY_STAGES for fx in chain):
+        # Leveler and limiter are pure numpy, so run the chain in order:
+        # pedalboard segments between them go through this function again.
+        pending: list[dict] = []
+        for fx in chain:
+            t = str(fx.get("type", "")).lower()
+            if t not in _NUMPY_STAGES:
+                pending.append(fx)
+                continue
+            audio_tensor = apply_effects_chain(audio_tensor, sample_rate, pending)
+            pending = []
+            stage, names = _NUMPY_STAGES[t]
+            try:
+                audio_tensor = stage(audio_tensor, sample_rate,
+                                     **{k: fx[k] for k in names if k in fx})
+            except Exception as e:  # noqa: BLE001 — a DSP stage must never fail a take
+                logger.warning("%s failed: %s — skipped", t, e)
+        return apply_effects_chain(audio_tensor, sample_rate, pending)
 
     try:
         from pedalboard import (
@@ -232,7 +398,6 @@ def apply_effects_chain(audio_tensor, sample_rate: int, chain: list[dict]) -> to
             HighpassFilter,
             LowpassFilter,
             NoiseGate,
-            Limiter,
             LowShelfFilter,
             HighShelfFilter,
             PeakFilter,
@@ -268,8 +433,6 @@ def apply_effects_chain(audio_tensor, sample_rate: int, chain: list[dict]) -> to
                     threshold_db=fx.get("threshold_db", -40),
                     release_ms=fx.get("release_ms", 200),
                 ))
-            elif t == "limiter":
-                plugins.append(Limiter(threshold_db=fx.get("threshold_db", -1.0)))
             elif t == "eq":
                 low = fx.get("low_gain_db", 0)
                 mid = fx.get("mid_gain_db", 0)
