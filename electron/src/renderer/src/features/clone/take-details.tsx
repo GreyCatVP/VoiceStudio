@@ -199,17 +199,25 @@ export function TakeDetails({ item }: { item: HistoryItem }) {
           disabled={isGenerating}
         />
       )}
-      <div data-slot="take-actions" className="flex flex-wrap items-center gap-2">
+      {/* One row: the primary save, then the secondary actions as quiet icon buttons. */}
+      <div data-slot="take-actions" className="flex flex-wrap items-center gap-1.5">
         <SaveTakeProfile key={item.id + '-save'} item={item} />
         {item.audio_path && (
           <SaveAudioButton
             url={audioUrl(item.audio_path)}
             suggestedName={`voicestudio-${item.id}.wav`}
+            iconOnly
           />
         )}
-        <Button variant="ghost" size="sm" disabled={isGenerating} onClick={() => void reuse()}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={t('clone.history_reuse')}
+          title={t('clone.history_reuse')}
+          disabled={isGenerating}
+          onClick={() => void reuse()}
+        >
           <RepeatIcon />
-          {t('clone.history_reuse')}
         </Button>
       </div>
     </div>

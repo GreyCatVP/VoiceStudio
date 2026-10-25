@@ -55,6 +55,7 @@ export function SaveTakeProfile({ item }: { item: HistoryItem }) {
         <Button
           type="button"
           size="sm"
+          className={failed ? undefined : 'min-w-0 flex-1'}
           disabled={busy || !item.audio_path}
           onClick={() => void start()}
         >

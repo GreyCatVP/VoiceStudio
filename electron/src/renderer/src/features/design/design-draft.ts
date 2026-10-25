@@ -102,7 +102,13 @@ export function writeDraft(draft: DesignDraft) {
 export function replaceRecipe(current: DesignDraft, recipe: Partial<DesignDraft>): DesignDraft {
   // Only a saved voice links the draft; a preset, personality or demo starts
   // a new, unsaved design.
-  const next = { ...current, ...recipe, profileId: recipe.profileId ?? null, description: '', mapped: {} };
+  const next = {
+    ...current,
+    ...recipe,
+    profileId: recipe.profileId ?? null,
+    description: '',
+    mapped: {},
+  };
   return { ...next, picks: explicitDetails(next.attrs) };
 }
 

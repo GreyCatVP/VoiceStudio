@@ -124,63 +124,59 @@ export function SecondarySidebar({
   };
   const headerTabs = tabsInHeader && library != null;
   const tabList = (className: string) => (
-        <div
-          role="tablist"
-          aria-label={title}
-          data-slot="secondary-sidebar-tabs"
-          className={cn('flex min-w-0 shrink-0 gap-1', className)}
-          onKeyDown={(event) => {
-            if (event.altKey || event.ctrlKey || event.metaKey) return;
-            const tabs = [
-              ...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
-            ];
-            const current = tabs.findIndex((tab) => tab === event.target);
-            if (current < 0) return;
-            const forward =
-              getComputedStyle(event.currentTarget).direction === 'rtl'
-                ? 'ArrowLeft'
-                : 'ArrowRight';
-            const backward = forward === 'ArrowRight' ? 'ArrowLeft' : 'ArrowRight';
-            const next =
-              event.key === 'Home'
-                ? 0
-                : event.key === 'End'
-                  ? 1
-                  : event.key === forward || event.key === backward
-                    ? 1 - current
-                    : null;
-            if (next === null) return;
-            event.preventDefault();
-            chooseView(next === 0 ? 'controls' : 'library');
-            tabs[next]?.focus();
-          }}
+    <div
+      role="tablist"
+      aria-label={title}
+      data-slot="secondary-sidebar-tabs"
+      className={cn('flex min-w-0 shrink-0 gap-1', className)}
+      onKeyDown={(event) => {
+        if (event.altKey || event.ctrlKey || event.metaKey) return;
+        const tabs = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+        const current = tabs.findIndex((tab) => tab === event.target);
+        if (current < 0) return;
+        const forward =
+          getComputedStyle(event.currentTarget).direction === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
+        const backward = forward === 'ArrowRight' ? 'ArrowLeft' : 'ArrowRight';
+        const next =
+          event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? 1
+              : event.key === forward || event.key === backward
+                ? 1 - current
+                : null;
+        if (next === null) return;
+        event.preventDefault();
+        chooseView(next === 0 ? 'controls' : 'library');
+        tabs[next]?.focus();
+      }}
+    >
+      {(
+        [
+          ['controls', title],
+          ['library', libraryLabel ?? title],
+        ] as const
+      ).map(([value, label]) => (
+        <button
+          key={value}
+          type="button"
+          role="tab"
+          id={`${tabsId}-${value}`}
+          aria-controls={`${tabsId}-panel-${value}`}
+          aria-selected={view === value}
+          tabIndex={view === value ? 0 : -1}
+          onClick={() => chooseView(value)}
+          className={cn(
+            'h-7 min-w-0 flex-1 truncate rounded-md px-2 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring',
+            view === value
+              ? 'bg-accent/80 text-foreground'
+              : 'text-muted-foreground hover:bg-accent/45 hover:text-foreground',
+          )}
         >
-          {(
-            [
-              ['controls', title],
-              ['library', libraryLabel ?? title],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              id={`${tabsId}-${value}`}
-              aria-controls={`${tabsId}-panel-${value}`}
-              aria-selected={view === value}
-              tabIndex={view === value ? 0 : -1}
-              onClick={() => chooseView(value)}
-              className={cn(
-                'h-7 min-w-0 flex-1 truncate rounded-md px-2 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring',
-                view === value
-                  ? 'bg-accent/80 text-foreground'
-                  : 'text-muted-foreground hover:bg-accent/45 hover:text-foreground',
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+          {label}
+        </button>
+      ))}
+    </div>
   );
   const dimensions = WIDTHS[size];
   const resize = usePaneResize({
@@ -260,7 +256,10 @@ export function SecondarySidebar({
           </Button>
         )}
       </div>
-      {library != null && !collapsed && !headerTabs && tabList('border-b border-border/45 px-2.5 py-2')}
+      {library != null &&
+        !collapsed &&
+        !headerTabs &&
+        tabList('border-b border-border/45 px-2.5 py-2')}
       {library != null && (
         <div
           role="tabpanel"

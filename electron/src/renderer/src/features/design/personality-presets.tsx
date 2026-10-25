@@ -51,7 +51,10 @@ export const presetIcon = (id: string) => PRESET_ICONS[id] ?? SparklesIcon;
 export const STARTING_POINT_CHIP =
   'h-8 w-full min-w-0 justify-start gap-2 rounded-lg border border-border/35 bg-background/25 px-2.5 font-normal text-foreground/90 hover:border-border/60 hover:bg-accent/50 aria-pressed:border-primary/35 aria-pressed:bg-primary/10 aria-pressed:text-foreground [&>span]:truncate [&>svg]:text-muted-foreground aria-pressed:[&>svg]:text-primary';
 
-export function sameRecipe(current: Record<string, string>, recipe: Record<string, string>): boolean {
+export function sameRecipe(
+  current: Record<string, string>,
+  recipe: Record<string, string>,
+): boolean {
   return Object.entries(recipe).every(([category, value]) => current[category] === value);
 }
 
