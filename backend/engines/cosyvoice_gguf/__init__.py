@@ -5,6 +5,7 @@ from __future__ import annotations
 import atexit
 import logging
 import threading
+import urllib.error
 from pathlib import Path
 
 from services.tts_backend import TTSBackend, TTSInputError
@@ -126,10 +127,20 @@ class CosyVoiceGGUFBackend(TTSBackend):
             )
             try:
                 result = self._server.speak(payload)
-            except (TimeoutError, OSError):
-                self._server.stop()
+            except urllib.error.HTTPError as exc:
+                # The server answered: it is healthy, so keep it running.
                 raise RuntimeError(
-                    "CosyVoice GGUF generation timed out; its managed server was stopped."
+                    f"CosyVoice GGUF server rejected the request (HTTP {exc.code})."
+                ) from None
+            except (TimeoutError, OSError) as exc:
+                self._server.stop()
+                reason = getattr(exc, "reason", None)
+                if isinstance(exc, TimeoutError) or isinstance(reason, TimeoutError):
+                    raise RuntimeError(
+                        "CosyVoice GGUF generation timed out; its managed server was stopped."
+                    ) from None
+                raise RuntimeError(
+                    "CosyVoice GGUF server stopped responding; it was stopped and restarts on the next request."
                 ) from None
         sample_rate, waveform = decode_speech_response(result)
         if sample_rate != bootstrap.SAMPLE_RATE:

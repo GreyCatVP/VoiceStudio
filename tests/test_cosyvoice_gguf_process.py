@@ -16,13 +16,14 @@ def test_failed_prompt_conversion_cleans_temporary_output(tmp_path, monkeypatch)
     monkeypatch.setattr(
         prompt_cache.bootstrap, "resolve_cli", lambda: tmp_path / "cli.exe"
     )
-    monkeypatch.setattr(
-        prompt_cache.subprocess,
-        "run",
-        lambda *args, **kwargs: SimpleNamespace(
-            returncode=1, stderr="failed", stdout=""
-        ),
-    )
+    def failed_run(args, **kwargs):
+        # A crashing encoder can leave partial output behind; cleanup must remove it.
+        output = args[args.index("--prompt-speech-output") + 1]
+        with open(output, "wb") as handle:
+            handle.write(b"partial")
+        return SimpleNamespace(returncode=1, stderr="failed", stdout="")
+
+    monkeypatch.setattr(prompt_cache.subprocess, "run", failed_run)
     try:
         prompt_cache.cached_prompt(reference, "reference transcript")
     except RuntimeError as exc:

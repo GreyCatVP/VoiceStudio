@@ -41,7 +41,9 @@ Open **Settings → Models** and install **CosyVoice 3 0.5B Q4_K_M (native
 GGUF/Vulkan)**. The entry is pinned to an immutable model revision and installs
 the GGUF and two ONNX frontend assets. Generation never downloads a model or
 runtime. Existing local model files can instead be selected with
-`OMNIVOICE_COSYVOICE_GGUF_MODEL` and `OMNIVOICE_COSYVOICE_GGUF_FRONTEND`.
+`OMNIVOICE_COSYVOICE_GGUF_MODEL` and `OMNIVOICE_COSYVOICE_GGUF_FRONTEND`. A
+set override must point at real files: a missing model or frontend file is an
+error, never a silent fallback to the installed assets.
 
 The backend selector is `OMNIVOICE_COSYVOICE_GGUF_BACKEND`:
 
@@ -56,7 +58,14 @@ and confirm the engine details list `Vulkan0` with `AMD Radeon RX 6700 XT`.
 Voice prompts are cached locally by reference-audio content plus transcript;
 requests and profile changes are serialized so a render cannot use another
 voice's prompt. The server binds to loopback, uses a per-process API key, and is
-stopped when the engine unloads or a request times out.
+stopped when the engine unloads or stops responding; a request the server
+rejects (an HTTP error) is reported with its status and leaves it running.
+
+The pinned runtime accepts its API key only as a command-line argument, so
+other accounts on the same computer that can list process arguments can read
+it while the server runs. The key is regenerated on every launch and the port
+accepts loopback connections only; on a shared multi-user machine, prefer
+another engine.
 
 ## Model and runtime terms
 

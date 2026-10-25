@@ -61,6 +61,10 @@ class NativeServer:
             str(self.port),
             "--served-model-name",
             self.model_id,
+            # The pinned cosyvoice.cpp server reads its key only from argv (no
+            # env or file option at 67d45feb), so the key is a fresh per-launch
+            # secret on a loopback-only port, and every request also checks the
+            # random served-model name. See docs/engines/cosyvoice-gguf.md.
             "--api-key",
             self.api_key,
         ]

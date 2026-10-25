@@ -9,11 +9,13 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 
 from core.config import DATA_DIR
+from services.hf_revisions import revision_for
 
 ENGINE_ID = "cosyvoice-gguf"
 SOURCE_REVISION = "67d45feb2f654bbc66cca25bff78464b3ec08fa1"
 HF_MODEL_REPO = "Lourdle/Fun-CosyVoice3-0.5B-2512-GGUF"
-HF_MODEL_REVISION = "ab01740bbbfcc059fd748163787554f7c8977e64"
+# One pin for downloads, preflight and this engine: the central registry.
+HF_MODEL_REVISION = revision_for(HF_MODEL_REPO)
 MODEL_FILE = "CosyVoice3-2512_Q4_K_M.gguf"
 FRONTEND_FILES = (
     "frontend-onnx/campplus.int8.onnx",
@@ -71,9 +73,12 @@ def resolve_cli() -> Path:
 
 
 def resolve_model() -> Path:
-    direct = os.environ.get(MODEL_ENV)
-    if direct and Path(direct).is_file():
-        return Path(direct).resolve()
+    direct = os.environ.get(MODEL_ENV, "").strip()
+    if direct:
+        # An explicit choice never silently falls back to the pinned cache.
+        if Path(direct).is_file():
+            return Path(direct).resolve()
+        raise RuntimeError(f"{MODEL_ENV} points to a missing CosyVoice GGUF model file: {direct}")
     try:
         from huggingface_hub import snapshot_download
 
@@ -93,10 +98,15 @@ def resolve_model() -> Path:
 
 
 def frontend_dir() -> Path:
-    root = (
-        Path(os.environ.get(FRONTEND_ENV, "")) if os.environ.get(FRONTEND_ENV) else None
-    )
-    if root and all((root / item).is_file() for item in FRONTEND_FILES):
+    override = os.environ.get(FRONTEND_ENV, "").strip()
+    if override:
+        # An explicit choice never silently mixes with the pinned cache.
+        root = Path(override)
+        missing = [item for item in FRONTEND_FILES if not (root / item).is_file()]
+        if missing:
+            raise RuntimeError(
+                f"{FRONTEND_ENV} is missing CosyVoice GGUF frontend files: {', '.join(missing)}"
+            )
         return root
     try:
         from huggingface_hub import snapshot_download
@@ -138,13 +148,20 @@ def parse_backends(output: str) -> list[NativeBackend]:
 
 
 def probe_backends(cli: Path | None = None) -> list[NativeBackend]:
-    result = subprocess.run(
-        [str(cli or resolve_cli()), "--list-backends"],
-        capture_output=True,
-        text=True,
-        timeout=30,
-        check=True,
-    )
+    try:
+        result = subprocess.run(
+            [str(cli or resolve_cli()), "--list-backends"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=True,
+        )
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("CosyVoice GGUF backend probe timed out after 30 s") from None
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError(
+            f"CosyVoice GGUF backend probe failed (exit code {exc.returncode})"
+        ) from None
     devices = parse_backends(result.stdout + "\n" + result.stderr)
     if not devices:
         raise RuntimeError("Native CosyVoice runtime returned no usable backends")

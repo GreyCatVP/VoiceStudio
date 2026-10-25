@@ -6,6 +6,7 @@ import io
 from pathlib import Path
 
 import numpy as np
+import pytest
 import soundfile as sf
 from engines.cosyvoice_gguf import bootstrap
 from engines.cosyvoice_gguf.bootstrap import choose_backend, parse_backends
@@ -194,3 +195,93 @@ def test_backend_generate_uses_cached_reference_and_returns_engine_tensor(
     )
     assert tuple(waveform.shape) == (1, 3)
     assert backend.sample_rate == 24000
+
+
+
+def _backend_with_failing_server(tmp_path, monkeypatch, error):
+    import engines.cosyvoice_gguf as engine_module
+
+    reference = tmp_path / "reference.wav"
+    reference.write_bytes(b"reference")
+    stopped = []
+
+    class Server:
+        model_id = "test-model"
+
+        def ensure(self, *_):
+            pass
+
+        def speak(self, _payload):
+            raise error
+
+        def stop(self):
+            stopped.append(True)
+
+    monkeypatch.setattr(engine_module, "cached_prompt", lambda *_: tmp_path / "p.gguf")
+    monkeypatch.setattr(engine_module, "prompt_cache_key", lambda *_: "key")
+    backend = engine_module.CosyVoiceGGUFBackend()
+    backend._server = Server()
+    return backend, str(reference), stopped
+
+
+def test_http_error_keeps_healthy_server_and_names_the_status(tmp_path, monkeypatch):
+    import urllib.error
+
+    error = urllib.error.HTTPError("http://127.0.0.1/v1/audio/speech", 400, "bad", {}, None)
+    backend, reference, stopped = _backend_with_failing_server(tmp_path, monkeypatch, error)
+    with pytest.raises(RuntimeError, match="HTTP 400") as raised:
+        backend.generate("hello", ref_audio=reference, ref_text="hi", language="en")
+    assert "timed out" not in str(raised.value)
+    assert stopped == []
+
+
+@pytest.mark.parametrize(
+    ("error", "message"),
+    [
+        (TimeoutError("slow"), "timed out"),
+        (__import__("urllib.error").error.URLError(TimeoutError("slow")), "timed out"),
+        (ConnectionRefusedError("gone"), "stopped responding"),
+    ],
+)
+def test_transport_failures_stop_the_server_with_an_accurate_reason(
+    tmp_path, monkeypatch, error, message
+):
+    backend, reference, stopped = _backend_with_failing_server(tmp_path, monkeypatch, error)
+    with pytest.raises(RuntimeError, match=message):
+        backend.generate("hello", ref_audio=reference, ref_text="hi", language="en")
+    assert stopped == [True]
+
+
+def test_invalid_explicit_overrides_error_instead_of_using_the_cache(tmp_path, monkeypatch):
+    monkeypatch.setenv(bootstrap.MODEL_ENV, str(tmp_path / "missing.gguf"))
+    with pytest.raises(RuntimeError, match=bootstrap.MODEL_ENV):
+        bootstrap.resolve_model()
+    monkeypatch.setenv(bootstrap.FRONTEND_ENV, str(tmp_path))
+    with pytest.raises(RuntimeError, match="campplus"):
+        bootstrap.frontend_dir()
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        __import__("subprocess").TimeoutExpired(["cli"], 30),
+        __import__("subprocess").CalledProcessError(3, ["cli"]),
+    ],
+)
+def test_failed_backend_probe_reports_unavailable(tmp_path, monkeypatch, error):
+    import engines.cosyvoice_gguf as engine_module
+
+    def run(*_args, **_kwargs):
+        raise error
+
+    monkeypatch.setattr(bootstrap, "resolve_cli", lambda: tmp_path / "cli")
+    monkeypatch.setattr(bootstrap.subprocess, "run", run)
+    profile = engine_module.CosyVoiceGGUFBackend.runtime_compute_profile(None)
+    assert profile["routing_status"] == "unavailable"
+    assert "probe" in profile["routing_reason"]
+
+
+def test_model_revision_comes_from_the_central_pin():
+    from services.hf_revisions import revision_for
+
+    assert bootstrap.HF_MODEL_REVISION == revision_for(bootstrap.HF_MODEL_REPO)
