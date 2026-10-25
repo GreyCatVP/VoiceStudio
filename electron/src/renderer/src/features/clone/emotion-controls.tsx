@@ -27,6 +27,7 @@ const EMOTIONS = [
 ] as const;
 type EmotionMode = CloneSettings['emotionMode'];
 
+/** Clear all expressive direction without modifying voice or audio quality. */
 function resetEmotion() {
   patchCloneSettings({
     emotionMode: DEFAULT_CLONE_SETTINGS.emotionMode,

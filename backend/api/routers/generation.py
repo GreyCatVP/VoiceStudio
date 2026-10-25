@@ -1745,8 +1745,11 @@ def _parse_emotion_vector(raw: Optional[str]) -> Optional[list[float]]:
     if any(
         isinstance(item, bool)
         or not isinstance(item, (int, float))
+        # Compare integer bounds *before* converting to a float: a valid
+        # 400-digit JSON integer exceeds float's range and math.isfinite()
+        # would otherwise raise OverflowError (500 instead of HTTP 422).
+        or not 0 <= item <= 1
         or not math.isfinite(item)
-        or not 0.0 <= item <= 1.0
         for item in value
     ):
         raise HTTPException(
@@ -1806,6 +1809,12 @@ async def generate_speech(
     # (text-level chunking, no per-engine token streaming).
     stream: bool = Form(False),
 ):
+    """Generate a voice take through the selected TTS engine.
+
+    Validate engine-specific emotion conditioning before loading models,
+    resolve saved voice references, and send the same controls through
+    classic WAV and streaming generation.
+    """
     # #502: NFC-normalize the input text so decomposed (NFD) diacritics — common
     # in pasted Vietnamese and other Latin-with-marks text — are composed to the
     # single codepoints the tokenizer/model expect, instead of base-letter +
@@ -2340,9 +2349,11 @@ async def generate_speech(
                 _oom_friendly_reraise(e)
 
         async def _stream_events():
+            """Yield progress, marked audio chunks, and final generation metadata."""
             import json
 
             def _line(obj) -> bytes:
+                """Encode one streaming synthesis event as a compact NDJSON line."""
                 return (json.dumps(obj, separators=(",", ":")) + "\n").encode("utf-8")
 
             try:

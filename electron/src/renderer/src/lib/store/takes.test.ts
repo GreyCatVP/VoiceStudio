@@ -30,6 +30,10 @@ describe('take metadata', () => {
       language: 'French',
       instruct: '',
       selectedProfileId: 'voice',
+      emotionMode: 'none',
+      emotionText: '',
+      emotionAlpha: 0.6,
+      emotionVector: [0, 0, 0, 0, 0, 0, 0, 0],
     });
   });
   it.each([
@@ -44,6 +48,59 @@ describe('take metadata', () => {
       effectPreset,
       speed: 1.25,
       autoPlay: true,
+    });
+  });
+  it('reusing legacy take metadata clears emotion from an unrelated recording', async () => {
+    // Old takes only saved a handful of controls: absent emotion must mean Off.
+    localStorage.setItem(
+      'voicestudio.take-settings.v1',
+      JSON.stringify({
+        take: { speed: 1.25, steps: 24, selectedProfileId: 'different-voice' },
+      }),
+    );
+    patchCloneSettings({
+      emotionMode: 'vector',
+      emotionText: 'an unrelated angry line',
+      emotionAlpha: 0.3,
+      emotionVector: [0, 1, 0, 0, 0, 0, 0, 0],
+      autoPlay: true,
+    });
+    await reuseTake(item);
+    expect(cloneSettingsStore.state).toMatchObject({
+      speed: 1.25,
+      steps: 24,
+      selectedProfileId: 'voice',
+      emotionMode: 'none',
+      emotionText: '',
+      emotionAlpha: 0.6,
+      emotionVector: [0, 0, 0, 0, 0, 0, 0, 0],
+      autoPlay: true,
+    });
+  });
+  it('restores emotion from new takes but not malformed historical fields', async () => {
+    rememberTake('take', {
+      ...DEFAULT_CLONE_SETTINGS,
+      emotionMode: 'text',
+      emotionText: 'gentle and hopeful',
+      emotionAlpha: 0.25,
+      emotionVector: [0, 0, 0.5, 0, 0, 0, 0, 0],
+    });
+    expect(takeSettings(item)).toMatchObject({
+      emotionMode: 'text',
+      emotionText: 'gentle and hopeful',
+      emotionAlpha: 0.25,
+    });
+    const raw = JSON.parse(localStorage.getItem('voicestudio.take-settings.v1') || '{}');
+    raw.take.emotionMode = 'invalid';
+    raw.take.emotionText = 42;
+    raw.take.emotionAlpha = 999;
+    raw.take.emotionVector = [3];
+    localStorage.setItem('voicestudio.take-settings.v1', JSON.stringify(raw));
+    expect(takeSettings(item)).toMatchObject({
+      emotionMode: 'none',
+      emotionText: '',
+      emotionAlpha: 0.6,
+      emotionVector: [0, 0, 0, 0, 0, 0, 0, 0],
     });
   });
   it('restores every generation control the clone form stores', () => {

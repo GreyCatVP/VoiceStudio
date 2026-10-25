@@ -159,6 +159,11 @@ function announceResultNotices(result: GenerateResult): void {
   }
 }
 
+/** Drive a single synthesis lifecycle and forward per-take engine capabilities.
+ *
+ * Cloning may include IndexTTS2 text or vector emotion; unsupporting engines
+ * and the independent Voice Design workspace never inherit those controls.
+ */
 function useGenerateController(): UseGenerateClone {
   const queryClient = useQueryClient();
   const inputBlocker = useCloneInputsReadiness();
@@ -270,6 +275,7 @@ function useGenerateController(): UseGenerateClone {
     [],
   );
 
+  /** Synthesize a clone or designed take; only supported clone engines get emotion. */
   const generate = useCallback(
     async (design?: DesignGenerateInput) => {
       const settings = cloneSettingsStore.state;

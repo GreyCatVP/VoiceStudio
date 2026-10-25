@@ -19,6 +19,7 @@ os.environ.setdefault("OMNIVOICE_DISABLE_FILE_LOG", "1")
 
 @pytest.fixture()
 def client():
+    """Return a loopback HTTP client without loading speech models."""
     from fastapi.testclient import TestClient
     from main import app
 
@@ -27,6 +28,7 @@ def client():
 
 @pytest.fixture()
 def engine(monkeypatch):
+    """Register a fake emotion-capable backend and capture forwarded kwargs."""
     from services import tts_backend
 
     class EmotionEngine(tts_backend.TTSBackend):
@@ -39,17 +41,21 @@ def engine(monkeypatch):
 
         @classmethod
         def is_available(cls):
+            """Report a local stub that is immediately ready for generation."""
             return True, "ready"
 
         @property
         def sample_rate(self):
+            """Match the 24 kHz output of the test waveform."""
             return 24000
 
         @property
         def supported_languages(self):
+            """Permit synthetic multilingual requests without model downloads."""
             return ["multi"]
 
         def generate(self, text, **kw):
+            """Record emotion options and return a fixed test WAV tensor."""
             type(self).calls.append((text, kw))
             return torch.zeros(1, 2400)
 
@@ -59,6 +65,7 @@ def engine(monkeypatch):
 
 
 def test_text_emotion_reaches_cloned_speech_without_leaking_to_other_options(client, engine):
+    """Pass prose and intensity unchanged through classic synthesis."""
     res = client.post("/generate", data={
         "text": "I never forgot that day.",
         "engine": engine.id,
@@ -75,6 +82,7 @@ def test_text_emotion_reaches_cloned_speech_without_leaking_to_other_options(cli
 
 
 def test_eight_weights_reach_the_engine_as_numbers(client, engine):
+    """Serialize all eight numbers without adding text emotion fields."""
     weights = [0.8, 0, 0.1, 0, 0, 0.2, 0, 0]
     res = client.post("/generate", data={
         "text": "Expressive sentence", "engine": engine.id,
@@ -90,6 +98,9 @@ def test_eight_weights_reach_the_engine_as_numbers(client, engine):
     {"emo_vector": "[1,2]"},
     {"emo_vector": "[true,0,0,0,0,0,0,0]"},
     {"emo_vector": "[1.1,0,0,0,0,0,0,0]"},
+    # math.isfinite(10 ** 399) raises OverflowError unless bounds run first.
+    {"emo_vector": "[" + "9" * 400 + ",0,0,0,0,0,0,0]"},
+    {"emo_vector": "[-" + "9" * 400 + ",0,0,0,0,0,0,0]"},
     {"emo_vector": "[-0.1,0,0,0,0,0,0,0]"},
     {"emo_vector": '["a",0,0,0,0,0,0,0]'},
     {"emo_vector": "[NaN,0,0,0,0,0,0,0]"},
@@ -101,6 +112,7 @@ def test_eight_weights_reach_the_engine_as_numbers(client, engine):
     {"emo_text": "a" * 501},
 ])
 def test_bad_emotion_is_rejected_before_model_load(client, engine, payload):
+    """Reject malformed, conflicting or huge inputs before GPU inference."""
     res = client.post("/generate", data={
         "text": "Request rejected", "engine": engine.id, **payload,
     })
@@ -109,6 +121,7 @@ def test_bad_emotion_is_rejected_before_model_load(client, engine, payload):
 
 
 def test_unsupported_engine_refuses_emotion_instead_of_ignoring_it(client, engine, monkeypatch):
+    """Return HTTP 422 instead of silently losing the requested delivery."""
     from services import tts_backend
 
     class PlainEngine(engine):
@@ -127,6 +140,7 @@ def test_unsupported_engine_refuses_emotion_instead_of_ignoring_it(client, engin
 
 
 def test_omitting_emotion_keeps_the_original_backend_contract(client, engine):
+    """Keep neutral generation backwards compatible with legacy adapters."""
     res = client.post("/generate", data={"text": "Neutral", "engine": engine.id})
     assert res.status_code == 200
     kw = engine.calls[0][1]
@@ -135,6 +149,7 @@ def test_omitting_emotion_keeps_the_original_backend_contract(client, engine):
 
 @pytest.mark.parametrize("stream,chunked", [(True, False), (True, True), (False, False)])
 def test_emotion_reaches_every_generation_path(client, engine, stream, chunked):
+    """Carry emotion through single-shot, streamed and multi-chunk rendering."""
     text = (
         "First sentence is read. Second sentence follows. Third sentence ends."
         if chunked else "One short line."
@@ -157,6 +172,7 @@ def test_emotion_reaches_every_generation_path(client, engine, stream, chunked):
 
 
 def test_emotion_is_passed_when_cloning_a_saved_voice(client, engine):
+    """Apply per-take emotion while honoring the saved timbre reference."""
     from core.config import VOICES_DIR
     from core.db import db_conn
 

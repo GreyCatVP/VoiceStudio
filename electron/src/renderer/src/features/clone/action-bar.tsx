@@ -318,6 +318,7 @@ export function VoiceControls({ size = 'icon-lg' }: { size?: 'icon-sm' | 'icon-l
   );
 }
 
+/** Render the Voice Cloning composer including engine-aware emotion controls. */
 export function ActionBar() {
   const { t } = useTranslation();
   const demo = useCloneDemo();
