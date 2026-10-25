@@ -18,7 +18,7 @@ import logging
 import os
 import shutil
 import sys
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 logger = logging.getLogger("omnivoice.whisper_cpp.bootstrap")
 
@@ -127,7 +127,7 @@ def resolve_model(model_name: str | None = None) -> Path | None:
     direct = Path(target)
     if direct.is_file():
         return _model_path(direct)
-    if direct.is_absolute() or direct.parent != Path("."):
+    if "/" in target or "\\" in target or PureWindowsPath(target).drive:
         # An explicit path that is missing must not silently load a
         # same-named model from another cache; only bare names are searched.
         return None
