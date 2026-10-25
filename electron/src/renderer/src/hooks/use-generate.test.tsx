@@ -24,7 +24,10 @@ vi.mock('sonner', () => ({
   toast: { error: vi.fn(), info: vi.fn(), success: vi.fn(), warning: vi.fn() },
 }));
 vi.mock('./use-clone-readiness', () => ({ useCloneInputsReadiness: () => null }));
-vi.mock('./use-tts-readiness', () => ({ useTtsReadiness: () => null }));
+vi.mock('./use-tts-readiness', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./use-tts-readiness')>()),
+  useTtsReadiness: () => null,
+}));
 const engine = vi.hoisted(() => ({
   vocabulary: undefined as 'tags' | 'freeform' | undefined,
   design: undefined as boolean | null | undefined,

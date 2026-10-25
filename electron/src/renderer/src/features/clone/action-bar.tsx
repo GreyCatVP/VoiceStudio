@@ -1,7 +1,5 @@
 import { PipelineFailure } from '@/components/pipeline-failure';
 import { InstallSttButton } from './install-stt-button';
-import { openTake } from '@/lib/store/takes';
-import { setWorkspace } from '@/lib/store/workspace';
 import { Progress as ProgressPrimitive } from '@base-ui/react/progress';
 import {
   AudioLinesIcon,
@@ -23,7 +21,6 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useId, useState } from 'react';
-import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/popover';
@@ -44,6 +41,7 @@ import {
 import { cn } from '@/lib/utils';
 import { EngineLanguagePicker } from './engine-language-picker';
 import { PresetVoicePicker } from './preset-voice-picker';
+import { CloneReadinessNotice } from './clone-readiness-notice';
 import { QualityControls } from './quality-controls';
 import { CloneDemoAction } from './clone-demo';
 import { useCloneDemo } from '@/hooks/use-clone-demo';
@@ -138,10 +136,7 @@ function SliderRow({ spec, value }: SliderRowProps) {
   return (
     <div className="flex min-w-0 flex-col gap-2 px-1 py-2">
       <div className="flex items-center justify-between gap-2">
-        <span
-          id={labelId}
-          className="inline-flex items-center gap-1.5 text-xs font-medium"
-        >
+        <span id={labelId} className="inline-flex items-center gap-1.5 text-xs font-medium">
           <Icon className="size-3.5 text-muted-foreground" aria-hidden="true" />
           {t(spec.labelKey)}
         </span>
@@ -356,56 +351,7 @@ export function ActionBar() {
   return (
     <section className="@container/composer">
       {blocker && !isGenerating && (
-        <div
-          id={readinessId}
-          className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1 text-sm text-muted-foreground"
-        >
-          <span role="status">
-            {t(
-              blocker === 'cloning'
-                ? 'convert.cloning_required'
-                : blocker === 'engine'
-                ? demo
-                  ? 'demo.prerendered_chip'
-                  : 'engines.none_ready_title'
-                : blocker === 'reference'
-                  ? 'tts_errors.upload_or_select'
-                  : blocker === 'text'
-                    ? 'tts_errors.enter_text'
-                    : 'preferences.loading',
-            )}
-          </span>
-          {blocker === 'reference' && (
-            <div className="flex gap-1">
-              <Button
-                variant="ghost"
-                size="xs"
-                onClick={() => {
-                  openTake(null);
-                  setWorkspace({ panel: 'voice' });
-                }}
-              >
-                {t('clone.reference_audio')}
-              </Button>
-              <Button
-                variant="ghost"
-                size="xs"
-                onClick={() => setWorkspace({ libraryOpen: true, libraryTab: 'voices' })}
-              >
-                {t('clone.saved_profiles')}
-              </Button>
-            </div>
-          )}
-          {(blocker === 'engine' || blocker === 'cloning') && !demo && (
-            <Link
-              to="/settings/models/$family"
-              params={{ family: 'tts' }}
-              className={buttonVariants({ variant: 'ghost', size: 'xs' })}
-            >
-              {t('engineSidebar.tts')}
-            </Link>
-          )}
-        </div>
+        <CloneReadinessNotice id={readinessId} blocker={blocker} demo={demo} />
       )}
       {error && (
         <PipelineFailure

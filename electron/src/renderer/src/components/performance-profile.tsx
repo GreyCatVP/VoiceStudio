@@ -380,15 +380,15 @@ export function PerformanceProfile({
           disabled={disabled}
           onClick={() => void choose(autoOn ? (plan?.resolved ?? 'balanced') : 'auto')}
           className={cn(
-            'inline-flex h-6 shrink-0 items-center justify-center gap-1 rounded-full text-[11px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50',
-            popoverMode ? 'w-6' : 'px-2',
+            'inline-flex h-5 shrink-0 items-center justify-center gap-1 rounded-md text-[11px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50',
+            'px-1.5',
             autoOn
-              ? 'bg-primary/15 text-primary ring-1 ring-inset ring-primary/30'
-              : 'text-muted-foreground ring-1 ring-inset ring-border/60 hover:text-foreground',
+              ? 'bg-primary/12 text-primary'
+              : 'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground',
           )}
         >
           <WandSparklesIcon className="size-3" aria-hidden="true" />
-          {!popoverMode && t('performanceProfile.auto')}
+          {t('performanceProfile.auto')}
         </button>
       </div>
       <DirectionProvider direction={i18n.dir(i18n.language)}>
@@ -405,13 +405,22 @@ export function PerformanceProfile({
           className={cn('w-full min-w-0 px-1', disabled && 'opacity-50', autoOn && 'opacity-60')}
         >
           <Slider.Control className="relative flex h-6 w-full min-w-0 touch-none items-center select-none">
-            <Slider.Track className="relative h-1.5 w-full min-w-0 rounded-full bg-sidebar-accent">
-              <Slider.Indicator className="rounded-full bg-primary/70" />
+            <Slider.Track className="relative h-1 w-full min-w-0 rounded-full bg-sidebar-accent">
+              <Slider.Indicator className="rounded-full bg-primary" />
+              {/* One tick per tier, so the steps read without labels. */}
+              {tiers.map((tier, index) => (
+                <span
+                  key={tier}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute top-1/2 size-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-sidebar-foreground/30 rtl:translate-x-1/2"
+                  style={{ insetInlineStart: `${(index / Math.max(tiers.length - 1, 1)) * 100}%` }}
+                />
+              ))}
               <Slider.Thumb
                 aria-labelledby={groupId}
                 aria-describedby={groupId + '-help'}
                 getAriaValueText={(_formatted, value) => t('performanceProfile.' + tiers[value])}
-                className="size-4 rounded-full border border-border bg-foreground shadow-sm ring-ring/40 outline-none focus-within:ring-4"
+                className="size-3.5 rounded-full bg-primary shadow-[0_1px_4px_rgb(0_0_0/30%)] ring-2 ring-sidebar outline-none focus-within:ring-4 focus-within:ring-ring/40"
               />
             </Slider.Track>
           </Slider.Control>

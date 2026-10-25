@@ -1410,8 +1410,16 @@ def _get_clone_prompt(
                 # layer turns a device OOM into the actionable GPU_OOM message
                 # ("close other GPU-heavy apps or unload models…"), which is a far
                 # better answer than walking into a native fault.
-                from core.failure import is_gpu_oom
+                from core.failure import is_gpu_oom, is_host_oom
 
+                if not is_gpu_oom(e) and is_host_oom(e):
+                    # #3340: the same rule for system RAM. The inline path
+                    # repeats this encode on the same CPU, and a CPU-only
+                    # Windows host that ran out there died with an access
+                    # violation inside the DAC encoder rather than raising.
+                    # There are no allocator caches to drop on the host, so
+                    # surface the HOST_MEMORY_EXHAUSTED remedy now.
+                    raise
                 if is_gpu_oom(e):
                     logger.warning(
                         "voice-clone prompt precompute hit a device OOM (%s) — "
@@ -2236,6 +2244,11 @@ class KittenTTSBackend(TTSBackend):
         if self._model is not None:
             return
         from kittentts import KittenTTS
+        from utils.espeak_data import ensure_espeak_data_path
+        # #3367: espeak-ng exit(1)s the process when it cannot open its data
+        # directory; resolve a path it accepts (or raise) before phonemizer
+        # initializes it inside the constructor below.
+        ensure_espeak_data_path()
         checkpoint = os.environ.get(
             "OMNIVOICE_KITTENTTS_MODEL", "KittenML/kitten-tts-mini-0.8"
         )
@@ -2713,6 +2726,11 @@ class MLXAudioBackend(TTSBackend):
             return
         if self._curated_key() == "melotts":
             _ensure_melotts_text_frontend()
+        elif self._curated_key() == "kokoro":
+            # #3367: Kokoro's misaki G2P falls back to espeak-ng, which
+            # exit(1)s on an unreadable data path.
+            from utils.espeak_data import ensure_espeak_data_path
+            ensure_espeak_data_path()
         from mlx_audio.tts.utils import load_model
         _harden_mlx_audio_eos_ids()
         logger.info("Loading mlx-audio model %s", self._model_id)

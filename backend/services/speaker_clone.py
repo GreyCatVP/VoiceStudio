@@ -61,6 +61,7 @@ def extract_speaker_clones(
     out_dir: str,
     *,
     labels_source: str | None = None,
+    strict: bool = False,
 ) -> dict[str, dict]:
     """Build a per-speaker reference sample from `vocals_path` + `segments`.
 
@@ -92,6 +93,8 @@ def extract_speaker_clones(
         )
         return {}
     if not vocals_path or not os.path.exists(vocals_path):
+        if strict:
+            raise FileNotFoundError("Source audio for speaker references is missing")
         logger.info("speaker_clone: no vocals track at %s; skipping", vocals_path)
         return {}
     if not segments:
@@ -101,6 +104,8 @@ def extract_speaker_clones(
         audio, sr = sf.read(vocals_path, dtype="float32", always_2d=False)
     except Exception as e:
         logger.warning("speaker_clone: failed to read %s: %s", vocals_path, e)
+        if strict:
+            raise
         return {}
     if audio.ndim > 1:
         audio = audio.mean(axis=1)
@@ -138,6 +143,8 @@ def extract_speaker_clones(
             sf.write(ref_path, ref_audio_np, sr)
         except Exception as e:
             logger.warning("speaker_clone: failed to write %s: %s", ref_path, e)
+            if strict:
+                raise
             continue
 
         ref_text = " ".join((seg.get("text") or "").strip() for _, seg in chosen).strip()

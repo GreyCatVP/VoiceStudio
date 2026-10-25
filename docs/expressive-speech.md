@@ -65,7 +65,7 @@ for your engine below.
   dictionary. Not expression, but often what a "it says this weirdly" problem
   actually needs.
 
-Pronunciation dictionary matching uses Unicode case-insensitive literal matches. Each matched term uses its own respelling; distinct terms such as Straße and STRASSE can have different respellings. Longer terms win overlaps, and later equal-length case variants retain precedence.
+Pronunciation dictionary matching uses Unicode case-insensitive literal matches. Each matched term uses its own respelling; distinct terms such as Straße and STRASSE can have different respellings. Longer terms win overlaps, and later equal-length case variants retain precedence. Because that precedence follows entry order, reordering such variants re-renders cached longform chapters; reordering unrelated entries does not.
 
 ### Default engine (VoiceStudio)
 

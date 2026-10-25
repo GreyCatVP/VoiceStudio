@@ -34,7 +34,7 @@ import { cloneSettingsStore } from '@/lib/store/clone-settings';
 import { setLatestOutput } from '@/lib/store/output';
 import { referenceStore } from '@/lib/store/reference';
 import { beginAppActivity } from '@/lib/app-activity';
-import { useTtsReadiness } from './use-tts-readiness';
+import { isPresetOnly, useTtsReadiness } from './use-tts-readiness';
 import { useEngines } from './use-engines';
 import { recordActionBreadcrumb } from '@/lib/report-breadcrumb';
 import { announceDroppedSpeech } from '@/lib/dropped-speech';
@@ -172,6 +172,7 @@ function useGenerateController(): UseGenerateClone {
   const designBlocker: DesignBlocker =
     activeTts?.supports_voice_design === false ? 'design' : ttsBlocker;
   const cannotClone = activeTts?.supports_cloning === false;
+  const presetOnly = isPresetOnly(activeTts);
   const designBlockerFor = useCallback(
     (profile: Profile | null | undefined): DesignBlocker => {
       if (!clonesSavedSample(profile)) return designBlocker;
@@ -337,9 +338,15 @@ function useGenerateController(): UseGenerateClone {
           text: design?.text ?? settings.text,
           seed: design?.seed,
           language: design?.language ?? settings.language,
-          profileId: design ? (design.profileId ?? null) : settings.selectedProfileId,
-          refAudio: design || settings.selectedProfileId ? null : reference.file,
-          refText: design ? undefined : settings.refText,
+          // A preset-only engine renders its preset voice; sending the saved
+          // voice or clip would be refused (it cannot clone).
+          profileId: design
+            ? (design.profileId ?? null)
+            : presetOnly
+              ? null
+              : settings.selectedProfileId,
+          refAudio: design || settings.selectedProfileId || presetOnly ? null : reference.file,
+          refText: design || presetOnly ? undefined : settings.refText,
           instruct,
           instructVocabulary,
           designRecipe: design?.recipe,
@@ -407,7 +414,7 @@ function useGenerateController(): UseGenerateClone {
           .catch(() => {});
       }
     },
-    [queryClient, onProgress, blocker, designBlockerFor, instructVocabulary, activeTts],
+    [queryClient, onProgress, blocker, designBlockerFor, instructVocabulary, activeTts, presetOnly],
   );
 
   const cancel = useCallback(() => {

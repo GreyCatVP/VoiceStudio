@@ -5,7 +5,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.*
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
@@ -20,7 +20,7 @@ internal fun atomicText(file: File, text: String) {
 }
 /** [modelRepo]/[modelRevision] name the model that made the voice, for reports; older voices have none. */
 @Serializable data class PhoneVoice(val id: String, val name: String, val transcript: String, val createdAt: Long, val consentAt: Long, val sampleRate: Int = 24000,
-    val modelRepo: String? = null, val modelRevision: String? = null)
+    val modelRepo: String? = null, val modelRevision: String? = null, val designInstruction: String? = null, val designSeed: Long? = null,val sourceAttribution: Map<String,String>?=null)
 /** One atomic metadata publication after ASR + reference writes. No user paths. */
 class PhoneVoiceStore(private val root: File) {
     private val mutex=Mutex()
@@ -28,6 +28,17 @@ class PhoneVoiceStore(private val root: File) {
         require(runCatching {UUID.fromString(id).toString()==id}.getOrDefault(false))
         return File(root,id)
     }
+    internal fun handoffFiles(voice: PhoneVoice): Map<String,File> = listOf("reference.pcm","reference.wav","preview.wav").mapNotNull {name->File(directory(voice.id),name).takeIf {it.isFile}?.let {name to it}}.toMap()
+    internal suspend fun installHandoff(name: String,transcript: String,reference: LocalAudio,metadata: JsonObject,synthetic: Boolean,consent: Boolean): PhoneVoice=withContext(Dispatchers.IO) {mutex.withLock {
+        require(consent&&name.isNotBlank()&&name.length<=200&&transcript.isNotBlank()&&transcript.length<=4000&&reference.sampleRate==24000&&reference.samples.size in 2400..720000&&reference.samples.all {it.isFinite()})
+        val id=UUID.randomUUID().toString();val dir=directory(id).apply {mkdirs()}
+        try {
+            writePcm(reference,File(dir,"reference.pcm"));if(synthetic) markSynthetic(reference,File(dir,"reference.wav")) else writeReferenceWave(reference,File(dir,"reference.wav"))
+            val attribution=(metadata["sourceAttribution"] as? JsonObject)?.mapNotNull {(key,value)->(value as? JsonPrimitive)?.takeIf {it.isString&&it.content.length<=2000&&key in setOf("source","id","name","author","license","language","url")}?.content?.let {key to it}}?.toMap()?.takeIf {it.isNotEmpty()}
+            val now=System.currentTimeMillis();val voice=PhoneVoice(id,name,transcript,now,now,modelRepo=metadata["modelRepo"]?.jsonPrimitive?.contentOrNull,modelRevision=metadata["modelRevision"]?.jsonPrimitive?.contentOrNull,designInstruction=if(metadata["kind"]?.jsonPrimitive?.contentOrNull=="design") metadata["instruct"]?.jsonPrimitive?.contentOrNull else null,designSeed=metadata["phone_design_seed"]?.jsonPrimitive?.contentOrNull?.toLongOrNull(),sourceAttribution=attribution)
+            currentCoroutineContext().ensureActive();atomicText(File(dir,"voice.json"),LocalJson.encodeToString(PhoneVoice.serializer(),voice));voice
+        } catch(e:Throwable) {dir.deleteRecursively();throw e}
+    }}
     suspend fun list(): List<PhoneVoice> = withContext(Dispatchers.IO) {mutex.withLock {
         root.listFiles().orEmpty().filter {it.isDirectory&&!it.name.startsWith('.')}.mapNotNull {dir ->
             val metadata=File(dir,"voice.json")
@@ -41,24 +52,38 @@ class PhoneVoiceStore(private val root: File) {
             } catch(e:CancellationException) {throw e} catch(_:Exception) {null}
         }.sortedByDescending {it.createdAt}
     }}
-    suspend fun create(name: String, source: File, consent: Boolean, asr: PhoneModel, engine: LocalEngine,
+    suspend fun create(name: String, source: File, consent: Boolean, asr: PhoneModel, cloneModel: PhoneModel, engine: LocalEngine,
         decoder: AudioDecoder = AndroidAudioDecoder(), progress: (Float)->Unit = {}): PhoneVoice = withContext(Dispatchers.IO) {
-        require(consent&&name.trim().isNotEmpty()&&name.length<=200)
+        require(consent&&asr.capability=="asr"&&cloneModel.capability=="clone"&&name.trim().isNotEmpty()&&name.length<=200)
         val id=UUID.randomUUID().toString()
         val dir=directory(id).apply {mkdirs()}
         try {
             val audio=decoder.decode(source,File(dir,"reference.pcm"),30) {progress(it*.25f)}
-            val transcript=engine.transcribe(asr,audio.read(0,audio.frames.toInt())) {progress(.25f+it*.7f)}.trim()
+            val transcript=engine.transcribe(asr,audio.read(0,audio.frames.toInt())) {progress(.25f+it*.25f)}.trim()
             if(transcript.isEmpty()) throw ClientFailure("mobile.simple.no_speech")
             writeReferenceWave(audio.read(0,audio.frames.toInt()),File(dir,"reference.wav"))
+            val preview=engine.clone(cloneModel,transcript,audio.read(0,audio.frames.toInt()),transcript) {progress(.5f+it*.5f)}
+            require(preview.sampleRate>0&&preview.samples.isNotEmpty()&&preview.samples.all {it.isFinite()})
+            markSynthetic(preview,File(dir,"preview.wav"))
             currentCoroutineContext().ensureActive()
             val now=System.currentTimeMillis()
-            val voice=PhoneVoice(id,name.trim(),transcript,now,now,modelRepo=asr.repo,modelRevision=asr.revision)
+            val voice=PhoneVoice(id,name.trim(),transcript,now,now,modelRepo=cloneModel.repo,modelRevision=cloneModel.revision)
             mutex.withLock {atomicText(File(dir,"voice.json"),LocalJson.encodeToString(PhoneVoice.serializer(),voice))}
             progress(1f);voice
         } catch(e:Throwable) {dir.deleteRecursively();throw e}
     }
-    fun preview(voice: PhoneVoice): File = File(directory(voice.id),"reference.wav")
+    suspend fun saveDesign(name: String,text: String,audio: LocalAudio,model: PhoneModel,instruction: String,seed: Long): PhoneVoice = withContext(Dispatchers.IO) {mutex.withLock {
+        require(name.isNotBlank()&&name.length<=200&&text.isNotBlank()&&audio.sampleRate==24000&&audio.samples.size in 2400..720000&&audio.samples.all {it.isFinite()}&&seed>=0)
+        val id=UUID.randomUUID().toString();val dir=directory(id).apply {mkdirs()}
+        try {
+            writePcm(audio,File(dir,"reference.pcm"));markSynthetic(audio,File(dir,"reference.wav"))
+            currentCoroutineContext().ensureActive()
+            val now=System.currentTimeMillis()
+            val voice=PhoneVoice(id,name.trim(),text,now,now,modelRepo=model.repo,modelRevision=model.revision,designInstruction=instruction,designSeed=seed)
+            atomicText(File(dir,"voice.json"),LocalJson.encodeToString(PhoneVoice.serializer(),voice));voice
+        } catch(e:Throwable) {dir.deleteRecursively();throw e}
+    }}
+    fun preview(voice: PhoneVoice): File = File(directory(voice.id),"preview.wav").takeIf {it.isFile} ?: File(directory(voice.id),"reference.wav")
     suspend fun reference(voice: PhoneVoice): LocalAudio = withContext(Dispatchers.IO) {mutex.withLock {
         val audio=PcmFile(File(directory(voice.id),"reference.pcm"),voice.sampleRate)
         require(audio.frames in 2400..720000);audio.read(0,audio.frames.toInt())

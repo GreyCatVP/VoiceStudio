@@ -591,7 +591,9 @@ def is_host_oom(error: BaseException | str) -> bool:
         if id(current) in seen:
             continue
         seen.add(id(current))
-        if type(current).__name__ == "MemoryError":
+        # isinstance, so a MemoryError subclass raised to explain itself (the
+        # reference-encode preflight, #3340) keeps the host-RAM remedy.
+        if isinstance(current, MemoryError):
             return True
         # OSError.winerror carries the number even when the text is localized.
         if getattr(current, "winerror", None) == 8:
@@ -1173,13 +1175,18 @@ _INCOMPLETE_CACHE_PHRASES = (
     # Matched as two fragments: the file list between them varies with the
     # transformers version and the requested weight variant.
     ("error no file named", "found in directory"),
+    # A snapshot may have all its weights but lack the audio tokenizer's
+    # processor config (#2984). Require the missing-config wording too:
+    # an AutoFeatureExtractor import/compatibility failure is not repairable
+    # by downloading model files.
+    ("can't load feature extractor for", "directory containing a preprocessor_config.json file"),
 )
 
 
 def is_incomplete_cache_message(text: str) -> bool:
-    """True when *text* is transformers reporting a snapshot with no weights.
+    """True when transformers reports missing weights or feature-extractor config.
 
-    Takes an already-lowercased string. Shared by :func:`classify` and
+    Accepts text in any case. Shared by :func:`classify` and
     model_manager's cache self-heal so the healer and the error message can
     never disagree about what an interrupted download looks like.
     """

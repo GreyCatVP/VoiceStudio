@@ -461,7 +461,13 @@ def _expand_abbreviations(text: str, lang: str) -> str:
     pattern, lookup = entry
 
     def _repl(m: re.Match) -> str:
-        return lookup.get(m.group(0), m.group(0))
+        expansion = lookup.get(m.group(0), m.group(0))
+        # "No.5" / "Nr.5": the digit guard admits a number glued to the
+        # abbreviation, and the expansion must not be glued to it in turn
+        # ("number5" is a word the number pass leaves alone).
+        if expansion != m.group(0) and m.string[m.end():m.end() + 1].isdigit():
+            expansion += " "
+        return expansion
 
     return pattern.sub(_repl, text)
 
@@ -492,6 +498,27 @@ _DECIMAL_RE = re.compile(
 _INTEGER_RE = re.compile(
     r"(?<![\w.,:/$%-])(?!0\d)(\d{1,6})(?![\w:/%-])(?![.,]\d)"
 )
+
+# Day-of-month ordinals in the locales that mark ordinals with a period
+# ("am 3. Mai", "den 17. mai", "3. května"). The spoken form inflects with the
+# phrase, so the day is left as written before a month name; the integer rule
+# used to speak the cardinal and leave the period behind ("drei. Mai").
+_DATE_MONTHS = {
+    "de": r"Jan(?:uar|\.)|Jänner|Feb(?:ruar|\.)|März|Mär\.|Mrz\.|Apr(?:il|\.)|Mai|Jun(?:i|\.)"
+          r"|Jul(?:i|\.)|Aug(?:ust|\.)|Sep(?:tember|t\.|\.)|Okt(?:ober|\.)|Nov(?:ember|\.)"
+          r"|Dez(?:ember|\.)",
+    "da": r"januar|februar|marts|april|maj|juni|juli|august|september|oktober|november|december",
+    "no": r"januar|februar|mars|april|mai|juni|juli|august|september|oktober|november|desember",
+    "fi": r"(?:tammi|helmi|maalis|huhti|touko|kesä|heinä|elo|syys|loka|marras|joulu)kuu\w*",
+    "cs": r"led(?:en|na)|únor[a]?|břez(?:en|na)|dub(?:en|na)|květ(?:en|na)|červ(?:en|na|enec|ence)"
+          r"|srp(?:en|na)|září|říj(?:en|na)|listopad[u]?|prosin(?:ec|ce)",
+    "pl": r"stycz(?:eń|nia)|lut(?:y|ego)|mar(?:zec|ca)|kwie(?:cień|tnia)|maj[a]?|czerw(?:iec|ca)"
+          r"|lip(?:iec|ca)|sierp(?:ień|nia)|wrze(?:sień|śnia)|październik[a]?|listopad[a]?|grud(?:zień|nia)",
+}
+_DATE_MONTH_RE = {
+    code: re.compile(r"\.\s+(?:" + months + r")(?![^\W_])", re.IGNORECASE)
+    for code, months in _DATE_MONTHS.items()
+}
 
 _ORDINAL_SUFFIX = {1: "st", 2: "nd", 3: "rd"}
 
@@ -559,11 +586,19 @@ def _numbers_to_words(text: str, lang: str) -> str:
 
         def _currency(m: re.Match) -> str:
             dollars = int(m.group(1))
-            if m.group(2) is not None:
-                amount = float(f"{m.group(1)}.{m.group(2)}")
-                return num2words(amount, lang="en", to="currency", currency="USD")
             unit = "dollar" if dollars == 1 else "dollars"
-            return f"{num2words(dollars, lang='en')} {unit}"
+            spoken = f"{num2words(dollars, lang='en')} {unit}"
+            if m.group(2) is None:
+                return spoken
+            cents = int(m.group(2))
+            # "$0.50" is "fifty cents" and "$5.00" is "five dollars": the
+            # zero part is not spoken ("zero dollars, fifty cents").
+            if cents == 0:
+                return spoken
+            if dollars == 0:
+                return f"{num2words(cents, lang='en')} {'cent' if cents == 1 else 'cents'}"
+            amount = float(f"{m.group(1)}.{m.group(2)}")
+            return num2words(amount, lang="en", to="currency", currency="USD")
 
         text = _CURRENCY_RE.sub(lambda m: _safe(m, _currency), text)
 
@@ -584,17 +619,37 @@ def _numbers_to_words(text: str, lang: str) -> str:
 
     if lang in _DECIMAL_LANGS:
         def _decimal(m: re.Match) -> str:
-            if _thousands_group(lang, m.group(2)):
+            whole, fraction = m.group(1), m.group(2)
+            if _thousands_group(lang, fraction):
                 return m.group(0)
-            return num2words(float(f"{m.group(1)}.{m.group(2)}"), lang=lang)
+            spoken = num2words(float(f"{whole}.{fraction}"), lang=lang)
+            # A float has no trailing zeros: "3.0" read as "three" and "2.50"
+            # as "two point five". Speak the zeros that were written.
+            # Unicode digits (fullwidth, Arabic-Indic) count as zeros too.
+            ascii_fraction = "".join(str(unicodedata.digit(c, 0)) for c in fraction)
+            zeros = len(ascii_fraction) - len(ascii_fraction.rstrip("0"))
+            if zeros:
+                from num2words import CONVERTER_CLASSES
+                point = getattr(CONVERTER_CLASSES.get(lang), "pointword", None)
+                if not isinstance(point, str):
+                    return spoken
+                zero = num2words(0, lang=lang)
+                if zeros == len(ascii_fraction):
+                    spoken = f"{num2words(int(whole), lang=lang)} {point}"
+                spoken += f" {zero}" * zeros
+            return spoken
 
         text = _DECIMAL_RE.sub(lambda m: _safe(m, _decimal), text)
+
+    month_re = _DATE_MONTH_RE.get(lang)
 
     def _integer(m: re.Match) -> str:
         raw = m.group(1)
         if _leading_zero(raw):
             return m.group(0)
         n = int(raw)
+        if month_re and 1 <= n <= 31 and month_re.match(text, m.end()):
+            return m.group(0)
         if len(raw) == 4 and 1500 <= n <= 2099:
             # Bare 4-digit numbers in this range read as years
             # ("nineteen eighty-four"); fall back to cardinal where the

@@ -45,7 +45,7 @@ export function StorySpeed({
         value={draft.globalSpeed}
         onChange={(e) => onChange({ globalSpeed: Number(e.target.value) })}
       />
-      <p className="text-xs text-muted-foreground">{t('stories.global_speed_hint')}</p>
+      <p className="text-xs text-muted-foreground">{t('stories.speedHint')}</p>
       {overrides > 0 && (
         <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
           <span>{t('stories.global_speed_overrides', { count: overrides })}</span>

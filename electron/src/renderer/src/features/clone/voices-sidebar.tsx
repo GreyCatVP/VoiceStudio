@@ -1,5 +1,6 @@
 import { useNavigate } from '@tanstack/react-router';
 import { AudioPreviewButton } from '@/components/audio-preview-button';
+import { PlayInDockButton } from '@/components/now-playing-dock';
 import { ProfileAvatar } from '@/components/profile-avatar';
 import { setWorkspace } from '@/lib/store/workspace';
 import { openTake, reuseTake, useSelectedTake } from '@/lib/store/takes';
@@ -14,6 +15,7 @@ import {
   StarIcon,
   Trash2Icon,
   WandSparklesIcon,
+  UsersRoundIcon,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -452,7 +454,12 @@ function TakeRow({ item, onStar, onReuse, onDelete }: TakeRowProps) {
       </button>
       <div className="pointer-events-none absolute right-1 z-10 flex items-center gap-0.5 rounded-md bg-sidebar bg-[linear-gradient(var(--sidebar-accent),var(--sidebar-accent))] p-0.5 opacity-0 shadow-sm ring-1 ring-sidebar-border/50 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
         {item.audio_path && (
-          <AudioPreviewButton src={audioUrl(item.audio_path)} source={'take-' + item.id} />
+          <PlayInDockButton
+            src={audioUrl(item.audio_path)}
+            source={'take-' + item.id}
+            title={displayTitle(item.text)}
+            subtitle={workspaceLabel}
+          />
         )}
         <Button
           variant="ghost"
@@ -679,7 +686,8 @@ export function VoicesSidebar({
               aria-label={t('clone.saved_profiles')}
               className="min-w-0 flex-1 rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent/50 data-active:bg-[var(--sidebar-row-active)] data-active:text-sidebar-foreground dark:data-active:border-transparent dark:data-active:bg-[var(--sidebar-row-active)] dark:data-active:text-sidebar-foreground"
             >
-              <span className="min-w-0 truncate">{t('clone.saved_profiles')}</span>
+              <UsersRoundIcon aria-hidden="true" />
+              <span className="min-w-0 truncate">{t('clone.savedTab')}</span>
             </TabsTrigger>
             <TabsTrigger
               value="takes"
@@ -687,7 +695,8 @@ export function VoicesSidebar({
               aria-label={t('clone.history_title')}
               className="min-w-0 flex-1 rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent/50 data-active:bg-[var(--sidebar-row-active)] data-active:text-sidebar-foreground dark:data-active:border-transparent dark:data-active:bg-[var(--sidebar-row-active)] dark:data-active:text-sidebar-foreground"
             >
-              <span className="min-w-0 truncate">{t('clone.history_title')}</span>
+              <HistoryIcon aria-hidden="true" />
+              <span className="min-w-0 truncate">{t('clone.recentsTab')}</span>
             </TabsTrigger>
           </TabsList>
         </div>

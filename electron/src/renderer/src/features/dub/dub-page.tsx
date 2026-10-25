@@ -1,4 +1,5 @@
 import { DubProjects } from './dub-projects';
+import { segmentTimeLabel } from './segment-time-label';
 import { Menu } from '@base-ui/react/menu';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { SecondarySidebar } from '@/components/workspace-sidebar';
@@ -1564,6 +1565,16 @@ export function DubPage() {
                 </Link>
               </div>
             )}
+            {/* #2752: the engine could not honour the chosen dialect. Without
+                this the pick looked applied and the output looked simply wrong. */}
+            {session.dialectIgnored && (
+              <div role="status" className="space-y-2 text-xs text-muted-foreground">
+                <p>{t('dub_workflow.dialect_not_applied')}</p>
+                <Link to="/settings/models/$family" params={{ family: 'llm' }}>
+                  {t('engineSidebar.llm')}
+                </Link>
+              </div>
+            )}
             <Link
               to="/settings/models/$family"
               params={{ family: 'translation' }}
@@ -2460,7 +2471,7 @@ export function DubPage() {
                               }
                             />
                             <span>
-                              {Number.isFinite(segment.start) ? segment.start.toFixed(1) : '?'}s
+                              {segmentTimeLabel(segment.start)}
                             </span>
                           </div>
                           <div className="min-w-0">

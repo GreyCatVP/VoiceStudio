@@ -27,7 +27,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 internal class PhoneDictation(private val engine: LocalEngine, private val scope: CoroutineScope, private val failure: (Throwable)->Unit,
-    private val microphone: DictationAudioSource = MicrophoneSource()) : AutoCloseable {
+    private val microphone: DictationAudioSource = MicrophoneSource(), private val completed: (String)->Unit = {}) : AutoCloseable {
     private val mutableText=MutableStateFlow("")
     val text=mutableText.asStateFlow()
     private val mutableActive=MutableStateFlow(false)
@@ -48,7 +48,7 @@ internal class PhoneDictation(private val engine: LocalEngine, private val scope
                 }.buffer(64,BufferOverflow.SUSPEND)
                 engine.streamTranscribe(model,samples).collect {mutableText.value=it.text}
             } catch(e:CancellationException) {throw e} catch(e:Exception) {failure(e)}
-            finally {recording=false;mutableActive.value=false}
+            finally {recording=false;completed(mutableText.value);mutableActive.value=false}
         }
     }
     fun finish() {recording=false}
@@ -58,7 +58,7 @@ internal class PhoneDictation(private val engine: LocalEngine, private val scope
 @Composable internal fun PhoneDictateScreen(vm: StudioViewModel, model: PhoneModel?, ready: Boolean) {
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
-    val controller=remember(model?.id) {PhoneDictation(vm.phone.engine,scope,vm::fail)}
+    val controller=remember(model?.id) {PhoneDictation(vm.phone.engine,scope,vm::fail,completed={vm.phone.saveTranscript(it,model?.id)})}
     val text by controller.text.collectAsState()
     val active by controller.active.collectAsState()
     val lifecycle=LocalLifecycleOwner.current

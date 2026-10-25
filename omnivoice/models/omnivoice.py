@@ -60,6 +60,7 @@ from omnivoice.utils.audio import (
     CLONE_REF_TEXT_MAX_SECONDS,
     CLONE_REF_TOO_LONG_MARKER,
     CLONE_REF_WINDOW_SECONDS,
+    check_reference_encode_memory,
     clone_ref_transcript_too_long_message,
     cross_fade_chunks,
     fade_and_pad_audio,
@@ -1070,11 +1071,21 @@ class OmniVoice(PreTrainedModel):
         aligned_rms = torch.sqrt(torch.mean(torch.square(ref_wav))).item()
         validate_clone_reference(ref_wav, aligned_rms)
         selected_ref_rms = aligned_rms / input_gain
-        ref_audio_tokens = self.audio_tokenizer.encode(
-            ref_wav.unsqueeze(0).to(self.audio_tokenizer.device),
-        ).audio_codes.squeeze(
-            0
-        )  # (C, T)
+        check_reference_encode_memory(
+            ref_wav.size(-1) / self.sampling_rate,
+            torch.device(self.audio_tokenizer.device).type,
+        )
+        # #3340: with autograd on (the default in a request thread) the
+        # tokenizer also kept every activation for a backward pass that never
+        # comes — measured +27% peak RAM on a 20 s clip. generate() runs in
+        # inference mode, but the clone-prompt cache calls this method
+        # directly, so the encode needs its own.
+        with torch.inference_mode():
+            ref_audio_tokens = self.audio_tokenizer.encode(
+                ref_wav.unsqueeze(0).to(self.audio_tokenizer.device),
+            ).audio_codes.squeeze(
+                0
+            )  # (C, T)
 
         if preprocess_prompt:
             ref_text = add_punctuation(ref_text)

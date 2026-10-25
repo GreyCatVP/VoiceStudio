@@ -181,7 +181,7 @@ export function DesignPage() {
           size="wide"
           variant="controls"
           library={<VoicesSidebar />}
-          libraryLabel={t('clone.saved_profiles')}
+          libraryLabel={t('clone.savedTab')}
           className="space-y-3"
         >
           <section className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">

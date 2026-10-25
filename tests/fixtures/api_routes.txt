@@ -66,6 +66,7 @@ GET /batch/download/{job_id}/{lang}
 GET /batch/jobs
 GET /batch/jobs/{job_id}
 GET /calls
+GET /calls/options
 GET /calls/readiness
 GET /calls/settings
 GET /calls/{call_id}
@@ -148,6 +149,9 @@ GET /profiles/{profile_id}
 GET /profiles/{profile_id}/audio
 GET /profiles/{profile_id}/image
 GET /profiles/{profile_id}/usage
+GET /project-bundles
+GET /project-bundles/{identifier}
+GET /project-bundles/{identifier}/document
 GET /projects
 GET /projects/{project_id}
 GET /pronunciation
@@ -288,6 +292,8 @@ POST /profiles/{profile_id}/attestation
 POST /profiles/{profile_id}/consent
 POST /profiles/{profile_id}/lock
 POST /profiles/{profile_id}/unlock
+POST /project-bundles/export
+POST /project-bundles/import
 POST /projects
 POST /pronunciation
 POST /pronunciation/import

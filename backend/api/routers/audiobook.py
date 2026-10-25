@@ -737,7 +737,7 @@ def _render_chapter_cached(chapter, synth, sr, engine_id, resolve, cache_dir, le
         wav_is_complete,
     )
     from core.config import VOICES_DIR
-    from services.pronunciation import normalize_lexicon
+    from services.pronunciation import lexicon_signature
     from services.text_normalization import normalize_for_tts
     from services.watermark import mark_synthetic, will_mark
 
@@ -778,7 +778,8 @@ def _render_chapter_cached(chapter, synth, sr, engine_id, resolve, cache_dir, le
     if lexicon:
         # Fold the lexicon into the cache key so editing pronunciations
         # invalidates cached chapters (reserved key can't collide with a voice id).
-        lex_sig = json.dumps(normalize_lexicon(lexicon), sort_keys=True)
+        # Order-aware where entry order changes the output (#2728).
+        lex_sig = lexicon_signature(lexicon)
         sig["\x00lexicon"] = lex_sig
     # Fold the #1208 expressive signature into BOTH cache layers so changing any
     # new knob (sampling, emotion, seed, cache opt-out) re-renders instead of

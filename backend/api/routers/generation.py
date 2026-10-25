@@ -420,8 +420,13 @@ def _resolve_profile_conditioning(row, *, ref_text=None, instruct=None,
             row["instruct"] and not row["is_locked"] and not row["ref_audio_path"]
         ) else "clone"
     out["kind"] = profile_kind
+    # A locked design voice is pinned to its take, and the lock keeps the
+    # design's own seed (#3265): only a new instruct moves it off the take.
+    # Judging the seed too would treat a request repeating the take's seed
+    # as an edit and silently skip the locked take.
+    locked_take = bool(row["is_locked"] and row["locked_audio_path"])
     if profile_kind == "design" and _design_request_diverges(
-        row, instruct=instruct, seed=seed,
+        row, instruct=instruct, seed=None if locked_take else seed,
     ):
         # Design from the request's attributes and seed; only the gaps it
         # left (an omitted instruct or seed) come from the profile.

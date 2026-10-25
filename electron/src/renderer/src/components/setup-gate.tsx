@@ -110,7 +110,7 @@ export function SetupGate({ children }: { children: ReactNode }) {
         )}
       >
         <img src={brandIcon} alt="" className="size-6" />
-        <h1 className="text-sm font-medium">{t('app.name')}</h1>
+        <h1 className="min-w-0 truncate text-sm font-medium">{t('app.name')}</h1>
         {advanced && (
           <div className="ml-auto flex items-center gap-1" aria-label={t('preferences.ui_scale')}>
             <span className="mr-1 text-xs text-muted-foreground">{t('preferences.ui_scale')}</span>
@@ -134,24 +134,36 @@ export function SetupGate({ children }: { children: ReactNode }) {
           {steps.map(({ label, icon: Icon }, index) => (
             <Button
               key={label}
-              className="h-auto min-h-11 w-full justify-start whitespace-normal text-left"
+              // #2940: a long single-word label (ru "Конфиденциальность") cannot wrap at a
+              // space, so it hyphenates or breaks inside the sidebar and clamps to two lines;
+              // the tooltip keeps the full label readable.
+              title={t(label)}
+              className="h-auto min-h-11 w-full min-w-0 justify-start whitespace-normal text-left"
               aria-current={index === step ? 'step' : undefined}
               variant={index === step ? 'secondary' : 'ghost'}
               disabled={index > step}
               onClick={() => setStep(index)}
             >
               <Icon />
-              <span className="tabular-nums text-muted-foreground">{index + 1}.</span>
-              {t(label)}
+              <span className="shrink-0 tabular-nums text-muted-foreground">{index + 1}.</span>
+              <span
+                data-setup-step-label
+                className="line-clamp-2 min-w-0 flex-1 hyphens-auto [overflow-wrap:anywhere]"
+              >
+                {t(label)}
+              </span>
             </Button>
           ))}
         </nav>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <main key={step} className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
             <div className="mx-auto max-w-3xl space-y-6">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">{t(steps[step].label)}</h2>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="min-w-0 flex-1 hyphens-auto text-lg font-semibold [overflow-wrap:anywhere]">
+                  {t(steps[step].label)}
+                </h2>
                 <Button
+                  className="h-auto min-h-8 max-w-full whitespace-normal py-1.5"
                   variant={advanced ? 'secondary' : 'outline'}
                   aria-pressed={advanced}
                   onClick={() => setAdvanced((value) => !value)}
@@ -233,6 +245,7 @@ export function SetupGate({ children }: { children: ReactNode }) {
           </main>
           <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-border/50 p-4">
             <Button
+              className="h-auto min-h-8 min-w-0 max-w-[45%] whitespace-normal py-1.5 text-center"
               variant="ghost"
               disabled={step === 0}
               onClick={() => setStep((value) => value - 1)}
@@ -240,6 +253,7 @@ export function SetupGate({ children }: { children: ReactNode }) {
               {t('setup.back')}
             </Button>
             <Button
+              className="h-auto min-h-8 min-w-0 max-w-[55%] whitespace-normal py-1.5 text-center"
               disabled={!canContinue}
               onClick={async () => {
                 if (step !== steps.length - 1) {

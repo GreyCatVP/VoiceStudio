@@ -23,13 +23,31 @@ export function useTtsReadiness(operation = 'tts'): TtsReadinessBlocker {
   if (engines.isLoading) return 'loading';
   if (engines.isError || !engines.data || !activeEngine) return 'engine';
   if (!engines.activeTtsReady) return 'engine';
+  const activeBackend = tts?.backends.find((item) => item.id === activeEngine);
+  // A preset-only engine (KittenTTS, Supertonic-3) still speaks on the Clone
+  // page: it renders the chosen preset voice instead of a cloned one.
   if (
     operation === 'clone' &&
-    tts?.backends.find((item) => item.id === activeEngine)?.supports_cloning === false
+    activeBackend?.supports_cloning === false &&
+    !hasPresets(activeBackend)
   )
     return 'cloning';
   const activeModelId = tts?.active_model;
   if (activeModelId && catalogue.isLoading) return 'loading';
   const activeModel = catalogue.data?.models.find((model) => model.repo_id === activeModelId);
   return activeModel && (!activeModel.installed || activeModel.incomplete) ? 'engine' : null;
+}
+
+/** Speaks with its own preset voices and cannot clone: the Clone page renders a preset instead. */
+export function isPresetOnly(
+  backend:
+    | { supports_cloning?: boolean | null; preset_voices?: string[] | null }
+    | null
+    | undefined,
+): boolean {
+  return backend?.supports_cloning === false && hasPresets(backend);
+}
+
+function hasPresets(backend: { preset_voices?: string[] | null } | null | undefined): boolean {
+  return Boolean(backend?.preset_voices?.length);
 }
