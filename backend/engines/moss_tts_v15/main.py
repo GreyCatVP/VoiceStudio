@@ -149,9 +149,9 @@ def _patch_xpu_mem_get_info(torch) -> None:
     back to ``total - reserved``. Kept in step by
     tests/test_xpu_mem_get_info_shim.py."""
     xpu = getattr(torch, "xpu", None)
-    if xpu is None or getattr(xpu.mem_get_info, "_omnivoice_fallback", False):
+    original = getattr(xpu, "mem_get_info", None)
+    if original is None or getattr(original, "_omnivoice_fallback", False):
         return
-    original = xpu.mem_get_info
 
     def mem_get_info(device=None):
         try:
