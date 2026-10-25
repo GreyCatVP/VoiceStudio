@@ -26,7 +26,9 @@ export function speakerTranscript(entry) {
     if (last && last.speaker === segment.speaker) last.text += ` ${text}`;
     else lines.push({ speaker: segment.speaker, text });
   }
-  return lines.map((line) => (line.speaker ? `${line.speaker}: ${line.text}` : line.text)).join('\n');
+  return lines
+    .map((line) => (line.speaker ? `${line.speaker}: ${line.text}` : line.text))
+    .join('\n');
 }
 
 /** Keep language and recording date attached when exporting history. */

@@ -89,11 +89,14 @@ export async function startTranscription(
     }).catch(() => ({ auto: false }));
     if (ctl.signal.aborted) return (outcome = 'cancelled');
     body.set('refine', String(refinement.auto));
-    const result = await apiJson<Partial<TranscriptEntry> & { diarization_error?: string }>('/transcribe', {
-      method: 'POST',
-      body,
-      signal: ctl.signal,
-    });
+    const result = await apiJson<Partial<TranscriptEntry> & { diarization_error?: string }>(
+      '/transcribe',
+      {
+        method: 'POST',
+        body,
+        signal: ctl.signal,
+      },
+    );
     if (ctl.signal.aborted) return (outcome = 'cancelled');
     const saved = addTranscription(result);
     if (result.diarization_error) toast.warning(i18next.t('transcriptions.speakers_unavailable'));
