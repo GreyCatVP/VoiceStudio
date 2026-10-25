@@ -60,6 +60,16 @@ export OMNIVOICE_SHERPA_MODEL=$PWD/vits-piper-tr_TR-dfki-medium
 The same pattern works for every `vits-piper-<locale>-<voice>` archive on the
 releases page.
 
+## Licences
+
+The model you bring keeps its own terms. VoiceStudio has no licence record for
+a local model folder, so the Model Catalogue licence prompt does not cover it
+and shows nothing for this engine. Read the `MODEL_CARD` in the unpacked
+folder before you use its audio. For example, `tr_TR-dfki-medium` is trained
+on CC BY-NC-SA 4.0 data (non-commercial). `tr_TR-fahrettin-medium` and
+`tr_TR-fettah-medium` use CC0 data but are fine-tuned from the English
+`lessac` voice, whose dataset has its own terms.
+
 ## Behaviour notes
 
 - Output defaults to 22.05 kHz (the VITS default); once a model is loaded,

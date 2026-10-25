@@ -29,6 +29,13 @@ Paragraf ve nokta kullanın: uzun metin cümle sınırlarından bölünür.
 - **Sherpa-ONNX + Piper `tr_TR-dfki-medium`:** CPU'da gerçek zamandan hızlı,
   klonlama yok. Kurulum: [docs/engines/sherpa-onnx.md](../../docs/engines/sherpa-onnx.md).
 
+**Lisans:** Uygulama (AGPL-3.0) ticari kullanılabilir, ama sesi üreten modelin
+kendi şartları geçerlidir. OmniVoice ağırlıkları CC-BY-NC, `tr_TR-dfki-medium`
+verisi CC BY-NC-SA 4.0: ikisi de ticari olmayan kullanım içindir. Ticari bir iş
+için modelin lisansını kendiniz kontrol edin; ayrıntılar
+[docs/engines/sherpa-onnx.md](../../docs/engines/sherpa-onnx.md#licences) ve
+[LICENSE-NOTICE.md](../../LICENSE-NOTICE.md).
+
 ## 3. Seslendirin
 
 Uygulamada: **Ses** (Voice) ekranı → dili *Türkçe* seçin → metni yapıştırın → **Oluştur**.
