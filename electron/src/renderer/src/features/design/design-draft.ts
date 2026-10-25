@@ -183,6 +183,20 @@ export function applyDescription(
   return { ...current, attrs, picks, mapped };
 }
 
+/**
+ * "Reset to description" drops the picks (and a saved-voice link) so the
+ * description alone decides again. With no description there is nothing to
+ * reset to, and without picks or a link the details already follow it.
+ */
+export function canResetToDescription(
+  draft: Pick<DesignDraft, 'description' | 'picks' | 'profileId'>,
+): boolean {
+  return (
+    draft.description.trim() !== '' &&
+    (Object.keys(draft.picks).length > 0 || draft.profileId !== null)
+  );
+}
+
 /** Record an explicit pick; one that clears an exclusive category drops that pick. */
 export function pickDetail(
   current: DesignDraft,

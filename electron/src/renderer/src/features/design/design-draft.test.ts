@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { HistoryItem, Profile } from '@/lib/api/types';
 import {
   applyDescription,
+  canResetToDescription,
   designDraftFromTake,
   designInstruct,
   designRecipe,
@@ -308,5 +309,19 @@ describe('free-form design drafts (#2389)', () => {
     expect(designInstruct(legacy, 'freeform')).toBe('female');
     localStorage.setItem(STORAGE, JSON.stringify({ picks: { Age: 'elderly' }, mapped: [1] }));
     expect(readDraft()).toMatchObject({ picks: {}, mapped: {} });
+  });
+});
+
+describe('canResetToDescription', () => {
+  const pick = { Age: { value: 'elderly', description: '' } };
+  it('hides the reset while the description is empty, even with picks', () => {
+    expect(canResetToDescription({ description: '  ', picks: pick, profileId: 'p' })).toBe(false);
+  });
+  it('hides the reset when the details already follow the description', () => {
+    expect(canResetToDescription({ description: 'warm', picks: {}, profileId: null })).toBe(false);
+  });
+  it('offers the reset when picks or a saved voice override the description', () => {
+    expect(canResetToDescription({ description: 'warm', picks: pick, profileId: null })).toBe(true);
+    expect(canResetToDescription({ description: 'warm', picks: {}, profileId: 'p' })).toBe(true);
   });
 });
