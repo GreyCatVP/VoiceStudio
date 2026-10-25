@@ -1045,7 +1045,8 @@
     "pause": "暫停",
     "seek": "跳轉",
     "missing": "音訊檔案遺失。",
-    "now_playing": "正在播放"
+    "now_playing": "正在播放",
+    "kind_convert": "語音轉換"
   },
   "logs": {
     "no_tauri_log": "磁碟上尚未有 Tauri 登入 — 透過桌面建置啟動以產生一個",
@@ -2973,6 +2974,7 @@
     "latencyMs": "{{ms}} 毫秒",
     "none_ready_title": "語音合成尚未就緒",
     "none_ready_body": "VoiceStudio 可以自動為此裝置設定最佳相容選項。",
+    "set_up": "設定",
     "active": "引擎：{{name}}",
     "none": "沒有啟用的引擎",
     "localInstallRequired": "請在後端電腦上透過 localhost 或安裝指南安裝此引擎。遠端安裝已停用。",
@@ -2989,7 +2991,8 @@
     "balanced": "均衡",
     "quality": "品質",
     "hint": "適用於 OmniVoice 取樣和 Faster-Whisper / NLLB 解碼。其他引擎保留目前設定。",
-    "auto": "自動"
+    "auto": "自動",
+    "autoHint": "為這台電腦選擇最佳等級。"
   },
   "recording": {
     "input_device": "輸入裝置",

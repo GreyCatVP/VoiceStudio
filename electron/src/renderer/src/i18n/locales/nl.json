@@ -1045,7 +1045,8 @@
     "pause": "Pauzeren",
     "seek": "Afspeelpositie",
     "missing": "Audiobestand ontbreekt.",
-    "now_playing": "Nu aan het spelen"
+    "now_playing": "Nu aan het spelen",
+    "kind_convert": "Stemconversie"
   },
   "logs": {
     "no_tauri_log": "Nog geen Tauri-inlogschijf: start via de desktop-build om er een te maken",
@@ -2973,6 +2974,7 @@
     "latencyMs": "{{ms}} ms",
     "none_ready_title": "Spraaksynthese is niet gereed",
     "none_ready_body": "VoiceStudio kan automatisch de beste compatibele optie voor dit apparaat instellen.",
+    "set_up": "Instellen",
     "active": "Engine: {{name}}",
     "none": "Geen engine actief",
     "localInstallRequired": "Installeer deze engine op de backendcomputer via localhost of de installatiehandleiding. Installatie op afstand is uitgeschakeld.",
@@ -2989,7 +2991,8 @@
     "balanced": "Gebalanceerd",
     "quality": "Kwaliteit",
     "hint": "Geldt voor OmniVoice-sampling en Faster-Whisper / NLLB-decodering. Andere engines behouden hun instellingen.",
-    "auto": "Auto"
+    "auto": "Auto",
+    "autoHint": "Kiest het beste niveau voor deze computer."
   },
   "recording": {
     "input_device": "Invoerapparaat",

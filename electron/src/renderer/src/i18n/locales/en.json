@@ -383,6 +383,7 @@
     "selectWithCaveat": "Switched to {{engine}} — {{reason}}",
     "none_ready_title": "Text-to-speech is not ready",
     "none_ready_body": "VoiceStudio can automatically set up the best compatible option for this device.",
+    "set_up": "Set up",
     "active": "Engine: {{name}}",
     "none": "No engine active",
     "acceptLicense": "Accept license",
@@ -653,7 +654,8 @@
     "volume": "Volume",
     "exit_fullscreen": "Exit full screen",
     "unavailable": "Playback unavailable",
-    "now_playing": "Now playing"
+    "now_playing": "Now playing",
+    "kind_convert": "Voice conversion"
   },
   "common": {
     "close": "Close",
@@ -3037,7 +3039,8 @@
     "balanced": "Balanced",
     "quality": "Quality",
     "hint": "Applies to OmniVoice sampling and Faster-Whisper / NLLB decoding. Other engines keep their current settings.",
-    "auto": "Auto"
+    "auto": "Auto",
+    "autoHint": "Picks the best level for this computer."
   },
   "network": {
     "copied": "Copied",

@@ -1045,7 +1045,8 @@
     "pause": "Tạm dừng",
     "seek": "Vị trí phát",
     "missing": "Không tìm thấy tệp âm thanh.",
-    "now_playing": "Đang phát"
+    "now_playing": "Đang phát",
+    "kind_convert": "Chuyển đổi giọng nói"
   },
   "logs": {
     "no_tauri_log": "Chưa có bản đăng nhập Tauri nào trên đĩa - khởi chạy thông qua bản dựng máy tính để bàn để tạo một bản ghi",
@@ -2973,6 +2974,7 @@
     "latencyMs": "{{ms}} mili giây",
     "none_ready_title": "Tổng hợp giọng nói chưa sẵn sàng",
     "none_ready_body": "VoiceStudio có thể tự động thiết lập tùy chọn tương thích tốt nhất cho thiết bị này.",
+    "set_up": "Thiết lập",
     "active": "Bộ máy: {{name}}",
     "none": "Không có bộ máy đang hoạt động",
     "localInstallRequired": "Cài đặt công cụ này trên máy chủ qua localhost hoặc hướng dẫn thiết lập. Cài đặt từ xa đã bị tắt.",
@@ -2989,7 +2991,8 @@
     "balanced": "Cân bằng",
     "quality": "Chất lượng",
     "hint": "Áp dụng cho lấy mẫu OmniVoice và giải mã Faster-Whisper / NLLB. Các công cụ khác giữ nguyên cài đặt hiện tại của chúng.",
-    "auto": "Tự động"
+    "auto": "Tự động",
+    "autoHint": "Chọn mức tốt nhất cho máy tính này."
   },
   "recording": {
     "input_device": "Thiết bị đầu vào",

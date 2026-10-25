@@ -1045,7 +1045,8 @@
     "pause": "Pausa",
     "seek": "Uppspelningsposition",
     "missing": "Ljudfilen saknas.",
-    "now_playing": "Spelas nu"
+    "now_playing": "Spelas nu",
+    "kind_convert": "Röstkonvertering"
   },
   "logs": {
     "no_tauri_log": "Ingen Tauri-inloggningsskiva än - starta via skrivbordsbygget för att skapa en",
@@ -2973,6 +2974,7 @@
     "latencyMs": "{{ms}} ms",
     "none_ready_title": "Talsyntesen är inte redo",
     "none_ready_body": "VoiceStudio kan automatiskt konfigurera det bästa kompatibla alternativet för den här enheten.",
+    "set_up": "Konfigurera",
     "active": "Motor: {{name}}",
     "none": "Ingen motor aktiv",
     "localInstallRequired": "Installera motorn på backenddatorn via localhost eller installationsguiden. Fjärrinstallation är avstängd.",
@@ -2989,7 +2991,8 @@
     "balanced": "Balanserad",
     "quality": "Kvalitet",
     "hint": "Gäller OmniVoice sampling och Faster-Whisper / NLLB avkodning. Andra motorer behåller sina nuvarande inställningar.",
-    "auto": "Auto"
+    "auto": "Auto",
+    "autoHint": "Väljer den bästa nivån för den här datorn."
   },
   "recording": {
     "input_device": "Inmatningsenhet",

@@ -1047,7 +1047,8 @@
     "pause": "Pausar",
     "seek": "Buscar posición",
     "missing": "Falta el archivo de audio.",
-    "now_playing": "Reproduciendo"
+    "now_playing": "Reproduciendo",
+    "kind_convert": "Conversión de voz"
   },
   "logs": {
     "no_tauri_log": "Aún no hay ningún registro de Tauri en el disco: inicie a través de la compilación de escritorio para producir uno",
@@ -2975,6 +2976,7 @@
     "latencyMs": "{{ms}} ms",
     "none_ready_title": "La síntesis de voz no está lista",
     "none_ready_body": "VoiceStudio puede configurar automáticamente la mejor opción compatible con este dispositivo.",
+    "set_up": "Configurar",
     "active": "Motor: {{name}}",
     "none": "Ningún motor activo",
     "localInstallRequired": "Instala este motor en el equipo del servidor mediante localhost o su guía de configuración. La instalación remota está desactivada.",
@@ -2991,7 +2993,8 @@
     "balanced": "Equilibrado",
     "quality": "Calidad",
     "hint": "Se aplica al muestreo OmniVoice y a la decodificación Faster-Whisper/NLLB. Otros motores mantienen su configuración actual.",
-    "auto": "Auto"
+    "auto": "Auto",
+    "autoHint": "Elige el mejor nivel para este equipo."
   },
   "recording": {
     "input_device": "Dispositivo de entrada",

@@ -39,6 +39,9 @@ required-model installer, follows that local or remote job to completion, refres
 workflow, and activates the engine. An installer or activation failure becomes an `ACTION_REQUEST`
 for the user's opted-in default agent with the current route and logs already attached. Clicking
 **Fix** is the explicit authorization for that recovery; merely viewing the notice changes nothing.
+On the Clone and Voice Design composers the same recovery is the primary **Set up** action, which
+replaces Synthesize until text-to-speech is ready; a model finished elsewhere clears it within 15
+seconds.
 Unresolved ASR setup in Dubbing, Dictation and Voice Conversion exposes the same agent action while
 keeping prepared media, selected voices and retry state intact. Voice Design, voice comparison and
 saved-profile previews use the same compact one-click TTS recovery instead of sending the user to a

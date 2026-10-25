@@ -104,6 +104,10 @@ _AEC_FAR = 0x01   # playback reference frame (feed the echo model only)
 SR_MIN, SR_MAX = 8000, 96000
 
 
+# Marks "no language passed" apart from an explicit None (language unknown).
+_SESSION_LANGUAGE = object()
+
+
 def _final_polisher(websocket, language: str | None):
     """The text normaliser for this session's ``final`` frames.
 
@@ -111,14 +115,18 @@ def _final_polisher(websocket, language: str | None):
     platform-stream API clients keep the plain polish they always had. The
     spoken-punctuation setting is read once per session. The returned
     callable takes ``(text, language=None)``; a language passed in overrides
-    the session's (the silent-model recovery knows the fallback's language)."""
+    the session's, even when it is ``None``: the silent-model recovery's
+    fallback recognizer may not report a language, and the failed model's
+    English hint must not then strip Portuguese "um" or German "er"."""
     if isinstance(websocket, _PlatformWebSocket):
-        return lambda text, lang=None: polish_text(text)
+        return lambda text, lang=_SESSION_LANGUAGE: polish_text(text)
     from services.dictation_cleanup import _spoken_punctuation_enabled
 
     spoken = _spoken_punctuation_enabled()
-    return lambda text, lang=None: polish_dictation(
-        text, lang or language, spoken_punctuation=spoken,
+    return lambda text, lang=_SESSION_LANGUAGE: polish_dictation(
+        text,
+        language if lang is _SESSION_LANGUAGE else lang,
+        spoken_punctuation=spoken,
     )
 
 

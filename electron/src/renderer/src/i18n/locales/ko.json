@@ -1045,7 +1045,8 @@
     "pause": "일시정지",
     "seek": "탐색",
     "missing": "오디오 파일이 없습니다.",
-    "now_playing": "재생 중"
+    "now_playing": "재생 중",
+    "kind_convert": "음성 변환"
   },
   "logs": {
     "no_tauri_log": "아직 디스크에 Tauri 로그가 없습니다. 데스크탑 빌드를 통해 실행하여 생성하세요.",
@@ -2973,6 +2974,7 @@
     "latencyMs": "{{ms}}ms",
     "none_ready_title": "음성 합성이 준비되지 않았습니다",
     "none_ready_body": "VoiceStudio가 이 기기에 가장 적합한 호환 옵션을 자동으로 설정할 수 있습니다.",
+    "set_up": "설정하기",
     "active": "엔진: {{name}}",
     "none": "활성 엔진 없음",
     "localInstallRequired": "백엔드 컴퓨터에서 localhost 또는 설정 가이드를 사용하여 이 엔진을 설치하세요. 원격 설치는 비활성화되어 있습니다.",
@@ -2989,7 +2991,8 @@
     "balanced": "균형",
     "quality": "품질",
     "hint": "OmniVoice 샘플링과 Faster-Whisper / NLLB 디코딩에 적용됩니다. 다른 엔진은 현재 설정을 유지합니다.",
-    "auto": "자동"
+    "auto": "자동",
+    "autoHint": "이 컴퓨터에 가장 알맞은 수준을 고릅니다."
   },
   "recording": {
     "input_device": "입력 장치",

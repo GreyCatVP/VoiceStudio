@@ -3,7 +3,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { LoaderCircleIcon, TriangleAlertIcon, WrenchIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useTtsReadiness } from '@/hooks/use-tts-readiness';
 import { useModelInstall } from '@/hooks/use-model-install';
@@ -24,13 +23,15 @@ interface ModelRecommendations {
   models: RecommendedModel[];
 }
 
-export function EngineNotice({
-  operation = 'tts',
-  compact = false,
-}: {
-  operation?: string;
-  compact?: boolean;
-}) {
+export type EngineSetup = ReturnType<typeof useEngineSetup>;
+
+/**
+ * Readiness of text-to-speech for `operation` plus the one-click setup that
+ * restores it (download the selected or recommended model, or activate an
+ * installed engine). Shared by the standalone notice and by composers, whose
+ * primary action becomes this setup while TTS is not ready.
+ */
+export function useEngineSetup(operation = 'tts') {
   const { t } = useTranslation();
   const client = useQueryClient();
   const [fixing, setFixing] = useState(false);
@@ -98,7 +99,6 @@ export function EngineNotice({
     },
   });
 
-  if (blocker !== 'engine') return null;
   const startInstall = async (repo: string) => {
     if ((await install.start(repo)) === 'started')
       toast.success(t('models.started_downloading', { count: 1 }));
@@ -141,37 +141,113 @@ export function EngineNotice({
     }
   };
   const view = install.view;
-  const action =
-    view && view.stage !== 'ready' && view.stage !== 'cancelled' ? (
-      <InstallProgress
-        className={compact ? 'min-w-48 flex-1 basis-full' : 'mt-2'}
-        view={view}
-        busy={install.busy}
-        onCancel={() => void install.cancel()}
-        onRetry={() => void install.retry()}
-        onDismiss={view.stage === 'failed' ? install.dismiss : undefined}
-      />
-    ) : (
-      <Button
-        type="button"
-        size="sm"
-        className={compact ? 'shrink-0' : 'mt-2'}
-        disabled={fixing || install.busy}
-        onClick={fix}
-      >
-        {fixing ? (
-          <LoaderCircleIcon className="animate-spin motion-reduce:animate-none" />
-        ) : (
-          <WrenchIcon />
-        )}
-        {t('repairAgent.fix')}
-      </Button>
-    );
+  return {
+    blocked: blocker === 'engine',
+    busy: fixing || install.busy,
+    /** A download this setup started or joined, until it ends or is dismissed. */
+    install: view && view.stage !== 'ready' && view.stage !== 'cancelled' ? install : null,
+    fix,
+  };
+}
+
+/** Download progress for the setup, or nothing while none is running. */
+export function EngineSetupProgress({
+  setup,
+  className,
+}: {
+  setup: EngineSetup;
+  className?: string;
+}) {
+  const install = setup.install;
+  if (!install?.view) return null;
+  return (
+    <InstallProgress
+      className={className}
+      view={install.view}
+      busy={install.busy}
+      onCancel={() => void install.cancel()}
+      onRetry={() => void install.retry()}
+      onDismiss={install.view.stage === 'failed' ? install.dismiss : undefined}
+    />
+  );
+}
+
+/** "Fix" in a notice; the composer's primary "Set up" action while TTS is not ready. */
+export function EngineSetupButton({
+  setup,
+  primary = false,
+  className,
+}: {
+  setup: EngineSetup;
+  primary?: boolean;
+  className?: string;
+}) {
+  const { t } = useTranslation();
+  const working = setup.busy || Boolean(setup.install);
+  return (
+    <Button
+      type="button"
+      size={primary ? 'lg' : 'sm'}
+      className={className}
+      disabled={working}
+      aria-busy={working || undefined}
+      onClick={() => void setup.fix()}
+    >
+      {working ? (
+        <LoaderCircleIcon className="animate-spin motion-reduce:animate-none" />
+      ) : (
+        <WrenchIcon />
+      )}
+      <span className="truncate">{t(primary ? 'engines.set_up' : 'repairAgent.fix')}</span>
+    </Button>
+  );
+}
+
+/** One calm line above a composer whose primary action is the setup. */
+export function EngineSetupStatus({ setup, id }: { setup: EngineSetup; id?: string }) {
+  const { t } = useTranslation();
+  return (
+    <div id={id} className="mb-2.5 space-y-2 px-1">
+      <p role="status" className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+        <TriangleAlertIcon aria-hidden="true" className="size-3.5 shrink-0 text-warning" />
+        <span className="min-w-0 truncate">{t('engines.none_ready_title')}</span>
+      </p>
+      <EngineSetupProgress setup={setup} />
+    </div>
+  );
+}
+
+export function EngineNotice({
+  operation = 'tts',
+  compact = false,
+}: {
+  operation?: string;
+  compact?: boolean;
+}) {
+  const { t } = useTranslation();
+  const setup = useEngineSetup(operation);
+  if (!setup.blocked) return null;
+  const action = setup.install ? (
+    <EngineSetupProgress
+      setup={setup}
+      className={compact ? 'min-w-48 flex-1 basis-full' : 'mt-2.5'}
+    />
+  ) : (
+    <EngineSetupButton setup={setup} className={compact ? 'shrink-0' : 'mt-2.5'} />
+  );
+  const icon = (
+    <span
+      aria-hidden="true"
+      className="flex size-7 shrink-0 items-center justify-center rounded-full bg-warning/10 text-warning"
+    >
+      <TriangleAlertIcon className="size-3.5" />
+    </span>
+  );
   if (compact) {
     return (
-      <div className="flex min-w-0 flex-wrap items-center gap-3 rounded-lg border border-warning/30 bg-warning/8 px-3 py-2 text-sm">
-        <TriangleAlertIcon className="size-4 shrink-0 text-warning" />
-        <div className="min-w-48 flex-1">
+      <div className="flex min-w-0 flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-muted/20 px-3 py-2.5 text-sm">
+        {icon}
+        <div className="min-w-40 flex-1">
           <p className="font-medium text-foreground">{t('engines.none_ready_title')}</p>
           <p className="text-xs leading-5 text-muted-foreground">{t('engines.none_ready_body')}</p>
         </div>
@@ -180,13 +256,16 @@ export function EngineNotice({
     );
   }
   return (
-    <Alert className="border-warning/40 bg-warning/10 text-foreground">
-      <TriangleAlertIcon className="text-warning" />
-      <AlertTitle>{t('engines.none_ready_title')}</AlertTitle>
-      <AlertDescription>
-        <p>{t('engines.none_ready_body')}</p>
+    <div
+      role="alert"
+      className="flex min-w-0 items-start gap-3 rounded-xl border border-border/60 bg-muted/20 px-3.5 py-3 text-sm"
+    >
+      {icon}
+      <div className="min-w-0 flex-1 pt-0.5">
+        <p className="font-medium text-foreground">{t('engines.none_ready_title')}</p>
+        <p className="mt-0.5 text-muted-foreground">{t('engines.none_ready_body')}</p>
         {action}
-      </AlertDescription>
-    </Alert>
+      </div>
+    </div>
   );
 }

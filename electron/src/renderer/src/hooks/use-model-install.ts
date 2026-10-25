@@ -10,6 +10,25 @@ import {
   type InstallView,
 } from '@/lib/model-install-state';
 
+interface CatalogueEntry {
+  repo_id: string;
+  installed?: boolean;
+  incomplete?: boolean;
+}
+
+/** False only when the catalogue lists the model as not (fully) installed. */
+async function confirmInstalled(repo: string): Promise<boolean> {
+  try {
+    const catalogue = await apiJson<{ models?: CatalogueEntry[] }>('/models');
+    const entry = Array.isArray(catalogue?.models)
+      ? catalogue.models.find((model) => model.repo_id === repo)
+      : undefined;
+    return !entry || (Boolean(entry.installed) && !entry.incomplete);
+  } catch {
+    return true;
+  }
+}
+
 export interface ModelInstallCallbacks {
   /** Fires once when a download this hook watched finishes. */
   onReady?: (repoId: string) => void;
@@ -54,10 +73,22 @@ export function useModelInstall(repoId?: string, callbacks: ModelInstallCallback
   const liveStage = live?.stage;
   const failedAt = job?.failed_at;
 
+  // A download already running for this model (started in Settings, the
+  // bell or another prompt) is followed like one started here, so its
+  // completion still reaches `onReady`.
+  useEffect(() => {
+    if (watching || !active || !repo) return;
+    seen.current = true;
+    setOutcome(null);
+    setWatching(true);
+  }, [active, repo, watching]);
+
   useEffect(() => {
     if (!watching || !jobs.data || !repo) return;
     if (active) {
       seen.current = true;
+      // Cancelled from anywhere (this prompt, the bell, Settings).
+      if (live?.stage === 'cancelling') cancelRequested.current = true;
       return;
     }
     if (stale || (!seen.current && !goneAfterPost && !live)) return;
@@ -79,7 +110,12 @@ export function useModelInstall(repoId?: string, callbacks: ModelInstallCallback
       return;
     }
     finish(terminalInstallView('ready'));
-    latest.current.onReady?.(repo);
+    // The backend drops a job both when it finishes and when it is
+    // cancelled between two polls; only the catalogue tells them apart.
+    void confirmInstalled(repo).then((installed) => {
+      if (installed) latest.current.onReady?.(repo);
+      else setOutcome(terminalInstallView('cancelled'));
+    });
     // `liveStage`/`failedAt` stand in for `live`, a fresh object every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, failedAt, goneAfterPost, jobs.data, liveStage, repo, stale, watching]);

@@ -46,6 +46,7 @@ approval), [Windows](../install/windows.md), [Linux](../install/linux.md),
 | PocketTTS (Kyutai) | [pockettts](pockettts.md) | CPU (not Intel Mac) | ✅ | `uv sync --extra pockettts` + license |
 | Confucius4-TTS | [confucius4-tts](confucius4-tts.md) | CUDA · CPU | ✅ | clone + env var |
 | audio.cpp (Breeze-TTS-2) | [audio-cpp](audio-cpp.md) | CPU + Vulkan/Metal/CUDA/HIP/ROCm where compiled | ✅ + voice design | prebuilt binary + env var (weights research/non-commercial) |
+| CosyVoice 3 GGUF | [cosyvoice-gguf](cosyvoice-gguf.md) | CPU + Vulkan (native runtime build) | ✅ reference cloning + instruct | user-built native runtime + model catalogue |
 
 ### Reference clip length
 

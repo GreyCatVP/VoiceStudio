@@ -1258,6 +1258,14 @@ def _run_inference(
         _oom_friendly_reraise(e)
 
 
+def _backend_supports_seed(backend) -> bool:
+    """Whether this adapter accepts per-request seed controls."""
+    return bool(
+        getattr(backend, "supports_native_omnivoice_controls", False)
+        or getattr(backend, "supports_generation_seed", False)
+    )
+
+
 def _run_backend_inference(
     backend, text, language, ref_audio_path, ref_text, instruct, duration,
     num_step, guidance_scale, speed, denoise, postprocess_output,
@@ -1295,7 +1303,7 @@ def _run_backend_inference(
         native_proxy = bool(
             getattr(backend, "supports_native_omnivoice_controls", False)
         )
-        forwards_seed = native_proxy or getattr(backend, "supports_generation_seed", False)
+        forwards_seed = _backend_supports_seed(backend)
         if native_proxy:
             gen_kwargs.update({
                 key: value for key, value in {
@@ -2295,10 +2303,7 @@ async def generate_speech(
                         } if getattr(
                             _backend, "supports_native_omnivoice_controls", False
                         ) else {}),
-                        **({"seed": used_seed + i} if used_seed is not None and (
-                            getattr(_backend, "supports_native_omnivoice_controls", False)
-                            or getattr(_backend, "supports_generation_seed", False)
-                        ) else {}),
+                        **({"seed": used_seed + i} if used_seed is not None and _backend_supports_seed(_backend) else {}),
                     )
                     sr = _backend.sample_rate
                     skip = getattr(_backend, "applies_own_mastering", False)

@@ -1045,7 +1045,8 @@
     "pause": "Pausieren",
     "seek": "Wiedergabeposition",
     "missing": "Audiodatei fehlt.",
-    "now_playing": "Wird abgespielt"
+    "now_playing": "Wird abgespielt",
+    "kind_convert": "Stimmumwandlung"
   },
   "logs": {
     "no_tauri_log": "Noch kein Tauri-Log auf der Festplatte – starten Sie es über den Desktop-Build, um eines zu erstellen",
@@ -2973,6 +2974,7 @@
     "latencyMs": "{{ms}} ms",
     "none_ready_title": "Sprachausgabe ist nicht bereit",
     "none_ready_body": "VoiceStudio kann automatisch die beste kompatible Option für dieses Gerät einrichten.",
+    "set_up": "Einrichten",
     "active": "Engine: {{name}}",
     "none": "Keine Engine aktiv",
     "localInstallRequired": "Installiere diese Engine auf dem Backend-Rechner über localhost oder die Einrichtungsanleitung. Die Ferninstallation ist deaktiviert.",
@@ -2989,7 +2991,8 @@
     "balanced": "Ausgewogen",
     "quality": "Qualität",
     "hint": "Gilt für OmniVoice-Sampling und Faster-Whisper / NLLB-Dekodierung. Andere Engines behalten ihre aktuellen Einstellungen.",
-    "auto": "Auto"
+    "auto": "Auto",
+    "autoHint": "Wählt die beste Stufe für diesen Computer."
   },
   "recording": {
     "input_device": "Eingabegerät",

@@ -10,15 +10,10 @@ import {
 } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { ExternalLink } from '@/components/external-link';
-import { INSTALL_NEXT_STEP } from '@/components/model-install-progress';
+import { INSTALL_NEXT_STEP, RetryButton } from '@/components/model-install-progress';
 import type { CatalogueModel } from '../model-catalogue-query';
 import type { ModelOps } from './model-ops';
 import type { JobInfo } from './model-job';
-
-function RetryLabel({ seconds }: { seconds: number }) {
-  const { t } = useTranslation();
-  return <>{seconds > 0 ? t('modelMaintenance.retryAfter', { seconds }) : t('common.retry')}</>;
-}
 
 /** Gated-weights help (request access, accept terms, add a token, re-check). */
 export function ModelGatedAccess({
@@ -89,15 +84,13 @@ export function ModelGatedAccess({
             {t('modelMaintenance.checkAccess')}
           </Button>
           {info.gatedFailure && (
-            <Button
+            <RetryButton
               size="sm"
               variant="default"
-              disabled={Boolean(ops.pending) || info.retryAfter > 0}
+              seconds={info.retryAfter}
+              disabled={Boolean(ops.pending)}
               onClick={() => void ops.install(model.repo_id)}
-            >
-              <RefreshCwIcon />
-              <RetryLabel seconds={info.retryAfter} />
-            </Button>
+            />
           )}
         </div>
         {info.gatedFailure && info.job?.error && (
@@ -140,15 +133,11 @@ export function ModelFailure({
         </details>
       )}
       <div className="mt-2 flex flex-wrap gap-1">
-        <Button
-          size="xs"
-          variant="outline"
-          disabled={Boolean(ops.pending) || info.retryAfter > 0}
+        <RetryButton
+          seconds={info.retryAfter}
+          disabled={Boolean(ops.pending)}
           onClick={() => void ops.install(model.repo_id)}
-        >
-          <RefreshCwIcon />
-          <RetryLabel seconds={info.retryAfter} />
-        </Button>
+        />
         {info.recovery && (
           <Link to={info.recovery.to} className={buttonVariants({ variant: 'ghost', size: 'xs' })}>
             <WrenchIcon />

@@ -1045,7 +1045,8 @@
     "pause": "Duraklat",
     "seek": "Oynatma konumu",
     "missing": "Ses dosyası bulunamadı.",
-    "now_playing": "Şimdi çalıyor"
+    "now_playing": "Şimdi çalıyor",
+    "kind_convert": "Ses dönüştürme"
   },
   "logs": {
     "no_tauri_log": "Henüz diskte Tauri oturumu açılmadı; bir tane oluşturmak için masaüstü sürümü aracılığıyla başlatın",
@@ -2973,6 +2974,7 @@
     "latencyMs": "{{ms}} ms",
     "none_ready_title": "Konuşma sentezi hazır değil",
     "none_ready_body": "VoiceStudio bu cihaz için en iyi uyumlu seçeneği otomatik olarak ayarlayabilir.",
+    "set_up": "Kur",
     "active": "Motor: {{name}}",
     "none": "Etkin motor yok",
     "localInstallRequired": "Bu motoru arka uç bilgisayarında localhost veya kurulum kılavuzu üzerinden yükleyin. Uzaktan kurulum devre dışıdır.",
@@ -2989,7 +2991,8 @@
     "balanced": "Dengeli",
     "quality": "Kalite",
     "hint": "OmniVoice örnekleme ve Faster-Whisper / NLLB kod çözme için geçerlidir. Diğer motorlar mevcut ayarlarını korur.",
-    "auto": "Otomatik"
+    "auto": "Otomatik",
+    "autoHint": "Bu bilgisayar için en iyi seviyeyi seçer."
   },
   "recording": {
     "input_device": "Giriş aygıtı",
