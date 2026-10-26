@@ -66,6 +66,10 @@ _REVIEWED_PUBLIC_SAMPLE_LINES = {
         "curl http://PHONE_IP:PORT/v1/audio/speech \\",
         "-H 'Authorization: Bearer YOUR_TOKEN' \\",
     ),
+    "4dab817e78d54b055967860581687eeb5bb77472:mobile/android/core/network/src/main/kotlin/"
+    "com/voicestudio/mobile/network/ContentReports.kt:generic-api-key:38": (
+        'private const val KEY_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"',
+    ),
 }
 _REVIEWED_FINGERPRINTS = _REVIEWED_POSTHOG_FINGERPRINTS | _REVIEWED_PUBLIC_SAMPLE_LINES.keys()
 
@@ -90,6 +94,19 @@ def _assert_reviewed_finding(entry, source_lines):
 def _ignored_fingerprints():
     text = (ROOT / ".gitleaksignore").read_text(encoding="utf-8")
     return [ln.strip() for ln in text.splitlines() if ln.strip() and not ln.startswith("#")]
+
+
+# Reviewed false positives that are not the retired PostHog token. Each is one finding in
+# one commit; adding to this table is the review step for a new non-PostHog ignore entry.
+_REVIEWED_NON_SECRETS = {
+    "f6d634e19902c0fd0e64947e635359d5bc1f85de:electron/tests/fake-health-backend.test.mjs:generic-api-key:59":
+        "RFC 6455 sample Sec-WebSocket-Key in a test",
+    "97ee0f37079c06a8e2e80eb3625bc60885bc8a27:docs/mobile.md:curl-auth-header:114":
+        "curl docs use the literal YOUR_TOKEN placeholder",
+    "4dab817e78d54b055967860581687eeb5bb77472:mobile/android/core/network/src/main/kotlin/"
+    "com/voicestudio/mobile/network/ContentReports.kt:generic-api-key:38":
+        "Crockford base32 alphabet used to build the report idempotency key",
+}
 
 
 def test_gitleaks_ignores_only_commit_pinned_posthog_findings():
@@ -137,7 +154,9 @@ def test_gitleaks_rejects_lookalike_public_values(entry, change):
     expected = _REVIEWED_PUBLIC_SAMPLE_LINES[entry]
     line_index = int(entry.rsplit(":", 1)[1]) - 1
     source_lines = [""] * line_index + list(expected)
-    value = "dGhlIHNhbXBsZSBub25jZQ==" if len(expected) == 1 else "YOUR_TOKEN"
+    quoted = re.search(r"['\"]([^'\"]+)['\"]", expected[-1])
+    assert quoted
+    value = quoted.group(1)
     replacement = {
         "prefix": "secret-" + value,
         "suffix": value + "-secret",
@@ -146,3 +165,13 @@ def test_gitleaks_rejects_lookalike_public_values(entry, change):
     source_lines[-1] = source_lines[-1].replace(value, replacement)
     with pytest.raises(AssertionError):
         _assert_reviewed_finding(entry, source_lines)
+
+def test_every_reviewed_non_secret_is_still_ignored():
+    """A table row with no ignore entry is stale and would hide a removal."""
+    assert set(_REVIEWED_NON_SECRETS) <= set(_ignored_fingerprints())
+
+
+@pytest.mark.parametrize("entry", _REVIEWED_PUBLIC_SAMPLE_LINES)
+def test_reviewed_public_findings_still_require_the_recorded_source_line(entry):
+    with pytest.raises(AssertionError):
+        _assert_reviewed_finding(entry, [])
