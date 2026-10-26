@@ -6,13 +6,16 @@ voice-conversion APIs and saved voices.
 
 ## Run a speech workflow
 
-1. Choose **Batch narration**, or its **Normalize audio** variant.
+1. Choose **New from template** under the workflow list, then **Batch narration**
+   or its **Normalize audio** variant.
 2. Select Start. Paste scripts separated by a line containing `---`, or import
    TXT, Markdown, DOC/DOCX, PDF or EPUB files. Each file becomes one clip.
    Runs accept up to 50 nonempty scripts of 20,000 characters each.
 3. Select Speak. Choose a saved voice, language and speed. Install the selected
    engine explicitly in Settings if it is not ready.
-4. Choose **Run workflow**, then run from the output panel. Preview and export
+4. Choose **Run workflow**, then run from the output panel. Steps still missing a
+   setting show **Needs setup**, and Run stays unavailable until they are set;
+   the note beside Run opens the first one. Preview and export
    the resulting WAV clips with numbered, filesystem-safe names.
 
 Speech goes through the normal generation endpoint, including mastering,
