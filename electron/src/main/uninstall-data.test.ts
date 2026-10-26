@@ -348,3 +348,31 @@ it('counts an opted-in shared cache once when its parent is the removal target',
   }
   expect(await readFile(join(models, 'model.bin'), 'utf8')).toBe('model');
 });
+
+it.each(['..cache', '...cache'])(
+  'keeps shared models inside a literal %s child excluded through its parent',
+  async (directory) => {
+    const roots = await fixture();
+    const parent = join(roots.root, 'external', 'VoiceStudio');
+    const models = join(parent, directory, 'huggingface');
+    await mkdir(models, { recursive: true });
+    await writeFile(join(models, 'model.bin'), 'keep');
+    const scanned = await scanUninstallTargets({ ...roots, environment: parent, models });
+    expect(scanned.find((target) => target.key === 'env')?.shared).toBe(true);
+    expect(scanned.find((target) => target.key === 'models')?.shared).toBe(true);
+    const direct: UninstallTarget[] = [
+      { key: 'env', path: parent, size_bytes: 4, exists: true, shared: false },
+      { key: 'models', path: models, size_bytes: 4, exists: true, shared: true },
+    ];
+    for (const targets of [scanned, direct, direct.toReversed()]) {
+      const automatic = await createUninstallPlan(targets, false, null);
+      expect(automatic.refused).toEqual([]);
+      expect(automatic.paths).not.toContain(parent);
+      expect(automatic.paths).not.toContain(models);
+      const explicit = await createUninstallPlan(targets, true, null);
+      expect(explicit.refused).toEqual([]);
+      expect(explicit.paths).toContain(parent);
+    }
+    expect(await readFile(join(models, 'model.bin'), 'utf8')).toBe('keep');
+  },
+);

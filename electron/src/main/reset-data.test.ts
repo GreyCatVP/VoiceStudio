@@ -7,12 +7,23 @@ import { afterEach, expect, it } from 'vitest';
 import {
   isValidVoiceStudioRoot,
   modelsAreShared,
+  within,
   purgeResetScopes,
   scanResetScopes,
   type ResetRoots,
 } from './reset-data';
 
 const created: string[] = [];
+
+it('distinguishes literal dot-prefixed children from parent traversal', () => {
+  const root = join(tmpdir(), 'VoiceStudio-ownership');
+  expect(within(root, root)).toBe(true);
+  expect(within(join(root, '..cache', 'huggingface'), root)).toBe(true);
+  expect(within(join(root, '...cache'), root)).toBe(true);
+  expect(within(join(root, '..'), root)).toBe(false);
+  expect(within(join(root, '..', 'VoiceStudio-ownership-copy'), root)).toBe(false);
+});
+
 afterEach(async () => {
   const { rm } = await import('node:fs/promises');
   await Promise.allSettled(

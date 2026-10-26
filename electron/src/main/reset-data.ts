@@ -1,7 +1,7 @@
 import { lstat, readdir, realpath, rm } from 'node:fs/promises';
 import { lstatSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { basename, dirname, isAbsolute, join, parse, relative, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, parse, relative, resolve, sep } from 'node:path';
 
 export const FRONTEND_RESET_SCOPES = ['ui_prefs', 'history'] as const;
 export const DISK_RESET_SCOPES = [
@@ -99,7 +99,7 @@ export async function physicalPath(path: string): Promise<string | null> {
 
 export function within(path: string, root: string): boolean {
   const rel = relative(normalized(root), normalized(path));
-  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+  return rel === '' || (rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel));
 }
 
 async function hasAppSignature(path: string, includeCacheMarkers = true): Promise<boolean> {
