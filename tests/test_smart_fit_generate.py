@@ -373,8 +373,8 @@ def test_zero_and_negative_duration_segments_dont_crash(patched_generate):
     _done(parsed)
     track = job_dir / "dubbed_es.wav"
     assert track.exists()
-    n, sr = _read_wav(track)[0].shape[-1], SR
-    assert n == int(5.0 * SR)
+    wav, sr = _read_wav(track)
+    assert wav.shape[-1] == int(5.0 * sr)
 
     # The mix_<id> scratch WAV for the positive-duration silence is gone.
     leftovers = [p.name for p in job_dir.glob("seg_mix_*.wav")]

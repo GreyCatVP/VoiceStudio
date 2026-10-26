@@ -131,8 +131,10 @@ def test_sdk_header_lookup_uses_distribution_record_without_unpacking(tmp_path, 
     monkeypatch.setattr(runtime, "dll_directories", lambda: [])
     monkeypatch.setattr(runtime, "package_root", lambda name: calls.append(name) or root)
     monkeypatch.setattr(runtime, "import_module", lambda name: pytest.fail("unexpected SDK expansion"))
-    monkeypatch.delenv("ROCM_PATH", raising=False)
-    monkeypatch.delenv("MIOPEN_CUSTOM_CACHE_DIR", raising=False)
+    monkeypatch.setenv("ROCM_PATH", "")  # registers the absent original for teardown
+    monkeypatch.delenv("ROCM_PATH")
+    monkeypatch.setenv("MIOPEN_CUSTOM_CACHE_DIR", "")  # registers the absent original for teardown
+    monkeypatch.delenv("MIOPEN_CUSTOM_CACHE_DIR")
 
     runtime.initialize_dll_search()
 

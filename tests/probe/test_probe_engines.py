@@ -13,15 +13,24 @@ from .judges import engine as E
 _SPEC = os.path.join(os.path.dirname(__file__), "specs", "engines.probe.yaml")
 
 
-def test_engine_matrix(probe_report, boot_capture):
+def _judge_engine_matrix(boot_capture):
+    """Run the engine judges without recording them; returns ``(spec, results)``."""
     spec = probe_spec.load_spec(_SPEC)
     ctx = {"engines_tts": boot_capture["engines_tts"], "engines_asr": boot_capture["engines_asr"]}
-    results = probe_spec.run_judges(spec, ctx)
-    probe_report.record(spec, results)
+    return spec, probe_spec.run_judges(spec, ctx)
+
+
+def _assert_engine_matrix(boot_capture, results):
     assert probe_spec.blocking_failures(results) == [], "\n".join(str(r) for r in results)
     # Real-world sanity: the shipped defaults are available out of the box.
     assert E.active_engine_available(boot_capture["engines_tts"]).passed is True
     assert E.active_engine_available(boot_capture["engines_asr"]).passed is True
+
+
+def test_engine_matrix(probe_report, boot_capture):
+    spec, results = _judge_engine_matrix(boot_capture)
+    probe_report.record(spec, results)
+    _assert_engine_matrix(boot_capture, results)
 
 
 @pytest.mark.parametrize("active,available", [
@@ -30,7 +39,7 @@ def test_engine_matrix(probe_report, boot_capture):
     ("pytorch-whisper", False),
     ("missing", False),
 ])
-def test_engine_matrix_respects_selected_asr(probe_report, active, available):
+def test_engine_matrix_respects_selected_asr(active, available):
     capture = {
         "engines_tts": {
             "active": "tts",
@@ -44,11 +53,13 @@ def test_engine_matrix_respects_selected_asr(probe_report, active, available):
             ],
         },
     }
+    # Synthetic captures stay out of the shared probe report.
+    _, results = _judge_engine_matrix(capture)
     if available:
-        test_engine_matrix(probe_report, capture)
+        _assert_engine_matrix(capture, results)
     else:
         with pytest.raises(AssertionError, match="active engine"):
-            test_engine_matrix(probe_report, capture)
+            _assert_engine_matrix(capture, results)
 
 
 def test_unavailable_engines_explained_synthetic():

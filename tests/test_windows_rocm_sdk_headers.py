@@ -13,8 +13,10 @@ def sdk_environment(monkeypatch, tmp_path):
     versions = {"torch": "2.9.1+rocm7.2.1", "rocm-sdk-devel": "7.2.1"}
     monkeypatch.setattr(runtime.metadata, "version", versions.__getitem__)
     monkeypatch.setattr(runtime, "dll_directories", lambda: [])
-    monkeypatch.delenv("ROCM_PATH", raising=False)
-    monkeypatch.delenv("MIOPEN_CUSTOM_CACHE_DIR", raising=False)
+    monkeypatch.setenv("ROCM_PATH", "")  # registers the absent original for teardown
+    monkeypatch.delenv("ROCM_PATH")
+    monkeypatch.setenv("MIOPEN_CUSTOM_CACHE_DIR", "")  # registers the absent original for teardown
+    monkeypatch.delenv("MIOPEN_CUSTOM_CACHE_DIR")
     root = tmp_path / "SDK with spaces"
     header = root / "include/rocrand/rocrand_xorwow.h"
     header.parent.mkdir(parents=True)

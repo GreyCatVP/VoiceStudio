@@ -1,10 +1,20 @@
 """Keep the pinned Windows HIP disk-cache workaround narrowly scoped."""
 
+import importlib
 from types import SimpleNamespace
 
 import pytest
 
-from core.windows_rocm import runtime
+runtime = None
+
+
+@pytest.fixture(autouse=True)
+def _current_runtime():
+    """Resolve at run time: a suite that re-imports ``core.windows_rocm.runtime``
+    must not leave these tests patching a stale module."""
+    global runtime
+    runtime = importlib.import_module("core.windows_rocm.runtime")
+    yield
 
 
 @pytest.fixture
@@ -12,8 +22,10 @@ def cache_environment(monkeypatch):
     monkeypatch.setattr(runtime, "sys", SimpleNamespace(platform="win32"))
     monkeypatch.setattr(runtime.metadata, "version", lambda package: "2.9.1+rocm7.2.1")
     monkeypatch.setattr(runtime, "dll_directories", lambda: [])
-    monkeypatch.delenv("MIOPEN_DISABLE_CACHE", raising=False)
-    monkeypatch.delenv("MIOPEN_CUSTOM_CACHE_DIR", raising=False)
+    monkeypatch.setenv("MIOPEN_DISABLE_CACHE", "")  # registers the absent original for teardown
+    monkeypatch.delenv("MIOPEN_DISABLE_CACHE")
+    monkeypatch.setenv("MIOPEN_CUSTOM_CACHE_DIR", "")  # registers the absent original for teardown
+    monkeypatch.delenv("MIOPEN_CUSTOM_CACHE_DIR")
     return monkeypatch
 
 

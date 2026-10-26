@@ -66,6 +66,11 @@ def _make_fake_venv(venv_dir: Path) -> Path:
 
 @pytest.mark.parametrize("force_copy", [False, True])
 def test_fake_venv_runs_existing_interpreter(monkeypatch, tmp_path, force_copy):
+    if force_copy and sys.platform != "win32":
+        # The copy fallback is the Windows path (no symlink rights). A copied
+        # POSIX interpreter has no pyvenv.cfg/prefix metadata to find its
+        # standard library, so the forced-copy case only means something there.
+        pytest.skip("forced interpreter copy is the Windows-only fallback")
     if force_copy:
         def deny_symlink(*args, **kwargs):
             raise OSError("symlinks unavailable in this fixture")
