@@ -248,7 +248,7 @@ export function HomePage() {
             {[destinations.slice(0, 3), destinations.slice(3)].map((group, groupIndex) => (
               <div
                 key={groupIndex}
-                className={`home-destinations grid grid-cols-1 gap-3 @xl:grid-cols-2 @3xl:grid-cols-3 ${groupIndex === 0 ? 'home-destinations--primary' : 'home-destinations--secondary'}`}
+                className={`home-destinations grid grid-cols-1 gap-3 @xl:grid-cols-2 @3xl:grid-cols-3 @xl:[&>:last-child:nth-child(odd)]:col-span-2 @3xl:[&>:last-child:nth-child(odd)]:col-span-1 ${groupIndex === 0 ? 'home-destinations--primary' : 'home-destinations--secondary'}`}
               >
                 {group.map(({ to, label, description }) => (
                   <Link

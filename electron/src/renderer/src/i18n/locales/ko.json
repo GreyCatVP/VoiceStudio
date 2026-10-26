@@ -2241,7 +2241,7 @@
     "zoom_out": "축소(-)",
     "fit_all": "전체 맞춤(Home)",
     "fit_selection": "선택 맞춤(End)",
-    "fit_sel_btn": "맞춤 선택",
+    "fit_sel_btn": "선택 영역에 맞춤",
     "view_range": "{{start}} → {{end}}({{duration}}) 보기",
     "start_label": "시작",
     "end_label": "끝",

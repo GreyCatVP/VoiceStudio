@@ -2241,7 +2241,7 @@
     "zoom_out": "ज़ूम आउट करें (-)",
     "fit_all": "सभी को फिट करें (होम)",
     "fit_selection": "फ़िट चयन (अंत)",
-    "fit_sel_btn": "फिट एसईएल",
+    "fit_sel_btn": "चयन पर फ़िट करें",
     "view_range": "देखें {{start}} → {{end}} ({{duration}})",
     "start_label": "प्रारंभ करें",
     "end_label": "ख़त्म",

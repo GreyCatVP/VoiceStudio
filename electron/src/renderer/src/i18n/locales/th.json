@@ -2241,7 +2241,7 @@
     "zoom_out": "ซูมออก (-)",
     "fit_all": "พอดีทั้งหมด (บ้าน)",
     "fit_selection": "การเลือกความพอดี (จบ)",
-    "fit_sel_btn": "ฟิตเซล",
+    "fit_sel_btn": "พอดีกับส่วนที่เลือก",
     "view_range": "ดู {{start}} → {{end}} ({{duration}})",
     "start_label": "เริ่ม",
     "end_label": "สิ้นสุด",

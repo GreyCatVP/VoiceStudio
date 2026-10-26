@@ -2241,7 +2241,7 @@
     "zoom_out": "ズームアウト (-)",
     "fit_all": "すべてに適合 (ホーム)",
     "fit_selection": "フィット選択(終了)",
-    "fit_sel_btn": "フィットセル",
+    "fit_sel_btn": "選択範囲に合わせる",
     "view_range": "{{start}} → {{end}} ({{duration}}) を表示",
     "start_label": "スタート",
     "end_label": "終了",

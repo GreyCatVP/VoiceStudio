@@ -649,8 +649,8 @@ won't launch.
 build (`torch` + `torchaudio`) from PyTorch's own index. That CUDA wheel is
 large (~2.5 GB), so a flaky or restricted network drops it partway. This is a
 download/network problem, **not** a bug in VoiceStudio. The install fetches the
-exact URLs pinned in `uv.lock`, so a PyPI mirror (`UV_DEFAULT_INDEX`) cannot
-redirect it.
+exact URLs pinned in `uv.lock`, so neither a PyPI mirror (`UV_DEFAULT_INDEX`)
+nor the **China** download region redirects it: PyTorch's index has no mirror.
 
 **Fix, in order:**
 
@@ -684,13 +684,15 @@ PyTorch build and, for every engine, whether it uses the GPU.
 
 **Fix, by platform:**
 
-- **Windows:** PyTorch engines stay on the CPU (no ROCm wheels exist for the
-  PyTorch version VoiceStudio ships). Engines with their own GPU runtime — today
-  audio.cpp (Vulkan) — do use a Radeon: install its runtime from **Settings →
-  Models**. Details and the advanced, unsupported AMD-wheels route:
-  [windows.md — GPU support](windows.md#gpu-support).
+- **Windows:** supported Windows 11 Radeon cards, including the RX 9070 /
+  9070 XT (RDNA4), can opt into VoiceStudio's ROCm 7.2.1 setup — see the
+  [Windows ROCm guide](windows-rocm.md). Otherwise PyTorch engines stay on the
+  CPU; engines with their own GPU runtime — today audio.cpp (Vulkan) — still use
+  a Radeon: install its runtime from **Settings → Models**.
 - **Linux:** set `OMNIVOICE_TORCH_VARIANT=rocm` and run setup again, or use the
-  ROCm Docker image — [linux.md — AMD GPU (ROCm)](linux.md#amd-gpu-rocm). If the
+  ROCm Docker image — [linux.md — AMD GPU (ROCm)](linux.md#amd-gpu-rocm). The
+  ROCm build supports RX 9000 (RDNA4) cards natively; do not set
+  `HSA_OVERRIDE_GFX_VERSION=11.0.0` for them. If the
   panel says PyTorch has ROCm but cannot open the device, check that the `amdgpu`
   driver is loaded and your user can open `/dev/kfd` (`render` and `video`
   groups).
@@ -1181,12 +1183,16 @@ VoiceStudio now tries, in order: the default GitHub host → a gh-proxy mirror �
    tick *"Add Python to PATH"*), then relaunch — VoiceStudio will use it.
 2. **Point at a reachable mirror** for the Python download:
    - `UV_PYTHON_INSTALL_MIRROR=https://gh-proxy.com/https://github.com/astral-sh/python-build-standalone/releases/download`
-3. **Use a VPN or proxy for the dependency install.** The install downloads
+3. **In China, pick the China download region** on the setup screen. Packaged
+   setup then downloads the PyPI wheels pinned in `uv.lock` from the Aliyun
+   PyPI mirror (`mirrors.aliyun.com`). PyTorch wheels still come from
+   `download-r2.pytorch.org`.
+4. **Use a VPN or proxy for the dependency install.** The install downloads
    the exact wheel URLs pinned in `uv.lock`, so a PyPI mirror setting
    (`UV_DEFAULT_INDEX`, `UV_INDEX_URL`) does **not** redirect it. Packaged
    setup uses your system proxy, or `HTTPS_PROXY` when it is set. See
    [First-run setup is slow or stalls on a download](#first-run-setup-is-slow-or-stalls-on-a-download).
-4. The bootstrap already raises the network budget for you
+5. The bootstrap already raises the network budget for you
    (`UV_HTTP_TIMEOUT=120`, `UV_HTTP_CONNECT_TIMEOUT=30`, `UV_HTTP_RETRIES=5`);
    you can raise them further in the environment if a mirror is very slow.
 
@@ -1239,8 +1245,15 @@ so repeated retries do not fill the disk.
    `OMNIVOICE_TORCH_VARIANT=cpu` to choose it.
 
 The **download region** choice on the setup screen changes where the Python
-interpreter downloads from. It does not redirect the wheel downloads above, and
-neither do PyPI mirror variables (`UV_DEFAULT_INDEX`, `UV_INDEX_URL`).
+interpreter downloads from. With **China** selected, setup also downloads the
+`files.pythonhosted.org` wheels from the Aliyun PyPI mirror
+(`mirrors.aliyun.com`), which serves the same files: each one is still checked
+against the hash pinned in `uv.lock`. The setup log names the mirror. If the
+mirror fails, setup retries once from `files.pythonhosted.org` and keeps every
+file that finished. The PyTorch wheels on `download-r2.pytorch.org` have no
+mirror and download from there in every region. PyPI mirror variables
+(`UV_DEFAULT_INDEX`, `UV_INDEX_URL`) do not redirect the locked wheels
+([#3444](https://github.com/debpalash/VoiceStudio/issues/3444)).
 
 **Linked issue:** [#3411](https://github.com/debpalash/VoiceStudio/issues/3411)
 
