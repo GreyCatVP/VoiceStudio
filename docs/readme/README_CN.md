@@ -80,7 +80,9 @@ curl -fsSL https://voicestudio.sh/install | sh -s -- --uninstall
 
 从 [Releases](https://github.com/debpalash/VoiceStudio/releases/latest) 下载，然后阅读对应平台的安装指南：
 
-**[macOS](../../docs/install/macos.md) · [Windows](../../docs/install/windows.md) · [Linux](../../docs/install/linux.md) · [Docker](../../docs/install/docker.md)**
+**[macOS](../../docs/install/macos.md) · [Windows](../../docs/install/windows.md) · [Linux](../../docs/install/linux.md) · [Docker](../../docs/install/docker.md) · [Android 和 iPhone](../../docs/mobile.md#install)**
+
+Linux 也可以通过 Snap Store 安装：`sudo snap install voicestudio`。Android（`.apk`）和 iPhone（`.ipa`，需用自己的 Apple ID 侧载）的安装包与桌面安装程序一同发布。
 
 打开**声音克隆**，选择已有声音或添加清晰的参考录音，输入文字并生成。按提示安装所需模型。硬件要求因引擎而异，详见[性能指南](../../docs/performance.md)。
 
@@ -124,6 +126,23 @@ bun run dev
 | 参与开发 | [贡献指南](../../.github/CONTRIBUTING.md) · [Electron](../../electron/README.md) · [更新日志](../../CHANGELOG.md) |
 
 智能体技能：`npx skills add debpalash/VoiceStudio` — 音频工作流选 **voicestudio**，仓库维护选 **voicestudio-maintainer**。
+
+## 团队
+
+### 核心团队
+
+<table>
+<tr>
+<td align="center" width="200"><a href="https://github.com/debpalash"><img src="https://github.com/debpalash.png?size=160" width="80" height="80" alt="Palash Debnath"></a><br><b>Palash Debnath</b><br><sub>创建者 · 核心团队</sub><br><sub><a href="https://palash.dev">palash.dev</a> · <a href="https://github.com/debpalash">GitHub</a> · <a href="https://x.com/idebpalash">X</a></sub></td>
+<td align="center" width="200"><a href="https://github.com/velixio"><img src="https://github.com/velixio.png?size=160" width="80" height="80" alt="Shimul Debnath"></a><br><b>Shimul Debnath</b><br><sub>核心团队</sub><br><sub><a href="https://shimul.me">shimul.me</a> · <a href="https://github.com/velixio">GitHub</a> · <a href="https://x.com/shimuldn">X</a></sub></td>
+</tr>
+</table>
+
+### 贡献者
+
+<a href="https://github.com/kevin9327"><img src="https://github.com/kevin9327.png?size=96" width="44" height="44" alt="@kevin9327" title="@kevin9327"></a> <a href="https://github.com/jaketame"><img src="https://github.com/jaketame.png?size=96" width="44" height="44" alt="@jaketame" title="@jaketame"></a> <a href="https://github.com/psiberfunk"><img src="https://github.com/psiberfunk.png?size=96" width="44" height="44" alt="@psiberfunk" title="@psiberfunk"></a> <a href="https://github.com/rudycelekli"><img src="https://github.com/rudycelekli.png?size=96" width="44" height="44" alt="@rudycelekli" title="@rudycelekli"></a> <a href="https://github.com/paoloantinori"><img src="https://github.com/paoloantinori.png?size=96" width="44" height="44" alt="@paoloantinori" title="@paoloantinori"></a> <a href="https://github.com/Chang-Jin-Lee"><img src="https://github.com/Chang-Jin-Lee.png?size=96" width="44" height="44" alt="@Chang-Jin-Lee" title="@Chang-Jin-Lee"></a> <a href="https://github.com/swadhinbiswas"><img src="https://github.com/swadhinbiswas.png?size=96" width="44" height="44" alt="@swadhinbiswas" title="@swadhinbiswas"></a> <a href="https://github.com/BichengWang"><img src="https://github.com/BichengWang.png?size=96" width="44" height="44" alt="@BichengWang" title="@BichengWang"></a> <a href="https://github.com/nirmalchatur"><img src="https://github.com/nirmalchatur.png?size=96" width="44" height="44" alt="@nirmalchatur" title="@nirmalchatur"></a> <a href="https://github.com/Shivendra-Coherent"><img src="https://github.com/Shivendra-Coherent.png?size=96" width="44" height="44" alt="@Shivendra-Coherent" title="@Shivendra-Coherent"></a> <a href="https://github.com/marreiradigital"><img src="https://github.com/marreiradigital.png?size=96" width="44" height="44" alt="@marreiradigital" title="@marreiradigital"></a> <a href="https://github.com/nvtoan0201-swe"><img src="https://github.com/nvtoan0201-swe.png?size=96" width="44" height="44" alt="@nvtoan0201-swe" title="@nvtoan0201-swe"></a>
+
+感谢每一位提交代码、反馈问题、翻译和建议的人。[查看全部贡献者](https://github.com/debpalash/VoiceStudio/graphs/contributors) · [参与贡献](../../.github/CONTRIBUTING.md)
 
 ## 赞助商
 

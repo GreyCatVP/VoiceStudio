@@ -20,8 +20,12 @@ translate, review the text, then generate. Completed tracks can be previewed and
 exported through the native save dialog.
 
 The import card can clear a pasted URL and its cookie attachment before ingest.
-After loading a source, Remove video (Remove audio for audio sources) returns to
-the import card, with its file and URL options, discarding the transcript and edit
+A loaded source shows as one file row: its name (full name on hover), length and
+size, and a **File actions** menu with Change file, Use link and Remove video
+(Remove audio for audio sources). While it is preparing, the main pane previews
+the file and shows the current stage. Spoken language (Auto by default) and the
+speaker count sit directly under it, with Import .srt as a secondary action.
+Remove returns to the import card, with its file and URL options, discarding the transcript and edit
 history while retaining production settings. It stays available after an
 interrupted or failed run, and asks for confirmation when transcript edits or
 segments would be discarded.
@@ -119,6 +123,23 @@ an inline explanation with a link to LLM settings. It does not silently claim
 that Cinematic or Autofit completed. Browser fixtures cover this fallback and
 reload persistence; real LLM-backed quality passes remain unverified.
 
+A regional dialect is a prompt instruction, so only an LLM-backed translation
+can act on one. A neural machine-translation engine has a single code per
+language — NLLB's `por_Latn` is Portuguese with no European variant to select —
+so asking it for Portuguese (Portugal) returns whatever its training favoured.
+The backend reports whether the dialect was applied, and the workspace shows an
+inline explanation beside the translator when it was not, with a link to LLM
+settings. The selection is never silently discarded. The notice describes the
+last translation, so switching to an LLM-backed engine and translating again
+clears it.
+
+Portuguese (Brazil) and Portuguese (Portugal) are separate target choices; both
+write the Portuguese track with that dialect, and a plain Portuguese target
+means Brazilian. NLLB, Argos and Google write Brazilian Portuguese, so a
+Brazilian request counts as applied and a European one shows the notice naming
+the variant the engine wrote (`dialect_used` in the response). See
+[Supported Languages](languages.md#regional-variants).
+
 **Translate with Agent** detects the installed Codex, Claude Code, OpenCode and Pi CLIs. Dubbing
 presents Agent and the active Google, Argos, NLLB or API engine as separate translator choices;
 Fast, Autofit and Cinematic remain quality choices for engine translation. The selected agent receives the complete ordered
@@ -198,6 +219,12 @@ API (out-of-range values return 422), saved with drafts and projects, and leave
 the defaults untouched until moved. Changing one re-mixes rendered lines without
 re-synthesizing them.
 
+The backend validates `fit_options` before synthesis: `max_audio_only_rate`,
+`audio_rate_cap`, and `video_slow_cap` must be finite and at least 1;
+`gap_guard_s` must be finite and nonnegative. Invalid overrides return HTTP 422.
+Omitted or null values retain the server defaults; a zero gap guard and
+`allow_video_retime: false` remain explicit overrides.
+
 Real export verification: `tests/test_smart_fit_export.py` passes all 43 tests
 with the installed app-managed FFmpeg/ffprobe explicitly supplied. Its seven
 integration cases render synthetic video/audio through retiming and the backend
@@ -223,7 +250,8 @@ either neighbor. Merge/split uses Tauri's shared attribution bookkeeping, so spe
 voice, direction, gain and target language survive moving words across a boundary.
 Undo and redo retain the latest 50 edit states and reset when a new source, subtitle
 file, translation or project becomes the editing baseline. The toolbar and
-Cmd/Ctrl shortcuts expose the same operations. Unit and browser regressions cover
+Cmd/Ctrl shortcuts expose the same operations; Cmd/Ctrl+Z in any other field (glossary,
+translation notes, segment Start/End) stays that field's own undo. Unit and browser regressions cover
 the full insert/delete/merge/split/undo/redo sequence and merge-to-split attribution.
 
 The editor includes a proportional timing lane above the segment rows. Segment
@@ -377,6 +405,12 @@ size while its beginning is filled with zeros after an interrupted download or
 copy. Wait for the transfer to finish, ensure the storage drive has enough free
 space, and download or copy a fresh file before uploading again. Repeatedly
 uploading the same damaged file cannot restore its missing header.
+
+A file with no audio track, an empty file, an unsupported file type or a
+damaged file is shown as a note on the file row (for example "No audio track —
+choose a video or audio file with sound") instead of a failure banner: choose
+another file with Change file. Real failures keep the banner with Open docs and
+Copy diagnostic.
 Uploads also check that the data drive has room for the source copy. If the drive fills during a copy, VoiceStudio removes the partial job
 file and asks you to free space in Settings → Storage before retrying.
 
@@ -405,6 +439,6 @@ audio if a later import fails validation or runs out of space.
 Cancelling an upload waits for its copy worker to stop before closing the input
 and clearing the reserved job, so the same upload can be retried safely.
 
-Use **Use link** beside an uploaded source to replace it with a URL. **Cancel**
+Use **Use link** in the source's File actions menu to replace it with a URL. **Cancel**
 closes the URL form without changing the source; changing the source also closes
 the form. URL ingestion waits until any pending cancellation finishes.

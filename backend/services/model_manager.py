@@ -62,6 +62,9 @@ def _missing_module_is_omnivoice(exc: ModuleNotFoundError) -> bool:
 def _lazy_omnivoice():
     global _OmniVoice
     if _OmniVoice is None:
+        from core.windows_rocm.pipelines import prepare_audio_imports
+
+        prepare_audio_imports()
         try:
             # The class is OmniVoice — a library identifier, not product
             # branding. The VoiceStudio rename must not touch it (checkpoint
@@ -1509,6 +1512,8 @@ def _configure_rocm_if_needed(torch):
     overriding a natively-supported GPU forces it onto foreign kernels for no
     reason — so the map is a fallback, not an unconditional rewrite.
     """
+    if sys.platform == "win32":
+        return  # Windows uses AMD's exact native matrix, never Linux HSA remaps.
     from core.device_caps import (
         ROCM_GFX_OVERRIDES,
         build_arch_list,
@@ -1562,6 +1567,36 @@ def _configure_rocm_if_needed(torch):
         logger.debug("ROCm GFX auto-config skipped: %s", e)
 
 
+def _rocm_arch_remedy(device_arch: str, arch_list) -> str:
+    """What a Linux ROCm user can do about an architecture this build lacks.
+
+    ``HSA_OVERRIDE_GFX_VERSION`` is only suggested toward a same-family target
+    the build actually ships, with the exact value. Generic "11.0.0" advice made
+    RDNA4 owners (gfx1200/gfx1201, #3418) remap onto RDNA3 kernels, which cannot
+    run on gfx12 at all.
+    """
+    from core.device_caps import gfx_generation, hsa_override_for, same_generation_targets
+
+    install = (
+        f"Install a ROCm PyTorch build that lists {device_arch}: "
+        "OMNIVOICE_TORCH_VARIANT=rocm setup installs torch 2.8.0 from the "
+        "rocm6.4 index, which includes gfx1200/gfx1201 (RX 9000 series)."
+    )
+    if "HSA_OVERRIDE_GFX_VERSION" in device_arch:
+        return "Remove or correct HSA_OVERRIDE_GFX_VERSION, or " + install[0].lower() + install[1:]
+    siblings = same_generation_targets(device_arch, arch_list)
+    if not siblings:
+        return (
+            f"No HSA_OVERRIDE_GFX_VERSION remap can help: this build has no "
+            f"gfx{gfx_generation(device_arch)}xx target. " + install
+        )
+    target = siblings[-1]
+    return (
+        f"{install} As an unsupported workaround, HSA_OVERRIDE_GFX_VERSION="
+        f"{hsa_override_for(target)} runs it on the {target} kernels."
+    )
+
+
 def check_device_compatibility():
     """Check if PyTorch supports the current GPU's architecture.
 
@@ -1584,12 +1619,16 @@ def check_device_compatibility():
     except Exception:
         device_name = "GPU"
     if getattr(getattr(torch, "version", None), "hip", None) is not None:
+        if sys.platform == "win32":
+            return False, (
+                f"{device_name} ({device_arch}) is not supported by this Windows HIP "
+                "build. Check AMD's exact Windows GPU/driver/wheel matrix or select "
+                "CPU. HSA architecture remapping is not a supported Windows remedy."
+            )
         return False, (
             f"{device_name} ({device_arch}) is not supported by this ROCm "
             f"PyTorch build. Supported architectures: {', '.join(arch_list)}. "
-            f"Set HSA_OVERRIDE_GFX_VERSION to the closest supported target "
-            f"(e.g. 11.0.0 for a gfx11xx card) or install a ROCm build that "
-            f"lists {device_arch}."
+            + _rocm_arch_remedy(device_arch, arch_list)
         )
     return False, (
         f"{device_name} ({device_arch}) is not supported by this PyTorch build. "
@@ -2066,11 +2105,13 @@ def _is_incomplete_cache_error(exc: BaseException) -> bool:
     rather than the error type, since the same OSError type covers unrelated
     I/O failures.
 
-    There are TWO wordings, and this used to match only the first, so a
+    Missing weights have two wordings, and this used to match only the first, so a
     half-written repo whose *subfolder* failed to load (#1273:
     "Error no file named model.safetensors, … found in directory
     …/snapshots/<rev>/audio_tokenizer") got neither the automatic repair nor
-    an actionable message — just a raw 500. `core.failure` owns the phrase
+    an actionable message — just a raw 500. Missing feature-extractor config
+    uses a third wording (#2984), even when weights are complete, and needs
+    the same repair. `core.failure` owns the phrase
     list so the heal and the error text can't drift apart."""
     from core.failure import is_incomplete_cache_message
 
@@ -3390,13 +3431,25 @@ def _checkpoint_in_local_cache(checkpoint: str) -> bool:
 async def preload_model():
     """Background model warm-up — call from lifespan startup.
 
-    Loads the TTS model on the GPU pool thread so the first /generate
-    call is near-instant instead of waiting 4-6s for weight loading.
+    Loads native OmniVoice on the GPU pool thread only when it is selected,
+    so its first /generate call avoids waiting for weight loading.
     Non-blocking: if models aren't installed yet, silently exits.
     """
     global model, _last_used
     if model is not None:
         return  # already loaded
+
+    # This singleton belongs to native OmniVoice, not the selected engine's
+    # adapter. Warming it for another engine wastes memory before first use.
+    try:
+        from services.tts_backend import active_backend_id
+
+        if active_backend_id() != "omnivoice":
+            logger.info("Native TTS preload skipped: another TTS engine is selected.")
+            return
+    except Exception:  # noqa: BLE001 -- optional warm-up must not guess an engine
+        logger.debug("TTS preload selection failed; skipping warm-up", exc_info=True)
+        return
 
     # On MPS the configured ``omnivoice`` id resolves to a crash-isolated
     # sidecar. Warming the native singleton here would put the same fatal MPS
@@ -4474,6 +4527,11 @@ def get_diarization_pipeline(return_error: bool = False):
         except Exception as exc:
             logger.exception("Could not prepare native Sortformer")
             return (None, _classify_diarization_error(exc)) if return_error else None
+    from core.windows_rocm.pipelines import pipeline_error, prepare_audio_imports
+
+    if reason := pipeline_error():
+        logger.warning("Speaker diarization unavailable: %s", reason)
+        return (None, DIARIZATION_ERR_LOAD) if return_error else None
     if _diar_pipeline is not None:
         return (_diar_pipeline, None) if return_error else _diar_pipeline
 
@@ -4501,6 +4559,7 @@ def get_diarization_pipeline(return_error: bool = False):
             WhisperXBackend._allow_vad_pickle_globals()
         except Exception as _glob_e:
             logger.debug("pyannote safe-globals allowlist skipped: %s", _glob_e)
+        prepare_audio_imports()
         from pyannote.audio import Pipeline
         logger.info("Loading Pyannote Diarization Pipeline...")
         from services.diarization_local import local_pipeline_config

@@ -12,6 +12,7 @@ public struct PhoneVoice: Codable, Identifiable, Sendable, Equatable {
     public var modelRevision: String? = nil
     public var designInstruction: String? = nil
     public var designSeed: UInt64? = nil
+    public var sourceAttribution: [String:String]? = nil
 }
 public protocol PhoneAudioDecoder: Sendable {
     func decode(source: URL, output: URL, maxSeconds: Double, progress: @escaping @Sendable (Double) async -> Void) async throws -> PCMFile
@@ -20,6 +21,30 @@ public actor PhoneVoiceStore {
     private let root: URL
     public init(root: URL) throws { self.root = root; try PrivateFiles.directory(root); try PrivateFiles.removeUnpublished(in: root,metadata: "voice.json") }
     private func directory(_ id: UUID) throws -> URL { try PrivateFiles.child(root,id.uuidString) }
+    internal func handoffFiles(_ voice: PhoneVoice) throws -> [String:URL] {
+        var files: [String:URL] = [:]
+        for name in ["reference.pcm","reference.wav","preview.wav"] {
+            let file = try PrivateFiles.child(directory(voice.id),name)
+            if FileManager.default.fileExists(atPath: file.path) { files[name] = file }
+        }
+        return files
+    }
+    internal func installHandoff(name: String,transcript: String,reference: PCMChunk,metadata: [String:JSONValue],synthetic: Bool,consent: Bool) throws -> PhoneVoice {
+        guard consent, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, name.count <= 200, !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, transcript.utf16.count <= 4000, reference.sampleRate == 24000, (2400...720000).contains(reference.samples.count), reference.samples.allSatisfy(\.isFinite) else { throw ClientError("mobile.handoff.voices_required") }
+        let id = UUID(), now = Date(), dir = try directory(id)
+        try PrivateFiles.directory(dir)
+        do {
+            try PCMFile.write(reference,to: dir.appendingPathComponent("reference.pcm"))
+            if synthetic { try LocalAudio(samples: reference.samples,sampleRate: 24000).markSynthetic().write(to: dir.appendingPathComponent("reference.wav"),options: .atomic) }
+            else { try ReferenceWave.write(reference,to: dir.appendingPathComponent("reference.wav")) }
+            let recipe = metadata["kind"]?.string == "design" ? metadata["instruct"]?.string : nil
+            let seed = metadata["phone_design_seed"]?.string.flatMap(UInt64.init)
+            var attribution: [String:String]?
+            if case .object(let raw) = metadata["sourceAttribution"] { let fields = raw.compactMapValues(\.string).filter { ["source","id","name","author","license","language","url"].contains($0.key) && $0.value.utf16.count <= 2000 }; if !fields.isEmpty { attribution = fields } }
+            let voice = PhoneVoice(id: id,name: name,transcript: transcript,createdAt: now,consentAt: now,sampleRate: 24000,modelRepo: metadata["modelRepo"]?.string,modelRevision: metadata["modelRevision"]?.string,designInstruction: recipe,designSeed: seed,sourceAttribution: attribution)
+            try Task.checkCancellation(); try PrivateFiles.write(voice,to: dir.appendingPathComponent("voice.json")); return voice
+        } catch { try? FileManager.default.removeItem(at: dir); throw error }
+    }
     public func list() throws -> [PhoneVoice] {
         try FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil).filter { UUID(uuidString: $0.lastPathComponent) != nil }.compactMap { dir in
             do {

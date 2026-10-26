@@ -91,6 +91,19 @@ bun run dev:web     # maintained Electron renderer in a browser + backend
 | **Backend** | `localhost:3900` | FastAPI server — TTS, ASR, diarization, dubbing pipeline |
 | **Frontend** | `localhost:3901` | Electron renderer served by Vite in a browser |
 
+`bun run dev` keeps one desktop dev instance per checkout: starting it again
+stops the earlier dev app and its dev server (only this checkout's, never an
+installed VoiceStudio or another project) instead of failing with "Port 3902 is
+already in use". To run two side by side, start the second one with
+`VOICESTUDIO_ALLOW_MULTIPLE_INSTANCES=1` plus its own ports, for example
+`VOICESTUDIO_UI_PORT=3912 VOICESTUDIO_ELECTRON_PROXY_PORT=3913`.
+
+On macOS, development launches coordinate bundle preparation and retain each
+active dev server’s branded Electron bundle across main-process restarts.
+Unused bundles are removed on later launches; cleanup failures do not prevent
+a valid cached bundle from starting. Native OS locks release automatically when
+all holders exit, including after a crash.
+
 Product builds read the app name, application ID, and the backend/web/Electron
 development ports from `config/app.json`. Change that manifest instead of
 copying new defaults into launchers or runtime modules.
@@ -398,6 +411,11 @@ hard rules from the first prompt.
 
 ## Quality gates your PR must pass
 
+- **Gallery pin:** a PR that changes the `omnivoice-gallery` submodule must
+  move it forward along the gallery's `main` (`.github/workflows/gallery-pin.yml`).
+  If it fails on a PR that never meant to touch the gallery, the checkout had a
+  stale submodule: run `git submodule update omnivoice-gallery` and drop that
+  change from the commit.
 - **First CI run from a fork:** a pull request from a fork waits for a
   maintainer to approve it (the `external-pr` environment) before CI starts.
   Branches in this repository start at once.
@@ -447,6 +465,16 @@ hard rules from the first prompt.
     restricted networks, skipped when the user set an endpoint
     (`backend/services/endpoint_race.py`); and Hugging Face model downloads
     (gated on install state or an explicit user action).
+  - **Windows ROCm setup the user explicitly selects** (owner-approved
+    2026-10-26): the matched AMD SDK and PyTorch wheels from `repo.radeon.com`,
+    and the pinned HIP CTranslate2 archive from OpenNMT/CTranslate2 GitHub
+    Releases. Every artifact is SHA-256 pinned in
+    `scripts/windows-rocm-recipe.json` and verified before use. This opt-in
+    installer keeps every other package at its installed (locked) version and
+    uses the usual package indexes only for anything new; verification
+    and the optional local-model smoke test never acquire models or use the network.
+    The VC++ Redistributable is a manual prerequisite; opted-in Windows ROCm
+    source setup checks it locally and stops when it is missing.
   - **Galleries the user opens or enables:** the community gallery manifest
     from jsDelivr plus its GitHub-hosted previews
     (`backend/api/routers/community.py`); the voice-preview gallery's signed

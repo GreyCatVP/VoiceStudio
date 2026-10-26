@@ -228,7 +228,7 @@ jobs:
       # Cache ~/.bun/install/cache keyed on bun.lock — `bun install` drops
       # from ~15 s cold to near-instant on warm cache.
       - name: Cache bun deps
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
@@ -245,6 +245,9 @@ jobs:
       # deps installed, so the pytest copy of this check skips before this point.
       - name: Mobile theme tokens match Electron
         run: bun --no-install scripts/export-mobile-tokens.ts --check
+
+      - name: Mobile maintainer cards match Electron
+        run: bun --no-install scripts/export-mobile-contributors.ts --check
 
 
   # Electron checks run beside the Python job instead of after it (~16 min serial
@@ -278,7 +281,7 @@ jobs:
       # Cache ~/.bun/install/cache keyed on bun.lock — `bun install` drops
       # from ~15 s cold to near-instant on warm cache.
       - name: Cache bun deps
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
@@ -335,7 +338,7 @@ jobs:
       # Cache ~/.bun/install/cache keyed on bun.lock — `bun install` drops
       # from ~15 s cold to near-instant on warm cache.
       - name: Cache bun deps
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
@@ -432,7 +435,7 @@ jobs:
           bun-version: '1.4.2'
 
       - name: Cache bun deps
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
@@ -477,7 +480,7 @@ jobs:
         with:
           node-version: '22'
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: native/desktop-bridge -> target
           key: linux-native-package
@@ -527,7 +530,7 @@ jobs:
           bun-version: '1.4.2'
 
       - name: Cache bun deps
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
@@ -536,6 +539,10 @@ jobs:
 
       - name: Install Electron deps
         run: bun install --frozen-lockfile
+
+      - name: Development launcher tests
+        working-directory: electron
+        run: bunx --no-install vp test --run src/main/dev-bundle.test.ts src/main/dev-instance.test.ts
 
       - name: Build Electron app
         run: bun run --cwd electron build

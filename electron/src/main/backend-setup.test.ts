@@ -19,6 +19,8 @@ const mocks = vi.hoisted(() => ({
   rm: vi.fn(),
   stage: vi.fn(),
   spawn: vi.fn(),
+  inFlight: vi.fn(async (_cache: string) => 0),
+  hosts: vi.fn(async () => new Map<string, string>()),
 }));
 vi.mock('electron', () => ({ app: { isPackaged: true, getPath: () => '/private/voicestudio' } }));
 vi.mock('node:child_process', () => ({ spawn: mocks.spawn, spawnSync: vi.fn() }));
@@ -60,6 +62,8 @@ vi.mock('node:fs', async (importOriginal) => {
 vi.mock('node:fs/promises', () => ({ rm: mocks.rm }));
 vi.mock('./runtime-project', () => ({
   MISSING_SYSTEM_LIBRARY_CODE: 'MISSING_SYSTEM_LIBRARY',
+  OUTDATED_SYSTEM_LIBRARY_CODE: 'OUTDATED_SYSTEM_LIBRARY',
+  RUNTIME_FILES_LOCKED_CODE: 'RUNTIME_FILES_LOCKED',
   runtimeDependenciesReady: mocks.dependencies,
   runtimeReady: mocks.ready,
   runtimeCompatible: mocks.compatible,
@@ -68,6 +72,12 @@ vi.mock('./runtime-project', () => ({
   promoteLegacyRuntimeCaches: mocks.promoteCaches,
   stageRuntimeSources: mocks.stage,
   runtimePython: (root: string) => root + '/.venv/bin/python',
+  runtimeDownloadHosts: mocks.hosts,
+  runtimeUvCache: (project: string) => project + '/../.uv-cache',
+}));
+vi.mock('./setup-downloads', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./setup-downloads')>()),
+  inFlightDownloadBytes: mocks.inFlight,
 }));
 import {
   BackendSupervisor,
@@ -315,6 +325,77 @@ it('startup and retry await explicit setup without staging, spawning or installi
   expect(mocks.install).not.toHaveBeenCalled();
   await supervisor.shutdown();
 });
+// #3411: uv prints nothing while a big wheel downloads. Bytes landing in its
+// cache keep the install live; when they stop, the screen names the stalled host.
+it('shows a stalled download with its source host once in-flight bytes stop growing', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => {
+      throw new Error('no backend');
+    }),
+  );
+  vi.stubEnv('OMNIVOICE_BACKEND_CMD', '');
+  vi.stubEnv('VOICESTUDIO_SKIP_BACKEND', '');
+  mocks.hosts.mockResolvedValue(new Map([['torch', 'download-r2.pytorch.org']]));
+  let received = 0;
+  mocks.inFlight.mockImplementation(async () => received);
+  mocks.install.mockImplementation(
+    (
+      _bundle: string,
+      _project: string,
+      _uv: string | null,
+      _run: unknown,
+      signal: AbortSignal,
+      phase: (value: string) => void,
+    ) => {
+      phase('installing_deps');
+      return new Promise((_resolve, reject) =>
+        signal.addEventListener('abort', () => reject(signal.reason), { once: true }),
+      );
+    },
+  );
+  const supervisor = new BackendSupervisor();
+  await supervisor.start();
+  vi.useFakeTimers();
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
+  const install = supervisor.setupRuntime();
+  await vi.advanceTimersByTimeAsync(0);
+  const internal = supervisor as unknown as {
+    pushLog(stream: 'out' | 'err', line: string, fromChild?: boolean): void;
+  };
+  internal.pushLog('err', 'Downloading torch (2.0GiB)', true);
+
+  // Bytes keep arriving for a minute: slow is not stalled.
+  for (let second = 0; second < 60; second += 3) {
+    received += 1024 ** 2;
+    await vi.advanceTimersByTimeAsync(3_000);
+  }
+  expect(supervisor.status.setupProgress).toMatchObject({
+    downloadHost: 'download-r2.pytorch.org',
+  });
+  expect(supervisor.status.setupProgress?.stalled).toBeUndefined();
+
+  await vi.advanceTimersByTimeAsync(48_000);
+  expect(supervisor.status.setupProgress).toMatchObject({
+    stalled: true,
+    downloadHost: 'download-r2.pytorch.org',
+  });
+  expect(supervisor.status.logTail).toContain('Download source: download-r2.pytorch.org');
+  expect(
+    supervisor.status.logTail.some((line) =>
+      line.startsWith('Download stalled: no data from download-r2.pytorch.org'),
+    ),
+  ).toBe(true);
+
+  received += 1024 ** 2;
+  await vi.advanceTimersByTimeAsync(3_000);
+  expect(supervisor.status.setupProgress?.stalled).toBeUndefined();
+
+  await supervisor.shutdown();
+  await install;
+});
 it('a failed explicit installation returns to setup and allows another attempt', async () => {
   vi.stubGlobal(
     'fetch',
@@ -393,6 +474,18 @@ it('exposes actionable storage failures without requiring log parsing', async ()
   mocks.install.mockRejectedValue(Object.assign(new Error('denied'), { code: 'EACCES' }));
   await supervisor.setupRuntime();
   expect(supervisor.status.setupIssue).toBe('access');
+  // A lock held by another program and an outdated system runtime each name
+  // their own fix instead of a misleading "allow write access" (#3409, #3293).
+  mocks.install.mockRejectedValue(
+    Object.assign(new Error('locked'), { code: 'RUNTIME_FILES_LOCKED' }),
+  );
+  await supervisor.setupRuntime();
+  expect(supervisor.status.setupIssue).toBe('files_locked');
+  mocks.install.mockRejectedValue(
+    Object.assign(new Error('outdated'), { code: 'OUTDATED_SYSTEM_LIBRARY' }),
+  );
+  await supervisor.setupRuntime();
+  expect(supervisor.status.setupIssue).toBe('outdated_system_library');
   await supervisor.shutdown();
 });
 

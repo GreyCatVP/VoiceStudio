@@ -81,7 +81,9 @@ Electron パッケージを含んでいる必要があり、アーカイブ済�
 
 [Releases](https://github.com/debpalash/VoiceStudio/releases/latest) からダウンロードし、お使いのプラットフォームのガイドに従ってください：
 
-**[macOS](../../docs/install/macos.md) · [Windows](../../docs/install/windows.md) · [Linux](../../docs/install/linux.md) · [Docker](../../docs/install/docker.md)**
+**[macOS](../../docs/install/macos.md) · [Windows](../../docs/install/windows.md) · [Linux](../../docs/install/linux.md) · [Docker](../../docs/install/docker.md) · [Android と iPhone](../../docs/mobile.md#install)**
+
+Linux では Snap Store からもインストールできます：`sudo snap install voicestudio`。Android（`.apk`）と iPhone（`.ipa`、ご自身の Apple ID でサイドロード）のアプリもデスクトップ版と同じリリースで配布しています。
 
 **音声クローン**を開き、声を選ぶかクリアな参照音声を追加し、テキストを入力して生成します。求められたら必要なモデルをインストールしてください。必要なハードウェアはエンジンによって異なります。[パフォーマンス](../../docs/performance.md)を参照してください。
 
@@ -128,6 +130,23 @@ bun run dev
 | 開発 | [コントリビューション](../../.github/CONTRIBUTING.md) · [Electron](../../electron/README.md) · [変更履歴](../../CHANGELOG.md) |
 
 エージェントスキル：`npx skills add debpalash/VoiceStudio` — 音声ワークフローには **voicestudio**、リポジトリのメンテナンスには **voicestudio-maintainer** を選択してください。
+
+## チーム
+
+### コアチーム
+
+<table>
+<tr>
+<td align="center" width="200"><a href="https://github.com/debpalash"><img src="https://github.com/debpalash.png?size=160" width="80" height="80" alt="Palash Debnath"></a><br><b>Palash Debnath</b><br><sub>作者・コアチーム</sub><br><sub><a href="https://palash.dev">palash.dev</a> · <a href="https://github.com/debpalash">GitHub</a> · <a href="https://x.com/idebpalash">X</a></sub></td>
+<td align="center" width="200"><a href="https://github.com/velixio"><img src="https://github.com/velixio.png?size=160" width="80" height="80" alt="Shimul Debnath"></a><br><b>Shimul Debnath</b><br><sub>コアチーム</sub><br><sub><a href="https://shimul.me">shimul.me</a> · <a href="https://github.com/velixio">GitHub</a> · <a href="https://x.com/shimuldn">X</a></sub></td>
+</tr>
+</table>
+
+### コントリビューター
+
+<a href="https://github.com/kevin9327"><img src="https://github.com/kevin9327.png?size=96" width="44" height="44" alt="@kevin9327" title="@kevin9327"></a> <a href="https://github.com/jaketame"><img src="https://github.com/jaketame.png?size=96" width="44" height="44" alt="@jaketame" title="@jaketame"></a> <a href="https://github.com/psiberfunk"><img src="https://github.com/psiberfunk.png?size=96" width="44" height="44" alt="@psiberfunk" title="@psiberfunk"></a> <a href="https://github.com/rudycelekli"><img src="https://github.com/rudycelekli.png?size=96" width="44" height="44" alt="@rudycelekli" title="@rudycelekli"></a> <a href="https://github.com/paoloantinori"><img src="https://github.com/paoloantinori.png?size=96" width="44" height="44" alt="@paoloantinori" title="@paoloantinori"></a> <a href="https://github.com/Chang-Jin-Lee"><img src="https://github.com/Chang-Jin-Lee.png?size=96" width="44" height="44" alt="@Chang-Jin-Lee" title="@Chang-Jin-Lee"></a> <a href="https://github.com/swadhinbiswas"><img src="https://github.com/swadhinbiswas.png?size=96" width="44" height="44" alt="@swadhinbiswas" title="@swadhinbiswas"></a> <a href="https://github.com/BichengWang"><img src="https://github.com/BichengWang.png?size=96" width="44" height="44" alt="@BichengWang" title="@BichengWang"></a> <a href="https://github.com/nirmalchatur"><img src="https://github.com/nirmalchatur.png?size=96" width="44" height="44" alt="@nirmalchatur" title="@nirmalchatur"></a> <a href="https://github.com/Shivendra-Coherent"><img src="https://github.com/Shivendra-Coherent.png?size=96" width="44" height="44" alt="@Shivendra-Coherent" title="@Shivendra-Coherent"></a> <a href="https://github.com/marreiradigital"><img src="https://github.com/marreiradigital.png?size=96" width="44" height="44" alt="@marreiradigital" title="@marreiradigital"></a> <a href="https://github.com/nvtoan0201-swe"><img src="https://github.com/nvtoan0201-swe.png?size=96" width="44" height="44" alt="@nvtoan0201-swe" title="@nvtoan0201-swe"></a>
+
+コード、報告、翻訳、アイデアを寄せてくださったすべての方に感謝します。[すべてのコントリビューター](https://github.com/debpalash/VoiceStudio/graphs/contributors) · [コントリビュート](../../.github/CONTRIBUTING.md)
 
 ## スポンサー
 

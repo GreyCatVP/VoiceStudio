@@ -14,7 +14,11 @@ environment so they are re-imported cleanly when next needed.
 """
 import sys
 
-_BACKEND_PACKAGES = ("main", "core", "api", "services")
+# ``engines`` binds names from ``services`` at import (``from
+# services.asr_backend import ASRTimeoutError``): an engine module first
+# imported under a temporary twin kept the twin's classes after a restore, so
+# ``pytest.raises(ASRTimeoutError)`` missed the error it raised (#3466 CI).
+_BACKEND_PACKAGES = ("main", "core", "api", "services", "engines")
 
 
 def is_backend_module(name: str) -> bool:

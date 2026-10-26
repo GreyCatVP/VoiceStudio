@@ -1,14 +1,13 @@
 import { useState } from 'react';
+import { SlidersHorizontalIcon } from 'lucide-react';
+import { SettingsSection } from './settings-section';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { apiJson } from '@/lib/api/client';
-import {
-  DEFAULT_OVERRIDES,
-  type Overrides,
-} from '@shared/utils/longformOverrides';
+import { DEFAULT_OVERRIDES, type Overrides } from '@shared/utils/longformOverrides';
 const knobs = [
   { key: 'numStep', label: 'steps', min: 8, max: 64, step: 1, value: 32 },
   { key: 'guidanceScale', label: 'cfg', min: 0, max: 4, step: 0.1, value: 2 },
@@ -50,8 +49,12 @@ export function ProductionSettings({
     (engine) => engine.id === engines.data?.active,
   )?.supports_emotion;
   return (
-    <details className="space-y-4" onToggle={(event) => setOpen(event.currentTarget.open)}>
-      <summary className="cursor-pointer text-sm font-medium">{t('audiobook.expressive')}</summary>
+    <SettingsSection
+      title={t('audiobook.expressive')}
+      icon={SlidersHorizontalIcon}
+      open={open}
+      onToggle={setOpen}
+    >
       {knobs.map((knob) => (
         <label key={knob.key} className="block space-y-2 text-xs">
           <span className="flex justify-between text-muted-foreground">
@@ -170,6 +173,6 @@ export function ProductionSettings({
       >
         {t('audiobook.reset')}
       </Button>
-    </details>
+    </SettingsSection>
   );
 }

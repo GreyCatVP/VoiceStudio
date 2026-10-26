@@ -33,6 +33,7 @@ struct ComputerDubView: View {
     @State private var shared: SharedFile?
     @State private var saved: SharedFile?
     @State private var reporting: ContentReportSubject?
+    @State private var advanced: ComputerDubSelection?
     var languages: [DubLanguage] { model.languages.dubOptions }
     var body: some View {
         Page {
@@ -69,6 +70,7 @@ struct ComputerDubView: View {
                     if cp.host != model.connection.active?.id { NavigationLink(model.t("mobile.simple.reconnect")) { ConnectView() } }
                     else if cp.stage == .done {
                         Button(model.t("mobile.dub.download"), systemImage: "arrow.down.to.line") { Task { await download(cp.jobID, name: cp.title) } }
+                        Button(model.t("mobile.dub_advanced.exports"),systemImage: "slider.horizontal.3") { advanced = ComputerDubSelection(id: cp.jobID,title: cp.title) }
                         ReportButton(subject: .computer(.dub, id: cp.jobID, engine: nil), reporting: $reporting, context: cp.title)
                     }
                     else if cp.stage != .cancelled {
@@ -107,6 +109,7 @@ struct ComputerDubView: View {
         }
         .contentReportSheet($reporting)
         .sheet(item: $shared) { file in ShareSheet(items: [file.url]) }
+        .sheet(item: $advanced) { job in NavigationStack { ComputerDubAdvancedView(jobID: job.id,title: job.title) } }
         .sheet(item: $saved) { file in SaveFileSheet(url: file.url) }
         .sheet(isPresented: $selectingLanguages) {
             LanguageSelectionSheet(selection: selected, includesUnavailable: true) { selected = $0 }
@@ -160,6 +163,7 @@ struct ComputerDubView: View {
                 Task { await download(item.job_id ?? item.id, name: item.title, share: true) }
             }.accessibilityIdentifier("dub.share." + item.id)
                 .accessibilityLabel(model.t("mobile.speak.share") + ": " + item.title)
+            Button(model.t("mobile.dub_advanced.exports"),systemImage: "slider.horizontal.3") { advanced = ComputerDubSelection(id: item.job_id ?? item.id,title: item.title) }
             ReportButton(subject: .computer(.dub, id: item.job_id ?? item.id, engine: nil), reporting: $reporting, context: item.title)
         }.labelStyle(.iconOnly).studioButton(.tertiary).disabled(model.busy)
     }
@@ -191,3 +195,5 @@ struct ShareSheet: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIActivityViewController { UIActivityViewController(activityItems: items, applicationActivities: nil) }
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
+
+private struct ComputerDubSelection: Identifiable { let id: String; let title: String }

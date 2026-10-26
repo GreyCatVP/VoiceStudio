@@ -76,6 +76,8 @@ FLORES_CODES = {
     "tg": "tgk_Cyrl", "tk": "tuk_Latn", "tl": "tgl_Latn", "fil": "tgl_Latn",
     "tt": "tat_Cyrl", "uz": "uzn_Latn", "xh": "xho_Latn", "yi": "ydd_Hebr",
     "yo": "yor_Latn", "zu": "zul_Latn",
+    # Translation target only: Whisper cannot transcribe Uyghur (#2810).
+    "ug": "uig_Arab",
 }
 
 
@@ -107,7 +109,7 @@ LANG_NAMES = {
     "ko": "Korean", "zh": "Chinese (Simplified)", "zh-CN": "Chinese (Simplified)", "cmn-Hans": "Chinese (Simplified)",
     "ar": "Arabic", "hi": "Hindi", "tr": "Turkish", "pl": "Polish",
     "nl": "Dutch", "sv": "Swedish", "th": "Thai", "vi": "Vietnamese",
-    "id": "Indonesian", "uk": "Ukrainian",
+    "id": "Indonesian", "uk": "Ukrainian", "ug": "Uyghur",
 }
 
 # Regional dialect hints (#280 item 2). Maps a BCP-47 dialect code to the
@@ -283,15 +285,65 @@ def _nllb_hypothesis_budget() -> int:
     return 16
 
 
+# The single variant a machine-translation engine writes when a language has
+# no dialect split in its vocabulary (#3143). NLLB-200's ``por_Latn`` is
+# evaluated on FLORES-200, whose Portuguese is Brazilian; the plain ``pt`` of
+# Google and Argos is Brazilian too. A request for that variant is therefore
+# honoured as-is, and any other variant is reported as not applied together
+# with the variant the engine wrote instead.
+MT_NATIVE_DIALECTS = {"pt": "pt-BR"}
+
+
+def _resolve_target_dialect(req) -> None:
+    """Canonicalize ``target_lang``/``dialect`` before any provider runs.
+
+    * A regional target ("pt-PT") becomes the base code plus that dialect, so
+      API/MCP callers can name the variant directly.
+    * A plain Portuguese target with no dialect means Brazilian Portuguese,
+      the owner-set default, so LLM prompts ask for it explicitly.
+    """
+    from core.language_variants import canonical_dialect, default_dialect, split_target
+
+    # Internal callers may hand over a request-like object without the
+    # optional ``dialect`` field; treat it as unset rather than failing.
+    dialect = getattr(req, "dialect", None)
+    base, region = split_target(req.target_lang)
+    if region:
+        req.target_lang = base
+        dialect = dialect or region
+    if dialect:
+        req.dialect = canonical_dialect(dialect) or dialect
+    else:
+        req.dialect = default_dialect(req.target_lang)
+    # Per-segment overrides reach the same provider lookups, so a regional
+    # segment target ("pt-PT") must name its base code as well.
+    for seg in getattr(req, "segments", None) or ():
+        seg_target = getattr(seg, "target_lang", None)
+        if seg_target:
+            seg_base, seg_region = split_target(seg_target)
+            if seg_region:
+                seg.target_lang = seg_base
+
+
 def _dialect_flags(req, applied: bool) -> dict:
     """Response fields describing whether the requested dialect was honored.
 
     Empty dict when no dialect was requested, so existing response shapes
-    stay byte-identical for callers that never send one.
+    stay byte-identical for callers that never send one. When the engine
+    could not apply it, ``dialect_used`` names the variant it wrote instead
+    (when known), so the UI can say which one the user got.
     """
-    if not getattr(req, "dialect", None):
+    dialect = getattr(req, "dialect", None)
+    if not dialect:
         return {}
-    return {"dialect": req.dialect, "dialect_applied": bool(applied)}
+    target = str(getattr(req, "target_lang", "") or "").lower()
+    native = MT_NATIVE_DIALECTS.get(target)
+    if not applied and native and str(dialect).lower() == native.lower():
+        applied = True  # the engine's only variant is the one asked for
+    flags = {"dialect": dialect, "dialect_applied": bool(applied)}
+    if not applied and native:
+        flags["dialect_used"] = native
+    return flags
 
 
 def _guess_lang_from_text(segments) -> str | None:
@@ -317,14 +369,21 @@ def _guess_lang_from_text(segments) -> str | None:
     return None
 
 
-def _resolve_source_lang(req: TranslateRequest) -> str:
-    """Pick source language: explicit request > job.source_lang > text guess > 'en'."""
+def _resolve_source_lang(req: TranslateRequest) -> str | None:
+    """Prefer explicit or job source; unknown ASR needs user selection.
+
+    Text-only calls retain their legacy script guess / English fallback.
+    """
     if getattr(req, "source_lang", None):
         return req.source_lang
     if getattr(req, "job_id", None):
         job = _get_job(req.job_id)
-        if job and job.get("source_lang"):
-            return job["source_lang"]
+        if job:
+            source = job.get("source_lang_override") or job.get("source_lang")
+            if source:
+                return source
+            if job.get("source_lang_detection_missing"):
+                return None
     return _guess_lang_from_text(getattr(req, "segments", None)) or "en"
 
 
@@ -408,10 +467,16 @@ async def dub_translate(req: TranslateRequest):
                 status_code=400,
                 content={"error": "Choose a supported translation engine."},
             )
+        _resolve_target_dialect(req)
         lang_code = TRANSLATE_CODES.get(req.target_lang, req.target_lang)
         api_key = os.environ.get("TRANSLATE_API_KEY", "")
         loop = asyncio.get_running_loop()
         src_lang = _resolve_source_lang(req)
+        if src_lang is None:
+            return JSONResponse(status_code=400, content={
+                "error": "Source language is unknown. Select the source language before translating.",
+                "code": "source_language_required",
+            })
 
         # Offline NLLB Transformer Translation
         if provider == "nllb":

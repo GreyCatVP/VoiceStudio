@@ -20,6 +20,7 @@ object DubEditing {
         require(index+1<segments.size)
         val a=segments[index];val b=segments[index+1]
         require(b.speech.start>=a.speech.start&&b.speech.end>a.speech.end&&b.speech.end-a.speech.start<=30)
+        if(a.speaker!=b.speaker) throw ClientFailure("mobile.dub_advanced.merge_speakers")
         if(a.gain!=b.gain||a.muted!=b.muted) throw ClientFailure("mobile.processing.merge_levels")
         require(a.referenceFile==b.referenceFile&&(a.referenceFile==null||a.referenceText==b.referenceText))
         val translations=(a.translations.keys intersect b.translations.keys).associateWith {a.translations.getValue(it)+"\n"+b.translations.getValue(it)}
@@ -34,9 +35,10 @@ object DubEditing {
             val exact=overlap.singleOrNull()?.takeIf {it.speech.start==cue.start&&it.speech.end==cue.end}
             if(exact!=null) exact.copy(translations=exact.translations+(target to cue.text)) else {
                 // Preserve a custom voice only when all overlapping source cues use that same reference.
+                if(overlap.any {it.speaker!=overlap.first().speaker}) throw ClientFailure("mobile.dub_advanced.merge_speakers")
                 if(overlap.any {it.gain!=overlap.first().gain||it.muted!=overlap.first().muted}) throw ClientFailure("mobile.processing.merge_levels")
                 require(overlap.map {it.referenceFile to (if(it.referenceFile!=null) it.referenceText else null)}.distinct().size==1)
-                DubSegmentState(SpeechSegment(cue.start,cue.end,overlap.joinToString("\n") {it.speech.text}),referenceText=overlap.first().referenceText.takeIf {overlap.first().referenceFile!=null},translations=mapOf(target to cue.text),referenceFile=overlap.first().referenceFile,id=UUID.randomUUID().toString(),referenceNeedsTranscription=overlap.first().referenceFile==null,gain=overlap.first().gain,muted=overlap.first().muted)
+                DubSegmentState(SpeechSegment(cue.start,cue.end,overlap.joinToString("\n") {it.speech.text}),referenceText=overlap.first().referenceText.takeIf {overlap.first().referenceFile!=null},translations=mapOf(target to cue.text),referenceFile=overlap.first().referenceFile,id=UUID.randomUUID().toString(),referenceNeedsTranscription=overlap.first().referenceFile==null,gain=overlap.first().gain,muted=overlap.first().muted,speaker=overlap.first().speaker,referenceOrigin=overlap.first().referenceOrigin,voiceID=overlap.first().voiceID)
             }
         }
     }

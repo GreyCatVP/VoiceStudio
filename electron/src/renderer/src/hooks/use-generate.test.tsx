@@ -24,11 +24,16 @@ vi.mock('sonner', () => ({
   toast: { error: vi.fn(), info: vi.fn(), success: vi.fn(), warning: vi.fn() },
 }));
 vi.mock('./use-clone-readiness', () => ({ useCloneInputsReadiness: () => null }));
-vi.mock('./use-tts-readiness', () => ({ useTtsReadiness: () => null }));
+vi.mock('./use-tts-readiness', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./use-tts-readiness')>()),
+  useTtsReadiness: () => null,
+}));
 const engine = vi.hoisted(() => ({
   vocabulary: undefined as 'tags' | 'freeform' | undefined,
   design: undefined as boolean | null | undefined,
   cloning: undefined as boolean | null | undefined,
+  presets: undefined as string[] | undefined,
+  emotion: undefined as boolean | undefined,
 }));
 vi.mock('./use-engines', () => ({
   useEngines: () => ({
@@ -36,6 +41,8 @@ vi.mock('./use-engines', () => ({
       instruct_vocabulary: engine.vocabulary,
       supports_voice_design: engine.design,
       supports_cloning: engine.cloning,
+      preset_voices: engine.presets,
+      supports_emotion: engine.emotion,
     },
   }),
 }));
@@ -183,7 +190,13 @@ describe('shared generation lifecycle', () => {
 });
 
 it('design generation ignores a selected clone profile and sends its own script and seed', async () => {
-  patchCloneSettings({ text: 'Clone script', selectedProfileId: 'clone-profile', autoPlay: false });
+  // The composer's language, not a saved voice's or an opened take's, drives the take.
+  patchCloneSettings({
+    text: 'Clone script',
+    selectedProfileId: 'clone-profile',
+    autoPlay: false,
+    language: 'English',
+  });
   vi.mocked(generateClone).mockClear().mockRejectedValueOnce(new Error('stop after request'));
   function DesignConsumer() {
     const state = useGenerateClone();
@@ -213,6 +226,7 @@ it('design generation ignores a selected clone profile and sends its own script 
     expect.objectContaining({
       text: 'Design script',
       seed: 42,
+      language: 'English',
       profileId: null,
       refAudio: null,
       refText: undefined,
@@ -311,7 +325,9 @@ it.each([
     function DesignConsumer() {
       const state = useGenerateClone();
       return (
-        <button onClick={() => void state.generateDesign({ text: 'Hi', instruct: 'male', seed: 1 })}>
+        <button
+          onClick={() => void state.generateDesign({ text: 'Hi', instruct: 'male', seed: 1 })}
+        >
           blocker {state.designBlocker ?? 'none'} {String(state.canGenerateDesign)}
         </button>
       );
@@ -335,14 +351,49 @@ it.each([
 );
 
 it.each([
-  ['a saved design voice with a sample', { ref_audio_path: 'design.wav' }, false, true, 'none', true],
-  ['a locked design voice', { is_locked: 1, locked_audio_path: 'locked.wav' }, false, true, 'none', true],
+  [
+    'a saved design voice with a sample',
+    { ref_audio_path: 'design.wav' },
+    false,
+    true,
+    'none',
+    true,
+  ],
+  [
+    'a locked design voice',
+    { is_locked: 1, locked_audio_path: 'locked.wav' },
+    false,
+    true,
+    'none',
+    true,
+  ],
   ['a saved design voice without a sample', {}, false, true, 'design', false],
   // KittenTTS / Supertonic-3 ignore reference audio: the saved voice would
   // silently become a preset one, so the re-render stays blocked.
-  ['a saved sample on a preset-only engine', { ref_audio_path: 'design.wav' }, false, false, 'cloning', false],
-  ['a saved sample on an undeclared preset-only engine', { ref_audio_path: 'design.wav' }, null, false, 'cloning', false],
-  ['a locked take on a preset-only engine', { is_locked: 1, locked_audio_path: 'locked.wav' }, false, false, 'cloning', false],
+  [
+    'a saved sample on a preset-only engine',
+    { ref_audio_path: 'design.wav' },
+    false,
+    false,
+    'cloning',
+    false,
+  ],
+  [
+    'a saved sample on an undeclared preset-only engine',
+    { ref_audio_path: 'design.wav' },
+    null,
+    false,
+    'cloning',
+    false,
+  ],
+  [
+    'a locked take on a preset-only engine',
+    { is_locked: 1, locked_audio_path: 'locked.wav' },
+    false,
+    false,
+    'cloning',
+    false,
+  ],
   ['a sampleless design on a preset-only engine', {}, false, false, 'design', false],
 ] as const)(
   're-renders %s only when the engine can clone its sample',
@@ -390,5 +441,149 @@ it.each([
     }
     engine.design = undefined;
     engine.cloning = undefined;
+  },
+);
+
+it.each([
+  [false, ''],
+  [null, 'calm'],
+] as const)(
+  'a preset-only engine generates without a clip or profile (supports_voice_design=%s)',
+  async (design, sent) => {
+    Object.assign(engine, {
+      design,
+      cloning: false,
+      presets: ['expr-voice-2-f'],
+      vocabulary: 'freeform',
+    });
+    patchCloneSettings({
+      text: 'Preset script',
+      instruct: 'calm',
+      selectedProfileId: null,
+      autoPlay: false,
+    });
+    vi.mocked(generateClone).mockReset().mockRejectedValue(new Error('stop'));
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <GenerationProvider>
+          <Consumer name="preset" />
+        </GenerationProvider>
+      </QueryClientProvider>,
+    );
+    fireEvent.click(screen.getByText('preset:idle'));
+    // The instruct is a design request /generate refuses on an engine that
+    // can't design; it never reaches a preset voice anyway (#3413).
+    await waitFor(() =>
+      expect(generateClone).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text: 'Preset script',
+          instruct: sent,
+          profileId: null,
+          refAudio: null,
+        }),
+        expect.anything(),
+      ),
+    );
+    Object.assign(engine, {
+      design: undefined,
+      cloning: undefined,
+      presets: undefined,
+      vocabulary: undefined,
+    });
+  },
+);
+
+it.each([
+  ['text', true, false, 'text'],
+  ['vector', true, false, 'vector'],
+  ['unsupported engine', false, false, 'text'],
+  ['Voice Design', true, true, 'text'],
+] as const)(
+  'forwards IndexTTS2 emotion only on supported clone takes (%s)',
+  async (_name, supportsEmotion, design, mode) => {
+    engine.emotion = supportsEmotion;
+    engine.design = true;
+    patchCloneSettings({
+      text: 'A cloned voice line.',
+      selectedProfileId: 'speaker-emotion',
+      emotionMode: mode,
+      emotionText: '  gently reassuring  ',
+      emotionAlpha: 0.4,
+      emotionVector: [0.2, 0, 0.5, 0, 0, 0.1, 0, 0],
+    });
+    vi.mocked(generateClone).mockReset().mockRejectedValue(new Error('stop'));
+
+    function EmotionConsumer() {
+      const generation = useGenerateClone();
+      return (
+        <button
+          onClick={() =>
+            void (design
+              ? generation.generateDesign({ text: 'A designed voice.', instruct: 'male' })
+              : generation.generate())
+          }
+        >
+          emotion render
+        </button>
+      );
+    }
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <GenerationProvider>
+          <EmotionConsumer />
+        </GenerationProvider>
+      </QueryClientProvider>,
+    );
+    fireEvent.click(screen.getByText('emotion render'));
+    await waitFor(() => expect(generateClone).toHaveBeenCalled());
+    const input = vi.mocked(generateClone).mock.calls[0][0];
+    if (!supportsEmotion || design) {
+      expect(input.emoText).toBeUndefined();
+      expect(input.emoVector).toBeUndefined();
+      expect(input.emoAlpha).toBeUndefined();
+    } else if (mode === 'text') {
+      expect(input.emoText).toBe('gently reassuring');
+      expect(input.emoAlpha).toBe(0.4);
+      expect(input.emoVector).toBeUndefined();
+    } else {
+      expect(input.emoVector).toEqual([0.2, 0, 0.5, 0, 0, 0.1, 0, 0]);
+      expect(input.emoText).toBeUndefined();
+      expect(input.emoAlpha).toBeUndefined();
+    }
+    engine.emotion = undefined;
+    engine.design = undefined;
+  },
+);
+
+it.each([
+  ['an engine without emotion controls', false, 'none'],
+  ['IndexTTS2 with text emotion', true, 'text'],
+] as const)(
+  'saves the emotion a take actually used (%s)',
+  async (_name, supportsEmotion, saved) => {
+    engine.emotion = supportsEmotion;
+    patchCloneSettings({
+      text: 'A cloned voice line.',
+      selectedProfileId: 'speaker-emotion',
+      emotionMode: 'text',
+      emotionText: 'gently reassuring',
+      autoPlay: false,
+    });
+    vi.mocked(generateClone)
+      .mockReset()
+      .mockResolvedValue({ id: `take-${saved}` } as Awaited<ReturnType<typeof generateClone>>);
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <GenerationProvider>
+          <Consumer name="saved-emotion" />
+        </GenerationProvider>
+      </QueryClientProvider>,
+    );
+    fireEvent.click(screen.getByText('saved-emotion:idle'));
+    await waitFor(() => {
+      const records = JSON.parse(localStorage.getItem('voicestudio.take-settings.v1') ?? '{}');
+      expect(records[`take-${saved}`]?.emotionMode).toBe(saved);
+    });
+    engine.emotion = undefined;
   },
 );

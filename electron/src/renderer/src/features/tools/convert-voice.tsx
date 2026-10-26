@@ -11,6 +11,7 @@ import { PipelineFailure } from '@/components/pipeline-failure';
 import { AgentFixButton } from '@/components/agent-fix-button';
 import { ProfileAvatar } from '@/components/profile-avatar';
 import { WaveformPlayer } from '@/components/waveform-player';
+import { SaveAudioButton } from '@/components/save-audio-button';
 import { useEngines } from '@/hooks/use-engines';
 import { useProfiles } from '@/hooks/use-profiles';
 import { useRecording } from '@/hooks/use-recording';
@@ -278,7 +279,13 @@ export function ConvertVoice() {
       </div>
       {result && (
         <section className="space-y-3 border-t pt-4" aria-label={t('convert.result_kicker')}>
-          <h3 className="text-sm font-medium">{t('convert.result_kicker')}</h3>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-sm font-medium">{t('convert.result_kicker')}</h3>
+            <SaveAudioButton
+              url={apiPath(result.audio_url)}
+              suggestedName={`voicestudio-${result.id}.wav`}
+            />
+          </div>
           <WaveformPlayer src={apiPath(result.audio_url)} source="convert-result" height={40} />
           <p className="text-sm">
             <span className="text-muted-foreground">{t('convert.transcript')}: </span>

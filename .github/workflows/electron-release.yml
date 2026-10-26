@@ -140,7 +140,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
         with:
           targets: ${{ matrix.target }}
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: native/desktop-bridge -> target
           key: electron-${{ matrix.target }}
@@ -226,7 +226,7 @@ jobs:
         if: inputs.publish == true && inputs.allow_unsigned != true && matrix.platform == 'win32'
         shell: pwsh
         run: |
-          $installers = @(Get-ChildItem electron/release/VoiceStudio-Electron-*.exe)
+          $installers = @(Get-ChildItem electron/release/VoiceStudio-*.exe)
           if ($installers.Count -eq 0) { throw "No installer to verify" }
           foreach ($installer in $installers) {
             $signature = Get-AuthenticodeSignature $installer.FullName
@@ -267,7 +267,7 @@ jobs:
         env:
           HAS_CREDENTIALS: ${{ secrets.ELECTRON_WINDOWS_CSC_LINK != '' }}
         run: |
-          $installers = @(Get-ChildItem electron/release/VoiceStudio-Electron-*.exe)
+          $installers = @(Get-ChildItem electron/release/VoiceStudio-*.exe)
           if ($installers.Count -eq 0) { throw "No installer to verify" }
           $unsigned = @($installers | Where-Object { (Get-AuthenticodeSignature $_.FullName).Status -ne 'Valid' })
           if ($unsigned.Count -eq 0) { $status = 'signed' }
@@ -291,7 +291,7 @@ jobs:
         working-directory: electron
         run: |
           if [ "$RUNNER_OS" = Linux ]; then
-            for image in release/VoiceStudio-Electron-*-linux-x64.AppImage; do
+            for image in release/VoiceStudio-*-linux-x64.AppImage; do
               VOICESTUDIO_PACKAGED_EXE="electron/$image" xvfb-run -a node tests/packaged-smoke.mjs --setup
             done
           else
@@ -304,7 +304,7 @@ jobs:
           retention-days: 14
           if-no-files-found: error
           path: |
-            electron/release/VoiceStudio-Electron-*
+            electron/release/VoiceStudio-*
             electron/release/electron-*.yml
             electron/release/store-artifact-manifest-*.json
 
@@ -325,7 +325,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ env.RELEASE_REF }}
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: electron-release-*
           merge-multiple: true
@@ -344,7 +344,7 @@ jobs:
           gh release download "$SUNSET_TAG" --pattern latest.json --dir release-assets
           gh release download "$SUNSET_TAG" --pattern latest-user.json --dir release-assets
           python3 scripts/prepare_electron_release.py --assets release-assets --tag "$TAG" --sunset-tag "$SUNSET_TAG" --repo "$GITHUB_REPOSITORY"
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: electron-signing-*
           merge-multiple: true

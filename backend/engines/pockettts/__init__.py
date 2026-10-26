@@ -71,6 +71,9 @@ class PocketTTSBackend(SubprocessBackend):
     # ships no CUDA/MPS path and reports no GPU speedup for this model.
     gpu_compat: tuple[str, ...] = ("cpu",)
     supports_cloning = True  # zero-shot clone from a reference clip
+    # No instruct input: without a clip it speaks a preset voice, so a Voice
+    # Design take would ignore every detail and the seed (#3413).
+    supports_voice_design = False
 
     @classmethod
     def _platform_error(cls) -> str | None:

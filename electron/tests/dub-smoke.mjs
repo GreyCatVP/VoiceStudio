@@ -148,9 +148,23 @@ try {
       },
     }),
   );
-  await page.route('**/api/dub/upload', (route) =>
-    route.fulfill({ json: { job_id: 'fixture', task_id: 'prep-fixture' } }),
-  );
+  let rejectNoAudio = true;
+  await page.route('**/api/dub/upload', (route) => {
+    if (!rejectNoAudio)
+      return route.fulfill({ json: { job_id: 'fixture', task_id: 'prep-fixture' } });
+    rejectNoAudio = false;
+    return route.fulfill({
+      status: 422,
+      json: {
+        detail: {
+          code: 'no_audio_track',
+          docs_topic: 'NO_AUDIO_TRACK',
+          message: 'This file has no audio track.',
+          hint: 'Check that the file plays with sound.',
+        },
+      },
+    });
+  });
   await page.route('**/api/tasks/stream/prep-fixture', (route) =>
     route.fulfill({
       contentType: 'text/event-stream',
@@ -230,14 +244,28 @@ try {
   await page.goto(
     new URL('/#/dub', process.env.VOICESTUDIO_UI_URL || 'http://localhost:3902').href,
   );
-  await page.locator('summary').filter({ hasText: 'Spoken language' }).click();
-  const analysis = page
-    .locator('details')
-    .filter({ has: page.locator('summary').filter({ hasText: 'Spoken language' }) });
-  await analysis.getByRole('button', { name: 'Language', exact: true }).click();
-  await page.getByRole('combobox', { name: 'Language', exact: true }).fill('French');
+  // Spoken language and speaker count are compact rows, open without a disclosure.
+  await page.getByRole('button', { name: 'Spoken language', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Spoken language', exact: true }).fill('French');
   await page.getByRole('option', { name: 'French', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Speakers', exact: true }).fill('2');
+
+  // A file without sound is a choose-another-file prompt on the file row, not a failure banner.
+  await page
+    .locator('input[type=file]')
+    .first()
+    .setInputFiles({ name: 'Screen Recording.mov', mimeType: 'video/quicktime', buffer: wave });
+  const sourceRow = page.locator('[data-slot="dub-source-row"]');
+  await sourceRow
+    .getByText('No audio track — choose a video or audio file with sound', { exact: true })
+    .waitFor();
+  assert.equal(await page.getByRole('alert').count(), 0);
+  assert.equal(await page.getByRole('button', { name: 'Copy diagnostic' }).count(), 0);
+  assert.equal(await page.getByText('Video Dubbing Studio', { exact: true }).count(), 0);
+  await page
+    .locator('[data-slot="dub-source-status"]')
+    .getByRole('button', { name: 'Change file', exact: true })
+    .waitFor();
 
   await page
     .locator('input[type=file]')
@@ -322,6 +350,10 @@ try {
   assert.equal(await segmentRows.count(), 2);
   await page.getByRole('button', { name: 'Redo', exact: true }).click();
   assert.equal(await segmentRows.count(), 3);
+  await segmentRows.first().locator('[data-segment-options-trigger]').click();
+  await segmentRows.first().getByRole('spinbutton', { name: 'Start', exact: true }).press('Control+z');
+  assert.equal(await segmentRows.count(), 3);
+  await segmentRows.first().locator('[data-segment-options-trigger]').click();
   await segmentRows.nth(1).getByRole('button', { name: 'Delete', exact: true }).click();
   assert.equal(await segmentRows.count(), 2);
   await segmentRows.first().getByRole('button', { name: 'More actions', exact: true }).click();
@@ -352,13 +384,15 @@ try {
   await waitForSegmentText(0, 'Imported subtitle');
   await page.getByText('2 skipped (malformed)', { exact: true }).waitFor();
   const translatorPicker = page.getByRole('group', { name: 'Translator', exact: true });
-  await translatorPicker.getByRole('button', { name: 'Translate with Agent', exact: true }).click();
+  await translatorPicker.getByRole('button', { name: 'Agent', exact: true }).click();
   await page.getByRole('button', { name: 'Translate', exact: true }).click();
   await waitForSegmentText(0, 'Agent: Imported subtitle');
   const agentRequest = await page.evaluate(() => globalThis.__dubAgentRequests.at(-1));
   assert.equal(agentRequest.agent, 'codex');
   assert.equal(agentRequest.purpose, 'translate');
-  assert.equal(agentRequest.sourceLanguage, 'en');
+  // The user picked French under Spoken language before transcribing, and a
+  // deliberate choice wins over the transcript's detected 'en' (#3442).
+  assert.equal(agentRequest.sourceLanguage, 'fr');
   assert.equal(agentRequest.targetLanguage, 'Spanish');
   assert.deepEqual(agentRequest.glossary, [{ source: 'VoiceStudio', target: 'VoiceStudio' }]);
   assert.deepEqual(agentRequest.segments, [
@@ -494,11 +528,19 @@ try {
   await page.route('**/api/export/record', (route) => route.fulfill({ json: { ok: true } }));
   await page.getByRole('button', { name: 'MP3 (compressed)', exact: true }).click();
   await page.getByRole('button', { name: '320 kbps', exact: true }).click();
-  await page.getByRole('switch', { name: 'Background audio', exact: true }).click();
+  // #2964: the background bed level reaches the export while the background is mixed in.
+  const bedLevel = page.getByRole('slider', { name: 'Background volume', exact: true });
+  await bedLevel.focus();
+  await bedLevel.press('ArrowRight');
+  await page.getByText('110%', { exact: true }).waitFor();
   rejectExport = true;
   await page.getByRole('button', { name: 'Export', exact: true }).click();
   await page.getByRole('alert').waitFor();
   assert.equal(await page.getByText('private backend trace').count(), 0);
+  assert.equal(exportRequests.at(-1).searchParams.get('preserve_bg'), 'true');
+  assert.equal(exportRequests.at(-1).searchParams.get('bed_level'), '1.1');
+  await page.getByRole('switch', { name: 'Background audio', exact: true }).click();
+  await bedLevel.waitFor({ state: 'hidden' });
   rejectExport = false;
   await page.getByRole('button', { name: 'Export', exact: true }).click();
   await page.waitForFunction(() => globalThis.__nativeSaveRequests.length === 1);
@@ -507,6 +549,7 @@ try {
   assert.equal(exportRequests.at(-1).searchParams.get('lang'), 'es');
   assert.equal(exportRequests.at(-1).searchParams.get('bitrate'), '320k');
   assert.equal(exportRequests.at(-1).searchParams.get('preserve_bg'), 'false');
+  assert.equal(exportRequests.at(-1).searchParams.get('bed_level'), null);
   let subtitleRequest;
   await page.route('**/api/dub/srt/fixture?*', (route) => {
     subtitleRequest = new URL(route.request().url());
@@ -547,24 +590,40 @@ try {
     'true',
   );
   // A prepared upload can be replaced with a URL without first removing it.
+  // The file row keeps Change file / Use link / Remove in one overflow menu.
+  const useLink = async () => {
+    await page.getByRole('button', { name: 'File actions', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Use link', exact: true }).click();
+  };
+  assert.equal(
+    await page.locator('[data-slot="dub-source-row"]').getByRole('button').count(),
+    1,
+    'the file row has a single actions trigger instead of wrapping text buttons',
+  );
   const linkInput = page.getByRole('textbox', { name: /paste YouTube/ });
-  await page.getByRole('button', { name: 'Use link', exact: true }).click();
+  await useLink();
   await linkInput.fill('https://example.com/cancelled.mp4');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   assert.equal(await linkInput.count(), 0);
   assert.equal(urlRequest, undefined);
-  await page.getByRole('button', { name: 'Use link', exact: true }).click();
+  await useLink();
   await linkInput.fill('https://example.com/stale.mp4');
   await page.evaluate(async () => {
     const { dubSession } = await import('/src/features/dub/dub-session.ts');
-    dubSession.setState((current) => ({ ...current, jobId: 'replacement', filename: 'replacement.mp4' }));
+    dubSession.setState((current) => ({
+      ...current,
+      jobId: 'replacement',
+      filename: 'replacement.mp4',
+    }));
   });
   await linkInput.waitFor({ state: 'hidden' });
-  await page.getByRole('button', { name: 'Use link', exact: true }).click();
+  await useLink();
   assert.equal(await linkInput.inputValue(), '');
   // Cancellation can outlive the active stream; retain the replacement form.
   let finishAbort;
-  const abortReady = new Promise((resolve) => { finishAbort = resolve; });
+  const abortReady = new Promise((resolve) => {
+    finishAbort = resolve;
+  });
   await page.route('**/api/dub/abort/replacement', async (route) => {
     await abortReady;
     await route.fulfill({ json: {} });
@@ -577,18 +636,22 @@ try {
     void cancelDub();
   });
   await abortRequest;
-  await page.waitForFunction(() => [...document.querySelectorAll('button')].some(
-    (button) => button.textContent?.trim() === 'Ingest' && button.disabled,
-  ));
-  await linkInput.evaluate((input) => input.closest('form').dispatchEvent(
-    new Event('submit', { bubbles: true, cancelable: true }),
-  ));
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll('button')].some(
+      (button) => button.textContent?.trim() === 'Ingest' && button.disabled,
+    ),
+  );
+  await linkInput.evaluate((input) =>
+    input.closest('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
+  );
   assert.equal(await linkInput.inputValue(), 'https://example.com/pending.mp4');
   assert.equal(urlRequest, undefined);
   finishAbort();
-  await page.waitForFunction(() => [...document.querySelectorAll('button')].some(
-    (button) => button.textContent?.trim() === 'Ingest' && !button.disabled,
-  ));
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll('button')].some(
+      (button) => button.textContent?.trim() === 'Ingest' && !button.disabled,
+    ),
+  );
   failTranscription = true;
   await page.getByRole('textbox', { name: /paste YouTube/ }).fill('https://example.com/movie.mp4');
   await page

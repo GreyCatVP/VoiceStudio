@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { existsSync } from 'node:fs';
-import { mkdtemp, mkdir, readFile, rm, writeFile, statfs } from 'node:fs/promises';
+import { cp, mkdtemp, mkdir, readFile, rm, writeFile, statfs, utimes } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { downloadRuntimeInstaller } from './runtime-download';
@@ -11,6 +11,10 @@ import {
   promoteLegacyRuntimeCaches,
   CUDNN8_COMPAT_PIN,
   MISSING_SYSTEM_LIBRARY_CODE,
+  OUTDATED_SYSTEM_LIBRARY_CODE,
+  RUNTIME_FILES_LOCKED_CODE,
+  msvcp140Outdated,
+  parseNativeDiagnosis,
   NATIVE_DIAGNOSTIC_PREFIX,
   ROCM_TORCH_INDEX,
   ROCM_TORCH_PINS,
@@ -45,6 +49,7 @@ async function fixture() {
   await mkdir(join(bundle, 'config'), { recursive: true });
   await mkdir(join(bundle, 'frontend', 'dist'), { recursive: true });
   await mkdir(join(bundle, 'omnivoice'));
+  await mkdir(join(bundle, 'scripts'));
   for (const file of [
     'pyproject.toml',
     'uv.lock',
@@ -54,6 +59,8 @@ async function fixture() {
     'config/app.json',
     'frontend/dist/index.html',
     'omnivoice/__init__.py',
+    'scripts/windows-rocm-recipe.json',
+    'scripts/smoke_windows_rocm.py',
   ]) {
     await writeFile(join(bundle, file), file);
   }
@@ -106,7 +113,15 @@ describe('packaged runtime setup', () => {
         }
         return undefined;
       });
-      await installRuntime(bundle, project, 'uv', run, new AbortController().signal, undefined, 'global');
+      await installRuntime(
+        bundle,
+        project,
+        'uv',
+        run,
+        new AbortController().signal,
+        undefined,
+        'global',
+      );
       expect(run.mock.calls.some(([, args]) => args.includes(CUDNN8_COMPAT_PIN))).toBe(false);
       expect(run.mock.calls.some(([, args]) => args[1] === RUNTIME_IMPORT_PROBE)).toBe(true);
       expect(await runtimeReady(bundle, project)).toBe(true);
@@ -141,27 +156,38 @@ describe('packaged runtime setup', () => {
   it.each([
     ['after printing its result', true],
     ['before printing anything', false],
-  ])('keeps setting up when the CUDA compatibility probe crashes natively %s', async (_name, printed) => {
-    forcePlatform('win32');
-    vi.spyOn(process, 'arch', 'get').mockReturnValue('x64');
-    vi.stubEnv('OMNIVOICE_TORCH_VARIANT', 'cuda');
-    const { bundle, project } = await fixture();
-    const sitePackages = join(project, '.venv', 'Lib', 'site-packages');
-    const run = vi.fn(async (_command: string, args: string[]) => {
-      if (args[0] === 'sync') await interpreter(project);
-      if (args[1]?.includes('VOICESTUDIO_CUDNN8_PROBE=')) {
-        throw Object.assign(new Error('Runtime setup exited with code 3221225477'), {
-          stdout: printed
-            ? `VOICESTUDIO_CUDNN8_PROBE=${JSON.stringify({ device: 'none', sitePackages })}\n`
-            : '',
-        });
-      }
-      return undefined;
-    });
-    await installRuntime(bundle, project, 'uv', run, new AbortController().signal, undefined, 'global');
-    expect(run.mock.calls.some(([, args]) => args[1] === RUNTIME_IMPORT_PROBE)).toBe(true);
-    expect(await runtimeReady(bundle, project)).toBe(true);
-  });
+  ])(
+    'keeps setting up when the CUDA compatibility probe crashes natively %s',
+    async (_name, printed) => {
+      forcePlatform('win32');
+      vi.spyOn(process, 'arch', 'get').mockReturnValue('x64');
+      vi.stubEnv('OMNIVOICE_TORCH_VARIANT', 'cuda');
+      const { bundle, project } = await fixture();
+      const sitePackages = join(project, '.venv', 'Lib', 'site-packages');
+      const run = vi.fn(async (_command: string, args: string[]) => {
+        if (args[0] === 'sync') await interpreter(project);
+        if (args[1]?.includes('VOICESTUDIO_CUDNN8_PROBE=')) {
+          throw Object.assign(new Error('Runtime setup exited with code 3221225477'), {
+            stdout: printed
+              ? `VOICESTUDIO_CUDNN8_PROBE=${JSON.stringify({ device: 'none', sitePackages })}\n`
+              : '',
+          });
+        }
+        return undefined;
+      });
+      await installRuntime(
+        bundle,
+        project,
+        'uv',
+        run,
+        new AbortController().signal,
+        undefined,
+        'global',
+      );
+      expect(run.mock.calls.some(([, args]) => args[1] === RUNTIME_IMPORT_PROBE)).toBe(true);
+      expect(await runtimeReady(bundle, project)).toBe(true);
+    },
+  );
   it.each([0, 1])(
     'verifies the runtime when .pth repair attempt %i fails',
     async (failedAttempt) => {
@@ -323,6 +349,36 @@ describe('packaged runtime setup', () => {
       expect(syncEnv?.[key]).toBe(join(project, '..', '.tmp'));
     expect(syncEnv?.UV_PYTHON_INSTALL_DIR).toBe(join(project, '..', '.python'));
   });
+  // #3411: uv cannot resume, and a cancelled uv leaves its partial wheel in the
+  // cache. Retry must drop those leftovers yet reuse every finished download.
+  it('drops partial downloads from a cancelled attempt and keeps finished wheels', async () => {
+    const { bundle, project } = await fixture();
+    const cache = join(project, '..', '.uv-cache');
+    await mkdir(join(cache, '.tmpHZ1msW', 'torch'), { recursive: true });
+    await writeFile(join(cache, '.tmpHZ1msW', 'torch', 'partial.so'), 'partial');
+    await mkdir(join(cache, 'archive-v0', 'finished'), { recursive: true });
+    await writeFile(join(cache, 'archive-v0', 'finished', 'torch.so'), 'verified');
+    let leftoverAtSync: boolean | undefined;
+    const run = vi.fn(async (_command: string, args: string[]) => {
+      if (args[0] === 'sync') leftoverAtSync = existsSync(join(cache, '.tmpHZ1msW'));
+      await interpreter(project);
+    });
+
+    await installRuntime(
+      bundle,
+      project,
+      'uv',
+      run,
+      new AbortController().signal,
+      undefined,
+      'global',
+    );
+
+    expect(leftoverAtSync).toBe(false);
+    expect(await readFile(join(cache, 'archive-v0', 'finished', 'torch.so'), 'utf8')).toBe(
+      'verified',
+    );
+  });
   it('uses managed Python for new runtime setup and verifies native tokenizer imports', async () => {
     const { bundle, project } = await fixture();
     const run = vi.fn(
@@ -370,11 +426,12 @@ describe('packaged runtime setup', () => {
     ]);
     expect(ROCM_TORCH_INDEX).toContain('/rocm');
   });
-  it('ignores the ROCm opt-in where PyTorch publishes no ROCm wheels', async () => {
-    forcePlatform('win32');
+  it('leaves macOS on its native stack when ROCm is requested', async () => {
+    forcePlatform('darwin');
+    vi.spyOn(process, 'arch', 'get').mockReturnValue('arm64');
     const { bundle, project } = await fixture();
     vi.stubEnv('OMNIVOICE_TORCH_VARIANT', 'rocm');
-    expect(rocmTorchOptIn('win32')).toBe(false);
+    expect(rocmTorchOptIn('win32')).toBe(true);
     expect(rocmTorchOptIn('darwin')).toBe(false);
     expect(rocmTorchOptIn('linux')).toBe(true);
     const run = vi.fn(
@@ -535,6 +592,92 @@ describe('packaged runtime setup', () => {
       installRuntime(bundle, project, 'uv', run, new AbortController().signal),
     ).rejects.toMatchObject({ code: MISSING_SYSTEM_LIBRARY_CODE });
   });
+  it('treats a finished runtime with a leftover install marker as ready, not interrupted (#3475)', async () => {
+    const { bundle, project } = await fixture();
+    await installRuntime(
+      bundle,
+      project,
+      'uv',
+      async () => interpreter(project),
+      new AbortController().signal,
+      undefined,
+      'global',
+    );
+    // The marker survived the finished install (Windows refused its removal).
+    const marker = join(project, '.runtime-installing');
+    await writeFile(marker, '');
+    const old = new Date(Date.now() - 60_000);
+    await utimes(marker, old, old);
+
+    expect(await runtimeInstallInterrupted(project)).toBe(false);
+    expect(await runtimeReady(bundle, project)).toBe(true);
+    expect(await runtimeCompatible(bundle, project)).toBe(true);
+    expect(existsSync(marker)).toBe(false);
+  });
+  it('still reports an install that started after the last ready marker as interrupted', async () => {
+    const { bundle, project } = await fixture();
+    await installRuntime(
+      bundle,
+      project,
+      'uv',
+      async () => interpreter(project),
+      new AbortController().signal,
+      undefined,
+      'global',
+    );
+    const old = new Date(Date.now() - 60_000);
+    await utimes(join(project, '.runtime-ready'), old, old);
+    await writeFile(join(project, '.runtime-installing'), new Date().toISOString());
+
+    expect(await runtimeInstallInterrupted(project)).toBe(true);
+    expect(await runtimeReady(bundle, project)).toBe(false);
+  });
+  it('resumes an interrupted install from the uv cache instead of evicting its wheels (#3475)', async () => {
+    const { bundle, project } = await fixture();
+    await interpreter(project);
+    await writeFile(join(project, '.runtime-installing'), new Date().toISOString());
+    let synced = false;
+    const run = vi.fn(async (command: string, args: string[]) => {
+      if (args[0] === 'sync') synced = true;
+      if (
+        !synced &&
+        command === runtimePython(project) &&
+        (args[1] === RUNTIME_IMPORT_PROBE || args[1] === RUNTIME_NATIVE_IMPORT_PROBE)
+      ) {
+        throw new Error("No module named 'torch'");
+      }
+    });
+    await installRuntime(bundle, project, 'uv', run, new AbortController().signal);
+    expect(run.mock.calls.some(([, args]) => args[0] === 'cache')).toBe(false);
+    const sync = run.mock.calls.find(([, args]) => args[0] === 'sync');
+    expect(sync?.[1]).toContain(runtimePython(project));
+    expect(await runtimeReady(bundle, project)).toBe(true);
+    expect(await runtimeInstallInterrupted(project)).toBe(false);
+  });
+  it('keeps an installed CPU torch through a re-run instead of uninstalling it (#3475)', async () => {
+    forcePlatform('win32');
+    vi.spyOn(process, 'arch', 'get').mockReturnValue('x64');
+    vi.stubEnv('OMNIVOICE_TORCH_VARIANT', 'cpu');
+    const { bundle, project } = await fixture();
+    const sitePackages = join(project, '.venv', 'Lib', 'site-packages');
+    const run = vi.fn(async (_command: string, args: string[]) => {
+      if (args[0] === 'sync') await interpreter(project);
+      if (args[1]?.includes('VOICESTUDIO_CUDNN8_PROBE=')) {
+        return `VOICESTUDIO_CUDNN8_PROBE=${JSON.stringify({ device: 'none', sitePackages })}\n`;
+      }
+      return undefined;
+    });
+    const install = () =>
+      installRuntime(bundle, project, 'uv', run, new AbortController().signal, undefined, 'global');
+    await install();
+    const syncs = () => run.mock.calls.filter(([, args]) => args[0] === 'sync');
+    // First install: exact, nothing CPU-specific to keep yet.
+    expect(syncs()[0]?.[1]).not.toContain('--inexact');
+    await install();
+    const resync = syncs()[1]?.[1];
+    expect(resync).toContain('--inexact');
+    expect(resync).toEqual(expect.arrayContaining(['--no-install-package', 'torch']));
+  });
   it('repairs sentencepiece without evicting healthy PyTorch wheels', async () => {
     const { bundle, project } = await fixture();
     await interpreter(project);
@@ -649,6 +792,88 @@ describe('packaged runtime setup', () => {
     expect(existsSync(join(project, 'backend', 'obsolete.py'))).toBe(false);
     expect(existsSync(join(project, '.incoming-backend'))).toBe(false);
   });
+  it('updates in place when a locked .previous folder blocks the swap (#3409)', async () => {
+    const { bundle, project } = await fixture();
+    await stageRuntimeSources(bundle, project);
+    await writeFile(join(bundle, 'backend', 'main.py'), 'new');
+    const previous = join(project, '.previous-backend');
+    const lockedRm = (async (
+      path: Parameters<typeof rm>[0],
+      options?: Parameters<typeof rm>[1],
+    ) => {
+      if (path === previous) throw Object.assign(new Error('EPERM: unlink'), { code: 'EPERM' });
+      return rm(path, options);
+    }) as typeof rm;
+    const rename = vi.fn(async (_from: string, _to: string) => {});
+    await stageRuntimeSources(bundle, project, rename, {
+      fs: { cp, rm: lockedRm },
+      retry: { platform: 'win32', sleep: async () => {} },
+    });
+    expect(await readFile(join(project, 'backend', 'main.py'), 'utf8')).toBe('new');
+    expect(rename.mock.calls.some(([from]) => String(from).includes('backend'))).toBe(false);
+  });
+  it('retries a copy that a scanner briefly blocks before giving up (#3409)', async () => {
+    const { bundle, project } = await fixture();
+    await stageRuntimeSources(bundle, project);
+    await writeFile(join(bundle, 'backend', 'main.py'), 'new');
+    const locked = async () => {
+      throw Object.assign(new Error('EPERM: operation not permitted, rename'), { code: 'EPERM' });
+    };
+    let blocked = 0;
+    const flakyCp = (async (...args: Parameters<typeof cp>) => {
+      if (args[1] === join(project, 'backend') && blocked++ < 2) {
+        throw Object.assign(new Error('EBUSY: resource busy'), { code: 'EBUSY' });
+      }
+      return cp(...args);
+    }) as typeof cp;
+    await stageRuntimeSources(bundle, project, locked, {
+      fs: { cp: flakyCp, rm },
+      retry: { platform: 'win32', sleep: async () => {} },
+    });
+    expect(blocked).toBe(3);
+    expect(await readFile(join(project, 'backend', 'main.py'), 'utf8')).toBe('new');
+  });
+  it('names the lock and the fix when a folder stays locked through every retry (#3409)', async () => {
+    const { bundle, project } = await fixture();
+    await stageRuntimeSources(bundle, project);
+    const locked = async () => {
+      throw Object.assign(new Error('EPERM: operation not permitted, rename'), { code: 'EPERM' });
+    };
+    const lockedCp = (async (...args: Parameters<typeof cp>) => {
+      if (args[1] === join(project, 'backend')) {
+        throw Object.assign(new Error('EPERM: operation not permitted, open'), { code: 'EPERM' });
+      }
+      return cp(...args);
+    }) as typeof cp;
+    const failure = stageRuntimeSources(bundle, project, locked, {
+      fs: { cp: lockedCp, rm },
+      retry: { platform: 'win32', sleep: async () => {} },
+    });
+    await expect(failure).rejects.toMatchObject({ code: RUNTIME_FILES_LOCKED_CODE });
+    await expect(failure).rejects.toThrow(/OneDrive.*press Retry/s);
+    expect(existsSync(join(project, '.incoming-backend'))).toBe(false);
+  });
+  it.each(['darwin', 'linux'] as const)(
+    'keeps a %s permission error as-is instead of the Windows lock guidance',
+    async (platform) => {
+      const { bundle, project } = await fixture();
+      await stageRuntimeSources(bundle, project);
+      const denied = async () => {
+        throw Object.assign(new Error('EACCES: permission denied, rename'), { code: 'EACCES' });
+      };
+      const deniedCp = (async (...args: Parameters<typeof cp>) => {
+        if (args[1] === join(project, 'backend')) {
+          throw Object.assign(new Error('EACCES: permission denied, open'), { code: 'EACCES' });
+        }
+        return cp(...args);
+      }) as typeof cp;
+      const failure = stageRuntimeSources(bundle, project, denied, {
+        fs: { cp: deniedCp, rm },
+        retry: { platform, sleep: async () => {} },
+      });
+      await expect(failure).rejects.toMatchObject({ code: 'EACCES' });
+    },
+  );
   it('still fails on a rename error that is not a lock', async () => {
     const { bundle, project } = await fixture();
     const broken = async () => {
@@ -699,9 +924,24 @@ describe('packaged runtime setup', () => {
     const run = vi.fn();
     await expect(
       installRuntime(bundle, project, null, run, new AbortController().signal),
-    ).rejects.toThrow('9 GiB');
+    ).rejects.toThrow(/needs at least \d+ GiB/);
     expect(fetch).not.toHaveBeenCalled();
     expect(run).not.toHaveBeenCalled();
+  });
+  it('drops partial downloads before checking free space', async () => {
+    const { bundle, project } = await fixture();
+    const partial = join(project, '..', '.uv-cache', '.tmpHZ1msW');
+    await mkdir(partial, { recursive: true });
+    await writeFile(join(partial, 'torch.so'), 'partial');
+    let partialAtCheck: boolean | undefined;
+    vi.mocked(statfs).mockImplementationOnce(async () => {
+      partialAtCheck = existsSync(partial);
+      return { bavail: 1024, bsize: 1024 } as Awaited<ReturnType<typeof statfs>>;
+    });
+    await expect(
+      installRuntime(bundle, project, null, vi.fn(), new AbortController().signal),
+    ).rejects.toThrow('GiB');
+    expect(partialAtCheck).toBe(false);
   });
   it('reuses the app-private uv after a cancelled or failed installation', async () => {
     const { bundle, project } = await fixture();
@@ -890,5 +1130,223 @@ describe('import verification names the module that crashed (#3293)', () => {
     );
     expect(lastImportAttempted('no markers here')).toBeNull();
     expect(lastImportAttempted(undefined)).toBeNull();
+  });
+});
+
+describe('regional PyPI mirror for the frozen sync (#3444)', () => {
+  const WHEEL = 'packages/a8/db/253133d7/accelerate-1.14.0-py3-none-any.whl';
+  const LOCK = [
+    '[[package]]',
+    'name = "accelerate"',
+    'source = { registry = "https://pypi.org/simple" }',
+    `wheels = [{ url = "https://files.pythonhosted.org/${WHEEL}", hash = "sha256:e943", size = 1 }]`,
+    '[[package]]',
+    'name = "torch"',
+    'wheels = [{ url = "https://download-r2.pytorch.org/whl/cu128/torch.whl", hash = "sha256:aa" }]',
+    '',
+  ].join('\n');
+  async function lockedFixture() {
+    const paths = await fixture();
+    await writeFile(join(paths.bundle, 'uv.lock'), LOCK);
+    return paths;
+  }
+  function recordingRun(project: string, fail = 0) {
+    const seen: string[] = [];
+    let failures = fail;
+    const run = vi.fn(async (_command: string, args: string[]) => {
+      if (args[0] !== 'sync') return undefined;
+      seen.push(await readFile(join(project, 'uv.lock'), 'utf8'));
+      if (failures-- > 0) throw new Error('Runtime setup exited with code 2');
+      await interpreter(project);
+      return undefined;
+    });
+    return { run, seen };
+  }
+
+  it('syncs the china region from the aliyun mirror and restores the bundled lock', async () => {
+    const { bundle, project } = await lockedFixture();
+    const { run, seen } = recordingRun(project);
+    const log = vi.fn();
+    await installRuntime(
+      bundle,
+      project,
+      'uv',
+      run,
+      new AbortController().signal,
+      undefined,
+      'china',
+      {
+        log,
+      },
+    );
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toContain(
+      `url = "https://mirrors.aliyun.com/pypi/${WHEEL}", hash = "sha256:e943"`,
+    );
+    expect(seen[0]).toContain('https://download-r2.pytorch.org/whl/cu128/torch.whl');
+    expect(seen[0]).not.toContain('files.pythonhosted.org');
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('mirrors.aliyun.com'));
+    expect(await readFile(join(project, 'uv.lock'), 'utf8')).toBe(LOCK);
+    expect(await runtimeReady(bundle, project)).toBe(true);
+    expect(await runtimeCompatible(bundle, project)).toBe(true);
+  });
+
+  it.each(['global', 'russia', 'restricted'] as const)(
+    'leaves the lock byte-identical for the %s region',
+    async (region) => {
+      const { bundle, project } = await lockedFixture();
+      const { run, seen } = recordingRun(project);
+      await installRuntime(
+        bundle,
+        project,
+        'uv',
+        run,
+        new AbortController().signal,
+        undefined,
+        region,
+      );
+      expect(seen).toEqual([LOCK]);
+    },
+  );
+
+  it('retries once from the original URLs when the mirrored sync fails', async () => {
+    const { bundle, project } = await lockedFixture();
+    const { run, seen } = recordingRun(project, 1);
+    const log = vi.fn();
+    const pypiHost = vi.fn();
+    await installRuntime(
+      bundle,
+      project,
+      'uv',
+      run,
+      new AbortController().signal,
+      undefined,
+      'china',
+      {
+        log,
+        pypiHost,
+      },
+    );
+    expect(seen).toHaveLength(2);
+    expect(seen[0]).toContain('mirrors.aliyun.com');
+    expect(seen[1]).toBe(LOCK);
+    expect(pypiHost).toHaveBeenCalledWith('files.pythonhosted.org');
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining('retrying from files.pythonhosted.org'),
+    );
+    expect(await runtimeReady(bundle, project)).toBe(true);
+  });
+
+  it('restores the bundled lock when both attempts fail', async () => {
+    const { bundle, project } = await lockedFixture();
+    const { run, seen } = recordingRun(project, 2);
+    await expect(
+      installRuntime(bundle, project, 'uv', run, new AbortController().signal, undefined, 'china'),
+    ).rejects.toThrow('code 2');
+    expect(seen).toHaveLength(2);
+    expect(await readFile(join(project, 'uv.lock'), 'utf8')).toBe(LOCK);
+  });
+
+  it('treats a lock left on the mirror as the same dependency graph', async () => {
+    const { bundle, project } = await lockedFixture();
+    await installRuntime(
+      bundle,
+      project,
+      'uv',
+      recordingRun(project).run,
+      new AbortController().signal,
+      undefined,
+      'global',
+    );
+    await writeFile(
+      join(project, 'uv.lock'),
+      LOCK.replace('https://files.pythonhosted.org/', 'https://mirrors.aliyun.com/pypi/'),
+    );
+    expect(await runtimeCompatible(bundle, project)).toBe(true);
+    await writeFile(join(project, 'uv.lock'), LOCK.replace('sha256:e943', 'sha256:0000'));
+    expect(await runtimeCompatible(bundle, project)).toBe(false);
+  });
+});
+
+describe('outdated Visual C++ runtime behind a native import crash (#3293)', () => {
+  const crash = () =>
+    Object.assign(new Error('Runtime setup exited with code 3221225477'), {
+      code: 3221225477,
+      stdout: 'VOICESTUDIO_IMPORT=fastapi\nVOICESTUDIO_IMPORT=sentencepiece\n',
+    });
+  const diagnosis = (version: string) =>
+    `${NATIVE_DIAGNOSTIC_PREFIX}${JSON.stringify({
+      missing_system_libraries: [],
+      extension_present: true,
+      msvcp140: { path: 'C:\\Windows\\System32\\MSVCP140.dll', version },
+    })}\n`;
+  function runner(version: string, failure: () => Error) {
+    return vi.fn(async (_command: string, args: string[]) => {
+      if (args[0] !== '-c') return undefined;
+      if (args[1] === RUNTIME_IMPORT_PROBE) throw failure();
+      if (args[1] === RUNTIME_NATIVE_DIAGNOSTIC_PROBE) return diagnosis(version);
+      return undefined;
+    });
+  }
+
+  it('compares MSVCP140 versions against the 14.40 floor', () => {
+    expect(msvcp140Outdated('14.29.30133.0')).toBe(true);
+    expect(msvcp140Outdated('14.36.32532.0')).toBe(true);
+    expect(msvcp140Outdated('14.40.33810.0')).toBe(false);
+    expect(msvcp140Outdated('14.44.35211.0')).toBe(false);
+    expect(msvcp140Outdated(undefined)).toBe(false);
+    expect(msvcp140Outdated('garbage')).toBe(false);
+  });
+
+  it('reads the loaded MSVCP140 from the diagnostic and tolerates its absence', () => {
+    expect(parseNativeDiagnosis(diagnosis('14.29.30133.0'))?.msvcp140).toEqual({
+      path: 'C:\\Windows\\System32\\MSVCP140.dll',
+      version: '14.29.30133.0',
+    });
+    expect(
+      parseNativeDiagnosis(
+        `${NATIVE_DIAGNOSTIC_PREFIX}${JSON.stringify({ missing_system_libraries: [] })}`,
+      )?.msvcp140,
+    ).toBeNull();
+    expect(RUNTIME_NATIVE_DIAGNOSTIC_PROBE).toContain('GetFileVersionInfoW');
+  });
+
+  it('explains an access violation on an outdated runtime instead of a bare exit code', async () => {
+    const { bundle, project } = await fixture();
+    const failure = installRuntime(
+      bundle,
+      project,
+      'uv',
+      runner('14.29.30133.0', crash),
+      new AbortController().signal,
+    );
+    await expect(failure).rejects.toMatchObject({ code: OUTDATED_SYSTEM_LIBRARY_CODE });
+    await expect(failure).rejects.toThrow(/"sentencepiece".*14\.29\.30133\.0.*Visual C\+\+/s);
+    expect(await runtimeReady(bundle, project)).toBe(false);
+  });
+
+  it('keeps the plain import failure when the runtime is current or the error is not a crash', async () => {
+    const current = await fixture();
+    await expect(
+      installRuntime(
+        current.bundle,
+        current.project,
+        'uv',
+        runner('14.44.35211.0', crash),
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow('the import check stopped while importing "sentencepiece"');
+    const notACrash = await fixture();
+    await expect(
+      installRuntime(
+        notACrash.bundle,
+        notACrash.project,
+        'uv',
+        runner('14.29.30133.0', () =>
+          Object.assign(new Error("No module named 'sentencepiece'"), { code: 1, stdout: '' }),
+        ),
+        new AbortController().signal,
+      ),
+    ).rejects.not.toMatchObject({ code: OUTDATED_SYSTEM_LIBRARY_CODE });
   });
 });

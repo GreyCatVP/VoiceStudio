@@ -1,13 +1,19 @@
 import { decideMissingRuntime, runtimeWasInstalled } from './runtime-repair';
+import { windowsRocmInstalled, windowsRocmRequested } from './runtime-windows-rocm';
+import { runtimeProjectReady } from './runtime-readiness';
+import { runRuntimeProbe } from './runtime-probe';
+import { pypiFilesHost } from './pypi-mirror';
 import {
   installRuntime,
   MISSING_SYSTEM_LIBRARY_CODE,
+  OUTDATED_SYSTEM_LIBRARY_CODE,
+  RUNTIME_FILES_LOCKED_CODE,
   promoteLegacyRuntimeCaches,
-  runtimeCompatible,
   runtimeDependenciesReady,
+  runtimeDownloadHosts,
   runtimeInstallInterrupted,
-  runtimeReady,
   runtimePython,
+  runtimeUvCache,
   stageRuntimeSources,
   type RuntimeRegion,
 } from './runtime-project';
@@ -55,6 +61,7 @@ import {
 } from './remote-backend';
 import { toolSearchDirs, toolSearchDirsAsync } from './tool-path';
 import { SetupProgressTracker, cleanProcessLine } from './setup-progress';
+import { SetupDownloadReporter, inFlightDownloadBytes } from './setup-downloads';
 import { scrubText } from '../shared/utils/scrub';
 import { DEFAULT_BACKEND_PORT } from '../../../config/app-config.mjs';
 
@@ -287,7 +294,10 @@ function usableFile(path: string): boolean {
  * located. A blank value is dropped rather than passed on, because the backend reads
  * any set value as "the shell tried and failed" instead of falling back to PATH.
  */
-export function bundledUvEnv(pinned: string | undefined, locate: () => string | null): string | undefined {
+export function bundledUvEnv(
+  pinned: string | undefined,
+  locate: () => string | null,
+): string | undefined {
   if (pinned?.trim()) return pinned;
   return locate() ?? undefined;
 }
@@ -484,7 +494,10 @@ export async function resolveSpawnPlan(
   // deadline and repeat that download after every restart (#2184).
   const portArg = ['--port', String(port)];
   const python = venvPython(root);
-  const setup = `Open a terminal in ${root}, run \`bun run setup:api\`, wait for it to finish, then restart.`;
+  // Only a source checkout reaches this point: an installed app returned above
+  // with its app-managed runtime, which the setup screen repairs in-app (#3480).
+  // Retry re-runs this check, so a finished setup needs no app restart.
+  const setup = `Open a terminal in ${root}, run \`bun run setup:api\`, wait for it to finish, then press Retry.`;
   if (!existsSync(python)) {
     // Not a source checkout and not a packaged app (a copied folder, a
     // download of the wrong archive): setup:api does not exist there (#2988).
@@ -633,7 +646,10 @@ export type SmartAppControl = 'on' | 'evaluation' | 'off' | 'unknown';
 export function smartAppControlFromRegistry(output: string): SmartAppControl {
   const match = /VerifiedAndReputablePolicyState\s+REG_DWORD\s+0x([0-9a-f]+)/i.exec(output);
   if (!match) return 'unknown';
-  return ({ 0: 'off', 1: 'on', 2: 'evaluation' } as const)[Number.parseInt(match[1], 16) as 0 | 1 | 2] ?? 'unknown';
+  return (
+    ({ 0: 'off', 1: 'on', 2: 'evaluation' } as const)[Number.parseInt(match[1], 16) as 0 | 1 | 2] ??
+    'unknown'
+  );
 }
 
 /** Read only after a launch was already refused, so the 3 s cap never delays a healthy start. */
@@ -642,7 +658,12 @@ function readSmartAppControl(platform = process.platform): SmartAppControl {
   try {
     const result = spawnSync(
       'reg.exe',
-      ['query', String.raw`HKLM\SYSTEM\CurrentControlSet\Control\CI\Policy`, '/v', 'VerifiedAndReputablePolicyState'],
+      [
+        'query',
+        String.raw`HKLM\SYSTEM\CurrentControlSet\Control\CI\Policy`,
+        '/v',
+        'VerifiedAndReputablePolicyState',
+      ],
       { encoding: 'utf8', timeout: 3000, windowsHide: true },
     );
     return smartAppControlFromRegistry(result.stdout ?? '');
@@ -797,7 +818,12 @@ export class BackendSupervisor extends EventEmitter<{
       uv: findUvAsync,
       gpu: async () => {
         const info = (await app.getGPUInfo('basic')) as {
-          gpuDevice?: { vendorId?: number; deviceId?: number; active?: boolean; driverVersion?: string }[];
+          gpuDevice?: {
+            vendorId?: number;
+            deviceId?: number;
+            active?: boolean;
+            driverVersion?: string;
+          }[];
         };
         const devices = info.gpuDevice ?? [];
         const active = devices.find((device) => device.active) ?? devices[0];
@@ -947,6 +973,7 @@ export class BackendSupervisor extends EventEmitter<{
               previouslyInstalled: await runtimeWasInstalled(project),
               repairAttempted: this.repairAttempted,
               unsupported: isUnsupportedPlatform(),
+              rocmNotYetInstalled: windowsRocmRequested() && !(await windowsRocmInstalled(project)),
             });
             this.runtimeRepairFailed = action === 'repair_failed';
             this.runtimeInterrupted = await runtimeInstallInterrupted(project);
@@ -1052,11 +1079,9 @@ export class BackendSupervisor extends EventEmitter<{
     this.setupPhase = 'checking';
     this.setupProgress.reset();
     this.setStage('installing', { message: undefined });
+    const stopWatching = this.watchSetupDownloads(gen, controller.signal);
     try {
-      const reusable =
-        ((await runtimeReady(backendRoot(), project)) ||
-          (await runtimeCompatible(backendRoot(), project))) &&
-        (await runtimeDependenciesReady(project));
+      const reusable = await runtimeProjectReady(backendRoot(), project);
       if (gen !== this.generation || controller.signal.aborted) return;
       if (reusable) {
         await this.start();
@@ -1082,10 +1107,7 @@ export class BackendSupervisor extends EventEmitter<{
           'Creating a separate Electron runtime; existing environment preserved.',
         );
         this.emitStatus();
-        const fallbackReusable =
-          ((await runtimeReady(backendRoot(), project)) ||
-            (await runtimeCompatible(backendRoot(), project))) &&
-          (await runtimeDependenciesReady(project));
+        const fallbackReusable = await runtimeProjectReady(backendRoot(), project);
         if (gen !== this.generation || controller.signal.aborted) return;
         if (fallbackReusable) {
           await this.start();
@@ -1105,8 +1127,27 @@ export class BackendSupervisor extends EventEmitter<{
         backendRoot(),
         project,
         findUv(),
-        (command, args, cwd, env) =>
-          new Promise<string>((resolve, reject) => {
+        (command, args, cwd, env, options) => {
+          if (options?.timeoutMs)
+            return runRuntimeProbe(
+              command,
+              args,
+              cwd,
+              { ...childEnv(this.port, this.runtimeRegion), ...env },
+              {
+                timeoutMs: options.timeoutMs,
+                signal: controller.signal,
+                onSpawn: (child) => {
+                  this.child = child;
+                  this.attachLineReader(child.stdout, 'out');
+                  this.attachLineReader(child.stderr, 'err');
+                },
+                onClose: (child) => {
+                  if (this.child === child) this.child = null;
+                },
+              },
+            );
+          return new Promise<string>((resolve, reject) => {
             if (controller.signal.aborted) {
               reject(controller.signal.reason);
               return;
@@ -1144,7 +1185,8 @@ export class BackendSupervisor extends EventEmitter<{
                   }),
                 );
             });
-          }),
+          });
+        },
         controller.signal,
         (phase) => {
           if (gen !== this.generation) return;
@@ -1152,6 +1194,17 @@ export class BackendSupervisor extends EventEmitter<{
           this.emitStatus();
         },
         this.runtimeRegion,
+        {
+          log: (line) => {
+            if (gen === this.generation) this.pushLog('out', line);
+          },
+          pypiHost: (host) => {
+            if (gen !== this.generation) return;
+            void runtimeDownloadHosts(backendRoot(), process.platform, process.arch, host)
+              .then((hosts) => this.setupProgress.setDownloadHosts(hosts))
+              .catch(() => undefined);
+          },
+        },
       );
       if (gen === this.generation) await this.start();
     } catch (error) {
@@ -1164,9 +1217,13 @@ export class BackendSupervisor extends EventEmitter<{
               ? 'space'
               : code === MISSING_SYSTEM_LIBRARY_CODE
                 ? 'missing_system_library'
-                : ['EACCES', 'EPERM', 'EROFS'].includes(code || '')
-                  ? 'access'
-                  : undefined;
+                : code === OUTDATED_SYSTEM_LIBRARY_CODE
+                  ? 'outdated_system_library'
+                  : code === RUNTIME_FILES_LOCKED_CODE
+                    ? 'files_locked'
+                    : ['EACCES', 'EPERM', 'EROFS'].includes(code || '')
+                      ? 'access'
+                      : undefined;
         this.setupRequiredGib =
           code === 'ENOSPC' ? (error as { requiredGib?: number }).requiredGib : undefined;
         this.runtimeRepairFailed = this.repairAttempted;
@@ -1175,8 +1232,50 @@ export class BackendSupervisor extends EventEmitter<{
         this.setStage('setup_required', { message: errorMessage(error) });
       }
     } finally {
+      stopWatching();
       if (this.installation === controller) this.installation = null;
     }
+  }
+
+  /**
+   * uv prints nothing while a large wheel downloads, so watch its cache for
+   * in-flight bytes: the setup screen names the source host, and a download
+   * that stops receiving data shows as stalled instead of frozen (#3411).
+   */
+  private watchSetupDownloads(gen: number, signal: AbortSignal): () => void {
+    const reporter = new SetupDownloadReporter();
+    void Promise.resolve()
+      .then(() =>
+        runtimeDownloadHosts(
+          backendRoot(),
+          process.platform,
+          process.arch,
+          pypiFilesHost(this.runtimeRegion),
+        ),
+      )
+      .then((hosts) => this.setupProgress.setDownloadHosts(hosts))
+      .catch(() => undefined);
+    let sampling = false;
+    const timer = setInterval(() => {
+      if (sampling || signal.aborted || gen !== this.generation || this.stage !== 'installing')
+        return;
+      if (this.setupPhase !== 'installing_deps' || !this.runtimeProject) return;
+      sampling = true;
+      void inFlightDownloadBytes(runtimeUvCache(this.runtimeProject))
+        .then((bytes) => {
+          if (signal.aborted || gen !== this.generation || this.stage !== 'installing') return;
+          this.setupProgress.observeInFlight(bytes);
+          const snapshot = this.setupProgress.snapshot();
+          for (const line of reporter.lines(snapshot)) this.pushLog('out', line);
+          if (snapshot.downloadsComplete === false) this.emitStatus();
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          sampling = false;
+        });
+    }, 3_000);
+    timer.unref?.();
+    return () => clearInterval(timer);
   }
 
   /** Remove only an Electron-owned Python project, then perform a fresh install. */
@@ -1310,7 +1409,9 @@ export class BackendSupervisor extends EventEmitter<{
   private runtimeStorage(): { runtimeStorage?: ScopedStorage } {
     const scoped = scopedRuntimeRoot();
     const root = this.runtimeProject ? dirname(this.runtimeProject) : null;
-    return scoped && root && samePath(scoped, root) ? { runtimeStorage: scopedStorage(scoped) } : {};
+    return scoped && root && samePath(scoped, root)
+      ? { runtimeStorage: scopedStorage(scoped) }
+      : {};
   }
 
   setRuntimeLocation(parent: string | null): { path: string; custom: boolean } {
@@ -1399,10 +1500,7 @@ export class BackendSupervisor extends EventEmitter<{
       configured ? [configured] : [this.runtimeProject, own, ...legacyTauriRuntimeProjects()]
     ).filter((candidate): candidate is string => Boolean(candidate));
     for (const project of new Set(candidates.map((candidate) => resolve(candidate)))) {
-      if (
-        ((await runtimeReady(bundle, project)) || (await runtimeCompatible(bundle, project))) &&
-        (await runtimeDependenciesReady(project))
-      ) {
+      if (await runtimeProjectReady(bundle, project)) {
         this.runtimeProject = project;
         if (project !== own && project !== configured)
           this.pushLog('out', `Reusing compatible Tauri runtime: ${project}`);
@@ -1586,9 +1684,7 @@ export class BackendSupervisor extends EventEmitter<{
     this.exitCode = code;
     this.exitSignal = signal;
     const bindFailure =
-      code === EXIT_PORT_IN_USE
-        ? 'in_use'
-        : bindFailureFromLog(this.childLog.join('\n'));
+      code === EXIT_PORT_IN_USE ? 'in_use' : bindFailureFromLog(this.childLog.join('\n'));
     if (bindFailure === 'in_use') {
       this.setStage('port_in_use', {
         message: `Port ${this.port} is already in use by another process. Stop it or set OMNIVOICE_PORT.`,
@@ -1655,9 +1751,7 @@ export class BackendSupervisor extends EventEmitter<{
     if (!project) return false;
     if (samePath(project, join(defaultRuntimeRoot(), 'project'))) return true;
     const configured = storedRuntimeLocation();
-    return Boolean(
-      configured?.owned && samePath(project, join(configured.root, 'project')),
-    );
+    return Boolean(configured?.owned && samePath(project, join(configured.root, 'project')));
   }
 
   private canRepairRuntime(): boolean {

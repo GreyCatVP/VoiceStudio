@@ -102,7 +102,13 @@ export function writeDraft(draft: DesignDraft) {
 export function replaceRecipe(current: DesignDraft, recipe: Partial<DesignDraft>): DesignDraft {
   // Only a saved voice links the draft; a preset, personality or demo starts
   // a new, unsaved design.
-  const next = { ...current, ...recipe, profileId: recipe.profileId ?? null, description: '', mapped: {} };
+  const next = {
+    ...current,
+    ...recipe,
+    profileId: recipe.profileId ?? null,
+    description: '',
+    mapped: {},
+  };
   return { ...next, picks: explicitDetails(next.attrs) };
 }
 
@@ -181,6 +187,20 @@ export function applyDescription(
     picks[category] = pick;
   }
   return { ...current, attrs, picks, mapped };
+}
+
+/**
+ * "Reset to description" drops the picks (and a saved-voice link) so the
+ * description alone decides again. With no description there is nothing to
+ * reset to, and without picks or a link the details already follow it.
+ */
+export function canResetToDescription(
+  draft: Pick<DesignDraft, 'description' | 'picks' | 'profileId'>,
+): boolean {
+  return (
+    draft.description.trim() !== '' &&
+    (Object.keys(draft.picks).length > 0 || draft.profileId !== null)
+  );
 }
 
 /** Record an explicit pick; one that clears an exclusive category drops that pick. */

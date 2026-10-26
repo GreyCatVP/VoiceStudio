@@ -418,9 +418,8 @@ async def ws_tts(websocket: WebSocket):
                         started = True
 
                     # Convert to 16-bit PCM and stream
-                    pcm = (wav_tensor * 32767).clamp(-32768, 32767).to(torch.int16)
-                    if pcm.ndim == 2:
-                        pcm = pcm[0]  # mono
+                    from services.audio_io import pcm16_mono
+                    pcm = pcm16_mono(wav_tensor)
                     pcm_bytes = pcm.numpy().tobytes()
 
                     n_samples = len(pcm)

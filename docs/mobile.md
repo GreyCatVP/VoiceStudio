@@ -6,16 +6,39 @@ with no computer, account or cloud service. If you also run VoiceStudio on a
 computer (desktop app, Docker or a server), you can pair the phone with it and
 choose, per task, to run on **This phone** or **My computer**.
 
-> **Preview.** The apps aren't in the App Store or Google Play yet. Build them
-> from source (below).
+> **Preview.** The apps aren't in the App Store or Google Play yet. Download them
+> from [Releases](https://github.com/debpalash/VoiceStudio/releases/latest)
+> ([Install](#install)) or build them from source (below).
 
 | | iOS | Android |
 |---|---|---|
 | Minimum OS | iOS 17 (iPhone, iPad) | Android 10 (API 29) |
 | Source | [`mobile/ios/`](../mobile/ios/README.md) | [`mobile/android/`](../mobile/android/README.md) |
 
-Home marks **@debpalash** and **@velixio** with a small star badge as the core
-maintainer team, matching Electron. The badge has a localized core-maintainer description for accessibility.
+## Install
+
+Each release attaches the phone apps next to the desktop installers on the
+[Releases page](https://github.com/debpalash/VoiceStudio/releases/latest).
+
+- **Android:** download `VoiceStudio-<version>-android.apk` on the phone, open
+  it and allow installs from that source when Android asks.
+- **iPhone:** download `VoiceStudio-<version>-ios-unsigned.ipa` and install it
+  with a sideloading tool that signs it with your own Apple ID (for example
+  Sideloadly). With a free Apple ID the install expires after 7 days; turn on
+  Developer Mode (Settings → Privacy & Security) when iOS asks.
+
+Check downloads against the release's `SHA256SUMS.txt`.
+
+Home keeps its title and feature summary beside a compact contributor column,
+with a stacked layout at accessibility text sizes. “Brought to you by” introduces
+14 contributors, with the smaller portraits in a two-row horizontal scroller. It puts
+**Palash (@debpalash)** and **Shimul (@velixio)** above the smaller
+contributor portraits. Tap either core maintainer to open a native profile sheet
+with their role, website, GitHub and X links. Portraits, brand icons and profile
+metadata are bundled for offline use; external pages open only when tapped.
+Contributor portraits use the public GitHub profile images refreshed on
+2026-10-26. The contributor export also keeps iOS portraits identical to
+Electron and Android.
 
 ## What you can do
 
@@ -31,7 +54,13 @@ maintainer team, matching Electron. The badge has a localized core-maintainer de
   transcribes, translates and re-voices it in the original speaker's voice.
   Play completed dubs directly in the app, including after using Dictate;
   switching between video results keeps both picture and sound.
-- **Dictate**: tap the mic and watch the transcript appear live.
+- **Dictate**: tap the mic and watch the transcript appear live. Completed sessions
+  are saved in **Transcriptions**, including sessions run on a paired computer.
+- **Transcriptions**: search saved text, edit while retaining the original, copy,
+  delete, and export TXT/JSON or timed SRT/VTT. Import audio/video up to four hours and 1 GiB
+  for on-phone transcription; compress or split larger source files. Completed 20-second sections survive interruption;
+  Resume uses the same installed model and verified source. Subtitle export uses
+  the original timed transcript; restore it after text edits to export subtitles.
 - **Models**: download, update or delete the on-device models.
 - **Voice design**: choose voice traits and a seed, generate a sample with
   OmniVoice, then save it as a phone voice for Speak, Stories and dubbing.
@@ -49,11 +78,33 @@ maintainer team, matching Electron. The badge has a localized core-maintainer de
 - **Edit a completed phone dub**: change source/translated text, timing and
   individual voices and 0–200% segment volume (including mute); split/merge
   segments; undo/redo; import/export SRT or VTT;
-  preview original/generated waveforms. Generate Dub reuses unchanged segments
+  preview original/generated waveforms. Label speakers and assign a saved voice
+  to a cast member while keeping individual line overrides. Export styled or dual
+  ASS subtitles, verified per-line clips, or packages containing dubbed audio and
+  the original audio (which is not an isolated background stem). Video exports can
+  contain multiple language tracks with a chosen default. Generate Dub reuses unchanged segments
   and keeps the previous completed output until replacement succeeds. Volume
   changes remix existing speech without running the model again. Sources
   stay on the phone until you delete the job. Older Android jobs whose sources
   were already removed must be imported again.
+- **Advanced computer dubbing**: use installed speaker-analysis models, review
+  the cast, regenerate a language with the chosen voices and timing mode, and
+  export selected tracks, background-preserving mixes, burned subtitles, dual
+  captions or karaoke. Speaker analysis, background separation and subtitle burn
+  run on the paired computer. Detect reruns the installed speaker model on an
+  already-transcribed project without replacing its text, timing, translations
+  or explicit voice choices. Regeneration keeps saved line volumes, speech rates,
+  delivery instructions and audio effects. Model downloads remain explicit.
+- **Project transfer**: export/import editable `.vsproject` archives on either
+  phone or Electron's Projects page. Manuscripts, chapter headings, casts,
+  pronunciation settings, dub timelines, translations, references and assets
+  travel together, including translations that have not been rendered. Imports
+  create new copies and require permission for bundled voice recordings. Engine
+  settings and foreign caches remain in the archive; rendering uses compatible
+  installed models. Pairing also provides a received-project inbox. The computer
+  retains outgoing download archives for up to 24 hours, keeping at most the
+  newest 20 within a 2 GiB budget; export again after expiry. Imported projects
+  and their assets are retained.
 - **Tools**: convert an audio clip of up to 30 seconds into a saved voice, with
   optional duration matching, or compare two preset/saved voices reading the same
   text. Record conversion input directly with microphone permission and voice
@@ -64,13 +115,18 @@ maintainer team, matching Electron. The badge has a localized core-maintainer de
   (up to four hours), preserves the original, and shares WAV/M4A/MP3. Existing
   synthetic provenance stays marked; a natural recording remains unmarked.
 - **Gallery**: browse installed phone presets offline. My computer browses,
-  previews and imports community voices on the paired host; it never downloads
-  a community reference to the phone. Opening the host gallery may refresh its
-  community manifest, and Preview/Use voice are explicit actions.
-- **Workflows**: import text or audio/video, transcribe, normalize or translate,
-  conditionally skip forward, retry failed steps, and optionally generate speech.
-  Templates provide starting points. Saved inputs, settings and checkpoints let
-  unchanged runs resume. Speak remains the final step.
+  previews and imports community voices on the paired host. **Copy to phone**
+  explicitly transfers a reference recording and transcript after voice permission;
+  the phone keeps author and licence details. References are limited to 30 seconds.
+  This does not download a model or generate a preview. Opening the host gallery
+  may refresh its community manifest; preview, host import and phone copy are
+  separate actions.
+- **Workflows**: connect transcription, translation, speech, voice conversion and
+  normalization steps. Yes/no conditions can rejoin; retries and saved runs retain
+  completed work. Import/export desktop workflow JSON, then choose phone voices
+  and reattach audio. Conversion uses transcription and re-synthesis, up to 30
+  seconds. Desktop agent/call nodes and multiple-source batches are explicitly
+  rejected; supported graphs run offline with installed models.
 - **Calls**: control the paired computer's configured Twilio agent: confirm a
   call, follow its transcript, take over, type speech or hang up. Pair with an API
   key, then enable **Allow paired call control** in the computer's Calls settings.
@@ -103,7 +159,7 @@ Foreground work retains GPU acceleration. Older systems use limited background
 grants. The OS may still pause work; Resume continues an unchanged saved draft.
 After editing a book or workflow, Generate uses the current settings and reuses
 matching cached work. Low battery or critical thermal conditions pause processing. This sustained job
-support covers dubs, stories/books and workflows; short interactive tools and
+support covers dubs, stories/books, workflows and file transcription; short interactive tools and
 the phone API remain foreground tasks. Delete a project/job to remove its media.
 
 
@@ -208,6 +264,7 @@ are generated from the desktop app and backend, never copied by hand:
 ```sh
 bun scripts/export-mobile-tokens.ts        # theme tokens from the Electron theme
 bun scripts/export-mobile-design.ts        # native design traits from Electron
+bun scripts/export-mobile-contributors.ts  # maintainer identities and profile links
 uv run python scripts/export_openapi.py    # mobile/contract/openapi.json from the backend
 ```
 
