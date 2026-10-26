@@ -43,5 +43,8 @@
     "turbo": "^2.11.10",
     "typescript": "^7.0.2",
     "wait-on": "^9.5.1"
+  },
+  "dependencies": {
+    "dompurify": "3.4.17"
   }
 }
