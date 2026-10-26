@@ -366,17 +366,25 @@ it.each(['idle', 'ready', 'starting', 'installing', 'failed'])(
   },
 );
 
-it.each(['cpu', 'cuda', 'rocm'] as const)(
-  'carries the saved %s choice through readiness, hosts, install and installer child environment',
-  async (preference) => {
+it.each(
+  (['cpu', 'cuda', 'rocm'] as const).flatMap((preference) =>
+    (['global', 'china'] as const).map((region) => ({ preference, region })),
+  ),
+)(
+  'carries saved $preference through $region setup, host fallback and installer children',
+  async ({ preference, region }) => {
+    seedPreferences({ region });
     vi.stubEnv('OMNIVOICE_DEVICE', 'cpu');
     vi.stubEnv('OMNIVOICE_DATA_DIR', join(fixture.profile, 'existing-data'));
     const instance = supervisor();
     await instance.start();
     instance.setRuntimeTorchPreference(preference);
-    fixture.install.mockImplementation(async (_bundle, project, _uv, run) => {
-      await run('fixture-python', ['-c', 'pass'], project, {});
-    });
+    fixture.install.mockImplementation(
+      async (_bundle, project, _uv, run, _signal, _phase, _region, _choice, downloads) => {
+        await run('fixture-python', ['-c', 'pass'], project, {});
+        downloads.pypiHost('files.pythonhosted.org');
+      },
+    );
     await instance.setupRuntime();
     const choice = fixture.install.mock.calls[0][7];
     expect(choice).toEqual({
@@ -385,7 +393,20 @@ it.each(['cpu', 'cuda', 'rocm'] as const)(
     });
     expect(fixture.ready).toHaveBeenCalledWith(expect.any(String), expect.any(String), choice);
     expect(fixture.compatible).toHaveBeenCalledWith(expect.any(String), expect.any(String), choice);
-    expect(fixture.hosts).toHaveBeenCalledWith(expect.any(String), 'win32', 'x64', choice);
+    expect(fixture.hosts).toHaveBeenCalledWith(
+      expect.any(String),
+      'win32',
+      'x64',
+      choice,
+      region === 'china' ? 'mirrors.aliyun.com' : 'files.pythonhosted.org',
+    );
+    expect(fixture.hosts).toHaveBeenCalledWith(
+      expect.any(String),
+      'win32',
+      'x64',
+      choice,
+      'files.pythonhosted.org',
+    );
     expect(fixture.spawn.mock.calls[0][2].env).toMatchObject({
       OMNIVOICE_TORCH_VARIANT: preference,
       OMNIVOICE_DEVICE: 'cpu',
