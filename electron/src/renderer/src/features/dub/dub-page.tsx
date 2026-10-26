@@ -67,6 +67,7 @@ import {
   Undo2Icon,
   WandSparklesIcon,
   XIcon,
+  FolderOpenIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -831,15 +832,17 @@ export function DubPage() {
     <div className="flex h-full min-h-0 flex-col">
       <WorkspaceHeader>
         <h1 className="text-sm font-medium">{t('dubWorkspace.title')}</h1>
-        <Link to="/projects" className={buttonVariants({ variant: 'ghost', size: 'sm' })}>
-          {t('projects.title')}
-        </Link>
         <span
           className="min-w-0 flex-1 truncate text-xs text-muted-foreground"
           title={session.filename}
         >
           {compactSourceLabel(session.filename)}
         </span>
+        {/* After the flexible source name, so the pane title is never followed by a lookalike. */}
+        <Link to="/projects" className={buttonVariants({ variant: 'ghost', size: 'sm' })}>
+          <FolderOpenIcon />
+          {t('projects.title')}
+        </Link>
         {storyFromDub && (
           <Button
             variant="ghost"
