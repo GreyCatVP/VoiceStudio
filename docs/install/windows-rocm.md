@@ -230,6 +230,13 @@ fresh NSIS installation. Full Polish keyboard, physical NVDA and listening
 acceptance remain open. Ordinary audio preprocessing remains CPU work as in the
 CUDA path.
 
+A subsequent genuine beta.3 package at commit `07e8c02da` verified the saved
+AMD runtime, staged backend, real native helper and GPU report in the same
+configured test profile. The production API generated 3.065 seconds of nonzero
+24 kHz OmniVoice audio. Normal shutdown left zero owned processes and no repair
+IPC handler errors; the earlier package exposed those errors before the shutdown
+fix. This does not certify a fresh install or the later setup-timeout change.
+
 After the test owner accepted the upstream model terms in that isolated profile,
 the production default OmniVoice adapter also generated ordinary speech and a
 transcript-free reference clone at 24 kHz. All model parameters were on Radeon
@@ -264,7 +271,11 @@ observed GPU forward, but does not certify the gated application pipeline.
 Clean Windows, packaged GUI execution and upstream CI remain separate gates.
 
 Explicit main-runtime setup and the managed VoxCPM2 install probe also initialize
-the pinned SDK development archive through AMD's own API. Native initialization
+the pinned SDK development archive through AMD's own API. The explicit Windows
+ROCm VoxCPM2 setup probe has a ten-minute limit for first-time SDK expansion,
+native imports and a verified GPU kernel; ordinary import probes retain their
+two-minute limit. A timeout still fails setup without publishing readiness.
+Native initialization
 then discovers the expanded rocRAND headers and sets the process-local
 `ROCM_PATH` before MIOpen imports, preserving an explicit override. Read-only
 verification does not unpack SDK files. Both GPU VAD parameters and actual

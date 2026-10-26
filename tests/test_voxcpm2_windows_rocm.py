@@ -231,6 +231,53 @@ def test_healthy_cpu_and_user_managed_installs_are_not_migrated(installer, monke
     assert python.read_bytes() == b"existing CPU interpreter" and marker.read_bytes() == b"voxcpm\n"
 
 
+def test_cold_sdk_probe_has_its_own_bounded_setup_budget(installer, monkeypatch):
+    spec = installer.get_spec("voxcpm2")
+    checkout = installer.managed_checkout(spec)
+    checkout.mkdir(parents=True)
+    python = installer._venv_python(checkout / ".venv")
+    calls = []
+
+    def cold_probe(arguments, **options):
+        calls.append((arguments, options))
+        if options["timeout"] < 180:
+            raise installer.subprocess.TimeoutExpired(arguments, options["timeout"])
+        return SimpleNamespace(returncode=0, stdout=json.dumps(report(python)).encode(), stderr=b"")
+
+    monkeypatch.setattr(installer.subprocess, "run", cold_probe)
+
+    installer._step_verify(spec, installer._new_job(spec.engine_id))
+
+    assert calls[0][1]["timeout"] == 600
+    assert calls[0][1]["env"]["HF_HUB_OFFLINE"] == "1"
+    assert calls[0][1]["env"]["TRANSFORMERS_OFFLINE"] == "1"
+    assert (checkout / installer._INSTALL_COMPLETE_MARKER).is_file()
+
+
+@pytest.mark.parametrize("platform,variant,engine", [
+    ("win32", "cpu", "voxcpm2"),
+    ("win32", "cuda", "voxcpm2"),
+    ("linux", "rocm", "voxcpm2"),
+    ("darwin", "rocm", "voxcpm2"),
+    ("win32", "rocm", "indextts2"),
+])
+def test_ordinary_import_probe_retains_short_budget(installer, monkeypatch, platform, variant, engine):
+    monkeypatch.setattr(installer.sys, "platform", platform)
+    monkeypatch.setenv("OMNIVOICE_TORCH_VARIANT", variant)
+    spec = installer.get_spec(engine)
+    checkout = installer.managed_checkout(spec)
+    checkout.mkdir(parents=True)
+    calls = []
+    monkeypatch.setattr(installer.subprocess, "run", lambda arguments, **options: calls.append(
+        (arguments, options)
+    ) or SimpleNamespace(returncode=0, stdout=b"", stderr=b""))
+
+    installer._step_verify(spec, installer._new_job(spec.engine_id))
+
+    assert calls[0][1]["timeout"] == 120
+    assert calls[0][0][1] == "-c"
+
+
 @pytest.mark.parametrize("failure", ["exit", "timeout", "crash"])
 def test_failed_probe_never_publishes_marker(installer, monkeypatch, failure):
     spec = installer.get_spec("voxcpm2")
@@ -250,7 +297,7 @@ def test_failed_probe_never_publishes_marker(installer, monkeypatch, failure):
     with pytest.raises(installer._StepError):
         installer._step_verify(spec, installer._new_job(spec.engine_id))
     assert calls[0][0][0] == str(installer._venv_python(checkout / ".venv"))
-    assert calls[0][1]["timeout"] == installer._IMPORT_PROBE_TIMEOUT_S
+    assert calls[0][1]["timeout"] == 600
     assert calls[0][1]["env"]["HF_HUB_OFFLINE"] == "1"
     assert not (checkout / installer._INSTALL_COMPLETE_MARKER).exists()
 

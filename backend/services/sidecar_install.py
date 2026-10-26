@@ -85,6 +85,7 @@ _TARBALL_TIMEOUT_S = 600
 _UV_VENV_TIMEOUT_S = 300
 _UV_PIP_INSTALL_TIMEOUT_S = 3600
 _IMPORT_PROBE_TIMEOUT_S = 120
+_WINDOWS_ROCM_SETUP_PROBE_TIMEOUT_S = 600
 
 
 # ── Spec ───────────────────────────────────────────────────────────────────
@@ -1769,7 +1770,7 @@ def _step_verify(spec: SidecarSpec, job: dict) -> None:
 
             proc = subprocess.run(
                 [str(py), str(Path(voxcpm2.__file__).resolve())],
-                capture_output=True, timeout=_IMPORT_PROBE_TIMEOUT_S,
+                capture_output=True, timeout=_WINDOWS_ROCM_SETUP_PROBE_TIMEOUT_S,
                 env={**os.environ, "HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1"},
             )
         else:
