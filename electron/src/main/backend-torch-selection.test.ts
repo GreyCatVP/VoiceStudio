@@ -3,7 +3,6 @@ import { EventEmitter } from 'node:events';
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { RuntimeTorchPreference } from '../preload/index.d';
 import type { TorchChoice } from './runtime-project';
 
 const fixture = vi.hoisted(() => ({
@@ -97,6 +96,15 @@ function ownedReady(instance: BackendSupervisor): EventEmitter {
     child.emit('exit', 0, null);
     return { status: 0 };
   });
+  if (process.platform !== 'win32') {
+    vi.spyOn(process, 'kill').mockImplementation((pid, signal) => {
+      expect(pid).toBe(-child.pid);
+      expect(signal).toBe('SIGTERM');
+      child.exitCode = 0;
+      child.emit('exit', 0, null);
+      return true;
+    });
+  }
   Object.assign(instance, {
     stage: 'ready',
     managed: true,
@@ -157,9 +165,14 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-it.each<RuntimeTorchPreference>(['auto', 'cpu', 'cuda', 'rocm'])(
-  'saves %s without provisioning and preserves region across reloads and writes',
-  async (preference) => {
+it.each(
+  (['win32', 'linux'] as const).flatMap((platform) =>
+    (['auto', 'cpu', 'cuda', 'rocm'] as const).map((preference) => ({ platform, preference })),
+  ),
+)(
+  'saves $platform $preference without provisioning and preserves region across reloads and writes',
+  async ({ platform, preference }) => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue(platform);
     const instance = supervisor();
     await instance.start();
     instance.setRuntimeRegion('china');
@@ -230,19 +243,23 @@ it.each(['auto', 'bogus', ''])(
   },
 );
 
-it('keeps a pending choice explicit across restart even when an older runtime was installed', async () => {
-  const instance = supervisor();
-  await instance.start();
-  instance.setRuntimeTorchPreference('rocm');
-  mkdirSync(join(fixture.profile, 'runtime', 'project', '.venv'), { recursive: true });
-  const restarted = supervisor();
-  await restarted.start();
-  expect(restarted.status.stage).toBe('setup_required');
-  expect(restarted.status.runtimeRepairFailed).toBeUndefined();
-  expect(fixture.install).not.toHaveBeenCalled();
-  expect(fixture.remove).not.toHaveBeenCalled();
-  expect(preferences().torchSetupPending).toBe(true);
-});
+it.each(['win32', 'linux'] as const)(
+  'keeps a pending %s choice explicit across restart even when an older runtime was installed',
+  async (platform) => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue(platform);
+    const instance = supervisor();
+    await instance.start();
+    instance.setRuntimeTorchPreference('rocm');
+    mkdirSync(join(fixture.profile, 'runtime', 'project', '.venv'), { recursive: true });
+    const restarted = supervisor();
+    await restarted.start();
+    expect(restarted.status.stage).toBe('setup_required');
+    expect(restarted.status.runtimeRepairFailed).toBeUndefined();
+    expect(fixture.install).not.toHaveBeenCalled();
+    expect(fixture.remove).not.toHaveBeenCalled();
+    expect(preferences().torchSetupPending).toBe(true);
+  },
+);
 
 it('retains the selected variant, retry state and scoped storage after installation failure', async () => {
   const root = join(fixture.profile, 'chosen-runtime');
@@ -335,7 +352,7 @@ it.each(['default', 'ROCM', '', null, {}, 1])('rejects invalid GUI preference %j
 });
 
 it.each([
-  ['linux', 'x64', true, true],
+  ['linux', 'arm64', true, true],
   ['darwin', 'arm64', true, true],
   ['win32', 'arm64', true, true],
   ['win32', 'x64', false, true],
@@ -367,12 +384,15 @@ it.each(['idle', 'ready', 'starting', 'installing', 'failed'])(
 );
 
 it.each(
-  (['cpu', 'cuda', 'rocm'] as const).flatMap((preference) =>
-    (['global', 'china'] as const).map((region) => ({ preference, region })),
+  (['win32', 'linux'] as const).flatMap((platform) =>
+    (['cpu', 'cuda', 'rocm'] as const).flatMap((preference) =>
+      (['global', 'china'] as const).map((region) => ({ platform, preference, region })),
+    ),
   ),
 )(
-  'carries saved $preference through $region setup, host fallback and installer children',
-  async ({ preference, region }) => {
+  'carries $platform saved $preference through $region setup, host fallback and installer children',
+  async ({ platform, preference, region }) => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue(platform);
     seedPreferences({ region });
     vi.stubEnv('OMNIVOICE_DEVICE', 'cpu');
     vi.stubEnv('OMNIVOICE_DATA_DIR', join(fixture.profile, 'existing-data'));
@@ -395,14 +415,14 @@ it.each(
     expect(fixture.compatible).toHaveBeenCalledWith(expect.any(String), expect.any(String), choice);
     expect(fixture.hosts).toHaveBeenCalledWith(
       expect.any(String),
-      'win32',
+      platform,
       'x64',
       choice,
       region === 'china' ? 'mirrors.aliyun.com' : 'files.pythonhosted.org',
     );
     expect(fixture.hosts).toHaveBeenCalledWith(
       expect.any(String),
-      'win32',
+      platform,
       'x64',
       choice,
       'files.pythonhosted.org',
@@ -472,75 +492,83 @@ it.each([
   },
 );
 
-it('schedules a confirmed healthy-runtime choice without interrupting active jobs or its owned child', async () => {
-  seedPreferences({ region: 'global', torchPreference: 'cpu' });
-  const instance = supervisor();
-  const child = ownedReady(instance);
-  const generation = (instance as unknown as { generation: number }).generation;
-  const statusChanged = vi.fn();
-  instance.subscribe(statusChanged);
-  vi.stubEnv('OMNIVOICE_DEVICE', 'cpu');
-  expect(instance.status.runtimeTorchSwitchable).toBe(true);
-  await expect(instance.beginRuntimeTorchSetup('rocm')).resolves.toBeUndefined();
-  expect(instance.status.stage).toBe('ready');
-  expect(instance.status.managed).toBe(true);
-  expect(instance.status.runtimeTorchSwitchable).toBe(true);
-  expect(instance.status.runtimeTorchSetupPending).toBe(true);
-  expect(instance.status.runtimeTorchPreference).toBe('rocm');
-  expect((instance as unknown as { child: unknown }).child).toBe(child);
-  expect((instance as unknown as { generation: number }).generation).toBe(generation);
-  expect(preferences()).toEqual({
-    region: 'global',
-    torchPreference: 'rocm',
-    torchSetupPending: true,
-  });
-  expect(statusChanged).toHaveBeenCalledWith(
-    expect.objectContaining({
-      stage: 'ready',
-      runtimeTorchPreference: 'rocm',
-      runtimeTorchSetupPending: true,
-    }),
-  );
-  expect(fixture.install).not.toHaveBeenCalled();
-  expect(fixture.remove).not.toHaveBeenCalled();
-  expect(fixture.spawn).not.toHaveBeenCalled();
-  expect(fixture.kill).not.toHaveBeenCalled();
-  expect(vi.mocked(fetch)).not.toHaveBeenCalled();
-  expect(process.env.OMNIVOICE_TORCH_VARIANT).toBe('');
-  expect(process.env.OMNIVOICE_DEVICE).toBe('cpu');
-});
+it.each(['win32', 'linux'] as const)(
+  'schedules a confirmed %s choice without interrupting active jobs or its owned child',
+  async (platform) => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue(platform);
+    seedPreferences({ region: 'global', torchPreference: 'cpu' });
+    const instance = supervisor();
+    const child = ownedReady(instance);
+    const generation = (instance as unknown as { generation: number }).generation;
+    const statusChanged = vi.fn();
+    instance.subscribe(statusChanged);
+    vi.stubEnv('OMNIVOICE_DEVICE', 'cpu');
+    expect(instance.status.runtimeTorchSwitchable).toBe(true);
+    await expect(instance.beginRuntimeTorchSetup('rocm')).resolves.toBeUndefined();
+    expect(instance.status.stage).toBe('ready');
+    expect(instance.status.managed).toBe(true);
+    expect(instance.status.runtimeTorchSwitchable).toBe(true);
+    expect(instance.status.runtimeTorchSetupPending).toBe(true);
+    expect(instance.status.runtimeTorchPreference).toBe('rocm');
+    expect((instance as unknown as { child: unknown }).child).toBe(child);
+    expect((instance as unknown as { generation: number }).generation).toBe(generation);
+    expect(preferences()).toEqual({
+      region: 'global',
+      torchPreference: 'rocm',
+      torchSetupPending: true,
+    });
+    expect(statusChanged).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stage: 'ready',
+        runtimeTorchPreference: 'rocm',
+        runtimeTorchSetupPending: true,
+      }),
+    );
+    expect(fixture.install).not.toHaveBeenCalled();
+    expect(fixture.remove).not.toHaveBeenCalled();
+    expect(fixture.spawn).not.toHaveBeenCalled();
+    expect(fixture.kill).not.toHaveBeenCalled();
+    expect(vi.mocked(fetch)).not.toHaveBeenCalled();
+    expect(process.env.OMNIVOICE_TORCH_VARIANT).toBe('');
+    expect(process.env.OMNIVOICE_DEVICE).toBe('cpu');
+  },
+);
 
-it('replaces a pending healthy-runtime target and requires explicit setup after the app next starts', async () => {
-  seedPreferences({ region: 'china', torchPreference: 'cpu' });
-  const instance = supervisor();
-  ownedReady(instance);
-  await instance.beginRuntimeTorchSetup('rocm');
-  await instance.beginRuntimeTorchSetup('cuda');
-  expect(preferences()).toEqual({
-    region: 'china',
-    torchPreference: 'cuda',
-    torchSetupPending: true,
-  });
-  expect(fixture.kill).not.toHaveBeenCalled();
-  await instance.shutdown();
-  fixture.kill.mockClear();
-  fixture.ready.mockResolvedValue(true);
-  const restarted = supervisor();
-  await restarted.start();
-  expect(restarted.status).toMatchObject({
-    stage: 'setup_required',
-    runtimeTorchPreference: 'cuda',
-    runtimeTorchSetupPending: true,
-  });
-  expect(fixture.install).not.toHaveBeenCalled();
-  expect(fixture.spawn).not.toHaveBeenCalled();
-  expect(fixture.kill).not.toHaveBeenCalled();
-  await restarted.setupRuntime();
-  expect(fixture.install).not.toHaveBeenCalled();
-  expect(restarted.status.runtimeTorchSetupPending).toBe(false);
-  expect(preferences()).toEqual({ region: 'china', torchPreference: 'cuda' });
-  expect(fixture.spawn).toHaveBeenCalledOnce();
-});
+it.each(['win32', 'linux'] as const)(
+  'replaces a pending %s target and requires explicit setup after the app next starts',
+  async (platform) => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue(platform);
+    seedPreferences({ region: 'china', torchPreference: 'cpu' });
+    const instance = supervisor();
+    ownedReady(instance);
+    await instance.beginRuntimeTorchSetup('rocm');
+    await instance.beginRuntimeTorchSetup('cuda');
+    expect(preferences()).toEqual({
+      region: 'china',
+      torchPreference: 'cuda',
+      torchSetupPending: true,
+    });
+    expect(fixture.kill).not.toHaveBeenCalled();
+    await instance.shutdown();
+    fixture.kill.mockClear();
+    fixture.ready.mockResolvedValue(true);
+    const restarted = supervisor();
+    await restarted.start();
+    expect(restarted.status).toMatchObject({
+      stage: 'setup_required',
+      runtimeTorchPreference: 'cuda',
+      runtimeTorchSetupPending: true,
+    });
+    expect(fixture.install).not.toHaveBeenCalled();
+    expect(fixture.spawn).not.toHaveBeenCalled();
+    expect(fixture.kill).not.toHaveBeenCalled();
+    await restarted.setupRuntime();
+    expect(fixture.install).not.toHaveBeenCalled();
+    expect(restarted.status.runtimeTorchSetupPending).toBe(false);
+    expect(preferences()).toEqual({ region: 'china', torchPreference: 'cuda' });
+    expect(fixture.spawn).toHaveBeenCalledOnce();
+  },
+);
 
 it.each(['write', 'rename'])(
   'leaves a healthy runtime and its preferences unchanged on a failed migration %s',

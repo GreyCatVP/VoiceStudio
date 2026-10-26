@@ -4354,7 +4354,7 @@
     "autoDescription": "检测到 NVIDIA CUDA 时使用 CUDA，否则使用 CPU。AMD ROCm 需要手动选择。",
     "cpuDescription": "安装仅供 CPU 使用的软件包。",
     "cudaDescription": "安装 NVIDIA CUDA 软件包；需要兼容的 NVIDIA 显卡和驱动。",
-    "rocmDescription": "为 Windows 上受支持的 AMD 显卡安装 AMD ROCm 软件包。支持情况因引擎而异。",
+    "rocmDescription": "为受支持的 AMD 显卡安装 AMD ROCm 软件包。支持情况因操作系统和引擎而异。",
     "pinned": "OMNIVOICE_TORCH_VARIANT 已锁定此选项。请修改启动环境以解锁。",
     "saving": "正在保存软件包选择…",
     "saveError": "无法保存软件包选择。仍保留之前的选项。请重试。",

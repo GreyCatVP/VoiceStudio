@@ -7,6 +7,10 @@ checked-in [recipe](../../scripts/windows-rocm-recipe.json) and installer.
 The default Windows setup remains CUDA on NVIDIA, otherwise CPU. This option
 does not enable the Ryzen AI NPU, install a graphics driver, or download models.
 
+Linux x64 AppImage and `.deb` builds offer the same **Runtime packages** selector
+with a separate Linux package path. See [Linux ROCm setup](linux.md#amd-gpu-rocm);
+the Windows recipe described here is specific to native Windows x64.
+
 ## Prerequisites and exact scope
 
 - Windows 11 x64 and a GPU listed in AMD's **7.2.1**

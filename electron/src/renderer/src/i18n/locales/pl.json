@@ -4362,7 +4362,7 @@
     "autoDescription": "Wybiera NVIDIA CUDA po wykryciu, a w innym przypadku CPU. AMD ROCm wymaga jawnego wyboru.",
     "cpuDescription": "Instaluje pakiety wyłącznie dla CPU.",
     "cudaDescription": "Instaluje pakiety NVIDIA CUDA; wymaga zgodnej karty NVIDIA i sterownika.",
-    "rocmDescription": "Instaluje pakiety AMD ROCm dla obsługiwanych kart AMD w Windows. Obsługa zależy od silnika.",
+    "rocmDescription": "Instaluje pakiety AMD ROCm dla obsługiwanych kart AMD. Obsługa zależy od systemu operacyjnego i silnika.",
     "pinned": "OMNIVOICE_TORCH_VARIANT blokuje ten wybór. Aby go odblokować, zmień środowisko uruchomienia.",
     "saving": "Zapisywanie wyboru pakietów…",
     "saveError": "Nie udało się zapisać wyboru pakietów. Nadal wybrana jest poprzednia opcja. Spróbuj ponownie.",

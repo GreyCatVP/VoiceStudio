@@ -4354,7 +4354,7 @@
     "autoDescription": "Dùng NVIDIA CUDA nếu phát hiện được, nếu không thì dùng CPU. AMD ROCm cần được chọn rõ ràng.",
     "cpuDescription": "Cài các gói chỉ dành cho CPU.",
     "cudaDescription": "Cài các gói NVIDIA CUDA; yêu cầu GPU NVIDIA và trình điều khiển tương thích.",
-    "rocmDescription": "Cài các gói AMD ROCm cho card AMD được hỗ trợ trên Windows. Mức hỗ trợ tùy thuộc từng bộ máy.",
+    "rocmDescription": "Cài các gói AMD ROCm cho card AMD được hỗ trợ. Mức hỗ trợ tùy thuộc vào hệ điều hành và bộ máy.",
     "pinned": "OMNIVOICE_TORCH_VARIANT khóa lựa chọn này. Hãy đổi môi trường khởi chạy để mở khóa.",
     "saving": "Đang lưu lựa chọn gói…",
     "saveError": "Không thể lưu lựa chọn gói. Lựa chọn trước vẫn được giữ. Hãy thử lại.",

@@ -4354,7 +4354,7 @@
     "autoDescription": "Gebruikt NVIDIA CUDA indien gedetecteerd, anders de CPU. AMD ROCm moet expliciet worden gekozen.",
     "cpuDescription": "Installeert pakketten uitsluitend voor de CPU.",
     "cudaDescription": "Installeert NVIDIA CUDA-pakketten; vereist een compatibele NVIDIA-GPU en driver.",
-    "rocmDescription": "Installeert AMD ROCm-pakketten voor ondersteunde AMD-kaarten op Windows. Ondersteuning verschilt per engine.",
+    "rocmDescription": "Installeert AMD ROCm-pakketten voor ondersteunde AMD-kaarten. Ondersteuning verschilt per besturingssysteem en engine.",
     "pinned": "OMNIVOICE_TORCH_VARIANT legt deze keuze vast. Wijzig de startomgeving om deze te ontgrendelen.",
     "saving": "Pakketkeuze opslaan…",
     "saveError": "De pakketkeuze kon niet worden opgeslagen. De vorige keuze blijft geselecteerd. Probeer het opnieuw.",

@@ -4354,7 +4354,7 @@
     "autoDescription": "Algılanırsa NVIDIA CUDA, aksi halde CPU kullanılır. AMD ROCm açıkça seçilmelidir.",
     "cpuDescription": "Yalnızca CPU paketlerini yükler.",
     "cudaDescription": "NVIDIA CUDA paketlerini yükler; uyumlu NVIDIA GPU ve sürücüsü gerektirir.",
-    "rocmDescription": "Windows üzerinde desteklenen AMD kartları için AMD ROCm paketlerini yükler. Destek motora göre değişir.",
+    "rocmDescription": "Desteklenen AMD kartları için AMD ROCm paketlerini yükler. Destek, işletim sistemine ve motora göre değişir.",
     "pinned": "OMNIVOICE_TORCH_VARIANT bu seçimi sabitler. Kilidi açmak için başlatma ortamını değiştirin.",
     "saving": "Paket seçimi kaydediliyor…",
     "saveError": "Paket seçimi kaydedilemedi. Önceki seçim geçerliliğini koruyor. Yeniden deneyin.",

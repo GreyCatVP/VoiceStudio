@@ -4354,7 +4354,7 @@
     "autoDescription": "Uses NVIDIA CUDA when detected; otherwise CPU. AMD ROCm requires an explicit choice.",
     "cpuDescription": "Installs CPU-only packages.",
     "cudaDescription": "Installs NVIDIA CUDA packages; requires a compatible NVIDIA GPU and driver.",
-    "rocmDescription": "Installs AMD ROCm packages for supported Windows AMD cards. Support varies by engine.",
+    "rocmDescription": "Installs AMD ROCm packages for supported AMD cards. Support varies by operating system and engine.",
     "pinned": "OMNIVOICE_TORCH_VARIANT pins this choice. Change the launch environment to unlock it.",
     "saving": "Saving package choice…",
     "saveError": "Could not save the package choice. The previous choice is still selected. Try again.",

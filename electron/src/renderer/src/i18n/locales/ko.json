@@ -4354,7 +4354,7 @@
     "autoDescription": "NVIDIA CUDA가 감지되면 사용하고, 그렇지 않으면 CPU를 사용합니다. AMD ROCm은 명시적으로 선택해야 합니다.",
     "cpuDescription": "CPU 전용 패키지를 설치합니다.",
     "cudaDescription": "NVIDIA CUDA 패키지를 설치합니다. 호환되는 NVIDIA GPU와 드라이버가 필요합니다.",
-    "rocmDescription": "Windows에서 지원되는 AMD 카드용 AMD ROCm 패키지를 설치합니다. 지원 범위는 엔진마다 다릅니다.",
+    "rocmDescription": "지원되는 AMD 카드용 AMD ROCm 패키지를 설치합니다. 지원 범위는 운영 체제와 엔진에 따라 다릅니다.",
     "pinned": "OMNIVOICE_TORCH_VARIANT가 이 선택을 고정합니다. 잠금을 해제하려면 시작 환경을 변경하세요.",
     "saving": "패키지 선택 저장 중…",
     "saveError": "패키지 선택을 저장하지 못했습니다. 이전 선택이 유지됩니다. 다시 시도하세요.",

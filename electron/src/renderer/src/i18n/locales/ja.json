@@ -4354,7 +4354,7 @@
     "autoDescription": "NVIDIA CUDA を検出した場合はそれを使用し、それ以外は CPU を使用します。AMD ROCm は明示的な選択が必要です。",
     "cpuDescription": "CPU 専用のパッケージをインストールします。",
     "cudaDescription": "NVIDIA CUDA パッケージをインストールします。対応する NVIDIA GPU とドライバーが必要です。",
-    "rocmDescription": "Windows の対応 AMD カード向けに AMD ROCm パッケージをインストールします。対応状況はエンジンにより異なります。",
+    "rocmDescription": "対応する AMD カード向けに AMD ROCm パッケージをインストールします。対応状況はオペレーティングシステムとエンジンによって異なります。",
     "pinned": "OMNIVOICE_TORCH_VARIANT により選択が固定されています。解除するには起動環境を変更してください。",
     "saving": "パッケージの選択を保存中…",
     "saveError": "パッケージの選択を保存できませんでした。以前の選択が維持されています。再試行してください。",

@@ -4356,7 +4356,7 @@
     "autoDescription": "Usa NVIDIA CUDA se rilevato, altrimenti la CPU. AMD ROCm richiede una scelta esplicita.",
     "cpuDescription": "Installa pacchetti solo per la CPU.",
     "cudaDescription": "Installa i pacchetti NVIDIA CUDA; richiede una GPU NVIDIA e un driver compatibili.",
-    "rocmDescription": "Installa i pacchetti AMD ROCm per le schede AMD supportate su Windows. Il supporto varia in base al motore.",
+    "rocmDescription": "Installa i pacchetti AMD ROCm per le schede AMD supportate. Il supporto varia in base al sistema operativo e al motore.",
     "pinned": "OMNIVOICE_TORCH_VARIANT impone questa scelta. Modifica l’ambiente di avvio per sbloccarla.",
     "saving": "Salvataggio della scelta dei pacchetti…",
     "saveError": "Impossibile salvare la scelta dei pacchetti. Rimane selezionata la scelta precedente. Riprova.",

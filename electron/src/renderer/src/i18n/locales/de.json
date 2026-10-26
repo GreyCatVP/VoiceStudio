@@ -4354,7 +4354,7 @@
     "autoDescription": "Verwendet NVIDIA CUDA, wenn erkannt, andernfalls die CPU. AMD ROCm muss ausdrücklich gewählt werden.",
     "cpuDescription": "Installiert Pakete ausschließlich für die CPU.",
     "cudaDescription": "Installiert NVIDIA-CUDA-Pakete; erfordert eine kompatible NVIDIA-GPU und einen passenden Treiber.",
-    "rocmDescription": "Installiert AMD-ROCm-Pakete für unterstützte AMD-Karten unter Windows. Die Unterstützung hängt von der Engine ab.",
+    "rocmDescription": "Installiert AMD-ROCm-Pakete für unterstützte AMD-Karten. Die Unterstützung hängt vom Betriebssystem und von der Engine ab.",
     "pinned": "OMNIVOICE_TORCH_VARIANT legt diese Auswahl fest. Ändern Sie die Startumgebung, um sie freizugeben.",
     "saving": "Paketauswahl wird gespeichert…",
     "saveError": "Die Paketauswahl konnte nicht gespeichert werden. Die bisherige Auswahl bleibt bestehen. Versuchen Sie es erneut.",

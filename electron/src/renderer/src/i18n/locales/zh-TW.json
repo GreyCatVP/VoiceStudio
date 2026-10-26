@@ -4354,7 +4354,7 @@
     "autoDescription": "偵測到 NVIDIA CUDA 時使用 CUDA，否則使用 CPU。AMD ROCm 需要手動選擇。",
     "cpuDescription": "安裝僅供 CPU 使用的套件。",
     "cudaDescription": "安裝 NVIDIA CUDA 套件；需要相容的 NVIDIA 顯示卡與驅動程式。",
-    "rocmDescription": "為 Windows 上支援的 AMD 顯示卡安裝 AMD ROCm 套件。支援情況因引擎而異。",
+    "rocmDescription": "為支援的 AMD 顯示卡安裝 AMD ROCm 套件。支援情況因作業系統與引擎而異。",
     "pinned": "OMNIVOICE_TORCH_VARIANT 已鎖定此選項。請修改啟動環境以解除鎖定。",
     "saving": "正在儲存套件選擇…",
     "saveError": "無法儲存套件選擇。仍保留先前的選項。請重試。",

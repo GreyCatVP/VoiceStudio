@@ -4354,7 +4354,7 @@
     "autoDescription": "Menggunakan NVIDIA CUDA jika terdeteksi; jika tidak, CPU. AMD ROCm harus dipilih secara eksplisit.",
     "cpuDescription": "Memasang paket khusus CPU.",
     "cudaDescription": "Memasang paket NVIDIA CUDA; memerlukan GPU NVIDIA dan driver yang kompatibel.",
-    "rocmDescription": "Memasang paket AMD ROCm untuk kartu AMD yang didukung di Windows. Dukungan berbeda menurut mesin.",
+    "rocmDescription": "Memasang paket AMD ROCm untuk kartu AMD yang didukung. Dukungan bergantung pada sistem operasi dan mesin.",
     "pinned": "OMNIVOICE_TORCH_VARIANT mengunci pilihan ini. Ubah lingkungan peluncuran untuk membukanya.",
     "saving": "Menyimpan pilihan paket…",
     "saveError": "Pilihan paket tidak dapat disimpan. Pilihan sebelumnya tetap dipilih. Coba lagi.",

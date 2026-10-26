@@ -844,7 +844,7 @@ export class BackendSupervisor extends EventEmitter<{
   private runtimeTorchSupported(): boolean {
     return (
       app.isPackaged &&
-      process.platform === 'win32' &&
+      (process.platform === 'win32' || process.platform === 'linux') &&
       process.arch === 'x64' &&
       runtimeSetupSupported()
     );
