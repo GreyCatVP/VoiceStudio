@@ -1,17 +1,20 @@
 // @vitest-environment node
-import { mkdtemp, mkdir, realpath, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, realpath, symlink, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, parse } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import {
   isValidVoiceStudioRoot,
+  isAppOwnedRoot,
   modelsAreShared,
+  physicalPath,
   within,
   purgeResetScopes,
   scanResetScopes,
   type ResetRoots,
 } from './reset-data';
+import { createUninstallPlan, type UninstallTarget } from './uninstall-data';
 
 const created: string[] = [];
 
@@ -104,8 +107,11 @@ it('does not inherit ownership from an app-named ancestor or its markers', async
   await mkdir(app, { recursive: true });
   await writeFile(join(app, 'omnivoice.db'), 'db');
   for (const suffix of ['Documents', 'personal/Documents', 'personal/project', 'models/other']) {
+    await mkdir(join(app, suffix), { recursive: true });
+    expect(await physicalPath(join(app, suffix))).not.toBeNull();
     expect(await isValidVoiceStudioRoot(join(app, suffix), null), suffix).toBe(false);
   }
+  await mkdir(join(roots.root, 'VoiceStudio-copy', 'project'), { recursive: true });
   expect(await isValidVoiceStudioRoot(join(roots.root, 'VoiceStudio-copy', 'project'), null)).toBe(
     false,
   );
@@ -143,6 +149,7 @@ it('accepts managed layouts and signatures local to a custom root', async () => 
   await mkdir(custom);
   await writeFile(join(custom, 'omnivoice.db'), 'db');
   expect(await isValidVoiceStudioRoot(custom, null)).toBe(true);
+  await mkdir(join(custom, 'Documents'));
   expect(await isValidVoiceStudioRoot(join(custom, 'Documents'), null)).toBe(false);
   expect(await isValidVoiceStudioRoot(custom, custom)).toBe(false);
 });
@@ -156,6 +163,8 @@ it('keeps external caches shared and recognizes only exact private cache layouts
     'VoiceStudio/models/other',
     'custom-cache',
   ]) {
+    await mkdir(join(roots.root, suffix), { recursive: true });
+    expect(await physicalPath(join(roots.root, suffix))).not.toBeNull();
     expect(await modelsAreShared(join(roots.root, suffix), roots.data), suffix).toBe(true);
   }
   for (const suffix of [
@@ -207,6 +216,7 @@ it('requires staged app identity before recognizing custom runtime folders', asy
   await writeFile(join(project, 'uv.lock'), 'version = 1');
   await writeFile(join(project, 'backend', 'main.py'), 'app = None');
   await writeFile(join(project, 'pyproject.toml'), '[project]\nname = "unrelated"\n');
+  await mkdir(join(runtime, '.uv-cache'));
   expect(await isValidVoiceStudioRoot(runtime, null)).toBe(false);
   expect(await isValidVoiceStudioRoot(join(runtime, '.uv-cache'), null)).toBe(false);
   await writeFile(join(project, 'pyproject.toml'), '[project]\nname = "omnivoice"\n');
@@ -218,6 +228,8 @@ it('requires staged app identity before recognizing custom runtime folders', asy
     await mkdir(path, { recursive: true });
     expect(await isValidVoiceStudioRoot(path, null), path).toBe(true);
   }
+  await mkdir(join(runtime, 'Documents'));
+  await mkdir(join(runtime, 'huggingface'));
   expect(await isValidVoiceStudioRoot(join(runtime, 'Documents'), null)).toBe(false);
   expect(await modelsAreShared(join(runtime, 'models'), roots.data)).toBe(false);
   expect(await modelsAreShared(join(runtime, 'huggingface'), roots.data)).toBe(true);
@@ -234,10 +246,219 @@ it('accepts local cache signatures without granting private ownership or inherit
     const cache = join(roots.root, marker, 'custom-cache');
     await mkdir(join(cache, marker), { recursive: true });
     expect(await isValidVoiceStudioRoot(cache, null)).toBe(true);
+    await mkdir(join(cache, 'Documents'));
     expect(await isValidVoiceStudioRoot(join(cache, 'Documents'), null)).toBe(false);
     expect(await modelsAreShared(cache, roots.data)).toBe(true);
   }
 });
+
+const cacheOnlyRoles = ['hub', 'models--fixture'].flatMap((marker) =>
+  (['data', 'logs'] as const).map((role) => ({ marker, role })),
+);
+
+it.each(cacheOnlyRoles.flatMap((entry) => [false, true].map((alias) => ({ ...entry, alias }))))(
+  'refuses cache-only $marker in the $role reset role with models alias=$alias',
+  async ({ marker, role, alias }) => {
+    const roots = await fixture();
+    const home = join(roots.root, 'home');
+    const cache = join(roots.root, 'cache-only');
+    const target = role === 'data' ? join(cache, 'gallery_cache') : cache;
+    await mkdir(join(cache, marker), { recursive: true });
+    await mkdir(target, { recursive: true });
+    const sentinel = join(target, 'unrelated.txt');
+    await writeFile(sentinel, 'keep');
+    const configured = { ...roots, [role]: cache, ...(alias ? { models: cache } : {}) };
+    expect(await physicalPath(cache)).not.toBeNull();
+    expect(await isValidVoiceStudioRoot(cache, home)).toBe(true);
+    expect(await isAppOwnedRoot(cache, home)).toBe(false);
+    expect(await modelsAreShared(cache, configured.data, home)).toBe(true);
+    const report = await purgeResetScopes(configured, [role === 'data' ? 'caches' : 'logs'], home);
+    expect(report.removed).not.toContain(target);
+    expect(report.refused).toContain(target);
+    expect(await readFile(sentinel, 'utf8')).toBe('keep');
+  },
+);
+
+it.each(cacheOnlyRoles)(
+  'accepts the $role reset after $marker is supplemented with local app identity',
+  async ({ marker, role }) => {
+    const roots = await fixture();
+    const home = join(roots.root, 'home');
+    const cache = join(roots.root, 'custom-owned');
+    const target = role === 'data' ? join(cache, 'gallery_cache') : cache;
+    await mkdir(join(cache, marker), { recursive: true });
+    await mkdir(target, { recursive: true });
+    await writeFile(join(target, 'selected.txt'), 'selected');
+    expect(await isAppOwnedRoot(cache, home)).toBe(false);
+    await writeFile(join(cache, 'omnivoice.db'), 'db');
+    expect(await isAppOwnedRoot(cache, home)).toBe(true);
+    const report = await purgeResetScopes(
+      { ...roots, [role]: cache },
+      [role === 'data' ? 'caches' : 'logs'],
+      home,
+    );
+    expect(report.refused).toEqual([]);
+    expect(report.failed).toEqual([]);
+    expect(report.removed).toContain(target);
+    expect(existsSync(target)).toBe(false);
+    expect(await readFile(join(roots.data, 'keep.txt'), 'utf8')).toBe('keep');
+  },
+);
+
+it.each(['hub', 'models--fixture'])(
+  'keeps explicit model reset available for a shared cache recognized by %s',
+  async (marker) => {
+    const roots = await fixture();
+    const home = join(roots.root, 'home');
+    const models = join(roots.root, 'cache-only');
+    await mkdir(join(models, marker), { recursive: true });
+    await writeFile(join(models, marker, 'weights.bin'), 'synthetic');
+    const configured = { ...roots, models };
+    const scopes = await scanResetScopes(configured, home);
+    expect(scopes.find((scope) => scope.key === 'models')?.shared).toBe(true);
+    const report = await purgeResetScopes(configured, ['models'], home);
+    expect(report.refused).toEqual([]);
+    expect(report.failed).toEqual([]);
+    expect(report.removed).toEqual([models]);
+    expect(existsSync(models)).toBe(false);
+    expect(await readFile(join(roots.data, 'keep.txt'), 'utf8')).toBe('keep');
+  },
+);
+
+it.each(cacheOnlyRoles)(
+  'keeps direct uninstall planning private across $marker/$role input orders',
+  async ({ marker, role }) => {
+    const roots = await fixture();
+    const home = join(roots.root, 'home');
+    const cache = join(roots.root, 'cache-only');
+    await mkdir(join(cache, marker), { recursive: true });
+    const sentinel = join(cache, marker, 'unrelated.txt');
+    await writeFile(sentinel, 'keep');
+    const other: UninstallTarget = {
+      key: role,
+      path: cache,
+      shared: false,
+      exists: true,
+      size_bytes: 4,
+    };
+    expect(await createUninstallPlan([other], false, home)).toMatchObject({
+      paths: [],
+      refused: [cache],
+    });
+    const model: UninstallTarget = { ...other, key: 'models', shared: true };
+    for (const targets of [
+      [other, model],
+      [model, other],
+    ]) {
+      expect(await createUninstallPlan(targets, false, home)).toMatchObject({
+        paths: [],
+        size_bytes: 0,
+      });
+      expect(await createUninstallPlan(targets, true, home)).toMatchObject({
+        paths: [cache],
+        size_bytes: 4,
+      });
+    }
+    expect(await readFile(sentinel, 'utf8')).toBe('keep');
+  },
+);
+
+const sharedLogLayouts = [
+  'same',
+  'models-alias',
+  'logs-alias',
+  'logs-parent',
+  'models-parent',
+] as const;
+
+async function sharedLogsFixture(layout: (typeof sharedLogLayouts)[number]) {
+  const roots = await fixture();
+  const cache = join(roots.root, 'shared-cache');
+  const modelRoot = layout === 'logs-parent' ? join(cache, 'nested', 'huggingface') : cache;
+  const logRoot = layout === 'models-parent' ? join(cache, 'app-logs') : cache;
+  await mkdir(join(modelRoot, 'hub'), { recursive: true });
+  await mkdir(logRoot, { recursive: true });
+  await writeFile(join(logRoot, 'omnivoice.db'), 'synthetic logs identity');
+  const sentinel = join(layout === 'logs-parent' ? modelRoot : logRoot, 'synthetic-model.txt');
+  await writeFile(sentinel, 'shared model sentinel');
+  let models = modelRoot;
+  let logs = logRoot;
+  if (layout === 'models-alias') {
+    models = join(roots.root, 'models-alias');
+    await symlink(modelRoot, models, process.platform === 'win32' ? 'junction' : 'dir');
+  }
+  if (layout === 'logs-alias') {
+    logs = join(roots.root, 'logs-alias');
+    await symlink(logRoot, logs, process.platform === 'win32' ? 'junction' : 'dir');
+  }
+  return { roots: { ...roots, models, logs }, sentinel };
+}
+
+it.each(
+  sharedLogLayouts.flatMap((layout) =>
+    (['logs-only', 'logs-models', 'models-logs'] as const).map((selection) => ({
+      layout,
+      selection,
+    })),
+  ),
+)('protects app-marked shared logs for $layout with $selection', async ({ layout, selection }) => {
+  const { roots, sentinel } = await sharedLogsFixture(layout);
+  const home = join(roots.root, 'home');
+  expect(await isAppOwnedRoot(roots.logs, home)).toBe(true);
+  expect(await modelsAreShared(roots.models, roots.data, home)).toBe(true);
+  const scopes = await scanResetScopes(roots, home);
+  const requested = selection === 'logs-only' ? ['logs'] : selection.split('-');
+  const report = await purgeResetScopes(roots, requested, home);
+  expect(report.failed).toEqual([]);
+  if (selection === 'logs-only') {
+    expect(existsSync(sentinel)).toBe(true);
+    expect(report.refused).toContain(roots.logs);
+    expect(report.removed).not.toContain(roots.logs);
+    expect(scopes.find((scope) => scope.key === 'logs')?.shared).toBe(true);
+    expect(scopes.find((scope) => scope.key === 'models')?.shared).toBe(true);
+  } else {
+    expect(report.refused).toEqual([]);
+    expect(existsSync(sentinel)).toBe(false);
+  }
+});
+
+it('keeps independent logs removable without selecting a disjoint shared model cache', async () => {
+  const roots = await fixture();
+  const home = join(roots.root, 'home');
+  expect(await modelsAreShared(roots.models, roots.data, home)).toBe(true);
+  const scopes = await scanResetScopes(roots, home);
+  expect(scopes.find((scope) => scope.key === 'logs')?.shared).toBe(false);
+  const report = await purgeResetScopes(roots, ['logs'], home);
+  expect(report.refused).toEqual([]);
+  expect(report.failed).toEqual([]);
+  expect(existsSync(roots.logs!)).toBe(false);
+  expect(await readFile(join(roots.models, 'models--fixture', 'weights.bin'), 'utf8')).toBe(
+    'weights',
+  );
+});
+
+it.each(['logs-parent', 'logs-child'])(
+  'preserves validated app-data model privacy for private %s reset',
+  async (layout) => {
+    const roots = await fixture();
+    const home = join(roots.root, 'home');
+    const models = join(roots.data, 'models');
+    const logs = layout === 'logs-parent' ? roots.data : join(models, 'app-logs');
+    await mkdir(models, { recursive: true });
+    await mkdir(logs, { recursive: true });
+    await writeFile(join(logs, 'omnivoice.db'), 'synthetic app identity');
+    const sentinel = join(layout === 'logs-parent' ? models : logs, 'synthetic-model.txt');
+    await writeFile(sentinel, 'private model sentinel');
+    const configured = { ...roots, models, logs };
+    expect(await modelsAreShared(models, roots.data, home)).toBe(false);
+    const scopes = await scanResetScopes(configured, home);
+    expect(scopes.find((scope) => scope.key === 'logs')?.shared).toBe(false);
+    const report = await purgeResetScopes(configured, ['logs'], home);
+    expect(report.refused).toEqual([]);
+    expect(report.failed).toEqual([]);
+    expect(existsSync(sentinel)).toBe(false);
+  },
+);
 
 it.each(['home', 'unsigned', 'filesystem-root'])(
   'does not make a cache private through rejected %s data',
