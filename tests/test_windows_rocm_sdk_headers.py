@@ -1,19 +1,24 @@
 """Provision SDK development files explicitly and prepare read-only header lookup."""
 
+import importlib
 from types import SimpleNamespace
 
 import pytest
 
-from core.windows_rocm import runtime
+
+@pytest.fixture
+def runtime():
+    return importlib.import_module("core.windows_rocm.runtime")
 
 
 @pytest.fixture
-def sdk_environment(monkeypatch, tmp_path):
+def sdk_environment(monkeypatch, tmp_path, runtime):
     monkeypatch.setattr(runtime, "sys", SimpleNamespace(platform="win32"))
     versions = {"torch": "2.9.1+rocm7.2.1", "rocm-sdk-devel": "7.2.1"}
     monkeypatch.setattr(runtime.metadata, "version", versions.__getitem__)
     monkeypatch.setattr(runtime, "dll_directories", lambda: [])
-    monkeypatch.delenv("ROCM_PATH", raising=False)
+    monkeypatch.setenv("ROCM_PATH", "")
+    monkeypatch.delenv("ROCM_PATH")
     monkeypatch.delenv("MIOPEN_CUSTOM_CACHE_DIR", raising=False)
     root = tmp_path / "SDK with spaces"
     header = root / "include/rocrand/rocrand_xorwow.h"
@@ -23,7 +28,7 @@ def sdk_environment(monkeypatch, tmp_path):
     return monkeypatch, root, versions
 
 
-def test_native_initialization_finds_expanded_headers_without_unpacking(sdk_environment):
+def test_native_initialization_finds_expanded_headers_without_unpacking(sdk_environment, runtime):
     monkeypatch, root, versions = sdk_environment
     monkeypatch.setattr(runtime, "import_module", lambda name: pytest.fail("native lookup must not expand SDK"), raising=False)
 
@@ -33,7 +38,7 @@ def test_native_initialization_finds_expanded_headers_without_unpacking(sdk_envi
 
 
 @pytest.mark.parametrize("override", ["", "D:/Custom SDK"])
-def test_explicit_rocm_path_is_preserved(sdk_environment, override):
+def test_explicit_rocm_path_is_preserved(sdk_environment, override, runtime):
     monkeypatch, root, versions = sdk_environment
     monkeypatch.setenv("ROCM_PATH", override)
 
@@ -43,7 +48,7 @@ def test_explicit_rocm_path_is_preserved(sdk_environment, override):
 
 
 @pytest.mark.parametrize("damage", ["missing-spec", "missing-header", "wrong-sdk", "cuda", "linux"])
-def test_unverified_sdk_does_not_change_header_lookup(sdk_environment, damage):
+def test_unverified_sdk_does_not_change_header_lookup(sdk_environment, damage, runtime):
     monkeypatch, root, versions = sdk_environment
     if damage == "missing-spec":
         monkeypatch.setattr(runtime, "package_root", lambda package: None)
@@ -61,7 +66,7 @@ def test_unverified_sdk_does_not_change_header_lookup(sdk_environment, damage):
     assert "ROCM_PATH" not in runtime.os.environ
 
 
-def test_explicit_sdk_setup_uses_official_api(sdk_environment):
+def test_explicit_sdk_setup_uses_official_api(sdk_environment, runtime):
     monkeypatch, root, versions = sdk_environment
     calls = []
     monkeypatch.setattr(runtime, "import_module", lambda name: calls.append(name) or SimpleNamespace(
@@ -74,7 +79,7 @@ def test_explicit_sdk_setup_uses_official_api(sdk_environment):
     assert runtime.os.environ["ROCM_PATH"] == str(root)
 
 
-def test_sdk_expansion_failure_does_not_publish_header_lookup(sdk_environment):
+def test_sdk_expansion_failure_does_not_publish_header_lookup(sdk_environment, runtime):
     monkeypatch, root, versions = sdk_environment
 
     def fail():
