@@ -42,9 +42,28 @@ explicit temporary override.
 When several targets are selected, progress tabs above the transcript switch the
 active language in one click while preserving every target for Translate All and
 Generate. Persisted provider error pages are discarded and restored to the source
-dialogue with a retryable error state.
+dialogue with a retryable error state. Restored errors stay attached to the affected
+language, preserving its warning badge and issue-navigation stop when switching targets.
+
+The transcript toolbar counts flagged segments and offers Previous issue / Next
+issue controls. They wrap through tight-fit and overlong lines, translation errors
+or Fast fallbacks, generated-audio overflows, and QC verification flags in transcript
+order. Each jump selects and scrolls to the row, including rows outside the visible
+part of a long transcript. Keyboard focus stays on the control so Enter or Space
+can continue the review. Translation-error badges and navigation use the active
+language's saved failures, so a successful translation into another language does
+not hide them. Pasted replacements and edits to saved translations clear that
+language's error while keeping failures in other languages. The count follows
+edits and the active transcript; zero means no recorded flags, not that ungenerated
+speech has been verified. Navigation is disabled while a job is running or awaiting
+recovery.
 
 Long projects virtualize transcript rows, so only the visible editors are mounted.
+The transcript toolbar and waveform timeline stay above that scroll container.
+Selecting a timeline cue, with the mouse or keyboard, reveals its transcript row
+without moving the timeline out of view; timing controls remain available while
+editing long projects. Expanded rows, resized inline notices and dismissed errors
+retain their correct virtualized positions.
 
 The Dubbing pane has a Projects tab beside its controls that lists saved dub projects, newest first. Selecting a project and confirming opens it in place (it waits while a dub is running); the Projects workspace remains the place to save, rename and delete.
 Timeline waveform peaks and onsets are computed once by the backend and cached as a
@@ -250,7 +269,8 @@ either neighbor. Merge/split uses Tauri's shared attribution bookkeeping, so spe
 voice, direction, gain and target language survive moving words across a boundary.
 Undo and redo retain the latest 50 edit states and reset when a new source, subtitle
 file, translation or project becomes the editing baseline. The toolbar and
-Cmd/Ctrl shortcuts expose the same operations. Unit and browser regressions cover
+Cmd/Ctrl shortcuts expose the same operations; Cmd/Ctrl+Z in any other field (glossary,
+translation notes, segment Start/End) stays that field's own undo. Unit and browser regressions cover
 the full insert/delete/merge/split/undo/redo sequence and merge-to-split attribution.
 
 The editor includes a proportional timing lane above the segment rows. Segment

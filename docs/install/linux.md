@@ -19,7 +19,22 @@ resolves anywhere, the app downloads its own checksummed static build;
 **Settings → Audio tools** shows which binaries are in use and lets you
 override them or update yt-dlp.
 
-## Install (AppImage or .deb)
+## Install (Snap, AppImage or .deb)
+
+<a id="install-snap"></a>
+
+**Snap Store** (Ubuntu and other distributions with snapd):
+
+```bash
+sudo snap install voicestudio
+```
+
+The snap updates itself through snapd. Recording and dictation need the
+microphone interface; if VoiceStudio cannot hear you, connect it once:
+
+```bash
+sudo snap connect voicestudio:audio-record
+```
 
 <a id="install-appimage"></a>
 
@@ -145,7 +160,7 @@ There is no native ChromeOS or iPadOS app, and VoiceStudio does not run
 inside the browser alone: the models need a real backend.
 
 - **Chromebook with Linux development environment on x86-64:** install the
-  AppImage or `.deb` ([Install](#install-appimage-or-deb)). Expect CPU-only
+  AppImage or `.deb` ([Install](#install-snap-appimage-or-deb)). Expect CPU-only
   generation (the container has no GPU access on most devices) and enough RAM
   for the model you pick. ARM Chromebooks are not supported: the Linux builds
   are x86-64 only.
