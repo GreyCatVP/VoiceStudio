@@ -13,6 +13,16 @@
     "surprised": "Surprise",
     "calm": "Calme"
   },
+  "expression": {
+    "direction_label": "Indication de jeu",
+    "direction_ph": "p. ex. nerveux au début, puis enthousiaste",
+    "direction_help": "S’applique à toute la prise, comme indication pour {{engine}}.",
+    "unsupported": "L’émotion n’est pas disponible avec {{engine}}. IndexTTS2 propose une émotion graduée ; CosyVoice 3 et VoxCPM2 acceptent une indication écrite.",
+    "tags_hint": "Pour un moment précis dans une ligne, ajoutez des réactions comme {{example}} via Insérer dans le script.",
+    "tags_unsupported": "{{engine}} lirait les balises grisées à voix haute comme des mots.",
+    "guide": "Guide de la voix expressive",
+    "tip": "Astuce : façonnez le jeu avec Émotion ci-dessous et ajoutez des réactions comme des rires ou des soupirs via Insérer dans le script."
+  },
   "cloneQuality": {
     "title": "Qualité audio",
     "precision": "Précision WAV",

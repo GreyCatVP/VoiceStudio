@@ -13,6 +13,16 @@
     "surprised": "Zaskoczenie",
     "calm": "Spokój"
   },
+  "expression": {
+    "direction_label": "Wskazówka interpretacji",
+    "direction_ph": "np. najpierw nerwowo, potem z ekscytacją",
+    "direction_help": "Dotyczy całego nagrania jako wskazówka dla {{engine}}.",
+    "unsupported": "Emocje nie są dostępne w {{engine}}. IndexTTS2 oferuje stopniowane emocje; CosyVoice 3 i VoxCPM2 przyjmują pisemną wskazówkę.",
+    "tags_hint": "Aby dodać moment w obrębie wiersza, wstaw reakcje takie jak {{example}} przez Wstaw w skrypcie.",
+    "tags_unsupported": "Szare tagi {{engine}} przeczyta na głos jako słowa.",
+    "guide": "Przewodnik po ekspresyjnej mowie",
+    "tip": "Wskazówka: kształtuj interpretację za pomocą Emocje poniżej i dodawaj reakcje, takie jak śmiech czy westchnienie, przez Wstaw w skrypcie."
+  },
   "cloneQuality": {
     "title": "Jakość dźwięku",
     "precision": "Precyzja WAV",

@@ -13,6 +13,16 @@
     "surprised": "놀람",
     "calm": "평온"
   },
+  "expression": {
+    "direction_label": "연기 지시",
+    "direction_ph": "예: 처음엔 긴장하다가 점점 신나게",
+    "direction_help": "테이크 전체에 적용되며 {{engine}}에 대한 지시로 사용됩니다.",
+    "unsupported": "{{engine}}에서는 감정을 사용할 수 없습니다. IndexTTS2는 단계별 감정을, CosyVoice 3과 VoxCPM2는 글로 쓴 지시를 지원합니다.",
+    "tags_hint": "줄 안의 특정 순간에는 스크립트의 삽입에서 {{example}} 같은 리액션을 추가하세요.",
+    "tags_unsupported": "회색 태그는 {{engine}}이(가) 단어로 소리 내어 읽습니다.",
+    "guide": "표현력 있는 음성 가이드",
+    "tip": "팁: 아래 감정으로 전달 방식을 조절하고, 스크립트의 삽입에서 웃음이나 한숨 같은 리액션을 추가하세요."
+  },
   "cloneQuality": {
     "title": "오디오 품질",
     "precision": "WAV 정밀도",

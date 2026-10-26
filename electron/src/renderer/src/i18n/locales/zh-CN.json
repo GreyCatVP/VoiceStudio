@@ -13,6 +13,16 @@
     "surprised": "惊讶",
     "calm": "平静"
   },
+  "expression": {
+    "direction_label": "演绎指导",
+    "direction_ph": "例如：一开始紧张，然后兴奋",
+    "direction_help": "作用于整条录音，作为 {{engine}} 的演绎指导。",
+    "unsupported": "{{engine}} 不支持情绪控制。IndexTTS2 提供分级情绪；CosyVoice 3 和 VoxCPM2 接受文字指导。",
+    "tags_hint": "如需在一行中的某个时刻加入反应，请从脚本的“插入”中添加 {{example}} 等反应。",
+    "tags_unsupported": "灰色标签会被 {{engine}} 当作文字读出来。",
+    "guide": "富有表现力的语音指南",
+    "tip": "提示：用下方的“情绪”塑造演绎，并从脚本的“插入”中添加笑声或叹气等反应。"
+  },
   "cloneQuality": {
     "title": "音频质量",
     "precision": "WAV 精度",

@@ -13,6 +13,16 @@
     "surprised": "Überraschung",
     "calm": "Ruhe"
   },
+  "expression": {
+    "direction_label": "Vortragsanweisung",
+    "direction_ph": "z. B. zuerst nervös, dann begeistert",
+    "direction_help": "Gilt für die ganze Aufnahme, als Anleitung für {{engine}}.",
+    "unsupported": "Mit {{engine}} ist keine Emotion verfügbar. IndexTTS2 bietet abgestufte Emotionen; CosyVoice 3 und VoxCPM2 nehmen eine schriftliche Anweisung an.",
+    "tags_hint": "Für Momente innerhalb einer Zeile fügen Sie Reaktionen wie {{example}} über „Einfügen“ im Skript hinzu.",
+    "tags_unsupported": "Ausgegraute Tags würde {{engine}} als Wörter vorlesen.",
+    "guide": "Leitfaden für ausdrucksstarke Sprache",
+    "tip": "Tipp: Gestalten Sie den Vortrag unten mit „Emotion“ und fügen Sie über „Einfügen“ im Skript Reaktionen wie Lachen oder Seufzen hinzu."
+  },
   "cloneQuality": {
     "title": "Audioqualität",
     "precision": "WAV-Präzision",

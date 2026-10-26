@@ -13,6 +13,16 @@
     "surprised": "Şaşkınlık",
     "calm": "Sakinlik"
   },
+  "expression": {
+    "direction_label": "Seslendirme yönergesi",
+    "direction_ph": "ör. önce gergin, sonra heyecanlı",
+    "direction_help": "Tüm kayda, {{engine}} için yönerge olarak uygulanır.",
+    "unsupported": "{{engine}} ile duygu kullanılamaz. IndexTTS2 kademeli duygu sunar; CosyVoice 3 ve VoxCPM2 yazılı yönerge kabul eder.",
+    "tags_hint": "Bir satırın içindeki anlar için betikteki Ekle menüsünden {{example}} gibi tepkiler ekleyin.",
+    "tags_unsupported": "Gri etiketleri {{engine}} sözcük olarak sesli okur.",
+    "guide": "Etkileyici konuşma kılavuzu",
+    "tip": "İpucu: aşağıdaki Duygu ile seslendirmeyi şekillendirin, betikteki Ekle menüsünden gülme veya iç çekme gibi tepkiler ekleyin."
+  },
   "cloneQuality": {
     "title": "Ses kalitesi",
     "precision": "WAV hassasiyeti",

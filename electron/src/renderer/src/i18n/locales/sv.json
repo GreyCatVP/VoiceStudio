@@ -13,6 +13,16 @@
     "surprised": "Förvåning",
     "calm": "Lugn"
   },
+  "expression": {
+    "direction_label": "Framförandeinstruktion",
+    "direction_ph": "t.ex. nervös i början, sedan entusiastisk",
+    "direction_help": "Gäller hela tagningen, som vägledning för {{engine}}.",
+    "unsupported": "Känsla är inte tillgänglig med {{engine}}. IndexTTS2 erbjuder graderad känsla; CosyVoice 3 och VoxCPM2 tar emot en skriven instruktion.",
+    "tags_hint": "För ögonblick inom en rad lägger du till reaktioner som {{example}} via Infoga i manuset.",
+    "tags_unsupported": "Gråade taggar skulle {{engine}} läsa upp som ord.",
+    "guide": "Guide till uttrycksfullt tal",
+    "tip": "Tips: forma framförandet med Känsla nedan och lägg till reaktioner som skratt eller suckar via Infoga i manuset."
+  },
   "cloneQuality": {
     "title": "Ljudkvalitet",
     "precision": "WAV-precision",

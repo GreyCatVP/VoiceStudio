@@ -13,6 +13,16 @@
     "surprised": "驚訝",
     "calm": "平靜"
   },
+  "expression": {
+    "direction_label": "演繹指導",
+    "direction_ph": "例如：一開始緊張，然後興奮",
+    "direction_help": "套用於整段錄音，作為 {{engine}} 的演繹指導。",
+    "unsupported": "{{engine}} 不支援情緒控制。IndexTTS2 提供分級情緒；CosyVoice 3 和 VoxCPM2 接受文字指導。",
+    "tags_hint": "如需在一行中的某個時刻加入反應，請從腳本的「插入」中加入 {{example}} 等反應。",
+    "tags_unsupported": "灰色標籤會被 {{engine}} 當作文字唸出來。",
+    "guide": "富有表現力的語音指南",
+    "tip": "提示：用下方的「情緒」塑造演繹，並從腳本的「插入」中加入笑聲或嘆氣等反應。"
+  },
   "cloneQuality": {
     "title": "音訊品質",
     "precision": "WAV 精度",

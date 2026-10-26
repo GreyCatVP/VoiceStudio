@@ -34,6 +34,7 @@ const engine = vi.hoisted(() => ({
   cloning: undefined as boolean | null | undefined,
   presets: undefined as string[] | undefined,
   emotion: undefined as boolean | undefined,
+  caps: undefined as { emotion: 'graded' | 'direction' | 'none'; tags: string[] } | undefined,
 }));
 vi.mock('./use-engines', () => ({
   useEngines: () => ({
@@ -43,6 +44,7 @@ vi.mock('./use-engines', () => ({
       supports_cloning: engine.cloning,
       preset_voices: engine.presets,
       supports_emotion: engine.emotion,
+      expression_caps: engine.caps,
     },
   }),
 }));
@@ -585,5 +587,54 @@ it.each([
       expect(records[`take-${saved}`]?.emotionMode).toBe(saved);
     });
     engine.emotion = undefined;
+  },
+);
+
+it.each([
+  ['CosyVoice (direction)', 'direction', false, 'warm, intimate'],
+  ['OmniVoice after switching back (#3422)', 'none', false, 'warm'],
+  ['Voice Design', 'direction', true, 'male'],
+] as const)(
+  'sends the delivery direction only where instruct steers a clone (%s)',
+  async (_name, emotion, design, instruct) => {
+    engine.vocabulary = 'freeform';
+    engine.design = true;
+    engine.caps = { emotion, tags: [] };
+    patchCloneSettings({
+      text: 'A cloned voice line.',
+      selectedProfileId: 'speaker-direction',
+      instruct: 'warm',
+      direction: '  intimate  ',
+      emotionMode: 'none',
+    });
+    vi.mocked(generateClone).mockReset().mockRejectedValue(new Error('stop'));
+
+    function DirectionConsumer() {
+      const generation = useGenerateClone();
+      return (
+        <button
+          onClick={() =>
+            void (design
+              ? generation.generateDesign({ text: 'A designed voice.', instruct: 'male' })
+              : generation.generate())
+          }
+        >
+          direction render
+        </button>
+      );
+    }
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <GenerationProvider>
+          <DirectionConsumer />
+        </GenerationProvider>
+      </QueryClientProvider>,
+    );
+    fireEvent.click(screen.getByText('direction render'));
+    await waitFor(() => expect(generateClone).toHaveBeenCalled());
+    expect(vi.mocked(generateClone).mock.calls[0][0].instruct).toBe(instruct);
+    engine.vocabulary = undefined;
+    engine.design = undefined;
+    engine.caps = undefined;
   },
 );

@@ -13,6 +13,16 @@
     "surprised": "Ngạc nhiên",
     "calm": "Bình tĩnh"
   },
+  "expression": {
+    "direction_label": "Chỉ dẫn diễn đạt",
+    "direction_ph": "vd: lúc đầu lo lắng, sau đó hào hứng",
+    "direction_help": "Áp dụng cho toàn bộ bản thu, làm hướng dẫn cho {{engine}}.",
+    "unsupported": "Không thể dùng cảm xúc với {{engine}}. IndexTTS2 có cảm xúc theo mức độ; CosyVoice 3 và VoxCPM2 nhận chỉ dẫn bằng văn bản.",
+    "tags_hint": "Cho các khoảnh khắc trong một dòng, hãy thêm phản ứng như {{example}} từ Chèn trong kịch bản.",
+    "tags_unsupported": "{{engine}} sẽ đọc to các thẻ màu xám thành chữ.",
+    "guide": "Hướng dẫn giọng nói biểu cảm",
+    "tip": "Mẹo: điều chỉnh cách diễn đạt bằng Cảm xúc bên dưới, và thêm phản ứng như tiếng cười hoặc tiếng thở dài từ Chèn trong kịch bản."
+  },
   "cloneQuality": {
     "title": "Chất lượng âm thanh",
     "precision": "Độ chính xác WAV",

@@ -19,6 +19,7 @@ import math
 import os
 from pathlib import Path
 
+from services.expression import COSYVOICE_INLINE_TAGS
 from services.subprocess_backend import SubprocessBackend
 
 VENV_ENV_VAR = "OMNIVOICE_COSYVOICE_DIR"
@@ -39,6 +40,9 @@ class CosyVoiceSubprocessBackend(SubprocessBackend):
     id = "cosyvoice"
     display_name = "CosyVoice 3 (9 langs, zero-shot, instruct, Apache-2.0)"
     gpu_compat = ("cuda", "cpu")
+    # instruct + reference → inference_instruct2 (emotion, dialect, pace).
+    instruct_directs_delivery = True
+    inline_tags = COSYVOICE_INLINE_TAGS
     _DEFAULT_SAMPLE_RATE = 24_000
     # The sidecar seeds its own torch RNG from the request (#3413): the
     # parent's torch.manual_seed never reaches another process.

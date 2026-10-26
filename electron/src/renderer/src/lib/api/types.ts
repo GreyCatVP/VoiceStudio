@@ -84,6 +84,8 @@ export interface EngineBackend {
   supports_voice_design?: boolean | null;
   /** "tags" = OmniVoice's closed design vocabulary; "freeform" = sent as written (#2389). */
   instruct_vocabulary?: InstructVocabulary;
+  /** Emotion mechanism and inline reaction tags the engine renders (#3422). */
+  expression_caps?: ExpressionCaps;
   /** Seconds of a clone reference the engine uses; null when not verified (#2281). */
   max_ref_seconds?: number | null;
   /** How that stretch is chosen from a longer clip. */
@@ -139,6 +141,15 @@ export interface SystemInfo {
 }
 
 export type InstructVocabulary = 'tags' | 'freeform';
+
+/** "graded" = IndexTTS2 sliders/description; "direction" = written `instruct`; "none". */
+export type EmotionControl = 'graded' | 'direction' | 'none';
+
+export interface ExpressionCaps {
+  emotion: EmotionControl;
+  /** Inline tags the engine's tokenizer renders, e.g. `[laughter]`. */
+  tags: string[];
+}
 
 /**
  * The Voice Design draft sent with a take so reopening it rebuilds the draft.

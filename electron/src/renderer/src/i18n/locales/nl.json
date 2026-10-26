@@ -13,6 +13,16 @@
     "surprised": "Verrassing",
     "calm": "Kalmte"
   },
+  "expression": {
+    "direction_label": "Voordrachtsaanwijzing",
+    "direction_ph": "bijv. eerst nerveus, daarna enthousiast",
+    "direction_help": "Geldt voor de hele opname, als richtlijn voor {{engine}}.",
+    "unsupported": "Emotie is niet beschikbaar met {{engine}}. IndexTTS2 biedt geleidelijke emotie; CosyVoice 3 en VoxCPM2 accepteren een geschreven aanwijzing.",
+    "tags_hint": "Voor momenten binnen een regel voeg je reacties zoals {{example}} toe via Invoegen in het script.",
+    "tags_unsupported": "Grijze tags zou {{engine}} hardop als woorden voorlezen.",
+    "guide": "Gids voor expressieve spraak",
+    "tip": "Tip: geef de voordracht vorm met Emotie hieronder en voeg reacties zoals lachen of zuchten toe via Invoegen in het script."
+  },
   "cloneQuality": {
     "title": "Audiokwaliteit",
     "precision": "WAV-precisie",

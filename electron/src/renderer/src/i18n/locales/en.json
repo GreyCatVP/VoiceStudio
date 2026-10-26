@@ -13,6 +13,16 @@
     "surprised": "Surprised",
     "calm": "Calm"
   },
+  "expression": {
+    "direction_label": "Delivery direction",
+    "direction_ph": "e.g. nervous at first, then excited",
+    "direction_help": "Applies to the whole take, as guidance for {{engine}}.",
+    "unsupported": "Emotion isn't available with {{engine}}. IndexTTS2 offers graded emotion; CosyVoice 3 and VoxCPM2 take a written direction.",
+    "tags_hint": "For moments within a line, add reactions such as {{example}} from Insert in the script.",
+    "tags_unsupported": "Grayed tags would be read aloud as words by {{engine}}.",
+    "guide": "Expressive speech guide",
+    "tip": "Tip: shape the delivery with Emotion below, and add reactions such as laughs or sighs from Insert in the script."
+  },
   "cloneQuality": {
     "title": "Audio quality",
     "precision": "WAV precision",

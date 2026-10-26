@@ -13,6 +13,16 @@
     "surprised": "Terkejut",
     "calm": "Tenang"
   },
+  "expression": {
+    "direction_label": "Arahan penyampaian",
+    "direction_ph": "mis. gugup di awal, lalu bersemangat",
+    "direction_help": "Berlaku untuk seluruh take, sebagai panduan bagi {{engine}}.",
+    "unsupported": "Emosi tidak tersedia dengan {{engine}}. IndexTTS2 menawarkan emosi bertingkat; CosyVoice 3 dan VoxCPM2 menerima arahan tertulis.",
+    "tags_hint": "Untuk momen di dalam satu baris, tambahkan reaksi seperti {{example}} dari Sisipkan di skrip.",
+    "tags_unsupported": "Tag berwarna abu-abu akan dibacakan sebagai kata oleh {{engine}}.",
+    "guide": "Panduan ucapan ekspresif",
+    "tip": "Tips: bentuk penyampaian dengan Emosi di bawah, dan tambahkan reaksi seperti tawa atau desahan dari Sisipkan di skrip."
+  },
   "cloneQuality": {
     "title": "Kualitas audio",
     "precision": "Presisi WAV",
