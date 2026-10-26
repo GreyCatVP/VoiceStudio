@@ -213,7 +213,23 @@ in an isolated Windows test copy with the complete pinned SDK, including
 faster-whisper tiny inference used HIP/float16 and produced 19 timed words from
 the bundled 5.15-second speech sample under each offline flag independently.
 This used an existing Windows host with drivers and prerequisites; it is not
-a clean-Windows or packaged GUI certification.
+a clean-Windows or packaged GUI certification by itself.
+
+The additional integration in [#3486](https://github.com/debpalash/VoiceStudio/pull/3486)
+was also built as an unsigned Windows package. Its actual packaged interface
+saved the English keyboard-selected AMD preference, quit, reopened and required
+an explicit setup action before reusing the already installed HIP runtime. A
+separate configured-profile run verified the real main/preload/native helper,
+managed backend, version and ROCm GPU report, then transcribed 19 timed words
+and generated 3.456 seconds of nonzero 48 kHz VoxCPM2 audio through the production
+local API. Sidecar logs identify CUDA-device execution with bfloat16 under the
+verified HIP build; the name `cuda` is PyTorch's API on Radeon too. All 82 owned
+processes closed normally. No terminal action was needed for the saved choice.
+This used an explicitly prepared pointer to the existing test runtime, not a
+fresh NSIS installation. Full Polish keyboard, physical NVDA and listening
+acceptance remain open. Ordinary audio preprocessing remains CPU work as in the
+CUDA path. The default OmniVoice model was not rerun because the new upstream
+model-licence acknowledgement was not accepted in the test profile.
 
 For the pinned Torch `2.9.1+rocm7.2.1` Windows build, a non-ASCII
 `MIOPEN_CUSTOM_CACHE_DIR` can make MIOpen's SQLite kernel cache fail with
@@ -265,7 +281,7 @@ Review the native recipe/runtime, sidecar receipt/device contract and ordinary
 media fixes as separate units. Keep current security floors and existing CPU or
 user-managed sidecars. Run the SDK, ASR compute-profile, VoxCPM2, sidecar and
 runtime/setup regression groups plus the maintained CI matrix before landing.
-New change notes are in `changelog.d/3045*.md`, following the fragment workflow.
+The additional change note is `changelog.d/3486.added.md`, following the fragment workflow.
 
 The accepted base implementation is upstream PR #3045. Review the additional
 changes in these units; do not replace the upstream hash checks, dependency
