@@ -17,6 +17,8 @@ import pathlib
 import subprocess
 import sys
 
+import pytest
+
 _BACKEND = pathlib.Path(__file__).resolve().parents[1] / "backend"
 _MAIN = _BACKEND / "main.py"
 _AUDIO_IO = _BACKEND / "services" / "audio_io.py"
@@ -97,16 +99,66 @@ def test_no_module_level_import_torchaudio_in_api_routers():
     )
 
 
+def _main_audio_import_guard():
+    source = _MAIN.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    guarded_import = next(
+        node for node in ast.walk(tree)
+        if isinstance(node, ast.Try) and any(
+            isinstance(statement, ast.Import)
+            and any(alias.name == "torchaudio" for alias in statement.names)
+            for statement in node.body
+        )
+    )
+    return source, guarded_import
+
+
 def test_import_failure_log_is_sanitized():
     """The ml_imports failure log must not embed the traceback or raw exc text."""
-    source = _MAIN.read_text(encoding="utf-8")
+    source, guarded_import = _main_audio_import_guard()
     # The real handler: the guarded import inside the ml_imports try block,
     # not an early docstring mention of the same words.
-    start = source.index("    try:\n        import torchaudio")
-    block = source[start:start + 1500]
+    block = ast.get_source_segment(source, guarded_import)
     assert "logger.exception" not in block and ".exception(" not in block, (
         "the torchaudio import-failure handler must not use logger.exception: "
         "traceback text embeds absolute user-home paths and lands in "
         "backend.log / diagnostic bundles (CWE-532)"
     )
     assert "sanitize(" in block, "the failure detail must go through core.failure.sanitize"
+
+
+@pytest.mark.parametrize("failure", [None, "preparation", "torchaudio"])
+def test_main_audio_guard_prepares_before_import_and_degrades(monkeypatch, caplog, failure):
+    import builtins
+    import logging
+    from types import SimpleNamespace
+
+    _, guarded_import = _main_audio_import_guard()
+    original_import = builtins.__import__
+    events = []
+    audio_module = SimpleNamespace()
+
+    def prepare_audio():
+        events.append("preparation")
+        if failure == "preparation":
+            raise OSError("compatibility preparation failed")
+
+    def controlled_import(name, *args, **kwargs):
+        if name == "core.windows_rocm.pipelines":
+            return SimpleNamespace(prepare_audio_imports=prepare_audio)
+        if name == "torchaudio":
+            events.append("torchaudio")
+            if failure == "torchaudio":
+                raise OSError("native audio import failed")
+            return audio_module
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", controlled_import)
+    namespace = {"logging": logging}
+    block = ast.Module(body=[guarded_import], type_ignores=[])
+    exec(compile(block, str(_MAIN), "exec"), namespace)
+    assert events == (["preparation"] if failure == "preparation" else ["preparation", "torchaudio"])
+    assert namespace["torchaudio"] is (None if failure else audio_module)
+    records = [record for record in caplog.records if record.name == "omnivoice.model"]
+    assert len(records) == (1 if failure else 0)
+    assert all(record.exc_info is None for record in records)

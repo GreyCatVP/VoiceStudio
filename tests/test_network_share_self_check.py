@@ -5,7 +5,9 @@ container bridge, VM host-only or VPN address, the phone on the same Wi-Fi
 got "could not connect".
 """
 import asyncio
+import importlib
 import socket
+import sys
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -67,6 +69,20 @@ def test_default_route_address_ranks_first_even_on_a_bridge():
         "vEthernet (External Switch)": [_addr("192.168.1.42")],
     }
     assert _lan(fake, primary="192.168.1.42") == ["192.168.1.42", "10.0.0.9"]
+
+
+def test_bridge_ranking_after_network_share_module_reimport(monkeypatch):
+    """Patch the module held by the test even after another suite reimports it."""
+    current = importlib.import_module("services.network_share")
+    services = importlib.import_module("services")
+    with monkeypatch.context() as cycle:
+        cycle.delitem(sys.modules, "services.network_share")
+        cycle.delattr(services, "network_share", raising=False)
+        replacement = importlib.import_module("services.network_share")
+        assert replacement is not ns
+        with patch.object(ns, "_default_route_ipv4", return_value=None):
+            test_default_route_address_ranks_first_even_on_a_bridge()
+    assert importlib.import_module("services.network_share") is current
 
 
 def test_full_tunnel_vpn_on_the_default_route_never_ranks_first():

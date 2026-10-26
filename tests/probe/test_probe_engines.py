@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import os
 
+import pytest
+
 from . import spec as probe_spec
 from .judges import engine as E
 
@@ -19,7 +21,34 @@ def test_engine_matrix(probe_report, boot_capture):
     assert probe_spec.blocking_failures(results) == [], "\n".join(str(r) for r in results)
     # Real-world sanity: the shipped defaults are available out of the box.
     assert E.active_engine_available(boot_capture["engines_tts"]).passed is True
-    assert E.engine_available(boot_capture["engines_asr"], "whisperx").passed is True
+    assert E.active_engine_available(boot_capture["engines_asr"]).passed is True
+
+
+@pytest.mark.parametrize("active,available", [
+    ("whisperx", True),
+    ("pytorch-whisper", True),
+    ("pytorch-whisper", False),
+    ("missing", False),
+])
+def test_engine_matrix_respects_selected_asr(probe_report, active, available):
+    capture = {
+        "engines_tts": {
+            "active": "tts",
+            "backends": [{"id": "tts", "available": True}],
+        },
+        "engines_asr": {
+            "active": active,
+            "backends": [
+                {"id": "whisperx", "available": active == "whisperx", "reason": "gated"},
+                {"id": "pytorch-whisper", "available": available, "reason": "unavailable"},
+            ],
+        },
+    }
+    if available:
+        test_engine_matrix(probe_report, capture)
+    else:
+        with pytest.raises(AssertionError, match="active engine"):
+            test_engine_matrix(probe_report, capture)
 
 
 def test_unavailable_engines_explained_synthetic():

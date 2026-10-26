@@ -17,7 +17,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock('electron', () => ({ app: { isPackaged: true, getPath: () => '/private/voicestudio' } }));
 vi.mock('node:child_process', () => ({ spawn: mocks.spawn, spawnSync: vi.fn() }));
 vi.mock('node:fs/promises', () => ({ rm: vi.fn() }));
-vi.mock('./runtime-project', () => ({
+vi.mock('./runtime-project', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./runtime-project')>()),
   runtimeDependenciesReady: mocks.dependencies,
   runtimeReady: mocks.ready,
   runtimeCompatible: mocks.compatible,
@@ -87,7 +88,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-it('quotes the backend\'s own startup verdict instead of the last access-log line', async () => {
+it("quotes the backend's own startup verdict instead of the last access-log line", async () => {
   const supervisor = new BackendSupervisor();
   const { child, internal } = launch(supervisor);
   // uvicorn's access log goes to stdout; the verdict goes to stderr.
