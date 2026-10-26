@@ -119,7 +119,7 @@ jobs:
         working-directory: electron
         run: |
           if [ "$RUNNER_OS" = Linux ]; then
-            for image in release/VoiceStudio-Electron-*-linux-x64.AppImage; do
+            for image in release/VoiceStudio-*-linux-x64.AppImage; do
               VOICESTUDIO_PACKAGED_EXE="electron/$image" xvfb-run -a node tests/packaged-smoke.mjs --setup
             done
           else
@@ -144,6 +144,6 @@ jobs:
           retention-days: 14
           if-no-files-found: error
           path: |
-            electron/release/VoiceStudio-Electron-*
+            electron/release/VoiceStudio-*
             electron/release/electron-*.yml
             electron/release/store-artifact-manifest-*.json

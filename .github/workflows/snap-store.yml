@@ -130,7 +130,7 @@ jobs:
           if-no-files-found: error
           path: |
             electron/release/*.snap
-            electron/release/VoiceStudio-Electron-*-snap-verification.json
+            electron/release/VoiceStudio-*-snap-verification.json
             electron/release/store-artifact-manifest-linux-x64.json
             electron/release/snap-store-assets/
 
