@@ -199,11 +199,14 @@ It then asks **draft or publish**, prints the plan
 (including switching to `main` and fast-forwarding it), and only proceeds when you
 type the tag name.
 
-- **Draft:** bumps the three version files in lockstep, runs `uv lock`, writes
-  the `CHANGELOG.md` section from `[Unreleased]` (a stable release renames it; a
-  beta copies it), runs the version guards, commits, pushes `main` and the tag.
-  The tag push builds a draft release; nothing is public.
-- **Publish:** the same, then dispatches `electron-release.yml` with
+- **Two runs, because `main` only changes through pull requests.** The first
+  run bumps the three version files in lockstep, runs `uv lock`, writes the
+  `CHANGELOG.md` section from `[Unreleased]` (a stable release renames it; a
+  beta copies it), runs the version guards, commits on `release/vX.Y.Z[-beta.N]`
+  and opens its pull request. Once that merges, run the helper again with the
+  same version: `main` already has it, so it changes nothing and only tags.
+- **Draft:** the tag push builds a draft release; nothing is public.
+- **Publish:** the tag push, then dispatches `electron-release.yml` with
   `publish=true`. It lists which platforms have signing secrets (macOS needs the
   Developer ID and notarization set, Windows needs `ELECTRON_WINDOWS_CSC_LINK` and
   its password) and, for any platform without them, stops unless you explicitly

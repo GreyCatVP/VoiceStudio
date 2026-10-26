@@ -444,7 +444,7 @@ export function BatchPage() {
               </h2>
               {tab === 'active' && (
                 <>
-                  <p className="mt-2 text-sm text-muted-foreground">{t('batch.drop_hint')}</p>
+                  <p className="mt-2 text-sm text-muted-foreground">{t('batch.empty_hint')}</p>
                   <Button className="mt-5" onClick={() => input.current?.click()}>
                     <UploadIcon />
                     {t('batch.add_videos')}

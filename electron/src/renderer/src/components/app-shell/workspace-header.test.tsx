@@ -51,3 +51,19 @@ it('keeps every header control on the 28px title bar row', () => {
   render(<Page />);
   expect(screen.getByRole('button', { name: 'preferences.search' })).toHaveClass('h-7');
 });
+
+it('lets a page item pushed right sit beside search instead of mid-bar', () => {
+  render(
+    <WorkspaceHeader>
+      <h1>Home</h1>
+      <a href="#/projects" className="ms-auto">
+        Projects
+      </a>
+    </WorkspaceHeader>,
+  );
+  // Page items share one growing row, so only one auto margin competes for the free space.
+  expect(screen.getByRole('link', { name: 'Projects' }).parentElement).toHaveClass('flex-1');
+  expect(screen.getByRole('button', { name: 'preferences.search' }).parentElement).not.toHaveClass(
+    'ml-auto',
+  );
+});
