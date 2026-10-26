@@ -51,7 +51,7 @@ def read_fragments(directory: Path = FRAGMENT_DIR) -> list[tuple[str, str]]:
 
 
 def apply_fragments(text: str, fragments: list[tuple[str, str]]) -> str:
-    """Insert missing entries and seed absent Highlights from up to three newest entries."""
+    """Insert each entry into `## [Unreleased]`; entries already there are skipped."""
     if not fragments:
         return text
     match = re.search(r"^## \[Unreleased\][^\n]*\n(.*?)(?=^## \[|\Z)", text, re.M | re.S)
@@ -79,10 +79,6 @@ def apply_fragments(text: str, fragments: list[tuple[str, str]]) -> str:
             body = body[:at] + block + body[at:]
         else:
             body = body.rstrip("\n") + "\n\n" + block
-    if not re.search(r"^[ \t]*\*\*Highlights\*\*[ \t]*\r?$", body, re.M):
-        newest = list(dict.fromkeys(entry for _, entry in reversed(fragments)))[:3]
-        highlights = "**Highlights**\n\n" + "".join(f"- {entry}\n" for entry in newest) + "\n"
-        body = re.sub(r"(?=^### )", lambda _: highlights, body, count=1, flags=re.M)
     return text[: match.start(1)] + body + text[match.end(1):]
 
 
