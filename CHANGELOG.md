@@ -15,6 +15,35 @@ metadata and the backend fallback mirror it.
 
 ### Changed
 
+- Workflows is easier to use: templates open from a picker, steps are added from a toolbar on the canvas, the name is edited in the header, and steps missing settings are flagged before you run (#3464)
+- Calmer title bar and sidebar: quieter Get Pro and Star buttons on one line, the page title shown once, a labelled speed/quality control with an Auto tooltip, and evenly sized navigation rows (#3454)
+- The Colab notebook now downloads the speech-to-text model during setup, so voices you clone in the web UI get a transcript right away (#3440) — thanks @Liularina!
+- Model downloads read the same everywhere: queued, progress with speed and time left, verifying, cancelled or failed with Retry and the exact next step, and running downloads appear in the notifications bell (#3437)
+- The language picker lists supported languages first, keeps the rest behind one Show all languages row, shows recent choices on top and groups regional variants under their language (#3431)
+- The Voice refinement hint now says fewer passes can lower quality (#3412, #3429)
+- Home contributor credits show everyone's current GitHub profile picture, refreshed weekly and still bundled for offline use (#3407)
+- Mobile Home keeps titles and contributor portraits compact, with maintainer cards and refreshed GitHub photos (#3406)
+- The sidebar device status reads Local (#3399)
+- Settings → Models shows one list per family: install, licence and select each engine and its models on the same row, with multi-model engines expanding inline (#3398)
+- The demo voice is called Demo Voice, and the library tabs read Saved and Recents (#3397)
+- The second sidebar has one clean, flat background with outlined sections (#3396)
+- The sidebar's device and speed/quality block is calmer and aligned, with a ticked slider (#3390)
+- The collapsed sidebar shows the VoiceStudio logo, which turns into the expand icon on hover (#3381)
+- Stories has a calmer script editor: lines size to their text, chapter titles show as headings, each line gets one row of speaker, voice and tone chips, and the setup pane uses tidy collapsible sections (#3374)
+- Core team cards on Home show full names in a friendlier card that follows the app theme (#3372)
+- Velixio's core team card links their website (#3362)
+- Velixio's core team card links their X profile (#3356)
+- Latest take shows one quiet details line with the script beside its title, and the library tabs have icons (#3354)
+- Home now shows the core maintainers large on top with profile cards, and other contributors smaller below (#3353)
+- Report a bug asks for a one-line description and lists what will be sent before opening the prefilled GitHub issue (#3338)
+- First-run setup shows the install folder with free space, long labels wrap instead of clipping Next, and macOS window buttons line up with the title bar (#3336)
+- Credential fields have visible labels and token checks show Verified/Failed badges; the command palette now finds settings pages and items (#3335)
+- The engine status screen is a single pill with elapsed time, repeated failures are counted, the raw log sits under Details, and a busy engine shows a slim reconnecting bar (#3334)
+- A failed engine start now names one cause (blocked launch, native crash, missing environment, permissions, synced folder) and leads with the matching action: Choose another folder, Copy diagnostics or Retry (#3332)
+- Failed generations now name the likely cause (GPU memory, missing model, busy engine, timeout) with fix chips and the raw error under Details, and never show a proxy HTML page (#3331)
+- Android and iOS add native production workspaces, book import and MP3/M4B export, detailed dub editing and audio tools, resumable processing, widgets, paired calls and a local speech API, and generate real cloned-voice previews before saving (#3325)
+- Android matches the iOS workspace layout with a compact Home, grouped controls and accessible icon navigation (#3312)
+- Changelog entries are now one small file per pull request in `changelog.d/`, folded into the release notes at release time, so pull requests no longer conflict on `CHANGELOG.md` (#3282)
 - The sidebar is a slim icon rail beside each section's own pane: Home and Clone get a Saved voices / Recent takes column, Design gets a Saved voices tab, and the full navigation is one click away (#3234)
 - The GitHub button in the top bar is one Star pill with the live count, and the star fills gold on hover (#3234)
 - Stories, Audiobook and Dubbing show their saved projects in a Projects tab beside the controls, so your files are one tap away wherever you work (#3234)
@@ -28,6 +57,21 @@ metadata and the backend fallback mirror it.
 
 ### Added
 
+- Optional native CosyVoice 3 GGUF engine with Vulkan or CPU routing; Python CosyVoice and the default engine are unchanged ([setup](docs/engines/cosyvoice-gguf.md)) (#3449) — thanks @dutch2005!
+- Find and replace in the Dubbing transcript: jump between spoken and original matches, replace the current spoken hit or every spoken occurrence, and undo the edit as one step (#3446) — thanks @mvanhorn!
+- Voice Cloning now offers IndexTTS2 text and eight-slider emotion controls, also supported by /generate (#3445) — thanks @XiaoPuOuO!
+- Optional local whisper.cpp transcription and translation with GPU support from your own whisper-cli build (#3442) — thanks @dutch2005!
+- The Community gallery filters by pack and language, marks new voices, and links contributors' GitHub profiles (#3438)
+- Uyghur can be a dub and batch-dub translation target, and scripts and transcripts in right-to-left languages (Uyghur, Arabic, Hebrew, Persian, Urdu) now read right to left (#3404, #2810)
+- Portuguese (Brazil) and Portuguese (Portugal) are separate language choices for speech and dub translation (#3143, #2752); plain Portuguese keeps meaning Brazilian, and number words follow the chosen variant (#3403)
+- Docker: a native arm64 NVIDIA CUDA image for DGX Spark and Grace servers, under -cuda-arm64 tags such as :stable-cuda-arm64 (#3402, #2831) — thanks @Jason69628723!
+- Docker: an opt-in OMNIVOICE_TRUST_HOST_LOOPBACK=1 lets the host's own browser skip the share PIN, while other machines still need it (#3401, #3003)
+- Dub exports gain a Background volume slider (0–400%) so quiet music and ambience can be raised or lowered in the mix (#3379) — thanks @NeverBeLazyG!
+- Add project transfer, advanced dubbing, branching workflows, gallery voice imports and transcription history to iOS and Android. (#3357)
+- Recent takes and project audio play in an app-wide bottom player with a seekable waveform (#3355)
+- Home marks debpalash and velixio as core maintainers across clients, and Android UI checks support fixed workspace controls (#3314)
+- Opt-in Windows ROCm setup installs and verifies a matched, hash-pinned AMD stack for source and Electron, with HIP faster-whisper support and explicit optional-engine limits, incorporating work from #2600 and #2607 (#3045) — thanks @dutch2005 and @Pates2004!
+- OmniVoice GGUF can run on Vulkan GPUs on Windows and Linux, with CPU fallback, a native device choice, reuse of already-installed weights and checksum-verified runtime libraries (#3042) — thanks @dutch2005!
 - Bug reports and Settings → Diagnostics now show the build commit next to the version, so beta and preview builds of one version can be told apart (#3293)
 - The backend and Docker images report their build commit in `/system/info` and in bug reports (#3293)
 - The phone apps have a Report action on every generated result: pick a reason, add an optional note, and it reaches the VoiceStudio team only when you tap Send (#3268, #3276, #3281)
@@ -39,6 +83,73 @@ metadata and the backend fallback mirror it.
 
 ### Fixed
 
+- Loud streamed preview chunks are scaled to fit instead of clipped, and long renders no longer report a fast chunk as taking 0.0 s (#3466)
+- Reference passages trim leading and trailing silence before selection, so clones no longer start or end mid-pause (#3461) — thanks @alvig060121-afk!
+- Automatically selected reference passages are trimmed to the nearest pauses, so clones no longer start or end mid-word (#3461) — thanks @alvig060121-afk!
+- Voice cloning on 8 GB unified-memory Macs frees the reference speech model before synthesis, so cloning no longer swaps until it times out (#3461) — thanks @alvig060121-afk!
+- The Community gallery picks up the new World Voices pack again: a stale submodule had rolled its content back, and CI now blocks that (#3459)
+- Missing current-directory whisper.cpp model paths no longer load different cached weights (#3458) — thanks @dutch2005!
+- Voice Design is calmer and clearer: the take pane no longer has an icon over its Style, shows which language new takes use and follows each new take, Reset to description only appears when there is something to reset, and dialect and accent names are translated (#3456)
+- The generation bar no longer slides Synthesize over the language and quality pills in narrow windows, and when text-to-speech isn't ready its main button becomes Set up instead of a dead Synthesize (#3453)
+- The bottom player names each clip by where it came from (voice design, cloning, conversion, audiobook or story), shows the take's length right away, and shortens long titles on a word boundary (#3452)
+- whisper.cpp reports a missing model path instead of loading another model, speaker refresh no longer assumes English, and reused takes keep only the emotion they used (#3451)
+- A model download cancelled from the notifications bell no longer counts as finished, retry cooldowns count down, and recovered dictation keeps Portuguese and German words (#3448)
+- Setup no longer refuses to retry for lack of disk space when the space is held by a cancelled download, and a long audiobook chapter on an older backend is no longer flagged as stalled (#3443)
+- First-run setup names the host each download comes from, says when a download has stalled instead of looking frozen, and no longer piles up unfinished downloads on the disk when you cancel and retry (#3436)
+- Audiobook and Stories renders now show progress within each chapter, time left, the realtime speed and a clear stalled warning, and no longer reload the engine for every chapter (#3435)
+- Voice Design follows a new seed on audio.cpp, CosyVoice and MLX-Audio, and says KittenTTS, Sherpa-ONNX and PocketTTS cannot design instead of repeating one preset voice (#3413, #3434)
+- Docker builds parse security override files correctly with newer packaging versions (#3433)
+- Dictation removes "uh"/"um" and stutters, fixes all-caps and stray spaces before punctuation, joins Chinese and Japanese without spaces, and can type spoken punctuation such as "comma" and "new line" (#3432)
+- LAN sharing lists your Wi-Fi/Ethernet address first instead of Docker, VM or VPN addresses, and shows a self-check with the listening port and a firewall hint (#3415, #3430)
+- Even out volume now levels quiet and loud passages without flattening peaks or lifting room tails, and effect-preset limiters no longer compress below their ceiling (#3412, #3429)
+- Dubbing splits a short reply off the previous speaker's line in the CLI and phone companion too, and a speaker who only talks in short turns gets a clone instead of the default voice (refs #3419) (#3428)
+- Agent code repair accepts any folder of your git clone and says why a picked folder can't be used, with the clone command and a docs link (#3416, #3427)
+- Tools → Convert results now have a Download button, like Clone and Design takes (fixes #3414) (#3426)
+- Updated the Android Home navigation test for the compact hero title. (#3410)
+- macOS development launches prune unused bundles while preserving active instances and restarts (#3405)
+- Cancelling a model download now stops it right away and removes its partial files, leaving the model as it was before (#3400)
+- On a model that can't clone, the Clone page points to Voice design or a cloning model (#3395)
+- KittenTTS and other preset-voice engines can generate from the Clone page again, using the chosen preset voice (#3392)
+- The Google Colab notebook web UI now reaches the API instead of failing every action with 403 (#3386) — thanks @Wa3nick!
+- Voice cloning on a low-memory CPU-only computer now stops with a clear "use a shorter reference" message instead of crashing the backend, and preparing a reference uses less memory (#3385) — thanks @padelprofrias!
+- Long text no longer splits a number, abbreviation or web address across a chunk boundary, which made the join speak the wrong words (#3384) — thanks @solitarywild-sketch!
+- A saved design voice renders its sample with the seed you saved it with instead of always seed 42 (#3382) — thanks @bercedev!
+- Home core team cards read their names from the translation catalog (#3380)
+- Long translated step names in the first-run setup sidebar now wrap inside it, and the Advanced button no longer gets cut off (#3378) — thanks @vermilionjack!
+- Reordering same-length case variants in the pronunciation dictionary now re-renders cached longform chapters instead of replaying old audio (#3377) — thanks @rudycelekli!
+- KittenTTS no longer crashes the backend when espeak cannot open its data folder from a long or non-ASCII install path (#3376) — thanks @valandosalomi-arch!
+- The macOS sidebar device status has its own row, so its name always fits (#3368)
+- Running bun dev again replaces the earlier dev instance instead of failing on port 3902 (#3365)
+- Invalid Smart Fit settings are rejected before dubbing starts, while default settings and zero gap guards remain supported (#3363) — thanks @harrisonoconnorhover!
+- The sidebar footer labels Settings and the device status, and the speed/quality slider names both ends (#3361)
+- Collapsed sidebars are cleaner: the library column keeps clear of the macOS traffic lights and shows one expand control, and the rail's footer icons sit in one column (#3352)
+- The macOS sidebar logo and version no longer collide with the window traffic lights: both now share one layout constant, so future macOS or layout changes cannot reintroduce the overlap (#3348)
+- Choose another folder now works after a failed engine start, env failures are named correctly, and the bug-report dialog's privacy text and title truncation are fixed (#3347)
+- Signing in to VoiceStudio Cloud from the desktop app no longer fails with "Sign-in was cancelled or failed" (#3345)
+- Dubbing transcript rows show start times as clock time (1:00.0) instead of raw seconds (60.0s) (#3333)
+- Account links open VoiceStudio Cloud's dashboard at its new paths (#3327)
+- Account sign-in works again after VoiceStudio Cloud moved to its new sign-in service, and Settings → Account links to managing your profile and plan (#3323)
+- Windows Smart App Control is now named when it blocks the local engine (a bare `spawn UNKNOWN` before), with the real options: turn it off or use an engine on another computer, since antivirus exclusions cannot help (#3224, #3321)
+- The renderer smoke server defines the build commit, fixing the Diagnostics settings crash that failed CI on main (#3303)
+- The Hugging Face token field shows an `hf_…` placeholder, and the docs name the Credentials page where it lives (#3266) — thanks @bercedev!
+- Windows startup failure from a missing Visual C++ runtime is now recognised and explained with a pointer to the Microsoft redistributable instead of reinstalling PyTorch, and the error message quotes the backend's own failure reason instead of a `503` health line (#3150) — thanks @nirmalchatur!
+- Karaoke subtitle sweeps stay in sync with the audio on long captions instead of drifting and stopping short (#3134) — thanks @kevin9327!
+- The Colab notebook explains a model-licence 403 and where to accept the licences instead of showing a raw error (#3133) — thanks @nirmalchatur!
+- The backend no longer reports "temporarily not responding" while its log fills up: the request log now goes through the same buffer as the rest of the output, so a slow log reader cannot freeze health checks (#3119) — thanks @nirmalchatur!
+- The day in dates like am 3. Mai or 3. května keeps its digits in German, Danish, Norwegian, Finnish, Czech and Polish instead of being read with a stray sentence break (#3040) — thanks @NishchayMahor!
+- Missing audio-tokenizer feature-extractor configuration now triggers model-cache repair instead of an unclassified synthesis failure (#3007) — thanks @jonathanwxh-cell!
+- A pronunciation lexicon file that cannot be read is treated as empty instead of failing (#2927) — thanks @RerankerGuo!
+- A corrupt native speaker-detection output file now reports a clear error instead of crashing (#2892) — thanks @RerankerGuo!
+- A corrupt or unreadable model revision registry no longer stops the backend from starting (#2883) — thanks @RerankerGuo!
+- Stories and Audiobook list every narration language the active voice engine supports, including Uyghur, as Clone does (#2832) — thanks @vinay121314!
+- Spelled-out text keeps accents and vowel signs attached to their letters instead of speaking them alone (#2826) — thanks @RerankerGuo!
+- Dollar amounts no longer speak a zero part, so $0.50 is fifty cents and $5.00 is five dollars (#2822) — thanks @kevin9327!
+- A number written right after No. or Nr. is read as a number (#2821) — thanks @kevin9327!
+- Decimals keep their written trailing zeros when read aloud, including Unicode digits (#2820) — thanks @kevin9327!
+- Dub quality check no longer flags drift when text differs only by composed versus decomposed accents (#2811) — thanks @RerankerGuo!
+- Dubbing says when the chosen engine could not apply a regional dialect, instead of silently returning the default variant (#2782) — thanks @shivsin25!
+- The voice catalogue no longer marks a profile name usable when it resolves to another profile id (#2765) — thanks @AkashBhat14!
+- Opening a share link on the machine that hosts it keeps its PIN and no longer redirects to itself when the web interface is not built (#2682) — thanks @swadhinbiswas!
 - A runtime setup crash during the final import check now names the module that crashed, so reports stop ending at an unrelated log line (#3293)
 - Settings → Updates lists only desktop releases; phone app releases no longer appear there for Beta users (#3292)
 - Android release builds use version codes Google Play accepts for a first upload (#3311)
@@ -106,6 +217,9 @@ metadata and the backend fallback mirror it.
 
 ### Docs
 
+- Contributor and agent guidance: every change starts from the latest main (#3408)
+- The README has a Team section crediting the core team and contributors (#3375)
+- Chinese and Japanese READMEs now live in docs/readme/ (#3302)
 - `funding.json` at the repository root publishes how to fund VoiceStudio in the [funding.json](https://fundingjson.org) format, matching the tiers in SPONSORS.md (#3294)
 - Google Play store listing, graphics and Play Console answers for the Android app are ready for the owner to submit (#3257, #3258)
 - `SPONSORS.md` now states what each sponsorship tier gives, when recognition starts, and what sponsorship does not buy, and the README and inquiry form point to it (#3172)
@@ -119,6 +233,280 @@ metadata and the backend fallback mirror it.
 
 ### CI
 
+- Avoid false stuck-loading reports when background polling overlaps UI crawler checks. (#3383)
+- Pull requests from forks wait for a maintainer's approval before CI uses any runner, so outside PRs can no longer queue the whole matrix unreviewed (#3341)
+- CI: the macOS release signing check retries Apple's staple validation, so a dropped connection no longer fails a tag run (#3330)
+- CI finishes about four minutes sooner: the UI crawler's route shards are balanced by cost and the platform smokes no longer wait for the Electron tests (#3310)
+- Pull requests can merge through a merge queue that tests each one once on the latest `main`; the workflows are ready, a maintainer turns the queue on in the ruleset (#3309)
+- Pull requests that only change locale files or package.json no longer start the iOS and Android builds; `main` still builds on them (#3308)
+- Settings no longer crashes in the smoke and UI-crawler builds: the test Vite config now defines the build commit, and a guard test keeps every renderer config in step with `env.d.ts` (#3304)
+- The Electron renderer smokes run as their own CI job and the UI crawler is split into three shards, so the slowest CI job drops from ~21 to ~9 minutes (#3303)
+- A test now pins that a backend missing health checks during a model download is shown as unresponsive and recovers on its own instead of being declared failed (#3185) — thanks @nirmalchatur!
+- The mobile workflow captures Google Play phone screenshots of the Android app on an emulator and keeps them as a download (#3277)
+- Pull requests that only change Python, docs, mobile or non-Electron workflows skip the Electron-only CI jobs (UI crawler, Desktop UI, native package), cutting their CI time from ~26 to ~8 minutes; deleted or renamed files, unknown paths and a failed lookup always run everything (#3271)
+- CI cancels a pull request's older run when it is pushed again, older Docker builds on main are cancelled, and review-bot comments no longer take a runner, so mass pushes stop flooding the queue (#3260)
+- Release notes open with the installer signing table, so you see which downloads are signed before the changelog (#3255)
+- macOS release builds retry once when Apple's ticket server drops the notarization staple, instead of failing the whole release (#3244)
+- Release notes list everyone who contributed since the last stable release automatically, instead of only the people thanked by hand (#3242)
+- Release notes list each platform's installer signing as measured on the build, and a macOS build that would open as "damaged" can no longer be released, and macOS releases are signed with the Developer ID again (#3241, #3243)
+- The owner can let named maintainers publish releases while Windows installers are still unsigned (#3236)
+- Android release and Play builds share an increasing version code to prevent reused or decreasing build numbers (#2969)
+- Phone build resources keep notice hashes and localized text intact on Windows (#2969)
+- New `mobile-release` workflow builds signed Android and iOS apps and drafts a GitHub prerelease with the APK, AAB and IPAs (#2969)
+- The `mobile` workflow builds the pinned on-device runtimes for both apps (#2969)
+- The main test step runs in parallel with pytest-xdist, about 3 minutes faster per CI run (#3223)
+
+- Interactive release helper: pick stable or beta, draft or publish, and confirm by typing the tag (`scripts/release.py`) (#3187)
+- Release helper choices are arrow-key menus (#3190)
+- Desktop UI tests no longer fail at random when Electron's debugger takes the dev proxy's port; the proxy now binds an OS-assigned port (#3126)
+- Desktop request-guard self-tests stay deterministic when app requests arrive during cleanup (#2676)
+
+- New `mobile` workflow builds and tests both phone apps; a contract test fails when their theme or API description drifts from the desktop app (#2965)
+
+- iOS TestFlight workflow: maintainers can upload a signed iPhone build for internal testers from `main` ([guide](docs/mobile.md#testflight-maintainers)) (#3188)
+- iOS TestFlight builds declare their exempt encryption, so uploads no longer wait on the export compliance question (#3230)
+- iOS TestFlight uploads with on-device inference pass App Store validation, and the workflow checks every bundled framework before uploading (#3235)
+- Beta and stable release builds no longer fail when a slow build machine runs the app's tests (#3232)
+- Android Play internal testing workflow: the matching signed Android upload from `main`, and beta versions no longer break the Android build ([guide](docs/mobile.md#play-internal-testing-maintainers)) (#3189)
+
+- Gallery preview fallback smoke no longer flakes when a slower runner reads the playing clip in several byte ranges (#3018)
+
+## [0.5.7-beta.3] — 2026-10-26
+
+**Highlights**
+
+- Preview iOS and Android apps that run VoiceStudio on your phone, offline after downloading the models
+- Opt-in Beta update channel: get fixes early from Settings → Updates, and roll onto the next stable release automatically
+
+### Changed
+
+- Workflows is easier to use: templates open from a picker, steps are added from a toolbar on the canvas, the name is edited in the header, and steps missing settings are flagged before you run (#3464)
+- Calmer title bar and sidebar: quieter Get Pro and Star buttons on one line, the page title shown once, a labelled speed/quality control with an Auto tooltip, and evenly sized navigation rows (#3454)
+- The Colab notebook now downloads the speech-to-text model during setup, so voices you clone in the web UI get a transcript right away (#3440) — thanks @Liularina!
+- Model downloads read the same everywhere: queued, progress with speed and time left, verifying, cancelled or failed with Retry and the exact next step, and running downloads appear in the notifications bell (#3437)
+- The language picker lists supported languages first, keeps the rest behind one Show all languages row, shows recent choices on top and groups regional variants under their language (#3431)
+- The Voice refinement hint now says fewer passes can lower quality (#3412, #3429)
+- Home contributor credits show everyone's current GitHub profile picture, refreshed weekly and still bundled for offline use (#3407)
+- Mobile Home keeps titles and contributor portraits compact, with maintainer cards and refreshed GitHub photos (#3406)
+- The sidebar device status reads Local (#3399)
+- Settings → Models shows one list per family: install, licence and select each engine and its models on the same row, with multi-model engines expanding inline (#3398)
+- The demo voice is called Demo Voice, and the library tabs read Saved and Recents (#3397)
+- The second sidebar has one clean, flat background with outlined sections (#3396)
+- The sidebar's device and speed/quality block is calmer and aligned, with a ticked slider (#3390)
+- The collapsed sidebar shows the VoiceStudio logo, which turns into the expand icon on hover (#3381)
+- Stories has a calmer script editor: lines size to their text, chapter titles show as headings, each line gets one row of speaker, voice and tone chips, and the setup pane uses tidy collapsible sections (#3374)
+- Core team cards on Home show full names in a friendlier card that follows the app theme (#3372)
+- Velixio's core team card links their website (#3362)
+- Velixio's core team card links their X profile (#3356)
+- Latest take shows one quiet details line with the script beside its title, and the library tabs have icons (#3354)
+- Home now shows the core maintainers large on top with profile cards, and other contributors smaller below (#3353)
+- Report a bug asks for a one-line description and lists what will be sent before opening the prefilled GitHub issue (#3338)
+- First-run setup shows the install folder with free space, long labels wrap instead of clipping Next, and macOS window buttons line up with the title bar (#3336)
+- Credential fields have visible labels and token checks show Verified/Failed badges; the command palette now finds settings pages and items (#3335)
+- The engine status screen is a single pill with elapsed time, repeated failures are counted, the raw log sits under Details, and a busy engine shows a slim reconnecting bar (#3334)
+- A failed engine start now names one cause (blocked launch, native crash, missing environment, permissions, synced folder) and leads with the matching action: Choose another folder, Copy diagnostics or Retry (#3332)
+- Failed generations now name the likely cause (GPU memory, missing model, busy engine, timeout) with fix chips and the raw error under Details, and never show a proxy HTML page (#3331)
+- Android and iOS add native production workspaces, book import and MP3/M4B export, detailed dub editing and audio tools, resumable processing, widgets, paired calls and a local speech API, and generate real cloned-voice previews before saving (#3325)
+- Android matches the iOS workspace layout with a compact Home, grouped controls and accessible icon navigation (#3312)
+- Changelog entries are now one small file per pull request in `changelog.d/`, folded into the release notes at release time, so pull requests no longer conflict on `CHANGELOG.md` (#3282)
+- The sidebar is a slim icon rail beside each section's own pane: Home and Clone get a Saved voices / Recent takes column, Design gets a Saved voices tab, and the full navigation is one click away (#3234)
+- The GitHub button in the top bar is one Star pill with the live count, and the star fills gold on hover (#3234)
+- Stories, Audiobook and Dubbing show their saved projects in a Projects tab beside the controls, so your files are one tap away wherever you work (#3234)
+- Source ZIPs and tarballs omit scam-moderation attack examples; Git clones and CI retain their regression tests (#3237)
+- Maintainers can upload public source ZIPs or individual files with `make virustotal`, or scan a branch through the manual VirusTotal Actions workflow (#3237)
+
+- Small models now install with as little as 2 GB spare disk; the setup check only warns below 10 GB instead of blocking (#2969)
+- iOS Home shows Electron's contributor avatars, Dub is redesigned around one source card with animated icons, and the iOS bottom dock is icon-only (#2969)
+- Model licence review on iOS and Android opens with a plain summary, rights rows and licence links; the raw terms move under Exact terms (#2969)
+- Phone apps now use the app ID `sh.voicestudio.mobile`; a preview build installed before installs alongside as a new app, so pair it again and remove the old one (#3194)
+
+### Added
+
+- Optional native CosyVoice 3 GGUF engine with Vulkan or CPU routing; Python CosyVoice and the default engine are unchanged ([setup](docs/engines/cosyvoice-gguf.md)) (#3449) — thanks @dutch2005!
+- Find and replace in the Dubbing transcript: jump between spoken and original matches, replace the current spoken hit or every spoken occurrence, and undo the edit as one step (#3446) — thanks @mvanhorn!
+- Voice Cloning now offers IndexTTS2 text and eight-slider emotion controls, also supported by /generate (#3445) — thanks @XiaoPuOuO!
+- Optional local whisper.cpp transcription and translation with GPU support from your own whisper-cli build (#3442) — thanks @dutch2005!
+- The Community gallery filters by pack and language, marks new voices, and links contributors' GitHub profiles (#3438)
+- Uyghur can be a dub and batch-dub translation target, and scripts and transcripts in right-to-left languages (Uyghur, Arabic, Hebrew, Persian, Urdu) now read right to left (#3404, #2810)
+- Portuguese (Brazil) and Portuguese (Portugal) are separate language choices for speech and dub translation (#3143, #2752); plain Portuguese keeps meaning Brazilian, and number words follow the chosen variant (#3403)
+- Docker: a native arm64 NVIDIA CUDA image for DGX Spark and Grace servers, under -cuda-arm64 tags such as :stable-cuda-arm64 (#3402, #2831) — thanks @Jason69628723!
+- Docker: an opt-in OMNIVOICE_TRUST_HOST_LOOPBACK=1 lets the host's own browser skip the share PIN, while other machines still need it (#3401, #3003)
+- Dub exports gain a Background volume slider (0–400%) so quiet music and ambience can be raised or lowered in the mix (#3379) — thanks @NeverBeLazyG!
+- Add project transfer, advanced dubbing, branching workflows, gallery voice imports and transcription history to iOS and Android. (#3357)
+- Recent takes and project audio play in an app-wide bottom player with a seekable waveform (#3355)
+- Home marks debpalash and velixio as core maintainers across clients, and Android UI checks support fixed workspace controls (#3314)
+- Opt-in Windows ROCm setup installs and verifies a matched, hash-pinned AMD stack for source and Electron, with HIP faster-whisper support and explicit optional-engine limits, incorporating work from #2600 and #2607 (#3045) — thanks @dutch2005 and @Pates2004!
+- OmniVoice GGUF can run on Vulkan GPUs on Windows and Linux, with CPU fallback, a native device choice, reuse of already-installed weights and checksum-verified runtime libraries (#3042) — thanks @dutch2005!
+- Bug reports and Settings → Diagnostics now show the build commit next to the version, so beta and preview builds of one version can be told apart (#3293)
+- The backend and Docker images report their build commit in `/system/info` and in bug reports (#3293)
+- The phone apps have a Report action on every generated result: pick a reason, add an optional note, and it reaches the VoiceStudio team only when you tap Send (#3268, #3276, #3281)
+- The phone apps run speech, dictation, voice cloning and dubbing on the phone itself, offline once you download the models; pairing a computer is optional ([guide](docs/mobile.md)) (#2969)
+- Beta update channel: choose Stable or Beta under Settings → Updates; betas are `-beta.N` prereleases that never reach Stable users, and Docker gets matching `:beta` tags ([guide](docs/update-channels.md)) (#3175)
+
+- Preview iOS and Android companion apps: drive your own VoiceStudio from your phone (speak, voices and cloning, dubbing, dictation) after pairing by QR code; build from source for now ([guide](docs/mobile.md)) (#2965)
+- Smart Fit speed limits: set the fastest and slowest speed dubbing may apply to a line, from the Timing section (#3026) — thanks @MoonDragon-MD!
+
+### Fixed
+
+- Loud streamed preview chunks are scaled to fit instead of clipped, and long renders no longer report a fast chunk as taking 0.0 s (#3466)
+- Reference passages trim leading and trailing silence before selection, so clones no longer start or end mid-pause (#3461) — thanks @alvig060121-afk!
+- Automatically selected reference passages are trimmed to the nearest pauses, so clones no longer start or end mid-word (#3461) — thanks @alvig060121-afk!
+- Voice cloning on 8 GB unified-memory Macs frees the reference speech model before synthesis, so cloning no longer swaps until it times out (#3461) — thanks @alvig060121-afk!
+- The Community gallery picks up the new World Voices pack again: a stale submodule had rolled its content back, and CI now blocks that (#3459)
+- Missing current-directory whisper.cpp model paths no longer load different cached weights (#3458) — thanks @dutch2005!
+- Voice Design is calmer and clearer: the take pane no longer has an icon over its Style, shows which language new takes use and follows each new take, Reset to description only appears when there is something to reset, and dialect and accent names are translated (#3456)
+- The generation bar no longer slides Synthesize over the language and quality pills in narrow windows, and when text-to-speech isn't ready its main button becomes Set up instead of a dead Synthesize (#3453)
+- The bottom player names each clip by where it came from (voice design, cloning, conversion, audiobook or story), shows the take's length right away, and shortens long titles on a word boundary (#3452)
+- whisper.cpp reports a missing model path instead of loading another model, speaker refresh no longer assumes English, and reused takes keep only the emotion they used (#3451)
+- A model download cancelled from the notifications bell no longer counts as finished, retry cooldowns count down, and recovered dictation keeps Portuguese and German words (#3448)
+- Setup no longer refuses to retry for lack of disk space when the space is held by a cancelled download, and a long audiobook chapter on an older backend is no longer flagged as stalled (#3443)
+- First-run setup names the host each download comes from, says when a download has stalled instead of looking frozen, and no longer piles up unfinished downloads on the disk when you cancel and retry (#3436)
+- Audiobook and Stories renders now show progress within each chapter, time left, the realtime speed and a clear stalled warning, and no longer reload the engine for every chapter (#3435)
+- Voice Design follows a new seed on audio.cpp, CosyVoice and MLX-Audio, and says KittenTTS, Sherpa-ONNX and PocketTTS cannot design instead of repeating one preset voice (#3413, #3434)
+- Docker builds parse security override files correctly with newer packaging versions (#3433)
+- Dictation removes "uh"/"um" and stutters, fixes all-caps and stray spaces before punctuation, joins Chinese and Japanese without spaces, and can type spoken punctuation such as "comma" and "new line" (#3432)
+- LAN sharing lists your Wi-Fi/Ethernet address first instead of Docker, VM or VPN addresses, and shows a self-check with the listening port and a firewall hint (#3415, #3430)
+- Even out volume now levels quiet and loud passages without flattening peaks or lifting room tails, and effect-preset limiters no longer compress below their ceiling (#3412, #3429)
+- Dubbing splits a short reply off the previous speaker's line in the CLI and phone companion too, and a speaker who only talks in short turns gets a clone instead of the default voice (refs #3419) (#3428)
+- Agent code repair accepts any folder of your git clone and says why a picked folder can't be used, with the clone command and a docs link (#3416, #3427)
+- Tools → Convert results now have a Download button, like Clone and Design takes (fixes #3414) (#3426)
+- Updated the Android Home navigation test for the compact hero title. (#3410)
+- macOS development launches prune unused bundles while preserving active instances and restarts (#3405)
+- Cancelling a model download now stops it right away and removes its partial files, leaving the model as it was before (#3400)
+- On a model that can't clone, the Clone page points to Voice design or a cloning model (#3395)
+- KittenTTS and other preset-voice engines can generate from the Clone page again, using the chosen preset voice (#3392)
+- The Google Colab notebook web UI now reaches the API instead of failing every action with 403 (#3386) — thanks @Wa3nick!
+- Voice cloning on a low-memory CPU-only computer now stops with a clear "use a shorter reference" message instead of crashing the backend, and preparing a reference uses less memory (#3385) — thanks @padelprofrias!
+- Long text no longer splits a number, abbreviation or web address across a chunk boundary, which made the join speak the wrong words (#3384) — thanks @solitarywild-sketch!
+- A saved design voice renders its sample with the seed you saved it with instead of always seed 42 (#3382) — thanks @bercedev!
+- Home core team cards read their names from the translation catalog (#3380)
+- Long translated step names in the first-run setup sidebar now wrap inside it, and the Advanced button no longer gets cut off (#3378) — thanks @vermilionjack!
+- Reordering same-length case variants in the pronunciation dictionary now re-renders cached longform chapters instead of replaying old audio (#3377) — thanks @rudycelekli!
+- KittenTTS no longer crashes the backend when espeak cannot open its data folder from a long or non-ASCII install path (#3376) — thanks @valandosalomi-arch!
+- The macOS sidebar device status has its own row, so its name always fits (#3368)
+- Running bun dev again replaces the earlier dev instance instead of failing on port 3902 (#3365)
+- Invalid Smart Fit settings are rejected before dubbing starts, while default settings and zero gap guards remain supported (#3363) — thanks @harrisonoconnorhover!
+- The sidebar footer labels Settings and the device status, and the speed/quality slider names both ends (#3361)
+- Collapsed sidebars are cleaner: the library column keeps clear of the macOS traffic lights and shows one expand control, and the rail's footer icons sit in one column (#3352)
+- The macOS sidebar logo and version no longer collide with the window traffic lights: both now share one layout constant, so future macOS or layout changes cannot reintroduce the overlap (#3348)
+- Choose another folder now works after a failed engine start, env failures are named correctly, and the bug-report dialog's privacy text and title truncation are fixed (#3347)
+- Signing in to VoiceStudio Cloud from the desktop app no longer fails with "Sign-in was cancelled or failed" (#3345)
+- Dubbing transcript rows show start times as clock time (1:00.0) instead of raw seconds (60.0s) (#3333)
+- Account links open VoiceStudio Cloud's dashboard at its new paths (#3327)
+- Account sign-in works again after VoiceStudio Cloud moved to its new sign-in service, and Settings → Account links to managing your profile and plan (#3323)
+- Windows Smart App Control is now named when it blocks the local engine (a bare `spawn UNKNOWN` before), with the real options: turn it off or use an engine on another computer, since antivirus exclusions cannot help (#3224, #3321)
+- The renderer smoke server defines the build commit, fixing the Diagnostics settings crash that failed CI on main (#3303)
+- The Hugging Face token field shows an `hf_…` placeholder, and the docs name the Credentials page where it lives (#3266) — thanks @bercedev!
+- Windows startup failure from a missing Visual C++ runtime is now recognised and explained with a pointer to the Microsoft redistributable instead of reinstalling PyTorch, and the error message quotes the backend's own failure reason instead of a `503` health line (#3150) — thanks @nirmalchatur!
+- Karaoke subtitle sweeps stay in sync with the audio on long captions instead of drifting and stopping short (#3134) — thanks @kevin9327!
+- The Colab notebook explains a model-licence 403 and where to accept the licences instead of showing a raw error (#3133) — thanks @nirmalchatur!
+- The backend no longer reports "temporarily not responding" while its log fills up: the request log now goes through the same buffer as the rest of the output, so a slow log reader cannot freeze health checks (#3119) — thanks @nirmalchatur!
+- The day in dates like am 3. Mai or 3. května keeps its digits in German, Danish, Norwegian, Finnish, Czech and Polish instead of being read with a stray sentence break (#3040) — thanks @NishchayMahor!
+- Missing audio-tokenizer feature-extractor configuration now triggers model-cache repair instead of an unclassified synthesis failure (#3007) — thanks @jonathanwxh-cell!
+- A pronunciation lexicon file that cannot be read is treated as empty instead of failing (#2927) — thanks @RerankerGuo!
+- A corrupt native speaker-detection output file now reports a clear error instead of crashing (#2892) — thanks @RerankerGuo!
+- A corrupt or unreadable model revision registry no longer stops the backend from starting (#2883) — thanks @RerankerGuo!
+- Stories and Audiobook list every narration language the active voice engine supports, including Uyghur, as Clone does (#2832) — thanks @vinay121314!
+- Spelled-out text keeps accents and vowel signs attached to their letters instead of speaking them alone (#2826) — thanks @RerankerGuo!
+- Dollar amounts no longer speak a zero part, so $0.50 is fifty cents and $5.00 is five dollars (#2822) — thanks @kevin9327!
+- A number written right after No. or Nr. is read as a number (#2821) — thanks @kevin9327!
+- Decimals keep their written trailing zeros when read aloud, including Unicode digits (#2820) — thanks @kevin9327!
+- Dub quality check no longer flags drift when text differs only by composed versus decomposed accents (#2811) — thanks @RerankerGuo!
+- Dubbing says when the chosen engine could not apply a regional dialect, instead of silently returning the default variant (#2782) — thanks @shivsin25!
+- The voice catalogue no longer marks a profile name usable when it resolves to another profile id (#2765) — thanks @AkashBhat14!
+- Opening a share link on the machine that hosts it keeps its PIN and no longer redirects to itself when the web interface is not built (#2682) — thanks @swadhinbiswas!
+- A runtime setup crash during the final import check now names the module that crashed, so reports stop ending at an unrelated log line (#3293)
+- Settings → Updates lists only desktop releases; phone app releases no longer appear there for Beta users (#3292)
+- Android release builds use version codes Google Play accepts for a first upload (#3311)
+- Phone reports go to the production server in every build; testers point a build at the dev server with `VOICESTUDIO_CONTENT_REPORTS_URL` (#3324)
+- One-click engine installs fall back to the `uv` on your PATH when the app has none of its own to offer, instead of failing on an empty `uv` setting (#3284)
+- iPhone Settings → About and licence receipts show the full app version (`0.5.7-beta.2`), like Android, instead of only `0.5.7` (#3273)
+- A voice with no transcript now offers a one-click speech-to-text model install instead of only an error (#3269)
+- Saved voice and recent take rows show their hover actions on a solid background, so the buttons stay visible over long names (#3263)
+- Saved dub loads confirm before replacing unsaved work, recheck edits made during loading and stop when you leave the workspace (#3234)
+- Large VirusTotal uploads upgrade the documented legacy upload URL to HTTPS before sending files or credentials (#3238)
+
+- iPhone: tapping Play right after generating speech starts playback instead of doing nothing (#3233)
+
+- Android app icons preserve transparent waveform paths from the shared logo, including themed icons (#2969)
+- Speak keeps your script when switching between the phone and computer on Android (#2969)
+- Phone dubbing no longer speaks the wrong words when a quiet reference clip is not recognised (#2969)
+- Refined iOS navigation, voice libraries, grouped creation forms and licence sheets with native controls, accessible text and explicit cancellation (#2969)
+- Phone apps open on an Electron-style Home dashboard with shared artwork, workspace shortcuts, recent audio, saved voices and resumable dubbing projects (#2969)
+- Phone video dubbing uses a supported AAC bitrate and preserves playable audio, rotation and synthetic-audio metadata (#2969)
+- Phone dub playback restores sound after dictation on iOS and keeps the video visible when switching results on Android (#2969)
+- Stereo reference files and dictation inputs keep both channels when converted to mono on iOS (#2969)
+- Android dubbing errors remain visible when worker updates arrive while their receipt is being saved (#3031)
+
+- iOS reserves storage across simultaneous model downloads and keeps saved speech paired with the submitted text (#2969)
+- TestFlight builds prepare the on-device inference runtimes before archiving the iPhone app (#2969)
+
+- Phone models can be reaccepted offline without downloading again, and Android dubbing preserves short audio gaps and overlaps (#2969)
+- App icon, tray icons and in-app logo no longer show a black band behind the waveform (#3221)
+- Speed/quality changes finish as soon as they are saved, even while the clone controls are still loading (#3031)
+- Speed / quality in the sidebar is a simple slider again; models and hardware fit open in a popover on hover, click or change, so the simplest view leaves the sidebar bottom free (#3031)
+- The Latest take panel is more compact: file details, render time and Check audio share one row (#3031)
+- The sidebar's Saved voices and Recent takes buttons both keep their labels instead of collapsing the inactive one to an icon (#3031)
+- On macOS full screen the sidebar logo moves into the freed corner, the compact rail drops its traffic-light gap (#3031)
+
+
+- Bug reports no longer risk freezing the app while looking for your tools: the Node-version folder scan now runs off the main thread (#3180)
+- Bug reports no longer freeze the app when the tool search or a drive stalls, and free disk is only borrowed from a parent folder when the install folder doesn't exist yet (#3179)
+- Model licence dialog is wider and scrolls as one area with the buttons pinned, and follows macOS, Windows and Linux dialog conventions (#3160)
+- Bug reports now include your OS, memory, free disk and whether the Python runtime exists, even when the backend never started, plus flags for risky install paths such as OneDrive or non-ASCII folders (#3156)
+- Bug reports no longer hang on a stalled drive, and report free disk and the uv tool correctly on first run and in source checkouts (#3170)
+- An interrupted CosyVoice 3 download no longer shows as Installed in Model Catalogue: it is marked incomplete and offered for download again (#3112)
+- Older synthesized takes play again with accurate play/pause controls after a newer generation (#3102)
+- Generation-complete notifications appear above the workspace instead of covering synthesis controls (#3102)
+- Generated speech no longer starts and ends with silence, and `[pause]` markers give exactly the pause you asked for (Raw preset and explicit durations untouched) (#3080)
+- Engine sidecars no longer load PyTorch just to answer the Test Engine ping, and a failed test logs its reason locally (#3026) — thanks @tekay-de!
+
+### Fixed
+
+- Windows runtime refresh no longer fails with `EPERM` on a locked backend folder (OneDrive, antivirus): it updates the files in place; the missing-Python-environment message now names the exact folder and tells non-checkout installs to use the installer (#3023) — thanks @afraniohugo, @javalovelinux-cmd and @eduardpp00!
+
+### Fixed
+
+- The install location chosen in first-run setup now also holds your data, model cache and temp files instead of quietly filling `C:`, and the setup screen shows each path (#2971, #3035)
+- Supertonic-3's preset voices can be picked in the voice controls and are used for generation (#2938, #3035)
+
+- `OMNIVOICE_ENGINES_DIR` moves engine venvs and the audio.cpp runtime to another drive; the default location is unchanged (#3024)
+
+### Fixed
+
+- The installed app now rebuilds a Python environment that antivirus or disk cleanup removed, once per launch with the usual setup progress, instead of stopping at a setup error; your voices and projects are untouched (#3032) — thanks @afraniohugo and @javalovelinux-cmd!
+
+### Changed
+
+- The sponsor footer is gone from the app; sponsored integrations keep a Featured badge on their card in Integrations (#3031)
+
+### Docs
+
+- Contributor and agent guidance: every change starts from the latest main (#3408)
+- The README has a Team section crediting the core team and contributors (#3375)
+- Chinese and Japanese READMEs now live in docs/readme/ (#3302)
+- `funding.json` at the repository root publishes how to fund VoiceStudio in the [funding.json](https://fundingjson.org) format, matching the tiers in SPONSORS.md (#3294)
+- Google Play store listing, graphics and Play Console answers for the Android app are ready for the owner to submit (#3257, #3258)
+- `SPONSORS.md` now states what each sponsorship tier gives, when recognition starts, and what sponsorship does not buy, and the README and inquiry form point to it (#3172)
+- OmniVoice GGUF docs state that the installers do not ship its native binary yet (#3026) — thanks @DestinyQJY!
+- Contributor guides and the pull request template explain how to sign the CLA before opening a first pull request (#2676)
+
+### Fixed
+
+- macOS builds without a Developer ID are now signed ad hoc so the bundle signature is valid, and the shell installer clears quarantine, repairs an invalid signature of older releases, names an unreadable disk image, and tells Intel Mac users the backend needs Apple Silicon (#3033, #2763, #2829, #2681)
+- A "Generation failed" log line now says where it was raised and which error caused it, and the out-of-memory advice mentions picking another GPU, so these reports can be told apart (#2895, #2684, #2666, #2626, #2622, #2580, #3034)
+
+### CI
+
+- Avoid false stuck-loading reports when background polling overlaps UI crawler checks. (#3383)
+- Pull requests from forks wait for a maintainer's approval before CI uses any runner, so outside PRs can no longer queue the whole matrix unreviewed (#3341)
+- CI: the macOS release signing check retries Apple's staple validation, so a dropped connection no longer fails a tag run (#3330)
+- CI finishes about four minutes sooner: the UI crawler's route shards are balanced by cost and the platform smokes no longer wait for the Electron tests (#3310)
+- Pull requests can merge through a merge queue that tests each one once on the latest `main`; the workflows are ready, a maintainer turns the queue on in the ruleset (#3309)
+- Pull requests that only change locale files or package.json no longer start the iOS and Android builds; `main` still builds on them (#3308)
+- Settings no longer crashes in the smoke and UI-crawler builds: the test Vite config now defines the build commit, and a guard test keeps every renderer config in step with `env.d.ts` (#3304)
+- The Electron renderer smokes run as their own CI job and the UI crawler is split into three shards, so the slowest CI job drops from ~21 to ~9 minutes (#3303)
+- A test now pins that a backend missing health checks during a model download is shown as unresponsive and recovers on its own instead of being declared failed (#3185) — thanks @nirmalchatur!
 - The mobile workflow captures Google Play phone screenshots of the Android app on an emulator and keeps them as a download (#3277)
 - Pull requests that only change Python, docs, mobile or non-Electron workflows skip the Electron-only CI jobs (UI crawler, Desktop UI, native package), cutting their CI time from ~26 to ~8 minutes; deleted or renamed files, unknown paths and a failed lookup always run everything (#3271)
 - CI cancels a pull request's older run when it is pushed again, older Docker builds on main are cancelled, and review-bot comments no longer take a runner, so mass pushes stop flooding the queue (#3260)
