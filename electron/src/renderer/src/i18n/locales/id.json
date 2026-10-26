@@ -270,9 +270,9 @@
     "title": "Kamus pengucapan",
     "help": "Ajari mesin cara mengucapkan kata-kata rumit. Setiap entri menggantikan kata dengan ejaan ulang sebelum sintesis, sehingga berlaku di setiap mesin. Lingkup entri ke satu bahasa atau biarkan Global. Inline, [[word|respelling]] menimpa kamus satu kali.",
     "term": "Istilah",
-    "term_placeholder": "kata atau frasa (misalnya GIF)",
+    "term_placeholder": "mis. GIF",
     "replacement": "Penggantian",
-    "replacement_placeholder": "mengeja ulang (misalnya jiff)",
+    "replacement_placeholder": "mis. jiff",
     "scope": "Ruang lingkup",
     "global": "Global",
     "type": "Ketik",
@@ -284,14 +284,14 @@
     "remove": "Hapus {{term}}",
     "empty": "Belum ada entri. Tambahkan satu di bawah untuk memperbaiki kata yang salah diucapkan.",
     "test_label": "Uji sebuah kalimat",
-    "test_placeholder": "Ketikkan kalimat untuk melihat pratinjau substitusi…",
+    "test_placeholder": "Ketik kalimat…",
     "test_result": "Akan diucapkan sebagai:",
     "test_nochange": "Tidak ada entri yang cocok — diucapkan seperti tertulis.",
     "load_error": "Tidak dapat memuat kamus pengucapan.",
     "save_error": "Tidak dapat menyimpan entri itu.",
     "lang_label": "Kode bahasa (misalnya en, de) atau biarkan kosong untuk Global",
     "enable_entry": "Aktifkan {{term}}",
-    "lang_placeholder": "en, de… (kosong = Global)",
+    "lang_placeholder": "mis. en",
     "test_language": "Bahasa pratinjau",
     "test_global_hint": "Pratinjau hanya dengan entri Global — pilih bahasa untuk menyertakan entri khusus bahasa.",
     "test_error": "Pratinjau tidak tersedia — backend tidak dapat dihubungi.",
@@ -299,10 +299,14 @@
     "backup_hint": "Unduh kamus sebagai file JSON, atau impor entri dari ekspor sebelumnya.",
     "export": "Ekspor JSON",
     "import": "Impor JSON",
-    "import_replace_prompt": "Ganti {{count}} entri yang ada dengan file yang diimpor? Pilih Tidak untuk menambahkan entri impor di samping yang ada.",
-    "import_done": "{{count}} entri diimpor.",
+    "import_replace_prompt_one": "Ganti {{count}} entri yang ada dengan berkas impor? Pilih Tidak untuk menambahkan entri impor di sampingnya.",
+    "import_replace_prompt_other": "Ganti {{count}} entri yang ada dengan berkas impor? Pilih Tidak untuk menambahkan entri impor di sampingnya.",
+    "import_done_one": "{{count}} entri diimpor.",
+    "import_done_other": "{{count}} entri diimpor.",
     "import_error": "File tidak dapat diimpor — diharapkan JSON dari ekspor pelafalan.",
-    "export_error": "Kamus tidak dapat diekspor."
+    "export_error": "Kamus tidak dapat diekspor.",
+    "entries_count_one": "{{count}} entri",
+    "entries_count_other": "{{count}} entri"
   },
   "preferences": {
     "title": "Pengaturan",
@@ -404,7 +408,8 @@
     "change": "Ganti mesin",
     "failed": "Mesin tidak dapat diganti. Coba lagi.",
     "empty": "Belum ada mesin atau model untuk kategori ini.",
-    "modelsInstalled": "{{installed}} dari {{count}} terpasang"
+    "modelsInstalled": "{{installed}} dari {{count}} terpasang",
+    "dictation_enabled": "Aktifkan dikte"
   },
   "modelMaintenance": {
     "download": "Unduh",
@@ -447,7 +452,7 @@
     "mode_fast": "Cepat",
     "mode_fast_desc": "Menggunakan model dikte latensi rendah yang dipilih.",
     "mode_accurate": "Tepat",
-    "mode_accurate_desc": "Menggunakan model ASR yang dipilih dengan stempel waktu terperinci.",
+    "mode_accurate_desc": "Memakai model ucapan-ke-teks yang dipilih dengan stempel waktu terperinci.",
     "title": "Transkripsi",
     "entries": "{{count}} entri",
     "search_placeholder": "Telusuri transkripsi…",
@@ -474,7 +479,8 @@
     "identify_speakers": "Kenali pembicara",
     "speakers_unavailable": "Pengenalan pembicara tidak tersedia. Transkrip disimpan tanpa label pembicara.",
     "missing_model": "Tidak ada model ucapan-ke-teks yang terpasang — fitur ini membutuhkannya untuk mentranskripsi audio.",
-    "original_transcript": "Transkrip asli"
+    "original_transcript": "Transkrip asli",
+    "active_model": "Model: {{model}}"
   },
   "engineRuntime": {
     "ready": "Siap",
@@ -803,7 +809,6 @@
     "install_disabled_title": "Penginstalan dinonaktifkan dalam paket build",
     "needs_install_suffix": "— perlu dipasang",
     "glossary_title": "Pin terjemahan untuk istilah berulang (nama, kata merek, jargon)",
-    "glossary_btn": "+ Glosarium ({{count}})",
     "selected_count": "{{count}} dipilih",
     "set_voice": "Setel suara…",
     "clear_voice": "⊘ Bawaan",
@@ -926,7 +931,12 @@
     "input_issue_unsupported": "Jenis file tidak didukung — pilih file video atau audio",
     "input_issue_empty": "File ini kosong — pilih file lain",
     "file_actions": "Tindakan file",
-    "translator_agent": "Agen"
+    "translator_agent": "Agen",
+    "segment_count_one": "{{count}} segmen",
+    "segment_count_other": "{{count}} segmen",
+    "glossary_terms_one": "Glosarium · {{count}} istilah",
+    "glossary_terms_other": "Glosarium · {{count}} istilah",
+    "glossary_label": "Glosarium"
   },
   "dub_workflow": {
     "preparing_audio": "Mempersiapkan audio…",
@@ -1116,7 +1126,7 @@
     "engine_switched": "{{family}} dialihkan ke {{engine}}",
     "usage": "Penggunaan",
     "usage_desc": "Yang telah Anda buat dengan VoiceStudio — dihitung di perangkat Anda sendiri.",
-    "usage_privacy": "Angka ini dihitung dari riwayat di perangkat ini dan tidak pernah dikirim ke mana pun. VoiceStudio tidak memiliki layanan analitik — tidak ada data di sini yang meninggalkan komputer Anda.",
+    "usage_privacy": "Angka ini dihitung dari riwayat Anda sendiri dan tetap di komputer ini. Analitik opsional diatur terpisah di Privasi.",
     "usage_empty": "Anda belum membuat apa pun — buat sesuatu dan hasilnya akan muncul di sini.",
     "usage_takes": "Take yang dibuat",
     "usage_since": "sejak {{date}}",
@@ -1251,7 +1261,7 @@
     "hf_token_test_now": "Uji sekarang",
     "hf_source_env_label": "Variabel lingkungan",
     "hf_token_not_checked": "Belum diuji",
-    "translation_providers_desc": "Kunci API untuk penerjemah online, disetel untuk sesi ini.",
+    "translation_providers_desc": "Kunci untuk penerjemah daring: Google Cloud, DeepL, Microsoft Azure, dan AWS. Disimpan di komputer ini dan tetap ada setelah dimulai ulang.",
     "hf_token_verified": "Terverifikasi",
     "ffmpeg": "FFmpeg",
     "hf_token_not_set": "Belum diatur",
@@ -1315,6 +1325,7 @@
     "storage_cat_data": "Data aplikasi",
     "storage_child_preview": "Pratinjau",
     "storage_desc": "Tempat VoiceStudio menyimpan data dan keluaran Anda.",
+    "models_dir_desc": "Model yang diunduh disimpan di sini. Pilih drive dengan ruang kosong lebih besar jika drive ini penuh.",
     "storage_child_batch": "Tugas batch",
     "storage_top_models": "Model terbesar",
     "storage_refresh": "Muat ulang",
@@ -1398,7 +1409,7 @@
     "uninstall_models_warning": "Ini termasuk cache Hugging Face bersama ({{size}}) — model alat AI lain yang diunduh mungkin disertakan dengannya.",
     "uninstall_total": "Lokasi {{count}} · {{size}} akan dibebaskan",
     "llmp_saved_not_active": "Tersimpan — belum digunakan untuk terjemahan. Klik “Simpan & gunakan untuk terjemahan” untuk beralih.",
-    "llmp_active_env_pin": "Pilihan LLM ditetapkan oleh LLM_DEFAULT_PROVIDER atau OMNIVOICE_LLM_BACKEND.",
+    "llmp_active_env_pin": "Model bahasa diatur oleh variabel lingkungan di komputer ini, jadi tidak bisa diubah di sini.",
     "llm_skills": "LLM Keterampilan",
     "llmskills_desc": "Arahkan setiap fitur yang didukung AI ke LLM masing-masing — pertahankan pekerjaan sensitif pada model lokal (Ollama/LM Studio) sementara pekerjaan yang lebih berat menggunakan penyedia jarak jauh — atau nonaktifkan fitur sepenuhnya. Off berperilaku persis seperti tidak ada LLM yang dikonfigurasi: fitur akan kembali ke jalur non-LLM.",
     "llmskills_needs_setup": "perlu pengaturan",
@@ -1433,7 +1444,7 @@
     "remote_backend_desc": "Jalankan inferensi di komputer lain; biarkan URL kosong untuk backend lokal. Menyimpan memuat ulang aplikasi untuk diterapkan.",
     "remote_backend_hint": "Mulai backend di mesin lain dengan <1>OMNIVOICE_API_KEY</1> yang disetel, jangkau melalui tailnet Anda, dan arahkan aplikasi ini ke sana.",
     "remote_backend_url": "URL ujung belakang",
-    "remote_backend_key_placeholder": "nilai OMNIVOICE_API_KEY di server",
+    "remote_backend_key_placeholder": "Kunci API di komputer lain",
     "remote_backend_probe_ok": "Oke — {{detail}}",
     "remote_backend_probe_fail": "Gagal — {{detail}}",
     "remote_backend_unreachable": "tidak dapat dijangkau",
@@ -1527,7 +1538,7 @@
     "more_actions": "Tindakan lainnya",
     "use_in_stories": "Gunakan di Cerita",
     "set_audiobook_default": "Atur sebagai suara default Buku Audio",
-    "open_designer": "Buka di Desainer",
+    "open_designer": "Buka di Desain",
     "no_matches": "Tidak ada suara yang cocok dengan filter ini.",
     "load_more": "Muat lebih banyak",
     "saved_as_profile": "Menambahkan \"{{name}}\" ke suara Anda.",
@@ -1549,7 +1560,7 @@
     "trim_load_failed": "Tidak dapat memuat audio untuk pemangkasan: {{message}}",
     "delete": "Hapus",
     "community_empty": "Belum ada suara komunitas yang dimuat — sambungkan ke internet lalu buka kembali, atau jadilah yang pertama mengirimkannya.",
-    "community_explainer": "Preset desain dan suara rekaman yang dibagikan komunitas, dimuat dari omnivoice-gallery.",
+    "community_explainer": "Preset desain dan suara rekaman yang dibagikan komunitas.",
     "no_designer": "Suara rekaman — gunakan \"Gunakan suara\" sebagai gantinya.",
     "no_preview": "Tidak ada pratinjau — tambahkan dengan \"Gunakan suara\" untuk mendengarnya.",
     "submit_failed": "Tidak dapat membuka formulir pengiriman.",
@@ -1675,7 +1686,9 @@
     "probe_placeholder": "/Pengguna/Anda/Film/sample.mp4",
     "probe_failed": "Pemeriksaan gagal: {{message}}",
     "parse_failed": "Gagal menguraikan: {{message}}",
-    "fit_failed": "Gagal memasang: {{message}}"
+    "fit_failed": "Gagal memasang: {{message}}",
+    "placeholder_direction": "mis. Bisikkan seperti rahasia, lalu biarkan semangatnya naik.",
+    "placeholder_rate_fit": "Tempel baris terjemahan untuk dicek terhadap slot waktunya."
   },
   "projects": {
     "title": "Proyek",
@@ -1721,7 +1734,9 @@
     "delete_selected": "Hapus pilihan ({{count}})",
     "deleted_count": "Dihapus: {{count}}",
     "delete_warning": "Tindakan ini tidak dapat dibatalkan. Proyek dan transkrip dihapus. Menghapus suara atau rekaman juga menghapus audio tersimpannya. File ekspor dan audio hasil render yang selesai tetap disimpan.",
-    "draft_changed": "Draf Anda berubah saat proyek ini dimuat. Konfirmasikan lagi untuk menggantinya."
+    "draft_changed": "Draf Anda berubah saat proyek ini dimuat. Konfirmasikan lagi untuk menggantinya.",
+    "all_projects": "Semua proyek",
+    "library_group": "Pustaka"
   },
   "projectActions": {
     "delete": "Hapus “{{name}}”? Tindakan ini tidak dapat dibatalkan.",
@@ -1746,7 +1761,9 @@
     "tagline": "Kloning suara lokal. Tidak ada yang meninggalkan mesin Anda.",
     "coming_soon": "Segera hadir",
     "switch_to_light": "Beralih ke tema terang",
-    "switch_to_dark": "Beralih ke tema gelap"
+    "switch_to_dark": "Beralih ke tema gelap",
+    "not_found_title": "Halaman tidak ditemukan",
+    "not_found_body": "Alamat ini tidak cocok dengan halaman mana pun di VoiceStudio."
   },
   "stories": {
     "title": "Editor Cerita",
@@ -1763,7 +1780,8 @@
     "autocast": "Transmisi otomatis",
     "autocastHint": "Deteksi siapa yang berbicara dan tetapkan suara secara otomatis",
     "autocastEmpty": "Tidak ada yang perlu ditransmisikan secara otomatis — tempel atau impor cerita terlebih dahulu.",
-    "autocastDone": "Transmisikan otomatis {{lines}} baris ke {{voices}} suara",
+    "autocastDone_one": "{{lines}} baris dibagikan ke {{count}} suara",
+    "autocastDone_other": "{{lines}} baris dibagikan ke {{count}} suara",
     "importFailed": "Tidak dapat membaca file itu.",
     "addLine": "Tambahkan Baris",
     "addChapter": "Tambahkan Bab",
@@ -1798,13 +1816,13 @@
     "splitModeHint": "Setiap baris dibaca sebagai rekaman tersendiri. Untuk satu narator, paragraf atau bab utuh mengalir lebih baik daripada kalimat.",
     "emptyText": "Mulailah cerita Anda dengan menambahkan dialog dan alur narasi. Tetapkan suara untuk setiap karakter dalam Pemeran.",
     "addFirst": "Tambahkan Baris Pertama",
-    "linePlaceholder": "Masuk ke dialog atau narasi… gunakan [jeda 0,5 detik] untuk jeda hening",
+    "linePlaceholder": "Masuk ke dialog atau narasi… gunakan [pause 0.5s] untuk jeda hening",
     "text": "teks",
     "defaultVoice": "Bawaan",
     "inlineVoice": "Atur suara sebaris",
     "inlineVoiceHint": "Ganti suara untuk teks yang disorot (atau masukkan tombol di kursor)",
     "resetInlineVoice": "Setel ulang ke suara saluran",
-    "insertPause": "Masukkan jeda [jeda 0,5 detik].",
+    "insertPause": "Masukkan jeda [pause 0.5s].",
     "preview": "Pratinjau baris ini",
     "removeLine": "Hapus garis",
     "tune": "Nada & kecepatan",
@@ -1842,7 +1860,8 @@
     "toneChip": "Nada & kecepatan: {{speed}}",
     "lineVoice": "Suara baris",
     "chapterHeading": "Judul bab",
-    "lineActions": "Tindakan baris"
+    "lineActions": "Tindakan baris",
+    "recovery_title": "Cerita terputus"
   },
   "audiobook": {
     "cast": "Pemeran",
@@ -1866,7 +1885,6 @@
     "stats_one": "{{count}} bab · {{words}} kata · {{runtime}} perkiraan durasi",
     "stats_other": "{{count}} bab · {{words}} kata · {{runtime}} perkiraan durasi",
     "warnings_title": "Sebelum membuat",
-    "warn_unknown_voice": "Suara tidak dikenal ‘{{name}}’ — akan memakai default",
     "warn_empty_chapter": "Bab “{{title}}” tidak memiliki teks untuk dibacakan",
     "warn_unknown_tag": "Tag tidak dikenal {{tag}} — akan dibacakan",
     "untitled": "Buku audio tanpa judul",
@@ -1878,7 +1896,7 @@
     "tab_book": "Buku",
     "subtitle": "Tulis atau impor cerita Anda, pilih suara untuk setiap peran, lalu ekspor buku audio rapi dengan bab sungguhan.",
     "script": "naskah",
-    "script_placeholder": "# Bab Satu\nSuatu ketika… [pause 500ms] berakhir.\n\n# Bab Dua\n[suara: narator] Dan hal itu berlanjut.",
+    "script_placeholder": "# Bab Satu\nSuatu ketika… [pause 0.5s] berakhir.\n\n# Bab Dua\n[voice:narator] Dan hal itu berlanjut.",
     "default_voice": "Suara bawaan",
     "engine_default": "Default mesin",
     "preview_plan": "Rencana pratinjau",
@@ -1888,7 +1906,7 @@
       "busy": "Buku lain sedang dirender. Tunggu atau hentikan dulu.",
       "importing": "Mengimpor… Buat akan tersedia setelah selesai.",
       "engine_loading": "Memeriksa mesin suara…",
-      "engine": "Mesin suara belum siap. Periksa Pengaturan → Mesin.",
+      "engine": "Mesin suara belum siap. Periksa Pengaturan → Model.",
       "no_lines": "Tambahkan setidaknya satu baris ucapan untuk membuat.",
       "no_script": "Tulis atau impor naskah untuk membuat.",
       "voice": "Pilih suara bawaan atau beri setiap baris sebuah suara.",
@@ -1954,7 +1972,7 @@
     "lex_add": "Tambahkan kata",
     "lex_remove": "Hapus",
     "markup_help": "Referensi markup",
-    "markup_hint": "# Judul bab · [voice:NAME] ganti suara · [pause 500ms] / [pause 1s] · [slow]…[/slow] · [fast]…[/fast] · [emphasis]…[/emphasis] · [spell]…[/spell] · Reaksi (VoiceStudio): [laughter] [sigh] [confirmation-en] [question-en] [question-ah] [question-oh] [question-ei] [question-yi] [surprise-ah] [surprise-oh] [surprise-wa] [surprise-yo] [dissatisfaction-hnn]",
+    "markup_hint": "# Judul bab · [voice:NAME] ganti suara · [pause 0.5s] · [slow]…[/slow] · [fast]…[/fast] · [emphasis]…[/emphasis] · [spell]…[/spell] · Reaksi (VoiceStudio): [laughter] [sigh] [confirmation-en] [question-en] [question-ah] [question-oh] [question-ei] [question-yi] [surprise-ah] [surprise-oh] [surprise-wa] [surprise-yo] [dissatisfaction-hnn]",
     "language": "Bahasa",
     "expressive": "Overide produksi",
     "reset": "Setel ulang",
@@ -1971,7 +1989,10 @@
     "emotion_text": "Deskripsi emosi",
     "emotion_text_ph": "mis. terdengar lelah dan sedih",
     "emotion_alpha": "Kekuatan emosi",
-    "lex_duplicate": "Gunakan satu pelafalan untuk setiap kata."
+    "lex_duplicate": "Gunakan satu pelafalan untuk setiap kata.",
+    "recovery_busy": "Render lain sedang berjalan. Lanjutkan setelah selesai.",
+    "cast_note_one": "{{names}} belum diberi suara, jadi dibacakan dengan suara utama. Pilih suara di Pemeran.",
+    "cast_note_other": "{{names}} belum diberi suara, jadi dibacakan dengan suara utama. Pilih suara di Pemeran."
   },
   "credentials": {
     "microsoft_key": "Kunci Penerjemah Microsoft",
@@ -1982,6 +2003,7 @@
     "deepl_base_url_help": "Titik akhir API DeepL khusus (default: https://api.deepl.com/v2). Ubah untuk proxy/hosting mandiri.",
     "microsoft_base_url_help": "Titik akhir Azure Translator kustom (default: https://api.cognitive.microsofttranslator.com).",
     "region": "Wilayah",
+    "base_url": "URL dasar",
     "aws_profile": "Profil AWS",
     "deepl_key_placeholder": "DeepL kunci API",
     "microsoft_key_placeholder": "Microsoft kunci API"
@@ -2006,11 +2028,12 @@
     "self_check_warn": "Peringatan",
     "self_check_fail": "Gagal",
     "self_check_healthy": "Semua pemeriksaan lulus — instalasi ini tampak sehat.",
-    "self_check_attention": "{{count}} pemeriksaan gagal — lihat petunjuk di atas.",
+    "self_check_attention_one": "{{count}} pemeriksaan gagal — lihat petunjuk di atas.",
+    "self_check_attention_other": "{{count}} pemeriksaan gagal — lihat petunjuk di atas.",
     "save_bundle": "Simpan bundel diagnostik",
     "bundle_saved": "Bundel diagnostik tersimpan: {{filename}}",
     "title": "Tentang",
-    "diagnostics": "Pra-penerbangan sistem",
+    "diagnostics": "Diagnostik",
     "model_credits": "Kredit model",
     "model_credits_hint": "Kredit untuk model yang didukung. Ketentuan model dan komponen berlaku secara terpisah; kredit ini tidak memberikan hak penggunaan komersial.",
     "model_terms": "Ketentuan model",
@@ -2019,7 +2042,8 @@
   "privacy": {
     "translator_online": "Penerjemah sedang online: {{provider}}",
     "analytics_title": "Bantu tingkatkan VoiceStudio",
-    "translator_offline": "Penerjemah luring",
+    "translator_offline": "Hanya luring",
+    "change_translator": "Ganti penerjemah",
     "translator_unknown": "Tidak diketahui",
     "watermark_subtitle": "Aktif secara bawaan. Menandai audio hasil buatan sebagai dibuat AI agar dapat dikenali nanti. Hanya memengaruhi audio yang dibuat mulai sekarang.",
     "analytics_subtitle": "Nonaktif secara bawaan. Data anonim mesin, bahasa, durasi, jumlah karakter, dan jenis kesalahan. Bukan teks atau audio Anda.",
@@ -2364,7 +2388,8 @@
     "generating_voice_a": "Menghasilkan Suara ...",
     "generating_voice_b": "Menghasilkan Suara B...",
     "comparison_complete": "Perbandingan selesai!",
-    "play_failed": "Gagal bermain: {{message}}"
+    "play_failed": "Gagal bermain: {{message}}",
+    "test_phrase_placeholder": "Ketik kalimat yang akan dibaca kedua suara."
   },
   "demo": {
     "clone_coachmark": "Ini adalah demo terpandu — coba perintah yang disarankan atau tulis sendiri.",
@@ -2574,7 +2599,8 @@
       "aria": "{{raised}} dari {{goal}} sasaran bulanan",
       "remaining": "{{amount}} untuk berangkat",
       "met": "🎉 Sasaran tercapai — {{raised}} dinaikkan. Terima kasih!",
-      "social_proof": "Bergabunglah dengan pendukung {{count}} yang mendanai AI lokal"
+      "social_proof_one": "Bergabunglah dengan {{count}} pendukung AI lokal",
+      "social_proof_other": "Bergabunglah dengan {{count}} pendukung AI lokal"
     },
     "postcard": {
       "title": "Dukung pengembangan VoiceStudio",
@@ -2686,14 +2712,14 @@
     "openDocs": "Buka dokumen untuk kesalahan ini",
     "crash_port_in_use": "Backend tidak dapat dijalankan karena port 3900 sudah digunakan — salinan VoiceStudio lain (atau aplikasi yang mengklaim port itu) sedang menahannya. Tutup instance lain lalu jalankan ulang; jika tidak ada yang terlihat berjalan, backend yatim dari sesi sebelumnya masih menahan port tersebut.",
     "crash_oom_kill": "Proses dihentikan paksa (sinyal 9), yang biasanya berarti sistem operasi kehabisan memori (RAM). Tutup aplikasi yang boros memori, pilih model ASR yang lebih kecil di Pengaturan → Model, atau bongkar model TTS sebelum mentranskripsi.",
-    "crash_native_fault": "Proses mogok di dalam tumpukan komputasi, bukan karena kehabisan memori — itu menunjuk pada driver GPU yang tidak cocok dengan runtime CUDA bawaan, atau berkas model yang terunduh tidak lengkap. Perbarui driver GPU Anda, lalu unduh ulang model dari Pengaturan → Model (unduhan parsial diperbaiki di tempat). Jika terus terjadi, beralihlah ke mesin terisolasi di Pengaturan → Mesin — \"VoiceStudio (subprocess)\" untuk sintesis, \"Faster-Whisper (crash-isolated subprocess)\" untuk transkripsi. Keduanya menjalankan model di proses terpisah, sehingga kerusakan seperti ini menjatuhkan proses itu saja, bukan seluruh backend.",
+    "crash_native_fault": "Proses mogok di dalam tumpukan komputasi, bukan karena kehabisan memori — itu menunjuk pada driver GPU yang tidak cocok dengan runtime CUDA bawaan, atau berkas model yang terunduh tidak lengkap. Perbarui driver GPU Anda, lalu unduh ulang model dari Pengaturan → Model (unduhan parsial diperbaiki di tempat). Jika terus terjadi, beralihlah ke mesin terisolasi di Pengaturan → Model — \"VoiceStudio (subprocess)\" untuk sintesis, \"Faster-Whisper (crash-isolated subprocess)\" untuk transkripsi. Keduanya menjalankan model di proses terpisah, sehingga kerusakan seperti ini menjatuhkan proses itu saja, bukan seluruh backend.",
     "report": "Laporkan bug ini",
     "report_failed": "Tidak dapat membuka laporan bug. Coba lagi, atau salin detail di atas ke isu baru.",
     "searchIssues": "Cari masalah serupa",
     "unexpected": "Kesalahan tak terduga: {{message}}",
     "backend_shutting_down": "VoiceStudio sedang ditutup. Buka kembali aplikasinya lalu coba lagi.",
     "crash_broken_env": "Ia mati saat memuat dependensi Python-nya sendiri, jadi ini bukan soal memori atau GPU Anda — lingkungannya tidak lengkap atau tertinggal setengah diperbarui. Gunakan \"Bersihkan & Coba Lagi\" di Pengaturan → Log → Backend, yang membangunnya ulang dari nol dan memperbaikinya di tempat, tanpa menyentuh suara atau proyek Anda. Jika masih gagal, detail crash menyebutkan paket persis yang gagal diimpor.",
-    "crash_vram_default": "Pada GPU yang lebih kecil, penyebab umumnya adalah kehabisan VRAM saat memuat model ASR di atas model TTS: kosongkan model TTS terlebih dahulu, atau pilih model ASR yang lebih kecil di Katalog model → Model.",
+    "crash_vram_default": "Pada GPU yang lebih kecil, penyebab umumnya adalah kehabisan VRAM saat memuat model ASR di atas model TTS: kosongkan model TTS terlebih dahulu, atau pilih model ASR yang lebih kecil di Pengaturan → Model.",
     "stream_cut_backend_alive": "Stream berakhir lebih awal, tetapi backend masih berjalan — jadi backend tidak mogok. Pada penyiapan server atau kontainer, ini biasanya karena reverse proxy atau load balancer yang mem-buffer atau memutus koneksi karena batas waktu: nonaktifkan buffering respons untuk rute ini (nginx: proxy_buffering off; X-Accel-Buffering: no) dan naikkan batas waktu bacanya. Menjalankan aplikasi desktop secara langsung, atau di localhost tanpa proxy, akan memastikannya."
   },
   "segmentEditing": {
@@ -2870,7 +2896,8 @@
     "plan_impossible": "Tidak muat +{{seconds}}d",
     "plan_impossible_title": "Perkiraan ucapan ≈{{est}}d, waktu tersedia {{avail}}d. Sekitar {{seconds}}d melebihi kemampuan penyesuaian dan audio akan terpotong. Persingkat teks sebelum membuat audio.",
     "plan_tight": "Hampir tidak muat",
-    "plan_tight_title": "Perkiraan ucapan ≈{{est}}d, waktu tersedia {{avail}}d. Penyesuaian cerdas dapat mengatasinya dengan mempercepat suara secara nyata atau memperlambat video. Persingkat teks untuk hasil lebih baik."
+    "plan_tight_title": "Perkiraan ucapan ≈{{est}}d, waktu tersedia {{avail}}d. Penyesuaian cerdas dapat mengatasinya dengan mempercepat suara secara nyata atau memperlambat video. Persingkat teks untuk hasil lebih baik.",
+    "replace_toggle": "Cari dan ganti"
   },
   "update": {
     "checking": "Memeriksa pembaruan…",
@@ -2948,8 +2975,6 @@
     "translate_hint": "Telusuri teks target. Jalur yang terlalu panjang akan ditingkatkan kecepatannya; Anda juga dapat mengedit secara langsung.",
     "done_title": "Sulih suara selesai",
     "done_hint": "Tinjau waktu dan rasio sinkronisasi. Sesuaikan baris mana pun dan tekan \"Regen berubah\" untuk pengulangan sebagian yang cepat.",
-    "segment_one": "segmen {{count}}",
-    "segment_other": "{{count}} segmen",
     "dismiss_title": "Singkirkan — tidak akan muncul kembali pada tahap ini hingga dimuat ulang",
     "timing_review_one": "{{count}} segmen perlu tinjauan waktu",
     "timing_review_other": "{{count}} segmen perlu peninjauan waktu",
@@ -3021,7 +3046,7 @@
     "fast": "Cepat",
     "balanced": "Seimbang",
     "quality": "Kualitas",
-    "hint": "Berlaku untuk sampling OmniVoice dan decoding Faster-Whisper / NLLB. Mesin lain mempertahankan pengaturannya.",
+    "hint": "Mengatur kecepatan dan kualitas pembuatan suara, transkripsi, dan terjemahan. Mesin tanpa kontrol ini tetap memakai pengaturannya sendiri.",
     "auto": "Otomatis",
     "autoHint": "Memilih level terbaik untuk komputer ini."
   },
@@ -3056,7 +3081,7 @@
     "timeout": "Waktu pembuatan habis — model mungkin masih diunduh. Periksa Pengaturan → Log, lalu coba lagi.",
     "ignored_unsupported": "Mengabaikan instruksi yang tidak didukung: {{items}}",
     "too_long": "Klipnya adalah {{duration}}s. Mesin menerima paling banyak {{max}} tanpa transkrip.",
-    "model_not_downloaded": "Modelnya belum diunduh. Buka Pengaturan aplikasi utama → Mesin untuk menginstalnya.",
+    "model_not_downloaded": "Model belum diunduh. Buka Pengaturan → Model untuk menginstalnya.",
     "backend_unreachable": "Mesin lokal tidak dapat dijangkau.",
     "gpu_arch_unsupported": "Versi PyTorch ini tidak mendukung GPU Anda. Pilih CPU di Pengaturan → Performa & Perangkat, atau instal versi PyTorch yang kompatibel.",
     "windows_app_control_blocked": "Kontrol aplikasi Windows memblokir file yang diperlukan. Minta administrator mengizinkan runtime VoiceStudio yang tepercaya, lalu mulai ulang aplikasi.",
@@ -3068,8 +3093,8 @@
     "gpu_oom": "GPU kehabisan memori. Tutup aplikasi lain yang berat memakai GPU atau bongkar model, lalu coba lagi. Anda juga bisa memilih CPU di Pengaturan → Performa & Perangkat atau memilih mesin TTS yang lebih kecil.",
     "host_memory_exhausted": "Komputer kehabisan memori. Tutup aplikasi dan tab peramban lain yang boros memori, bongkar model yang tidak dipakai, buat bagian yang lebih pendek, atau pilih mesin TTS yang lebih ringan.",
     "disk_full": "Disk penuh. Kosongkan ruang di drive yang menyimpan data, cache model, atau folder sementara VoiceStudio, lalu coba lagi. Pengaturan → Penyimpanan menampilkan penggunaan disk dan dapat menghapus file sementara.",
-    "engine_dependency_missing": "Paket Python yang dibutuhkan mesin ini belum terpasang, sehingga mesin tidak bisa dimulai. Buka Katalog Model, pilih mesin lalu gunakan Pasang / Perbaiki, kemudian mulai ulang VoiceStudio.",
-    "reference_stt_missing": "Suara ini tidak punya transkrip dan tidak ada model ucapan-ke-teks yang terpasang untuk membuatnya. Ketik isi klip referensi di kotak transkrip (klip hingga 20 detik), atau pasang model ucapan-ke-teks di Katalog Model, pilih, lalu buat lagi.",
+    "engine_dependency_missing": "Paket Python yang dibutuhkan mesin ini belum terpasang, sehingga mesin tidak bisa dimulai. Buka Pengaturan → Model, pilih mesin lalu gunakan Pasang / Perbaiki, kemudian mulai ulang VoiceStudio.",
+    "reference_stt_missing": "Suara ini tidak punya transkrip dan tidak ada model ucapan-ke-teks yang terpasang untuk membuatnya. Ketik isi klip referensi di kotak transkrip (klip hingga 20 detik), atau pasang model ucapan-ke-teks di Pengaturan → Model, pilih, lalu buat lagi.",
     "install_speech_model": "Instal model ucapan-ke-teks",
     "proxy_gateway_error": "Proxy atau gateway di antara Anda dan VoiceStudio menjawab HTTP {{status}} menggantikan backend. Backend mungkin masih bekerja. Naikkan batas waktu baca proxy (di nginx, proxy_read_timeout) untuk pembuatan yang panjang, lalu periksa Pengaturan → Log → Backend.",
     "route_not_found": "Backend VoiceStudio yang berjalan tidak memiliki endpoint {{route}}. Mulai ulang VoiceStudio agar aplikasi dan backend cocok; jika masih terjadi, perbarui keduanya ke versi yang sama."
@@ -3644,6 +3669,10 @@
     "categoryConditions": "Penggunaan komersial dengan syarat",
     "categoryNoncommercial": "Hanya untuk penggunaan pribadi dan riset",
     "categoryUnknown": "Lisensi tidak teridentifikasi",
+    "shortCommercial": "Komersial OK",
+    "shortConditions": "Bersyarat",
+    "shortNoncommercial": "Nonkomersial",
+    "shortUnknown": "Tidak diketahui",
     "categoryHint": "Berdasarkan teks lisensi yang dinyatakan, tidak diverifikasi oleh VoiceStudio. Bukan nasihat hukum.",
     "reviewed": "Ditinjau",
     "notReviewed": "Belum ditinjau",
@@ -4323,7 +4352,7 @@
     },
     "model_missing": {
       "title": "Model belum diunduh",
-      "fix1": "Unduh di Katalog Model",
+      "fix1": "Unduh di Pengaturan → Model",
       "fix2": "Gunakan Perbaiki untuk memasangnya"
     },
     "busy": {
@@ -4405,5 +4434,20 @@
     "nextMemory": "Perangkat ini kehabisan memori. Pilih profil yang lebih ringan di Pengaturan → Performa, lalu coba lagi.",
     "downloads": "Unduhan",
     "activeCount": "Unduhan berjalan: {{count}}"
+  },
+  "disabledReason": {
+    "files_required": "Tambahkan setidaknya satu video terlebih dahulu.",
+    "languages_required": "Pilih setidaknya satu bahasa target.",
+    "language_required": "Pilih bahasa target terlebih dahulu.",
+    "translation_not_ready": "Siapkan mesin terjemahan terlebih dahulu.",
+    "recovery_pending": "Lanjutkan atau batalkan langkah yang terhenti terlebih dahulu.",
+    "segments_required": "Transkripsikan video terlebih dahulu.",
+    "text_required": "Masukkan teks terlebih dahulu.",
+    "path_required": "Masukkan jalur lengkap ke sebuah file terlebih dahulu.",
+    "slot_required": "Masukkan slot lebih dari 0 detik.",
+    "voices_required": "Pilih kedua suara terlebih dahulu.",
+    "generating": "Tunggu hingga take saat ini selesai.",
+    "name_required": "Masukkan nama terlebih dahulu.",
+    "audio_missing": "Take ini tidak memiliki file audio untuk disimpan."
   }
 }

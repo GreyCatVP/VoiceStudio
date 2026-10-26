@@ -77,7 +77,11 @@ def profile_plan(choice: str, overrides: dict, selections: dict) -> dict:
     elif "tts" in current:
         fixed["tts"] = current["tts"]
 
-    if os.environ.get("OMNIVOICE_ASR_BACKEND") or prefs.is_env_shadowed("ASR_MODEL_FASTER"):
+    if (
+        os.environ.get("OMNIVOICE_ASR_BACKEND")
+        or prefs.is_env_shadowed("ASR_MODEL_FASTER")
+        or ("asr" in current and current["asr"].engine not in profiles.TIERED_ASR_ENGINES)
+    ):
         if "asr" in current:
             fixed["asr"] = current["asr"]
     else:
