@@ -251,12 +251,13 @@ export class DesktopUpdater {
     private readonly feedFetcher: typeof fetch = fetch,
   ) {
     const supported = this.updatesSupported();
-    // Store builds are stable-only, so they expose no channel to switch.
-    const selectable = supported && distribution !== 'microsoft-store';
+    // Store builds are stable-only, so they expose no channel to switch. A dev
+    // run cannot update itself but still shows and saves the channel.
+    const selectable = (supported || !app.isPackaged) && distribution !== 'microsoft-store';
     if (selectable) this.channel = readSavedUpdateChannel();
     this.state = {
       status: supported ? 'idle' : 'unsupported',
-      currentVersion: app.getVersion(),
+      currentVersion: __APP_VERSION__,
       progress: 0,
       channel: selectable ? this.channel : undefined,
     };
@@ -462,6 +463,10 @@ export class DesktopUpdater {
       return this.snapshot();
     this.channel = channel;
     saveUpdateChannel(channel);
+    if (!this.updatesSupported()) {
+      this.patch({ channel });
+      return this.snapshot();
+    }
     this.state = {
       status: 'idle',
       currentVersion: this.state.currentVersion,

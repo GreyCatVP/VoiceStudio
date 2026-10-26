@@ -184,7 +184,10 @@ it('recovers provider error pages saved as translated dialogue', () => {
 
 it('restores the project translation brief without changing its wording', () => {
   const translationInstructions = 'Conversational Bengali. Preserve jokes and adapt idioms.';
-  const result = restoreDubDraft(JSON.stringify({ ...defaults, translationInstructions }), defaults);
+  const result = restoreDubDraft(
+    JSON.stringify({ ...defaults, translationInstructions }),
+    defaults,
+  );
   expect(result?.translationInstructions).toBe(translationInstructions);
 });
 
@@ -197,4 +200,14 @@ it('restores a valid Smart Fit slowest-speed floor and drops out-of-range overri
   });
   expect(restore({ min_audio_rate: 0.2 })).toEqual({});
   expect(restore({ min_audio_rate: 1.4, audio_rate_cap: 0.9 })).toEqual({});
+});
+
+it('keeps a rejected source file flagged after a reload', () => {
+  const saved = { ...defaults, jobId: 'job', filename: 'empty.mp4' };
+  expect(
+    restoreDubDraft(JSON.stringify({ ...saved, inputIssue: 'empty' }), defaults).inputIssue,
+  ).toBe('empty');
+  expect(
+    restoreDubDraft(JSON.stringify({ ...saved, inputIssue: 'bogus' }), defaults).inputIssue,
+  ).toBeNull();
 });

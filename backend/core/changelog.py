@@ -49,7 +49,27 @@ def _looks_like_release_version(version: str) -> bool:
     return bool(re.match(r"^v?\d", version.strip()))
 
 
-def parse_changelog(text: str, limit_versions: int = 5) -> list[dict]:
+def _shown_to(version: str, app_version: str | None) -> bool:
+    """Whether ``version`` belongs in the notes of an app at ``app_version``.
+
+    Sections newer than the running app (a drafted release, or a CHANGELOG
+    heading for a version never tagged) are not this app's history, and a
+    stable app skips beta sections. Unparseable versions stay visible.
+    """
+    if not app_version:
+        return True
+    try:
+        from packaging.version import Version
+
+        shown, running = Version(version), Version(app_version)
+    except Exception:
+        return True
+    return shown <= running and (running.is_prerelease or not shown.is_prerelease)
+
+
+def parse_changelog(
+    text: str, limit_versions: int = 5, app_version: str | None = None
+) -> list[dict]:
     """CHANGELOG.md text → newest-first list of releases::
 
         {"version": "0.3.9", "date": "2026-07-02", "intro": "…",
@@ -86,8 +106,8 @@ def parse_changelog(text: str, limit_versions: int = 5) -> list[dict]:
             if len(releases) >= limit_versions:
                 break
             version = m.group("version").strip().lstrip("v")
-            if not _looks_like_release_version(version):
-                continue  # e.g. [Unreleased] — skip until the next heading
+            if not _looks_like_release_version(version) or not _shown_to(version, app_version):
+                continue  # [Unreleased], or not part of this app's history
             release = {
                 "version": version,
                 "date": (m.group("date") or "").strip(),
