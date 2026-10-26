@@ -66,7 +66,7 @@ val bundleCatalogs by tasks.registering {
     inputs.file(repository.resolve("electron/src/shared/languages.json"))
     inputs.file(repository.resolve("LICENSE"))
     inputs.dir(repository.resolve("electron/src/renderer/src/features/home/contributors"))
-    inputs.files(fileTree(contracts) { include("strings*.en.json", "tokens.json", "openapi.json", "models.json", "design.json") })
+    inputs.files(fileTree(contracts) { include("strings*.en.json", "tokens.json", "openapi.json", "models.json", "design.json", "maintainer-cards.json") })
     outputs.dir(layout.buildDirectory.dir("generated/catalogs"))
     outputs.dir(layout.buildDirectory.dir("generated/catalogResources"))
     doLast {
@@ -84,6 +84,7 @@ val bundleCatalogs by tasks.registering {
         contracts.listFiles()!!.filter { it.name.startsWith("strings") && it.name.endsWith(".en.json") }.forEach { it.copyTo(assets.resolve(it.name), overwrite = true) }
         contracts.resolve("models.json").copyTo(assets.resolve("models.json"), overwrite = true)
         contracts.resolve("design.json").copyTo(assets.resolve("design.json"), overwrite = true)
+        contracts.resolve("maintainer-cards.json").copyTo(assets.resolve("maintainer-cards.json"), overwrite = true)
         contracts.resolve("tokens.json").copyTo(assets.resolve("tokens.json"), overwrite = true)
         val en = JsonSlurper().parse(catalogs.resolve("en.json")) as Map<*, *>
         val label = (en["app"] as Map<*, *>)["name"].toString()
@@ -156,7 +157,9 @@ tasks.named("preBuild") { dependsOn(buildNativeRuntimes) }
 
 val generateBrandResources by tasks.registering(Exec::class) {
     val generator = rootDir.resolve("scripts/generate_brand_resources.py")
-    inputs.files(generator, repository.resolve("docs/logo.svg"), repository.resolve("mobile/contract/tokens.json"))
+    inputs.files(generator, repository.resolve("docs/logo.svg"), repository.resolve("mobile/contract/tokens.json"),
+        repository.resolve("scripts/prepare_mobile_contributors.py"),
+        repository.resolve("electron/src/renderer/src/components/brand-icons.tsx"))
     outputs.dir(layout.buildDirectory.dir("generated/brandResources"))
     commandLine("python3", generator, "--output", layout.buildDirectory.dir("generated/brandResources").get().asFile)
 }

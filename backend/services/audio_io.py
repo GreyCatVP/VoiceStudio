@@ -83,6 +83,24 @@ MAX_COMPRESSED_AUDIO_BYTES = 512 * 1024 ** 2
 _DECODE_DISK_RESERVE = 64 * 1024 ** 2
 
 
+def pcm16_mono(wav_tensor: torch.Tensor) -> torch.Tensor:
+    """Float audio → mono int16 for the streaming wire (``pcm16`` frames).
+
+    Takes channel 0 of an N-D tensor. Audio that overshoots full scale is
+    scaled down to fit instead of hard-clipped: streamed chunks are
+    provenance-marked before they are encoded (#1169), and clipping a marked
+    chunk can erase the mark, while a uniform gain change cannot. Ordinary
+    output is normalized below full scale, so this is normally a plain cast.
+    """
+    wav = wav_tensor.detach().float().cpu()
+    while wav.ndim > 1:
+        wav = wav[0]
+    peak = float(wav.abs().max()) if wav.numel() else 0.0
+    if peak > 1.0:
+        wav = wav / peak
+    return (wav * 32767).round().clamp(-32768, 32767).to(torch.int16)
+
+
 def load_audio(source: PathOrBuf) -> tuple[torch.Tensor, int]:
     """Read normalized channel-first audio even when TorchCodec is unavailable."""
     position = source.tell() if hasattr(source, "tell") and getattr(source, "seekable", lambda: False)() else None

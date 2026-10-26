@@ -15,6 +15,7 @@ no accounts. M1 (below) is the computer connection; M2 is on-device inference.
 | File | Source | Regenerate |
 |---|---|---|
 | `contract/openapi.json` | backend FastAPI app | `uv run python scripts/export_openapi.py` |
+| `contract/maintainer-cards.json`, iOS contributor assets | Electron Home maintainer cards and portraits | `bun scripts/export-mobile-contributors.ts` |
 | `contract/tokens.json`, `Tokens.generated.swift`, `Tokens.generated.kt` | Electron theme | `bun scripts/export-mobile-tokens.ts` |
 | Locale catalogs | `electron/src/renderer/src/i18n/locales/*.json` | copied into each app at build time |
 
@@ -81,7 +82,13 @@ no accounts. M1 (below) is the computer connection; M2 is on-device inference.
 ## Screens (M1)
 
 Bottom navigation: **Home**, **Voices**, **Dub**, **Dictate**, **Settings**.
-Home is the default after consent. It adapts Electron's dashboard with the same
+Home is the default after consent. The compact hero places the wordmark and feature
+summary beside the labeled contributor column; accessibility text sizes can stack them.
+Both apps show larger core-maintainer portraits
+above a two-row horizontal scroller of remaining contributors; tapping a core maintainer opens a scrollable
+native sheet with their localized identity and website, GitHub and X links.
+Profile metadata and brand artwork derive from Electron and are bundled offline.
+External pages open only on an explicit link tap. It adapts Electron's dashboard with the same
 bundled `electron/public/signal-field.webp` artwork, generated palettes, Inter,
 card hierarchy, recent generated audio, recent dubbing projects and saved voices.
 Its working shortcuts open Speak, voice cloning, Dub, Dictate, Models, Connect
@@ -371,7 +378,38 @@ Workflows on both platforms. These are native screens; no embedded desktop UI.
   Persisted segment gain/mute applies only during preview/mixing, invalidating
   output fingerprints while keeping synthesized PCM caches valid.
   Previous outputs remain until replacements succeed. Stale generated previews
-  are unavailable; source/reference media stay until explicit deletion.
+  are unavailable; source/reference media stay until explicit deletion. Manual
+  speaker labels and cast-wide voice assignment retain per-line overrides and
+  deduplicate reference PCM. Styled/dual ASS uses line timings. Clip and audio
+  packages verify cached render hashes and exclude voice references; original
+  audio is explicitly unseparated. Native encoded-video mux preserves multiple
+  language/default/alternate tracks. ZIP exports cap total bytes at 1 GiB and
+  each file at 512 MiB.
+- **Advanced paired dubbing** reuses installed-only diarization and existing host
+  SSE/task receipts. Explicit Detect requests `reanalyze_speakers=true` to refresh
+  labels on completed transcripts while preserving cue IDs, text, translations,
+  timing and explicit voice choices; ordinary reconnects replay the saved result.
+  Analysis and regeneration retain per-cue `gain`, `speed`, `direction`, `instruct`
+  and `effect_preset`; omitted legacy values retain the backend defaults.
+  Recasting translates fresh source cues on the same approved
+  provider before regeneration; resumed events validate original source text.
+  Host export supports selected/default/original tracks, separated background,
+  subtitle burn, dual/karaoke captions and existing audio/subtitle/package formats.
+  Acoustic diarization, isolated background separation and subtitle burn remain
+  explicit computer tasks.
+- **Editable project handoff** uses a version-1 `.vsproject` stored ZIP with a
+  SHA-256 manifest, canonical manuscript/timeline, assets, voice metadata and
+  preserved foreign settings/caches. Both phones and Electron import new IDs;
+  canonical phone edits override preserved desktop snapshots. Story chapter
+  headings survive both directions without becoming spoken lines; dub targets
+  include saved translation languages even before those tracks are rendered.
+  Voice/source conditioning requires explicit permission; credentials, licence receipts and
+  ownership verification are never restored. Bounded extraction rejects unsafe
+  paths, links, duplicate entries, unsupported versions and altered content.
+  Imports roll back failed writes; disconnected host imports finish their
+  transaction and remain available in the paired inbox. Completed outgoing host
+  archives expire after 24 hours or when pruned to the newest 20 within 2 GiB;
+  active downloads and imported projects/assets are never pruned.
 - **Tools** provides offline ASR/re-synthesis conversion of clips up to 30 seconds,
   optional pitch-preserving duration fitting, and A/B synthesis of two phone
   voices. Conversion aborts on an empty transcript before synthesis; decoded
@@ -387,13 +425,29 @@ Workflows on both platforms. These are native screens; no embedded desktop UI.
   selected model/speaker. My computer loads the paginated community catalogue
   through the paired client, displays author/licence/language, previews only on
   Play and materializes a host profile only on Use voice. Host changes discard
-  gallery results, preview and selected profiles. No new direct external
-  networking is introduced.
-- **Workflows** retain ordered steps, input, selected models/voices and durable
-  checkpoints. Text or bounded imported audio/video input supports first-step
-  transcription, normalization, translation, conditional forward branches,
-  bounded retries and optional final speech. Resume identity binds the input's
-  content hash, selected settings and model configuration. Templates are local.
+  gallery results, preview and selected profiles. Copy to phone requires a separate
+  explicit voice-permission action and requests the host's bounded stored voice
+  bundle. A valid transcript and reference up to 30 seconds are installed under
+  a fresh phone identity; author/licence attribution remains visible and travels
+  with project archives. No model download/inference or direct external networking
+  is introduced.
+- **Workflows** retain ordered legacy recipes and support typed acyclic graphs
+  with yes/no contains/equals/starts/ends conditions and compatible branch joins.
+  Transcription, translation, speech, ASR/re-synthesis conversion and normalization
+  execute with bounded retries. Input/model/settings hashes bind checkpoints and
+  saved run paths. Desktop version-1 workflow JSON import/export validates nodes;
+  agent/call/unknown nodes, cycles, unreachable paths, incompatible types and
+  multiple input batches fail explicitly. Audio is reattached and voices rebound
+  locally. Conversion is limited to 30 seconds; templates remain local.
+- **Transcriptions** saves local and paired live dictation into app-private history.
+  Search, original-preserving edits, copy, delete, TXT/JSON and timed SRT/VTT
+  exports are available on both. File transcription accepts source files up to 1 GiB and decodes up to four hours
+  to disk and recognizes bounded 20-second chunks with absolute cue offsets.
+  Atomic per-chunk checkpoints bind source SHA-256 and the exact installed model
+  pin; cancellation retains completed chunks. Completion removes scratch PCM.
+  Edited text cannot export stale subtitle timings until the original is restored.
+  Android uses a foreground worker; iOS uses the shared CPU job owner and resumes
+  saved records after restart. Import never downloads a model.
 - **Jobs** live beyond screen navigation. Android foreground workers expose
   progress/cancellation. iOS requests user-started continued processing on iOS
   26+, including supported GPU continuation with the signed GPU entitlement
@@ -402,7 +456,7 @@ Workflows on both platforms. These are native screens; no embedded desktop UI.
   task-scoped CPU selection. No process-global backend environment is changed;
   foreground Metal remains the default. Unsupported/denied grants and older OS
   limits retain explicit resume. Thermal critical state and critically low
-  battery pause work. Sustained jobs cover dubs, narration and workflows;
+  battery pause work. Sustained jobs cover dubs, narration, workflows and file transcription;
   interactive tools remain screen-owned. Paused book/workflow recipes may resume
   only when their full draft and model configuration still match; edits discard
   stale resume closures without replacing the newer draft.

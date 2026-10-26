@@ -186,23 +186,24 @@ try {
     .click();
   await page.getByRole('button', { name: 'Add First Line', exact: true }).click();
   await page.getByRole('textbox', { name: /Enter dialogue/ }).fill('A story line [pause 0.5s]');
-  await page.getByText(/assign a voice to each character/).click();
+  await page.locator('aside summary').filter({ hasText: /^Cast/ }).click();
   await page.getByRole('button', { name: 'Add character', exact: true }).click();
   await page.getByLabel('Character name', { exact: true }).fill('Mara');
   const character = page
-    .locator('aside details')
+    .locator('aside [data-slot=cast-member]')
     .filter({ has: page.getByLabel('Character name', { exact: true }) });
-  await character.getByText('Default', { exact: true }).first().click();
-  await character.getByRole('button', { name: 'Actor fixture', exact: true }).click();
+  await character.getByRole('button', { name: 'Voice: Default', exact: true }).click();
   await page
-    .getByRole('textbox', { name: /Enter dialogue/ })
-    .first()
-    .locator('..')
-    .locator('..')
-    .locator('summary')
-    .first()
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Actor fixture', exact: true })
     .click();
-  await page.locator('main').getByRole('button', { name: 'Mara', exact: true }).click();
+  // Each script line carries one row of chips; the speaker chip opens a picker.
+  await page
+    .locator('[data-slot=story-block]')
+    .first()
+    .getByRole('button', { name: 'Speaker: Narrator', exact: true })
+    .click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Mara', exact: true }).click();
   await page.getByRole('button', { name: 'Add Line', exact: true }).click();
   await page
     .getByRole('textbox', { name: /Enter dialogue/ })

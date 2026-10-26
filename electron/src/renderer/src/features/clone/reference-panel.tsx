@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { AgentFixButton } from '@/components/agent-fix-button';
 import type { useReferenceTranscript } from '@/hooks/use-reference-transcript';
 import { useReferenceAsrInstall } from '@/hooks/use-reference-asr-install';
-import { Progress } from '@/components/ui/progress';
+import { InstallProgress } from '@/components/model-install-progress';
 import { profileAudioUrl } from '@/lib/api/client';
 import { PortraitSearch } from './portrait-search';
 import { ProfileImageEditor } from './profile-image-editor';
@@ -204,28 +204,30 @@ function ReferenceAsrInstall({
   const install = useReferenceAsrInstall(model.repo_id, onInstalled);
   return (
     <div className="space-y-2">
-      <Button
-        type="button"
-        size="sm"
-        disabled={install.installing}
-        onClick={() => void install.start()}
-      >
-        {install.installing ? (
-          <LoaderCircleIcon className="animate-spin motion-reduce:animate-none" />
-        ) : (
+      {!install.installing && install.view?.stage !== 'failed' && (
+        <Button
+          type="button"
+          size="sm"
+          disabled={install.busy}
+          onClick={() => void install.start()}
+        >
           <DownloadIcon />
-        )}
-        {t('referenceAsr.install', { label: model.label, size: model.size_gb })}
-      </Button>
-      {install.installing && (
-        <div role="status" className="space-y-1">
-          <span>{t('referenceAsr.installing', { label: model.label })}</span>
-          <Progress value={install.progress} aria-label={t('modelMaintenance.downloading')} />
-        </div>
+          {t('referenceAsr.install', { label: model.label, size: model.size_gb })}
+        </Button>
       )}
-      {install.error && (
-        <p role="alert" className="text-destructive">
-          {t('asr_missing.install_failed', { message: install.error })}
+      {install.view && install.view.stage !== 'ready' && (
+        <InstallProgress
+          view={install.view}
+          name={model.label}
+          busy={install.busy}
+          onCancel={() => void install.cancel()}
+          onRetry={() => void install.retry()}
+          onDismiss={install.view.stage === 'failed' ? install.dismiss : undefined}
+        />
+      )}
+      {install.installing && (
+        <p className="text-xs text-muted-foreground">
+          {t('referenceAsr.installing', { label: model.label })}
         </p>
       )}
     </div>

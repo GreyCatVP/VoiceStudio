@@ -299,4 +299,29 @@ class PhoneDubTest {
         assertTrue(muted.peaks.all {it==0f});muted.file.delete()
     }
 
+    @Test fun castReferenceDedupAndVerifiedClipPackagesPreserveMarkersAndPublishedOutputs()=runTest {
+        val store=store();val request=request(store,targets.take(1));val engine=Engine();val pipeline=PhoneDubPipeline(store,engine,decoder,media)
+        val first=pipeline.run(request.id,models)
+        val edits=first.segments.mapIndexed {index,cue ->cue.copy(speaker="../Alex",referenceOrigin="cast",voiceID="voice",gain=if(index==0) .5 else 1.0,muted=index==1)}
+        val reference=LocalAudio(FloatArray(4800) {.25f},24000)
+        store.edit(request.id,edits,mapOf(0 to (reference to "Shared cast"),1 to (reference to "Shared cast")))
+        assertEquals(1,store.checkpoint(request.id).segments.mapNotNull {it.referenceFile}.distinct().size)
+        val complete=pipeline.run(request.id,models)
+        val clips=store.exportPackage(request.id,"fr",DubPackage.CLIPS,temporary.root)
+        val names=ProjectArchive.entries(clips).map {it.path}
+        assertTrue(names.containsAll(listOf("segments/00001.wav","segments/00002.wav","subtitles.ass")));assertFalse(names.any {it.contains("reference")||it.contains("..")})
+        val files=ProjectArchive.extract(clips,File(temporary.root,"clips"))
+        assertTrue(PhoneAudioProcessing.containsSyntheticMarker(files.getValue("segments/00001.wav")))
+        assertTrue(files.getValue("manifest.json").readText().contains("../Alex"))
+        val sensitive=listOf("voiceID","referenceFile","referenceText","referenceOrigin")
+        for(key in sensitive) assertFalse(files.getValue("manifest.json").readText().contains("\"$key\""))
+        assertEquals(complete.segments,store.checkpoint(request.id).segments)
+        val stems=store.exportPackage(request.id,"fr",DubPackage.STEMS,temporary.root)
+        val stemFiles=ProjectArchive.extract(stems,File(temporary.root,"stems"))
+        assertTrue(PhoneAudioProcessing.containsSyntheticMarker(stemFiles.getValue("dubbed.wav")));assertFalse(PhoneAudioProcessing.containsSyntheticMarker(stemFiles.getValue("original.wav")))
+        for(key in sensitive) assertFalse(stemFiles.getValue("manifest.json").readText().contains("\"$key\""))
+        store.file(request.id,complete.renders.first().file!!).writeText("corrupt")
+        assertTrue(runCatching {store.exportPackage(request.id,"fr",DubPackage.CLIPS,temporary.root)}.isFailure)
+        assertEquals(complete.outputs,store.checkpoint(request.id).outputs);assertTrue(clips.isFile)
+    }
 }

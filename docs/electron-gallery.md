@@ -24,6 +24,13 @@ API wire types are shared with Tauri. No new required network service is added.
 Community voices, local/search imports, inline trimming, and portable persona
 bundles use the same backend contracts and keep network actions explicit.
 
+Community filters by pack and by language on the backend (`/community/items`
+`pack` and `lang`), and each page carries the catalogue-wide `packs` and
+`languages` so the filters keep every option while one is applied. Items added
+in the last 30 days (`added_at`, kept only as a real ISO date) show a New badge,
+and an author credited by GitHub handle links to that profile, opened in the
+system browser only when clicked.
+
 Verification: node electron/tests/gallery-smoke.mjs exercises categories, search,
 pagination, real native playback of synthetic audio, saved-profile handoff, and
 navigation during saving using mocked API responses. The running backend also

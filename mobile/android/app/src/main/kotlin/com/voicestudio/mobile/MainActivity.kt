@@ -164,7 +164,9 @@ fun contentReportClient()=ContentReportClient(BuildConfig.CONTENT_REPORTS_URL,Bu
                         composable("tools") {VoiceToolsScreen(vm)}
                         composable("voices") {VoicesScreen(vm)}
                         composable("dub") {DubScreen(vm)}
-                        composable("dictate") {DictateScreen(vm)}
+                        composable("dictate") {DictateScreen(vm,onHistory={nav.navigate("transcriptions")})}
+                        composable("transcriptions") {TranscriptsScreen(vm,onDictate={nav.navigate("dictate")})}
+                        composable("handoff") {HandoffScreen(vm)}
                     }
                     }
                     }

@@ -20,9 +20,12 @@ public struct PhoneWorkflow: Codable, Sendable, Identifiable, Equatable {
     public var inputFile: String? = nil
     public var inputName: String? = nil
     public var inputHash: String? = nil
+    public var graph: WorkflowGraph? = nil
     public var steps: [PhoneWorkflowStep]
     public init(id: UUID = UUID(),name: String,steps: [PhoneWorkflowStep] = []) { self.id = id; self.name = name; self.steps = steps }
     public var valid: Bool {
+        if let graph { return !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && name.count <= 200 && (try? graph.validate()) != nil }
+        return
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && name.count <= 200 && !steps.isEmpty && steps.count <= 20 && Set(steps.map(\.id)).count == steps.count && steps.enumerated().allSatisfy { index,step in
             ["normalize","translate","speak","transcribe","condition"].contains(step.kind) && !step.language.isEmpty && (0...3).contains(step.retries ?? 0) && (step.kind != "transcribe" || index == 0) && (step.kind != "speak" || index == steps.count-1) && (step.kind != "condition" || (!(step.containsText ?? "").isEmpty && (1...20).contains(step.skipSteps ?? 1)))
         }
@@ -46,8 +49,8 @@ private struct WorkflowCheckpoint: Codable {
 
 /// Immutable source files and model/configuration fingerprints make every completed step resumable.
 public actor PhoneWorkflowStore {
-    private let root: URL
-    private var running = Set<UUID>()
+    let root: URL
+    var running = Set<UUID>()
     public init(root: URL) throws { self.root = root; try PrivateFiles.directory(root) }
     public func save(_ workflow: PhoneWorkflow) throws {
         guard !workflow.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, workflow.name.count <= 200, workflow.steps.count <= 20 else { throw ClientError("mobile.errors.file") }

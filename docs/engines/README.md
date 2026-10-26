@@ -46,6 +46,7 @@ approval), [Windows](../install/windows.md), [Linux](../install/linux.md),
 | PocketTTS (Kyutai) | [pockettts](pockettts.md) | CPU (not Intel Mac) | ✅ | `uv sync --extra pockettts` + license |
 | Confucius4-TTS | [confucius4-tts](confucius4-tts.md) | CUDA · CPU | ✅ | clone + env var |
 | audio.cpp (Breeze-TTS-2) | [audio-cpp](audio-cpp.md) | CPU + Vulkan/Metal/CUDA/HIP/ROCm where compiled | ✅ + voice design | prebuilt binary + env var (weights research/non-commercial) |
+| CosyVoice 3 GGUF | [cosyvoice-gguf](cosyvoice-gguf.md) | CPU + Vulkan (native runtime build) | ✅ reference cloning + instruct | user-built native runtime + model catalogue |
 
 ### Reference clip length
 
@@ -76,6 +77,7 @@ an engine runs in its own environment.
 | Faster-Whisper (isolated) | [faster-whisper-isolated](faster-whisper-isolated.md) | CUDA · CPU | unattended batches | opt-in pick |
 | MLX Whisper | [mlx-whisper](mlx-whisper.md) | Apple Silicon | Mac default | `pip install mlx-whisper` |
 | PyTorch Whisper | [pytorch-whisper](pytorch-whisper.md) | CUDA · MPS · CPU | ROCm hosts | installed by default |
+| whisper.cpp | [whisper-cpp](whisper-cpp.md) | CPU · Vulkan · CUDA · Metal | AMD GPUs, native CLI | your own `whisper-cli` + GGML model |
 | Parakeet TDT (NeMo) | [nemo-parakeet](nemo-parakeet.md) | CUDA · CPU | 25 languages, fast CPU | separate venv (never the app's) |
 | Parakeet TDT (MLX) | [parakeet-mlx](parakeet-mlx.md) | Apple Silicon | dictation, 25 EU languages | default on mac-ARM source installs |
 | Moonshine | [moonshine](moonshine.md) | CPU | edge/low-power, no timestamps | `pip install` (see guide) |

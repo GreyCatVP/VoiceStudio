@@ -176,9 +176,10 @@ After publication, verify each maintained channel:
 | GitHub Release      | `electron-release.yml`             | Linux x64, Windows x64 (+ ARM64 when its leg passed), macOS arm64 and x64 installers, updater feeds, checksums, CHANGELOG notes, retained v0.5.3 Tauri feeds |
 | GHCR CUDA           | `docker.yml` (release published)   | `:X.Y.Z`, `:X.Y`, `:stable` manifests                                                                                                                        |
 | GHCR ROCm           | `docker.yml` (release published)   | `:X.Y.Z-rocm`, `:X.Y-rocm`, `:stable-rocm` manifests                                                                                                         |
-| Docker Hub          | `docker.yml` (release published)   | Matching CUDA/ROCm tags                                                                                                                                      |
+| GHCR CUDA arm64     | `docker.yml` (release published)   | `:X.Y.Z-cuda-arm64`, `:X.Y-cuda-arm64`, `:stable-cuda-arm64` manifests (`linux/arm64`)                                                                       |
+| Docker Hub          | `docker.yml` (release published)   | Matching CUDA/ROCm/CUDA arm64 tags                                                                                                                           |
 | Docker Hub overview | `docker.yml`                       | Read the `Update Docker Hub description` step log; the step may continue after a 403                                                                         |
-| Rolling containers  | `docker.yml` on `main` pushes only | `:latest`, `:main`, and `:rocm` timestamps move; a release never moves them                                                                                  |
+| Rolling containers  | `docker.yml` on `main` pushes only | `:latest`, `:main`, `:rocm` and `:cuda-arm64` timestamps move; a release never moves them                                                                    |
 
 A missing channel is a release bug. There are no RC tags; the one prerelease is
 the opt-in **Beta** channel (below). Previews between betas are builds from
@@ -238,7 +239,7 @@ has no soak period, no side branch and no cherry-picks.
 | Tag and `package.json` version | `vX.Y.Z` | `vX.Y.Z-beta.N` |
 | GitHub Release | full release, becomes `latest` | **prerelease**, never `latest` |
 | Update feed | `electron-stable-<os>-<arch>` | `electron-beta-<os>-<arch>` |
-| Docker | `:X.Y.Z`, `:X.Y`, `:stable` | `:beta`, `:X.Y.Z-beta.N` (and `-rocm`) |
+| Docker | `:X.Y.Z`, `:X.Y`, `:stable` (and `-rocm`, `-cuda-arm64`) | `:beta`, `:X.Y.Z-beta.N` (and `-rocm`, `-cuda-arm64`) |
 | Snap / Microsoft Store / Mac App Store | yes | no (Stable-only) |
 | Tauri sunset feeds | copied into the release | not copied |
 

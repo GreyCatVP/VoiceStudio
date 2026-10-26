@@ -12,6 +12,8 @@ struct DictateView: View {
     @State private var holding = false
     @State private var suppressTap = false
     @State private var text = ""
+    @State private var sessionID = UUID().uuidString.lowercased()
+    @State private var sessionText = ""
     @State private var transcript = DictationTranscript()
     @State private var previousText = ""
     @State private var checking = true
@@ -25,6 +27,7 @@ struct DictateView: View {
     @State private var stream = DictationStream()
     var body: some View {
         Page(fill: true) {
+            NavigationLink(model.t("transcriptions.title")) { TranscriptsView() }.disabled(listening || finalizing)
             RunOnPicker(preference: $preference, task: "dictate", installed: localReady).disabled(listening || finalizing)
             if route == .connect { NavigationLink(model.t("mobile.settings.connection")) { ConnectView() } }
             if checking { ProgressView(model.t("common.loading")) }
@@ -66,7 +69,7 @@ struct DictateView: View {
         .onChange(of: preference) { _, _ in Task { await readiness() } }
         .onChange(of: route) { _, _ in Task { await readiness() } }
         .refreshable { await readiness() }
-        .onDisappear { capturing?.cancel(); receiving?.cancel(); audio.stop(); listening = false; finalizing = false; Task { await stream.close() } }
+        .onDisappear { saveTranscript(); capturing?.cancel(); receiving?.cancel(); audio.stop(); listening = false; finalizing = false; Task { await stream.close() } }
     }
     private var recordControl: some View {
             Button {
@@ -108,8 +111,9 @@ struct DictateView: View {
     private func start() {
         guard ready, !listening, !finalizing else { return }
         let scope = model.hostState.scopeID
-        listening = true; previousText = text; transcript = DictationTranscript()
+        listening = true; previousText = text; transcript = DictationTranscript(); sessionID = UUID().uuidString.lowercased(); sessionText = ""
         if route == .phone { startLocal(); return }
+        let id = sessionID
         capturing = Task {
             // Per session: a finished `receiving` from an earlier session must not count.
             var receiverCreated = false
@@ -119,11 +123,14 @@ struct DictateView: View {
                 // A stop during startup never creates `receiving`, so nothing else clears `finalizing`.
                 guard scope == model.hostState.scopeID, listening, !Task.isCancelled else { finalizing = false; await stream.close(); return }
                 receiving = Task {
+                    var latest = ""
+                    defer { saveTranscript(id: id,text: latest,modelID: nil) }
                     do {
                         for try await message in messages {
                             try Task.checkCancellation()
-                            guard scope == model.hostState.scopeID else { throw CancellationError() }
+                            guard scope == model.hostState.scopeID,id == sessionID else { throw CancellationError() }
                             transcript.receive(message)
+                            latest = transcript.text; sessionText = latest
                             text = [previousText, transcript.text].filter { !$0.isEmpty }.joined(separator: "\n")
                             if transcript.finished { audio.stop(); listening = false; finalizing = false }
                         }
@@ -141,6 +148,7 @@ struct DictateView: View {
         }
     }
     private func startLocal() {
+        let id = sessionID
         capturing = Task {
             defer { audio.stop(); listening = false; finalizing = false }
             do {
@@ -154,9 +162,13 @@ struct DictateView: View {
                     guard listening, !Task.isCancelled else { audio.stop(); continuation.finish(); return }
                 } catch { continuation.finish(throwing: error); throw error } // releases the slot
                 receiving = Task {
+                    var latest = ""
+                    defer { saveTranscript(id: id,text: latest,modelID: phoneModel.id) }
                     do {
                         for try await update in updates {
                             try Task.checkCancellation()
+                            guard id == sessionID else { throw CancellationError() }
+                            latest = update.text; sessionText = latest
                             text = [previousText, update.text].filter { !$0.isEmpty }.joined(separator: "\n")
                         }
                     } catch is CancellationError {} catch { model.error = error as? ClientError ?? ClientError("mobile.local.inference_failed") }
@@ -172,6 +184,15 @@ struct DictateView: View {
                 await receiving?.value
             } catch is CancellationError {} catch { model.error = error as? ClientError ?? ClientError("mobile.errors.audio") }
         }
+    }
+    private func saveTranscript() {
+        saveTranscript(id: sessionID,text: sessionText,modelID: route == .phone ? phoneModel?.id : nil)
+    }
+    private func saveTranscript(id: String,text: String,modelID: String?) {
+        let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty,let store = model.phone.transcriptStore else { return }
+        let title = String((value.components(separatedBy: .newlines).first ?? value).prefix(120))
+        Task { await model.performPhone { _ = try await store.saveDictation(id: id,title: title,text: value,modelID: modelID) } }
     }
     private func stop() { finalizing = true; audio.stop(); listening = false }
 }

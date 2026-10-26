@@ -184,7 +184,7 @@ class VoiceStudioApi(val address: PairingAddress, token: String? = null, private
         DubVoiceChoice.validate(voice)
         put("language_code", code); put("language", language)
         putJsonArray("segments") { segments.forEach { s -> add(buildJsonObject {
-            put("start", s.start); put("end", s.end); put("text", s.text); put("profile_id", voice); put("target_lang", code)
+            put("start", s.start); put("end", s.end); put("text", s.text); put("profile_id", voice); put("target_lang", code); putRenderSettings(s)
         }) } }
     })
     suspend fun abort(jobId: String) { raw("/dub/abort/${segment(jobId)}", "POST", ByteArray(0).toRequestBody()).close() }
