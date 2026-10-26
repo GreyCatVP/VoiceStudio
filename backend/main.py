@@ -402,6 +402,7 @@ from core.auth import (
     PrincipalKind,
     credential_matches,
     is_local_host,
+    is_trusted_host_loopback,
     principal_for,
     remote_api_key,
 )
@@ -662,12 +663,26 @@ def _phase_a_build_inner() -> None:
     # dlopen/LoadLibrary, and the one hard ordering invariant of this phase —
     # it must run before any ctranslate2/torch import (#1371).
     try:
+        from core.windows_rocm.runtime import initialize_dll_search
+
+        initialize_dll_search()
+    except Exception:  # noqa: BLE001 — the opt-in ROCm path must not cost CUDA its preload
+        pass
+    try:
         from core.cudnn8 import preload as _preload_cudnn8
         _preload_cudnn8()
     except Exception:  # noqa: BLE001 — never block startup on a preload
         pass
 
     _startup_progress.begin_step("ml_imports")
+    try:
+        # The opt-in Windows ROCm runtime must pin its DLL search path before
+        # torchaudio loads; a no-op on every other runtime.
+        from core.windows_rocm.pipelines import prepare_audio_imports
+
+        prepare_audio_imports()
+    except Exception:  # noqa: BLE001 — the torchaudio import below reports
+        pass
     try:
         import torchaudio  # noqa: F401
     except Exception as exc:  # noqa: BLE001
@@ -886,10 +901,16 @@ def _phase_a_finalize() -> None:
         def _no_web_ui(request: Request):
             # Only a local browser may be sent to the local dev UI; a LAN
             # device redirected to localhost reaches itself, not us (#2599).
+            # The PIN query survives the hop so the gate still sees it, and
+            # a request already aimed at the UI port is answered terminally
+            # instead of bouncing onto itself forever (#2680: with default
+            # ports the share listener sits on the UI port).
             client = request.client.host if request.client else None
-            target = dev_ui_redirect(client, request.headers.get("host", ""), _ui_port())
-            if target:
-                return RedirectResponse(url=target)
+            ui_port = _ui_port()
+            target = dev_ui_redirect(client, request.headers.get("host", ""), ui_port)
+            if target and request.url.port != ui_port:
+                query = request.url.query
+                return RedirectResponse(url=target + (f"/?{query}" if query else ""))
             media_type, body = web_ui_missing_body(request.headers.get("accept", ""))
             return Response(body, status_code=503, media_type=media_type)
 
@@ -1534,6 +1555,10 @@ def _safe_validation_input(value):
     """
     if isinstance(value, (bytes, bytearray, memoryview)):
         return f"<{len(bytes(value))} bytes of binary data>"
+    # JSON number overflow (e.g. 1e309) and accepted NaN/Infinity tokens can
+    # reach Pydantic as floats, but cannot be echoed in a JSONResponse.
+    if isinstance(value, float) and not math.isfinite(value):
+        return str(value)
     if isinstance(value, str) and len(value) > _VALIDATION_INPUT_MAX:
         return value[:_VALIDATION_INPUT_MAX] + f"… (+{len(value) - _VALIDATION_INPUT_MAX} chars)"
     return value
@@ -1797,7 +1822,7 @@ class NetworkAccessMiddleware:
         if not pin:
             return await self.app(scope, receive, send)
         client = scope["client"][0] if scope.get("client") else None
-        if is_local_host(client):
+        if is_local_host(client) or is_trusted_host_loopback(request):
             return await self.app(scope, receive, send)
         if _is_public_path(scope["path"]):
             return await self.app(scope, receive, send)

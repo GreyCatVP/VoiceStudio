@@ -1,13 +1,16 @@
 import { decideMissingRuntime, runtimeWasInstalled } from './runtime-repair';
+import { windowsRocmInstalled, windowsRocmRequested } from './runtime-windows-rocm';
+import { runtimeProjectReady } from './runtime-readiness';
+import { runRuntimeProbe } from './runtime-probe';
 import {
   installRuntime,
   MISSING_SYSTEM_LIBRARY_CODE,
   promoteLegacyRuntimeCaches,
-  runtimeCompatible,
   runtimeDependenciesReady,
+  runtimeDownloadHosts,
   runtimeInstallInterrupted,
-  runtimeReady,
   runtimePython,
+  runtimeUvCache,
   stageRuntimeSources,
   type RuntimeRegion,
 } from './runtime-project';
@@ -55,6 +58,7 @@ import {
 } from './remote-backend';
 import { toolSearchDirs, toolSearchDirsAsync } from './tool-path';
 import { SetupProgressTracker, cleanProcessLine } from './setup-progress';
+import { SetupDownloadReporter, inFlightDownloadBytes } from './setup-downloads';
 import { scrubText } from '../shared/utils/scrub';
 import { DEFAULT_BACKEND_PORT } from '../../../config/app-config.mjs';
 
@@ -947,6 +951,8 @@ export class BackendSupervisor extends EventEmitter<{
               previouslyInstalled: await runtimeWasInstalled(project),
               repairAttempted: this.repairAttempted,
               unsupported: isUnsupportedPlatform(),
+              rocmNotYetInstalled:
+                windowsRocmRequested() && !(await windowsRocmInstalled(project)),
             });
             this.runtimeRepairFailed = action === 'repair_failed';
             this.runtimeInterrupted = await runtimeInstallInterrupted(project);
@@ -1052,11 +1058,9 @@ export class BackendSupervisor extends EventEmitter<{
     this.setupPhase = 'checking';
     this.setupProgress.reset();
     this.setStage('installing', { message: undefined });
+    const stopWatching = this.watchSetupDownloads(gen, controller.signal);
     try {
-      const reusable =
-        ((await runtimeReady(backendRoot(), project)) ||
-          (await runtimeCompatible(backendRoot(), project))) &&
-        (await runtimeDependenciesReady(project));
+      const reusable = await runtimeProjectReady(backendRoot(), project);
       if (gen !== this.generation || controller.signal.aborted) return;
       if (reusable) {
         await this.start();
@@ -1082,10 +1086,7 @@ export class BackendSupervisor extends EventEmitter<{
           'Creating a separate Electron runtime; existing environment preserved.',
         );
         this.emitStatus();
-        const fallbackReusable =
-          ((await runtimeReady(backendRoot(), project)) ||
-            (await runtimeCompatible(backendRoot(), project))) &&
-          (await runtimeDependenciesReady(project));
+        const fallbackReusable = await runtimeProjectReady(backendRoot(), project);
         if (gen !== this.generation || controller.signal.aborted) return;
         if (fallbackReusable) {
           await this.start();
@@ -1105,8 +1106,27 @@ export class BackendSupervisor extends EventEmitter<{
         backendRoot(),
         project,
         findUv(),
-        (command, args, cwd, env) =>
-          new Promise<string>((resolve, reject) => {
+        (command, args, cwd, env, options) => {
+          if (options?.timeoutMs)
+            return runRuntimeProbe(
+              command,
+              args,
+              cwd,
+              { ...childEnv(this.port, this.runtimeRegion), ...env },
+              {
+                timeoutMs: options.timeoutMs,
+                signal: controller.signal,
+                onSpawn: (child) => {
+                  this.child = child;
+                  this.attachLineReader(child.stdout, 'out');
+                  this.attachLineReader(child.stderr, 'err');
+                },
+                onClose: (child) => {
+                  if (this.child === child) this.child = null;
+                },
+              },
+            );
+          return new Promise<string>((resolve, reject) => {
             if (controller.signal.aborted) {
               reject(controller.signal.reason);
               return;
@@ -1144,7 +1164,8 @@ export class BackendSupervisor extends EventEmitter<{
                   }),
                 );
             });
-          }),
+          });
+        },
         controller.signal,
         (phase) => {
           if (gen !== this.generation) return;
@@ -1175,8 +1196,43 @@ export class BackendSupervisor extends EventEmitter<{
         this.setStage('setup_required', { message: errorMessage(error) });
       }
     } finally {
+      stopWatching();
       if (this.installation === controller) this.installation = null;
     }
+  }
+
+  /**
+   * uv prints nothing while a large wheel downloads, so watch its cache for
+   * in-flight bytes: the setup screen names the source host, and a download
+   * that stops receiving data shows as stalled instead of frozen (#3411).
+   */
+  private watchSetupDownloads(gen: number, signal: AbortSignal): () => void {
+    const reporter = new SetupDownloadReporter();
+    void Promise.resolve()
+      .then(() => runtimeDownloadHosts(backendRoot()))
+      .then((hosts) => this.setupProgress.setDownloadHosts(hosts))
+      .catch(() => undefined);
+    let sampling = false;
+    const timer = setInterval(() => {
+      if (sampling || signal.aborted || gen !== this.generation || this.stage !== 'installing')
+        return;
+      if (this.setupPhase !== 'installing_deps' || !this.runtimeProject) return;
+      sampling = true;
+      void inFlightDownloadBytes(runtimeUvCache(this.runtimeProject))
+        .then((bytes) => {
+          if (signal.aborted || gen !== this.generation || this.stage !== 'installing') return;
+          this.setupProgress.observeInFlight(bytes);
+          const snapshot = this.setupProgress.snapshot();
+          for (const line of reporter.lines(snapshot)) this.pushLog('out', line);
+          if (snapshot.downloadsComplete === false) this.emitStatus();
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          sampling = false;
+        });
+    }, 3_000);
+    timer.unref?.();
+    return () => clearInterval(timer);
   }
 
   /** Remove only an Electron-owned Python project, then perform a fresh install. */
@@ -1399,10 +1455,7 @@ export class BackendSupervisor extends EventEmitter<{
       configured ? [configured] : [this.runtimeProject, own, ...legacyTauriRuntimeProjects()]
     ).filter((candidate): candidate is string => Boolean(candidate));
     for (const project of new Set(candidates.map((candidate) => resolve(candidate)))) {
-      if (
-        ((await runtimeReady(bundle, project)) || (await runtimeCompatible(bundle, project))) &&
-        (await runtimeDependenciesReady(project))
-      ) {
+      if (await runtimeProjectReady(bundle, project)) {
         this.runtimeProject = project;
         if (project !== own && project !== configured)
           this.pushLog('out', `Reusing compatible Tauri runtime: ${project}`);

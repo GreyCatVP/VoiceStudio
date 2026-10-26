@@ -12,3 +12,5 @@ int vs_book_inflate(const uint8_t *source, size_t source_count, uint8_t *output,
     inflateEnd(&stream);
     return ok && vs_book_crc32(output, output_count) == expected ? 0 : -1;
 }
+
+uint32_t vs_book_crc32_update(uint32_t prior, const uint8_t *source, size_t count) { return count <= UINT_MAX ? (uint32_t)crc32(prior, source, (uInt)count) : prior; }

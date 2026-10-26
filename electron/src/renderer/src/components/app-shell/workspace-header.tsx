@@ -1,35 +1,73 @@
 import { SupportShortcut } from './support-shortcut';
 import { SidebarToggle } from './sidebar-toggle';
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { SearchIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { isMac } from '@/components/bridge';
 
+/**
+ * True while the page shows its own pane titled exactly like the shell title, so
+ * the title is shown once: in the pane when it is open, in the shell otherwise.
+ */
+export function titleShownByPane(header: HTMLElement): boolean {
+  const title = header.querySelector('h1')?.textContent?.trim();
+  const pane = header.parentElement?.querySelector<HTMLElement>(
+    '[data-slot="secondary-sidebar"]:not([data-collapsed])',
+  );
+  return Boolean(title && pane?.getAttribute('aria-label')?.trim() === title);
+}
+
 export function WorkspaceHeader({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
+  const header = useRef<HTMLElement>(null);
+  const [paneTitled, setPaneTitled] = useState(false);
+  // Re-checks on every render (title text, language) and whenever the pane opens or collapses.
+  useEffect(() => {
+    const node = header.current;
+    if (node) setPaneTitled(titleShownByPane(node));
+  });
+  useEffect(() => {
+    const node = header.current;
+    const scope = node?.parentElement;
+    if (!node || !scope || typeof MutationObserver === 'undefined') return;
+    const observer = new MutationObserver(() => setPaneTitled(titleShownByPane(node)));
+    observer.observe(scope, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['data-collapsed', 'aria-label'],
+    });
+    return () => observer.disconnect();
+  }, []);
   return (
     <header
+      ref={header}
+      data-slot="workspace-header"
+      data-title={paneTitled ? 'pane' : 'shell'}
       className={cn(
         'workspace-titlebar flex shrink-0 items-center gap-3 border-b border-border/50 px-5',
+        // One title style on every page; the h1 stays for assistive tech when the pane shows it.
+        '[&>h1]:min-w-0 [&>h1]:truncate [&>h1]:text-[13px] [&>h1]:font-medium [&>h1]:text-foreground/90',
+        paneTitled && '[&>h1]:sr-only',
         !isMac() && 'native-controls-right',
       )}
     >
       {!isMac() && <SidebarToggle />}
       {children}
-      <div className="ml-auto flex shrink-0 items-center gap-1">
+      <div className="ml-auto flex shrink-0 items-center gap-0.5">
         <SupportShortcut />
         <Button
           variant="ghost"
           size="sm"
-          className="group h-8 shrink-0 gap-2 rounded-lg border border-transparent px-2.5 text-muted-foreground transition-[color,background-color,border-color,box-shadow] duration-150 hover:border-white/10 hover:bg-white/[0.07] hover:text-foreground hover:shadow-[0_6px_18px_-12px_hsl(var(--foreground)/0.4),inset_0_1px_0_hsl(0_0%_100%/0.08)]"
+          className="h-7 shrink-0 gap-1.5 px-2 text-muted-foreground hover:text-foreground"
           aria-label={t('preferences.search')}
           title={isMac() ? 'Command + K' : 'Ctrl + K'}
           onClick={() => window.dispatchEvent(new Event('voicestudio:commands'))}
         >
-          <SearchIcon className="transition-colors duration-150" />
-          <span className="hidden text-xs lg:inline">{isMac() ? '⌘K' : 'Ctrl K'}</span>
+          <SearchIcon />
+          <span className="hidden text-xs font-medium lg:inline">{isMac() ? '⌘K' : 'Ctrl K'}</span>
         </Button>
       </div>
     </header>

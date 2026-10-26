@@ -3,7 +3,15 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { WaveformPlayer } from '@/components/waveform-player';
 import { stopActivePlayback, usePlaybackSource } from '@/lib/audio/playback';
-import { closeDock, playInDock, useNowPlaying, type NowPlaying } from '@/lib/store/now-playing';
+import { clipTitle, playbackKindLabelKey } from '@/lib/audio/playback-kind';
+import {
+  closeDock,
+  dockSource,
+  isClipPlaying,
+  playInDock,
+  useNowPlaying,
+  type NowPlaying,
+} from '@/lib/store/now-playing';
 import { cn } from '@/lib/utils';
 
 /**
@@ -11,39 +19,41 @@ import { cn } from '@/lib/utils';
  * the same waveform player as Latest take, so playback keeps going while the
  * user moves between pages.
  */
+/** What fits the 15rem title column, so the word-boundary cut wins over the CSS one. */
+const DOCK_TITLE_CHARS = 32;
+
 export function NowPlayingDock() {
   const { t } = useTranslation();
   const clip = useNowPlaying();
   if (!clip) return null;
+  const label = t(playbackKindLabelKey(clip.kind));
   return (
     <section
       aria-label={t('player.now_playing')}
       data-slot="now-playing-dock"
-      className="flex shrink-0 items-center gap-3 border-t border-border/60 bg-muted/20 px-4 py-2 backdrop-blur-xl"
+      className="relative z-10 flex h-14 shrink-0 items-center gap-3 border-t border-border/60 bg-background/95 px-4 backdrop-blur-xl"
     >
-      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
         <AudioLinesIcon className="size-4" aria-hidden="true" />
       </span>
-      <div className="w-56 min-w-0 shrink">
-        <p className="truncate text-sm font-medium" title={clip.title}>
-          {clip.title}
-        </p>
-        {clip.subtitle && (
-          <p className="truncate text-xs text-muted-foreground">{clip.subtitle}</p>
-        )}
+      <div className="w-60 min-w-0 shrink" title={clip.title + ' · ' + label}>
+        <p className="truncate text-sm leading-5 font-medium">{clipTitle(clip.title, DOCK_TITLE_CHARS)}</p>
+        <p className="truncate text-xs leading-4 text-muted-foreground">{label}</p>
       </div>
       <WaveformPlayer
         key={clip.nonce}
         src={clip.src}
-        source={clip.source}
+        source={dockSource(clip.source)}
+        durationHint={clip.duration ?? undefined}
         autoPlay
         compact
         height={32}
-        className="min-w-0 flex-1"
+        className="min-w-0 flex-1 bg-transparent px-0"
       />
       <Button
         variant="ghost"
         size="icon-sm"
+        className="text-muted-foreground hover:text-foreground"
         aria-label={t('common.close')}
         title={t('common.close')}
         onClick={() => {
@@ -63,7 +73,7 @@ export function PlayInDockButton({
   ...clip
 }: Omit<NowPlaying, 'nonce'> & { className?: string }) {
   const { t } = useTranslation();
-  const playing = usePlaybackSource() === clip.source;
+  const playing = isClipPlaying(usePlaybackSource(), clip.source);
   return (
     <Button
       variant="ghost"

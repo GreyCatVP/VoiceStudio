@@ -64,7 +64,10 @@ class PhoneWorkflowWorker(context: Context,params: WorkerParameters): CoroutineW
             val finished=coroutineScope {
                 val updates=Channel<Float>(Channel.CONFLATED)
                 val reporter=launch {for(value in updates) {requirePhonePower(applicationContext);setProgress(workDataOf("percent" to (value*100).toInt()));setForeground(phoneJobForeground(applicationContext,id,"workflows.title",(value*100).toInt()))}}
-                try {store.run(workflow,workflow.inputText.orEmpty(),configuration,progress={updates.trySend(it)}) {step,text ->
+                try {if(workflow.graph!=null) {
+                    val executor=WorkflowGraphExecutor(runtime.engine,voiceStore,request.voices,model("tts"),model("clone"),model("asr"),model("translate"))
+                    store.runGraph(workflow,workflow.inputText.orEmpty(),configuration,progress={updates.trySend(it)},execute=executor::execute)
+                } else store.run(workflow,workflow.inputText.orEmpty(),configuration,progress={updates.trySend(it)}) {step,text ->
                     requirePhonePower(applicationContext)
                     when(step.kind) {
                         "transcribe"->WorkflowValue(WorkflowTranscription.run(store.source(workflow),requireNotNull(model("asr")),runtime.engine))
@@ -76,7 +79,7 @@ class PhoneWorkflowWorker(context: Context,params: WorkerParameters): CoroutineW
             }
             val result=File(applicationContext.noBackupFilesDir,"workflow-jobs/$job.result.txt")
             withContext(Dispatchers.IO) {result.writeText(finished.text)}
-            val producer=model(if(selection.startsWith("phone:")) "clone" else "tts")
+            val producer=if(workflow.graph!=null) null else model(if(selection.startsWith("phone:")) "clone" else "tts")
             return Result.success(workDataOf("file" to finished.audio?.absolutePath,"text_file" to result.absolutePath,"percent" to 100,"repo" to producer?.repo,"revision" to producer?.revision))
         } catch(e:CancellationException) {throw e} catch(e:Exception) {return Result.failure(workDataOf("error" to ((e as? ClientFailure)?.key ?: "mobile.errors.file")))}
     }

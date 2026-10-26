@@ -159,10 +159,19 @@ def split_text_into_chunks(text: str, max_chars: int = DEFAULT_MAX_CHUNK_CHARS) 
             break
 
         segment = remaining[:max_chars]
+        # #3062: boundary detection must see one character PAST the window.
+        # The punctuation regexes accept end-of-string as "followed by
+        # whitespace", so judged on the window alone, a window that happened to
+        # end inside "3,5" (decimal comma), "e.g.", "site.com" or "..." looked
+        # like a clause/sentence end and the token was cut in two — each half
+        # then spoken on its own at the chunk boundary ("tres" + "cinco"
+        # instead of "tres virgula cinco"). With the lookahead, the end of the
+        # window is never a boundary unless the original text agrees.
+        window = remaining[: max_chars + 1]
 
-        split_pos = _find_last_sentence_end(segment)
+        split_pos = _find_last_sentence_end(window, limit=max_chars)
         if split_pos == -1:
-            split_pos = _find_last_clause_boundary(segment)
+            split_pos = _find_last_clause_boundary(window, limit=max_chars)
         if split_pos == -1:
             split_pos = segment.rfind(" ")
         if split_pos == -1:
@@ -260,16 +269,24 @@ def _merge_unspeakable(chunks: List[str], max_chars: int = 0) -> List[str]:
     return out
 
 
-def _find_last_sentence_end(text: str) -> int:
+def _find_last_sentence_end(text: str, limit: int | None = None) -> int:
     """Index of the last sentence-ending punctuation, or -1.
 
     Skips periods after common abbreviations and decimals, anything inside
     a bracket tag, and also recognizes fullwidth sentence punctuation
     (ideographic full stop / fullwidth ! and ?) for no-space scripts.
+
+    ``limit`` — only positions ``< limit`` count. Callers pass a window one
+    character longer than the chunk so the character after a candidate is the
+    real next character, not an artificial end-of-string (#3062).
     """
+    if limit is None:
+        limit = len(text)
     best = -1
     for m in re.finditer(r"[.!?](?:\s|$)", text):
         pos = m.start()
+        if pos >= limit:
+            continue
         if text[pos] == ".":
             word_start = pos - 1
             while word_start >= 0 and text[word_start].isalpha():
@@ -285,14 +302,22 @@ def _find_last_sentence_end(text: str) -> int:
     # Fullwidth sentence enders (ideographic full stop, fullwidth !, ?)
     # written as escapes to keep the repo's no-literal-CJK gate clean.
     for m in re.finditer("[\u3002\uff01\uff1f]", text):
-        if m.start() > best:
+        if best < m.start() < limit:
             best = m.start()
     return best
 
 
-def _find_last_clause_boundary(text: str) -> int:
+def _find_last_clause_boundary(text: str, limit: int | None = None) -> int:
+    """Index of the last clause punctuation (``;:,`` / em dash), or -1.
+
+    ``limit`` as in :func:`_find_last_sentence_end`.
+    """
+    if limit is None:
+        limit = len(text)
     best = -1
     for m in re.finditer(r"[;:,—](?:\s|$)", text):
+        if m.start() >= limit:
+            continue
         if _inside_bracket_tag(text, m.start()):
             continue
         best = m.start()

@@ -40,29 +40,57 @@ export function rememberTake(id: string | null, settings: CloneSettings) {
     /* History still works if local metadata cannot be saved. */
   }
 }
+/** Restore saved take parameters without carrying emotion over from another take.
+ *
+ * Older history has no emotion fields. Treat missing (or corrupt) emotion
+ * settings as Off, while preserving correctly saved text/vector controls.
+ * Script, voice identity, and language always come from the history entry.
+ */
 export function takeSettings(item: HistoryItem): Partial<TakeSettings> {
-  const fallback = {
+  const identity = {
     text: item.text,
     language: item.language || 'Auto',
     instruct: item.instruct || '',
     selectedProfileId: item.profile_id,
+    // A transcript never rides along with a take, not even its own saved
+    // edit: blank means the selected saved voice uses its stored transcript.
+    refText: '',
   };
-  // The previous voice's transcript must never ride along with this take's
-  // voice; blank means the saved profile's own transcript is used.
-  const noCarriedTranscript = { refText: '' };
+  const neutralEmotion = {
+    emotionMode: DEFAULT_CLONE_SETTINGS.emotionMode,
+    emotionText: DEFAULT_CLONE_SETTINGS.emotionText,
+    emotionAlpha: DEFAULT_CLONE_SETTINGS.emotionAlpha,
+    emotionVector: [...DEFAULT_CLONE_SETTINGS.emotionVector],
+  };
+  const fallback = { ...neutralEmotion, ...identity };
   try {
     const raw = JSON.parse(localStorage.getItem(key) ?? '{}')?.[item.id];
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw))
-      return { ...noCarriedTranscript, ...fallback };
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return fallback;
     // Validate every generation control with the settings store's own rules,
     // so a control added to CloneSettings is restored without a second list.
     const safe: Record<string, unknown> = {};
     for (const name of Object.keys(DEFAULT_CLONE_SETTINGS) as Array<keyof CloneSettings>)
       if (!PREFERENCES.has(name) && name in raw && acceptsCloneSetting(name, raw[name]))
         safe[name] = raw[name];
-    return { ...noCarriedTranscript, ...safe, ...fallback };
+    // The mode and its required input form a single setting. If the saved
+    // active input is missing, corrupt, or blank, restoring the mode would
+    // silently reuse a meaningless instruction. Reset the entire emotion
+    // selection to Off, while retaining other saved generation controls.
+    const validEmotion =
+      safe.emotionMode === 'none' ||
+      (safe.emotionMode === 'text' &&
+        typeof safe.emotionText === 'string' &&
+        Boolean(safe.emotionText.trim())) ||
+      (safe.emotionMode === 'vector' && Array.isArray(safe.emotionVector));
+    if (!validEmotion) {
+      delete safe.emotionMode;
+      delete safe.emotionText;
+      delete safe.emotionAlpha;
+      delete safe.emotionVector;
+    }
+    return { ...neutralEmotion, ...safe, ...identity };
   } catch {
-    return { ...noCarriedTranscript, ...fallback };
+    return fallback;
   }
 }
 export async function reuseTake(item: HistoryItem) {

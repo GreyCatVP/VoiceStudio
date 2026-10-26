@@ -1,6 +1,7 @@
 import { useNavigate } from '@tanstack/react-router';
 import { AudioPreviewButton } from '@/components/audio-preview-button';
 import { PlayInDockButton } from '@/components/now-playing-dock';
+import { takePlaybackKind } from '@/lib/audio/playback-kind';
 import { ProfileAvatar } from '@/components/profile-avatar';
 import { setWorkspace } from '@/lib/store/workspace';
 import { openTake, reuseTake, useSelectedTake } from '@/lib/store/takes';
@@ -15,6 +16,7 @@ import {
   StarIcon,
   Trash2Icon,
   WandSparklesIcon,
+  UsersRoundIcon,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -457,7 +459,8 @@ function TakeRow({ item, onStar, onReuse, onDelete }: TakeRowProps) {
             src={audioUrl(item.audio_path)}
             source={'take-' + item.id}
             title={displayTitle(item.text)}
-            subtitle={workspaceLabel}
+            kind={takePlaybackKind(item.mode)}
+            duration={item.duration_seconds}
           />
         )}
         <Button
@@ -685,7 +688,8 @@ export function VoicesSidebar({
               aria-label={t('clone.saved_profiles')}
               className="min-w-0 flex-1 rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent/50 data-active:bg-[var(--sidebar-row-active)] data-active:text-sidebar-foreground dark:data-active:border-transparent dark:data-active:bg-[var(--sidebar-row-active)] dark:data-active:text-sidebar-foreground"
             >
-              <span className="min-w-0 truncate">{t('clone.saved_profiles')}</span>
+              <UsersRoundIcon aria-hidden="true" />
+              <span className="min-w-0 truncate">{t('clone.savedTab')}</span>
             </TabsTrigger>
             <TabsTrigger
               value="takes"
@@ -693,7 +697,8 @@ export function VoicesSidebar({
               aria-label={t('clone.history_title')}
               className="min-w-0 flex-1 rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent/50 data-active:bg-[var(--sidebar-row-active)] data-active:text-sidebar-foreground dark:data-active:border-transparent dark:data-active:bg-[var(--sidebar-row-active)] dark:data-active:text-sidebar-foreground"
             >
-              <span className="min-w-0 truncate">{t('clone.history_title')}</span>
+              <HistoryIcon aria-hidden="true" />
+              <span className="min-w-0 truncate">{t('clone.recentsTab')}</span>
             </TabsTrigger>
           </TabsList>
         </div>

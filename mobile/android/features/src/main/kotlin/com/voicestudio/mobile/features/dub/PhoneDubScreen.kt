@@ -47,6 +47,8 @@ import java.io.File
     var audioOnly by rememberSaveable {mutableStateOf(false)}
     var copying by remember {mutableStateOf(false)}
     var more by rememberSaveable {mutableStateOf(false)}
+    var exportID by remember {mutableStateOf<String?>(null)}
+    var exportTarget by remember {mutableStateOf("")}
     var editing by remember {mutableStateOf<String?>(null)}
     var playing by rememberSaveable {mutableStateOf<String?>(null)}
     var savePath by rememberSaveable {mutableStateOf<String?>(null)}
@@ -164,11 +166,17 @@ import java.io.File
                 IconAction("mobile.speak.share",Icons.Default.Share) {scope.launch {try {shareLocalFile(context,file,if(file.extension=="mp4") "video/mp4" else "audio/wav")} catch(e:Exception) {vm.fail(e)}}}
                 IconAction("common.save",VSIcons.Download) {savePath=file.path;save.launch(record.request.title.substringBeforeLast('.').ifBlank {record.request.id}+"-${output.language}.${file.extension}")}
                 ReportAction(vm) {ReportSubjects.phoneDub(record.request,phone.models)}
+                if(record.checkpoint.done) IconAction("mobile.dub_advanced.exports",Icons.Default.Share) {exportID=record.request.id;exportTarget=output.language}
                 if(record.checkpoint.done && vm.phone.dubs.file(record.request.id,"original.pcm").isFile) IconAction("clone.edit",Icons.Default.Edit) {editing=record.request.id}
                 if(record.checkpoint.done) IconAction("mobile.simple.remove_job",Icons.Default.Delete) {vm.run {if(playing==file.path) playing=null;vm.phone.dubs.delete(record.request.id);vm.phone.refreshDubs()}}
             }
         }}
         playing?.let {LocalAudioPlayer(File(it),vm::fail)}
+        exportID?.let {id ->
+            androidx.compose.ui.window.Dialog(onDismissRequest={exportID=null},properties=androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth=false)) {
+                Surface(Modifier.fillMaxSize(),color=role("canvas")) {PhoneDubExportScreen(vm,id,exportTarget) {exportID=null}}
+            }
+        }
         editing?.let {id ->
             androidx.compose.ui.window.Dialog(onDismissRequest={editing=null},properties=androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth=false)) {
                 Surface(Modifier.fillMaxSize(),color=role("canvas")) {DubEditorScreen(vm,id) {editing=null}}

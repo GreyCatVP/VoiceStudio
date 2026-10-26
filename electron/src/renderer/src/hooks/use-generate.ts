@@ -30,11 +30,11 @@ import { effectiveSamplingSteps } from '@/lib/audio/quality';
 import { cachedTtsLanguagesSupported } from '@/lib/language-options';
 import { tr } from '@/lib/i18n-text';
 import { queryKeys } from '@/lib/query';
-import { cloneSettingsStore } from '@/lib/store/clone-settings';
+import { cloneSettingsStore, DEFAULT_CLONE_SETTINGS } from '@/lib/store/clone-settings';
 import { setLatestOutput } from '@/lib/store/output';
 import { referenceStore } from '@/lib/store/reference';
 import { beginAppActivity } from '@/lib/app-activity';
-import { useTtsReadiness } from './use-tts-readiness';
+import { isPresetOnly, useTtsReadiness } from './use-tts-readiness';
 import { useEngines } from './use-engines';
 import { recordActionBreadcrumb } from '@/lib/report-breadcrumb';
 import { announceDroppedSpeech } from '@/lib/dropped-speech';
@@ -67,7 +67,7 @@ export interface DesignGenerateInput {
  * `cloning`: a saved sample would be re-rendered, but the engine ignores
  * reference audio, so it would speak with a preset voice instead.
  */
-type DesignBlocker = 'engine' | 'loading' | 'design' | 'cloning' | null;
+export type DesignBlocker = 'engine' | 'loading' | 'design' | 'cloning' | null;
 
 /**
  * True when re-rendering this linked design profile clones its saved sample
@@ -108,6 +108,15 @@ export interface UseGenerateClone {
   cloneBlocker: CloneBlocker;
   /** How the active engine reads `instruct`: OmniVoice tags or as written (#2389). */
   instructVocabulary: InstructVocabulary;
+}
+
+/** A saved voice carries its own transcript; send only a manual correction (#3192),
+ * so unchanged or blank text keeps the server's stored-transcript path. */
+export function manualProfileTranscript(
+  typed: string,
+  stored: string | null | undefined,
+): string | undefined {
+  return typed.trim() && typed !== (stored ?? '') ? typed : undefined;
 }
 
 function failureTopic(err: unknown): string | null {
@@ -159,6 +168,11 @@ function announceResultNotices(result: GenerateResult): void {
   }
 }
 
+/** Drive a single synthesis lifecycle and forward per-take engine capabilities.
+ *
+ * Cloning may include IndexTTS2 text or vector emotion; unsupporting engines
+ * and the independent Voice Design workspace never inherit those controls.
+ */
 function useGenerateController(): UseGenerateClone {
   const queryClient = useQueryClient();
   const inputBlocker = useCloneInputsReadiness();
@@ -172,6 +186,7 @@ function useGenerateController(): UseGenerateClone {
   const designBlocker: DesignBlocker =
     activeTts?.supports_voice_design === false ? 'design' : ttsBlocker;
   const cannotClone = activeTts?.supports_cloning === false;
+  const presetOnly = isPresetOnly(activeTts);
   const designBlockerFor = useCallback(
     (profile: Profile | null | undefined): DesignBlocker => {
       if (!clonesSavedSample(profile)) return designBlocker;
@@ -270,6 +285,7 @@ function useGenerateController(): UseGenerateClone {
     [],
   );
 
+  /** Synthesize a clone or designed take; only supported clone engines get emotion. */
   const generate = useCallback(
     async (design?: DesignGenerateInput) => {
       const settings = cloneSettingsStore.state;
@@ -293,7 +309,8 @@ function useGenerateController(): UseGenerateClone {
             ) || !design.text.trim()
           : blocker ||
             !settings.text.trim() ||
-            (!settings.selectedProfileId && !reference.file?.size)
+            // A preset-only engine speaks its preset voice: no clip or profile.
+            (!presetOnly && !settings.selectedProfileId && !reference.file?.size)
       ) {
         if (blocker === 'reference') setWorkspace({ panel: 'voice' });
         return;
@@ -325,7 +342,12 @@ function useGenerateController(): UseGenerateClone {
       const controller = new AbortController();
       abortRef.current = controller;
       try {
-        const free = design?.instruct ?? settings.instruct;
+        // A preset-only engine that can't design never reads a style
+        // instruct, and /generate refuses one there as a design request: the
+        // preset voice take keeps working with a leftover instruct (#3413).
+        const free =
+          design?.instruct ??
+          (presetOnly && activeTts?.supports_voice_design === false ? '' : settings.instruct);
         // Only OmniVoice's closed tag set needs reducing; other engines read
         // the description natively and would lose whatever the sanitizer drops.
         const instruct = !free.trim()
@@ -337,24 +359,38 @@ function useGenerateController(): UseGenerateClone {
           text: design?.text ?? settings.text,
           seed: design?.seed,
           language: design?.language ?? settings.language,
-          profileId: design ? (design.profileId ?? null) : settings.selectedProfileId,
-          refAudio: design || settings.selectedProfileId ? null : reference.file,
-          refText: design
-            ? undefined
-            : settings.selectedProfileId
-              ? // A saved voice already carries its transcript; send only a manual
-                // correction so unchanged stored text keeps the server's own path.
-                settings.refText.trim() &&
-                settings.refText !==
-                  (queryClient
-                    .getQueryData<Profile[]>(queryKeys.profiles)
-                    ?.find((profile) => profile.id === settings.selectedProfileId)?.ref_text ?? '')
-                ? settings.refText
-                : undefined
-              : settings.refText,
+          // A preset-only engine renders its preset voice; sending the saved
+          // voice or clip would be refused (it cannot clone).
+          profileId: design
+            ? (design.profileId ?? null)
+            : presetOnly
+              ? null
+              : settings.selectedProfileId,
+          refAudio: design || settings.selectedProfileId || presetOnly ? null : reference.file,
+          refText:
+            design || presetOnly
+              ? undefined
+              : settings.selectedProfileId
+                ? manualProfileTranscript(
+                    settings.refText,
+                    queryClient
+                      .getQueryData<Profile[]>(queryKeys.profiles)
+                      ?.find((profile) => profile.id === settings.selectedProfileId)?.ref_text,
+                  )
+                : settings.refText,
           instruct,
           instructVocabulary,
           designRecipe: design?.recipe,
+          // IndexTTS2's emotion controls affect the performance, not the
+          // reference voice. Never leak stale emotion options to other engines
+          // or to the separate Voice Design workspace.
+          ...(!design && activeTts?.supports_emotion
+            ? settings.emotionMode === 'vector'
+              ? { emoVector: [...settings.emotionVector] }
+              : settings.emotionMode === 'text' && settings.emotionText.trim()
+                ? { emoText: settings.emotionText.trim(), emoAlpha: settings.emotionAlpha }
+                : {}
+            : {}),
           steps: effectiveSamplingSteps(
             settings.steps,
             queryClient.getQueryData<EnginesResponse>(queryKeys.engines)?.tts?.active,
@@ -382,7 +418,22 @@ function useGenerateController(): UseGenerateClone {
         setLatestOutput(result, design?.text ?? settings.text);
         recordActionBreadcrumb(`generate:${reportMode}:complete`);
         toast.success(tr('tts.generationComplete'), { position: 'top-right' });
-        if (!design) rememberTake(result.id, settings);
+        if (!design)
+          // Record what was actually rendered: a take sent without emotion (an
+          // engine without IndexTTS2 controls, or Off) is saved as neutral, so
+          // reusing it later never adds emotion the recording did not use.
+          rememberTake(
+            result.id,
+            'emoText' in input || 'emoVector' in input
+              ? settings
+              : {
+                  ...settings,
+                  emotionMode: DEFAULT_CLONE_SETTINGS.emotionMode,
+                  emotionText: DEFAULT_CLONE_SETTINGS.emotionText,
+                  emotionAlpha: DEFAULT_CLONE_SETTINGS.emotionAlpha,
+                  emotionVector: [...DEFAULT_CLONE_SETTINGS.emotionVector],
+                },
+          );
         void Promise.all([
           queryClient.invalidateQueries({ queryKey: queryKeys.history }),
           queryClient.invalidateQueries({ queryKey: ['loaded-models'] }),
@@ -419,7 +470,7 @@ function useGenerateController(): UseGenerateClone {
           .catch(() => {});
       }
     },
-    [queryClient, onProgress, blocker, designBlockerFor, instructVocabulary, activeTts],
+    [queryClient, onProgress, blocker, designBlockerFor, instructVocabulary, activeTts, presetOnly],
   );
 
   const cancel = useCallback(() => {
