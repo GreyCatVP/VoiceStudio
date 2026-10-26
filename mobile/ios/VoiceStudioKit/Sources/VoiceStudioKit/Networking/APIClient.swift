@@ -37,11 +37,13 @@ public struct APIClient: Sendable {
         }
         catch { throw ClientError("mobile.errors.invalid_response") }
     }
-    public func download(_ request: URLRequest) async throws -> DownloadReply {
+    public func download(_ request: URLRequest, maxBytes: Int? = nil) async throws -> DownloadReply {
         try Task.checkCancellation()
         guard let url = request.url, PairingAddress.sameOrigin(url, address.baseURL) else { throw ClientError.invalidURL }
         do {
-            let reply = try await transport.download(request)
+            let reply: DownloadReply
+            if let maxBytes { reply = try await transport.download(request, maxBytes: maxBytes) }
+            else { reply = try await transport.download(request) }
             do {
                 try Task.checkCancellation()
                 let body: Data

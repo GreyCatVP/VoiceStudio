@@ -17,12 +17,20 @@ on:
     paths:
       - "mobile/**"
       - "docs/logo.svg"
+      - "scripts/prepare_mobile_contributors.py"
+      - "scripts/export-mobile-contributors.ts"
+      - "electron/src/renderer/src/components/brand-icons.tsx"
+      - "electron/src/renderer/src/features/home/contributors/**"
       - ".github/workflows/mobile.yml"
   push:
     branches: [main]
     paths:
       - "mobile/**"
       - "docs/logo.svg"
+      - "scripts/prepare_mobile_contributors.py"
+      - "scripts/export-mobile-contributors.ts"
+      - "electron/src/renderer/src/components/brand-icons.tsx"
+      - "electron/src/renderer/src/features/home/contributors/**"
       - "electron/src/renderer/src/i18n/locales/**"
       - "electron/src/shared/languages.json"
       - "package.json"

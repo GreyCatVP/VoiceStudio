@@ -105,6 +105,7 @@ it('opens both creator profiles from the accessible avatar card', async () => {
     'https://palash.dev',
   );
   expect(screen.getByText('homeUi.creatorCoreTeam')).toBeVisible();
+  expect(screen.getByText('homeUi.maintainerPalash')).toBeVisible();
   expect(screen.getAllByText('homeUi.follow')).toHaveLength(2);
   expect(github).toHaveAttribute('href', 'https://github.com/debpalash');
   expect(x).toHaveAttribute('href', 'https://x.com/idebpalash');
@@ -119,6 +120,11 @@ it('gives velixio the same hover card as the creator', async () => {
   fireEvent.click(screen.getByRole('button', { name: '@velixio' }));
   const github = await screen.findByRole('link', { name: 'GitHub @velixio' });
   expect(github).toHaveAttribute('href', 'https://github.com/velixio');
+  expect(screen.getByText('homeUi.maintainerShimul')).toBeVisible();
+  expect(screen.getByRole('link', { name: 'homeUi.website shimul.me' })).toHaveAttribute(
+    'href',
+    'https://shimul.me',
+  );
   expect(screen.getByRole('link', { name: 'X @shimuldn' })).toHaveAttribute(
     'href',
     'https://x.com/shimuldn',

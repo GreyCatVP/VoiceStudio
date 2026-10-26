@@ -655,7 +655,8 @@ def create_mcp_server(app=None):
             '{"total":646,"popular":['
             '"en","es","fr","de","it","pt","ru","ja","ko","zh",'
             '"ar","hi","tr","nl","pl","sv","da","fi","no","el"'
-            '],"note":"Pass any ISO 639 code or set language=Auto for detection."}'
+            '],"note":"Pass any ISO 639 code or set language=Auto for detection. '
+            'pt-BR and pt-PT select Brazilian or European Portuguese; pt means pt-BR."}'
         )
 
     @mcp.tool()

@@ -27,9 +27,11 @@ Security (see plan front-matter threat model):
     T-04-02 — Subprocess arg injection: argv is composed from typed
               ``pathlib.Path`` objects rooted in ``$HF_HUB_CACHE`` or a
               ``tempfile.mkstemp()`` output path. ``shell=False`` always.
-    T-04-03 — GGUF quant served from network: ``huggingface_hub`` enforces
-              SHA verification at download time; revision is pinned to
-              ``quant_map.json._meta.source_commit_sha``.
+    T-04-03 — GGUF quant served from network: an installed pair is read
+              from the local HuggingFace cache first; only a missing
+              pair is fetched, on first generate, through
+              ``huggingface_hub`` (SHA-verified at download time) at the
+              revision pinned in ``quant_map.json._meta.source_commit_sha``.
     T-04-04 — HF_TOKEN leak into stderr: subprocess stderr is decoded
               through ``services.tts_backend._mask_hf_tokens`` before
               landing in any logger record.
@@ -59,7 +61,13 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+from .compute import BACKEND_ENV as BACKEND_ENV, DEVICE_ENV as DEVICE_ENV
+from .quant_cache import resolve_installed_pair
+
+if TYPE_CHECKING:
+    from core.device_caps import HostCaps
 
 logger = logging.getLogger("omnivoice.gguf")
 
@@ -162,7 +170,41 @@ def _spawn_env() -> dict[str, str]:
     for var in ("LD_LIBRARY_PATH", "DYLD_FALLBACK_LIBRARY_PATH"):
         prev = env.get(var)
         env[var] = bin_dir if not prev else bin_dir + os.pathsep + prev
-    return env
+    from .compute import apply_compute_env
+    return apply_compute_env(env)
+
+
+#: Shared ggml runtime libraries the build drops next to the binary. With
+#: ``GGML_BACKEND_DL`` the runtime picks its CPU/Vulkan backend from these
+#: at load time, so they are as much "the runtime" as the executable.
+_GGML_LIB_RE = re.compile(r"^(?:lib)?ggml[\w.-]*\.(?:so(?:\.\d+)*|dylib|dll)$", re.IGNORECASE)
+
+
+def _mismatched_runtime_library(bin_dir: Path, manifest: dict[str, str]) -> str | None:
+    """Return the first listed ggml library whose bytes differ from the manifest.
+
+    Every listed library that is present must match. A listed library that
+    is absent belongs to another platform's build and is skipped; a present
+    library the manifest does not list is logged — manifests written before
+    #3042 listed only the executable, and refusing those installs would break
+    working runtimes.
+    """
+    for name, digest in sorted(manifest.items()):
+        if not _GGML_LIB_RE.match(name):
+            continue
+        path = bin_dir / name
+        if path.is_file() and _sha256_of_file(path).lower() != digest.lower():
+            return name
+    unlisted = sorted(
+        p.name for p in bin_dir.iterdir()
+        if p.is_file() and _GGML_LIB_RE.match(p.name) and p.name not in manifest
+    ) if manifest else []
+    if unlisted:
+        logger.warning(
+            "GGUF runtime libraries not covered by bin/checksums.sha256: %s",
+            ", ".join(unlisted),
+        )
+    return None
 
 
 def _binary_repair_hint() -> str:
@@ -254,6 +296,48 @@ def _sha256_of_file(p: Path, *, chunk: int = 1 << 20) -> str:
         for buf in iter(lambda: f.read(chunk), b""):
             h.update(buf)
     return h.hexdigest()
+
+
+def _automatic_entry(quant_map: dict) -> dict:
+    """The quant entry the automatic compute policy selects.
+
+    The native runtime cannot enumerate the adapter it will use, so the
+    policy stays on the conservative tier until that capacity is
+    verified. An explicit Settings override is handled by the caller.
+    """
+    from .compute import automatic_compute_class
+
+    entry = quant_map.get(automatic_compute_class())
+    if isinstance(entry, dict):
+        return entry
+    # No matching quant class — fall back.
+    return quant_map.get("cpu", {"base": "", "tokenizer": ""})
+
+
+def _weights_install_command(entry: dict, revision: str) -> str:
+    """The pinned command that pre-installs one quant pair by hand.
+
+    The engine downloads a missing pair itself on first generate; this
+    is the fallback for a host that cannot reach Hugging Face from the
+    app (it must land in the cache this app reads).
+    """
+    return (
+        f"hf download {_HF_REPO_ID} {entry.get('base')} "
+        f"{entry.get('tokenizer')} --revision {revision} "
+        f"--cache-dir \"<the cache directory this app reads>\""
+    )
+
+
+def _weights_missing_reason(entry: dict, revision: str, exc: BaseException | None = None) -> str:
+    """Actionable reason when the pinned pair is neither cached nor fetchable."""
+    cause = f" ({type(exc).__name__}: {exc})" if exc is not None else ""
+    return (
+        f"Could not download the GGUF weights {entry.get('base')} + "
+        f"{entry.get('tokenizer')}{cause}. Check the connection to "
+        "huggingface.co (or set a mirror in Settings) and try again, or "
+        "pre-install the pinned pair with:\n\n    "
+        f"{_weights_install_command(entry, revision)}"
+    )
 
 
 class ChecksumManifestError(RuntimeError):
@@ -373,8 +457,8 @@ def _make_backend_class():
         ``$HF_HUB_CACHE`` and writes a 24 kHz mono WAV to a temp path
         which we then load back into a ``torch.Tensor``.
 
-        ``compute_class`` → quant selection is driven by
-        ``hardware_probe.detect_capabilities()`` and the shipped
+        ``compute_class`` → quant selection is driven by the native
+        capacity policy in ``compute.automatic_compute_class()`` and the shipped
         ``quant_map.json`` table. The user can override the selection
         from Settings (allow-listed against the same JSON).
         """
@@ -382,8 +466,12 @@ def _make_backend_class():
         id = "omnivoice-gguf"
         display_name = "OmniVoice (GGUF, hardware-adaptive)"
         instruct_vocabulary = "tags"
-        gpu_compat = ("cuda", "mps", "cpu")
+        gpu_compat = ("cuda", "vulkan", "mps", "cpu")
+
         supports_voice_design = False
+        # The seed reaches the binary as --seed; the parent's torch RNG never
+        # does, so /generate must forward it (#3413).
+        supports_generation_seed = True
         # Every generate() spawns the external binary — allocations live in
         # that process, invisible to parent-side accelerator counters.
         runs_out_of_process = True
@@ -394,12 +482,18 @@ def _make_backend_class():
         # Quick probe at startup to confirm the binary spawns at all.
         _PROBE_TIMEOUT_S = 5.0
 
+        @classmethod
+        def runtime_compute_profile(cls, caps: HostCaps) -> dict:
+            """Keep budgets conservative until the native device is verified."""
+            from .compute import runtime_profile
+            return runtime_profile(cls, caps)
+
         def __init__(self, quant_override: Optional[str] = None):
             """Construct without spawning the binary.
 
             ``quant_override`` — if provided, force this quant filename
             (must be in ``quant_map.json``'s allow-list). If ``None`` or
-            ``"auto"``, the probe + ``quant_map.json`` decide.
+            ``"auto"``, the native capacity policy + ``quant_map.json`` decide.
             """
             self._quant_override = quant_override
             self._quant_map: Optional[dict] = None
@@ -407,12 +501,12 @@ def _make_backend_class():
         # ── TTSBackend protocol ───────────────────────────────────────
 
         @classmethod
-        def is_available(cls) -> tuple[bool, str]:
-            """Verify the binary is present, checksum matches, not quarantined.
+        def _binary_status(cls) -> tuple[bool, str]:
+            """Verify the bundled runtime binary.
 
-            Never raises — failures roll up as ``(False, reason)`` so
-            ``list_backends()`` can render the picker even when the
-            engine is broken.
+            Existence, executable-magic, SHA-256 manifest, macOS
+            quarantine and the POSIX execute bit. Never raises — failures
+            roll up as ``(False, reason)``.
             """
             try:
                 bin_path = _binary_path()
@@ -461,6 +555,16 @@ def _make_backend_class():
                             f"{expected[:12]}…, actual is {actual[:12]}…. "
                             f"Reinstall or run the bundled `xattr -cr` cleanup."
                         )
+                if manifest:
+                    bad_lib = _mismatched_runtime_library(bin_path.parent, manifest)
+                    if bad_lib is not None:
+                        return False, (
+                            f"GGUF runtime library checksum mismatch for "
+                            f"{bad_lib} — the runtime would load a library "
+                            f"other than the one that was built. Reinstall "
+                            f"VoiceStudio or rebuild with "
+                            f"`scripts/build-omnivoice-tts.sh`."
+                        )
                 # macOS Gatekeeper quarantine detection (Pitfall 3).
                 if _is_macos_quarantined(bin_path):
                     return False, (
@@ -489,6 +593,19 @@ def _make_backend_class():
             except Exception as exc:
                 return False, f"{type(exc).__name__}: {exc}"
 
+        @classmethod
+        def is_available(cls) -> tuple[bool, str]:
+            """Verify the bundled runtime; weights are not a readiness gate.
+
+            A missing weight pair is fetched on first generate (see
+            ``_resolve_quant_paths``), so a fresh install with a working
+            binary is a usable engine — the same contract as before
+            #3042. Never raises — failures roll up as ``(False, reason)``
+            so ``list_backends()`` can render the picker even when the
+            engine is broken.
+            """
+            return cls._binary_status()
+
         @property
         def sample_rate(self) -> int:
             return self._SAMPLE_RATE
@@ -510,10 +627,10 @@ def _make_backend_class():
 
         def _select_quant_entry(self) -> dict:
             """Return the ``{base, tokenizer, rationale}`` dict for the
-            quant the current hardware should use (or the override).
+            quant the selected compute device should use (or the override).
 
-            Always returns a dict — falls back to ``cpu`` if the probe
-            returns an unknown compute_class (defense in depth).
+            Always returns a dict — falls back to ``cpu`` if the selected
+            compute class has no quant entry (defense in depth).
             """
             q = self._ensure_quant_map()
 
@@ -527,62 +644,87 @@ def _make_backend_class():
                         if entry.get("base") == self._quant_override:
                             return entry
 
-            # Auto-select by compute class.
-            from .hardware_probe import detect_capabilities
+            # The parent's GPU memory cannot prove the native adapter's capacity.
+            return _automatic_entry(q)
 
-            caps = detect_capabilities()
-            entry = q.get(caps.compute_class)
-            if isinstance(entry, dict):
-                return entry
-            # Probe returned a class we don't have a row for — fall back.
-            return q.get("cpu", {"base": "", "tokenizer": ""})
+        def _explicit_override(self) -> str | None:
+            """The quant filename the user pinned in Settings, if any."""
+            if not self._quant_override or self._quant_override == "auto":
+                return None
+            return self._quant_override
 
-        def _resolve_quant_paths(self) -> tuple[Path, Path, dict]:
-            """Download (cached) the base+tokenizer quants and return paths.
+        def _resolve_quant_paths(self, *, download: bool = True) -> tuple[Path, Path, dict]:
+            """Return the base+tokenizer paths for this engine.
 
-            Raises ``RuntimeError`` if the download fails (e.g. network
-            block, HF auth required for a gated upstream the GGUF derives
-            from). The caller's ``is_available`` / ``probe_load`` is
-            expected to short-circuit before reaching here when network
-            is unreachable.
+            An installed pair at the pinned revision always wins, so an
+            existing installation is never re-downloaded. Only when no
+            usable pair is cached — and ``download`` is true — is the
+            selected pair fetched from Hugging Face (first generate):
+
+            * an explicit quant override is strict — only that exact
+              pair counts, and a missing one is reported instead of
+              silently running a different precision;
+            * an explicit CPU choice keeps the CPU tier's quant policy,
+              so a larger cached quant is not used in its place;
+            * otherwise the selected tier is used when installed, and an
+              already-installed automatic pair is accepted as a fallback
+              so an existing installation is never re-downloaded.
+
+            Raises ``RuntimeError`` with the pinned install command when
+            no usable pair is present and it cannot be downloaded.
             """
+            q = self._ensure_quant_map()
+            revision = q["_meta"]["source_commit_sha"]
             entry = self._select_quant_entry()
-            base_name = entry.get("base")
-            tok_name = entry.get("tokenizer")
-            if not base_name or not tok_name:
+            override = self._explicit_override()
+            if override and entry.get("base") != override:
+                raise RuntimeError(
+                    f"the configured GGUF quant override {override!r} names no "
+                    f"known quant base file — clear the override to use the "
+                    f"automatic selection"
+                )
+            if not entry.get("base") or not entry.get("tokenizer"):
                 raise RuntimeError(
                     "quant_map.json entry missing base/tokenizer filenames; "
                     "cannot resolve quants"
                 )
+            from .compute import cpu_selection_explicit
 
-            from huggingface_hub import hf_hub_download
+            allow_fallback = not override and not cpu_selection_explicit()
+            pair = resolve_installed_pair(
+                q,
+                entry,
+                repo_id=_HF_REPO_ID,
+                revision=revision,
+                allow_fallback=allow_fallback,
+            )
+            if pair is not None:
+                return pair[0], pair[1], pair[2]
+            if not download:
+                raise RuntimeError(_weights_missing_reason(entry, revision))
+            try:
+                from huggingface_hub import hf_hub_download
 
-            meta = self._ensure_quant_map()["_meta"]
-            rev = meta["source_commit_sha"]
-            base_path = Path(
-                hf_hub_download(
-                    repo_id=_HF_REPO_ID,
-                    filename=base_name,
-                    revision=rev,
-                )
-            )
-            tok_path = Path(
-                hf_hub_download(
-                    repo_id=_HF_REPO_ID,
-                    filename=tok_name,
-                    revision=rev,
-                )
-            )
+                base_path = Path(hf_hub_download(
+                    repo_id=_HF_REPO_ID, filename=entry["base"], revision=revision,
+                ))
+                tok_path = Path(hf_hub_download(
+                    repo_id=_HF_REPO_ID, filename=entry["tokenizer"], revision=revision,
+                ))
+            except Exception as exc:
+                raise RuntimeError(_weights_missing_reason(entry, revision, exc)) from exc
             return base_path, tok_path, entry
 
         @classmethod
-        def probe_load(cls, *, quant: Optional[str] = None, timeout: float = 5.0) -> None:
+        def probe_load(cls, *, quant: str | None = None, timeout: float = 5.0) -> None:
             """Spawn the binary with ``--help`` to confirm it loads cleanly.
 
-            Lightweight check — does not download quants, does not run
-            inference. The actual quant load is deferred to the first
-            ``generate()`` call (lazy) so a host with no network at
-            startup still passes the probe.
+            Lightweight check of the *runtime* only — it does not read
+            the weight cache, does not download quants and does not run
+            inference. Whether usable weights are installed is
+            :meth:`is_available`'s job; the two are separate questions
+            about separate files. The actual quant load is deferred to
+            the first ``generate()`` call.
 
             Raises:
                 RuntimeError — binary is unavailable, quarantined, or
@@ -590,7 +732,7 @@ def _make_backend_class():
                 FileNotFoundError — binary missing.
                 subprocess.TimeoutExpired — binary hung past ``timeout``.
             """
-            ok, reason = cls.is_available()
+            ok, reason = cls._binary_status()
             if not ok:
                 raise RuntimeError(f"GGUF engine unavailable: {reason}")
             bin_path = _binary_path()
@@ -601,6 +743,9 @@ def _make_backend_class():
                     timeout=timeout,
                     check=False,
                     env=_spawn_env(),
+                    # ggml's dynamic backend loader also scans the working
+                    # directory; pin it to the verified bin/ directory.
+                    cwd=str(bin_path.parent),
                 )
             except FileNotFoundError:
                 raise
@@ -811,6 +956,8 @@ def _make_backend_class():
                     timeout=timeout_s,
                     check=False,
                     env=_spawn_env(),
+                    # See probe_load: keep ggml's backend scan inside bin/.
+                    cwd=str(_binary_path().parent),
                 )
             except subprocess.TimeoutExpired as exc:
                 raise RuntimeError(

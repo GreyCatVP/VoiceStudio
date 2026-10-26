@@ -81,10 +81,12 @@ def clear_install_cooldowns() -> None:
     _install_cooldowns.clear()
     _install_failures.clear()
 
-# Repo_ids the user asked to cancel (FDL-11). Checked between retry attempts.
-# Note: a single in-flight snapshot_download/Xet fetch is not interruptible
-# mid-file in hf_hub 1.7.2 — cancel stops further retries, marks the row
-# cancelled, and clears the cooldown so a cancel isn't rate-limited.
+# Repo_ids the user asked to cancel (FDL-11). The install worker observes the
+# flag at every boundary it controls AND inside the transfer itself: the
+# segmented downloader polls it between chunks, and snapshot_download gets a
+# tqdm class whose update() raises once the flag is set, so an in-flight file
+# stops at its next chunk instead of running to completion. A cancelled
+# install then rolls the cache back (services.hf_cache_rollback).
 _cancelled: set[str] = set()
 
 # One worker per repo. Repeated clicks and feature-level recovery can converge
@@ -198,6 +200,42 @@ def _repo_cancelled(repo_id: str) -> bool:
     return repo_id in _cancelled
 
 
+def _cancellable_tqdm_class(repo_id: str) -> type:
+    """A tqdm class that aborts the transfer feeding it once ``repo_id`` is
+    cancelled.
+
+    snapshot_download runs each file in a worker thread that nothing outside
+    can interrupt, but every downloaded chunk passes through the progress bar
+    (huggingface_hub routes per-file bars into the tqdm_class instances), so
+    raising from ``update()`` stops each file at its next chunk. The file
+    thread-map bar raises too, which cancels files that have not started. The
+    base keeps the app's progress-emitting subclass when it is installed.
+    """
+    base = hf_progress.tracked_tqdm_class()
+    if base is None:
+        from huggingface_hub.utils import tqdm as base  # type: ignore[no-redef]
+
+    class _CancellableTqdm(base):  # type: ignore[misc,valid-type]
+        def update(self, n=1):
+            if _repo_cancelled(repo_id):
+                raise _InstallCancelled()
+            return super().update(n)
+
+    return _CancellableTqdm
+
+
+def _sleep_unless_cancelled(repo_id: str, seconds: float) -> None:
+    """Retry backoff that a cancel interrupts within a quarter second."""
+    deadline = time.monotonic() + max(0.0, seconds)
+    while True:
+        if _repo_cancelled(repo_id):
+            raise _InstallCancelled()
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return
+        time.sleep(min(0.25, remaining))
+
+
 def _create_cache_pointer(blob_path: str, pointer: str) -> None:
     """Keep the canonical blob while exposing it from the snapshot tree.
 
@@ -237,7 +275,7 @@ def _segmented_snapshot(repo_id: str, *, endpoint: "str | None", revision: str) 
     from huggingface_hub.file_download import (
         hf_hub_url, get_hf_file_metadata, repo_folder_name,
     )
-    from services.segmented_download import segmented_download
+    from services.segmented_download import DownloadCancelled, segmented_download
     from services.token_resolver import resolve as _resolve_token
 
     # `resolve()` returns a ResolvedToken record, not the bearer string, and
@@ -290,12 +328,18 @@ def _segmented_snapshot(repo_id: str, *, endpoint: "str | None", revision: str) 
             raise RuntimeError("download target is outside the model cache") from exc
         os.makedirs(os.path.dirname(pointer), exist_ok=True)
         if not os.path.exists(blob_path):
-            _asyncio.run(segmented_download(
-                meta.location or url, blob_path,
-                token=token, expected_size=meta.size, expected_etag=etag,
-                on_bytes=lambda d, k=rel: download_aggregator.add_bytes(repo_id, k, d),
-                cancel_check=lambda: _repo_cancelled(repo_id),
-            ))
+            try:
+                _asyncio.run(segmented_download(
+                    meta.location or url, blob_path,
+                    token=token, expected_size=meta.size, expected_etag=etag,
+                    on_bytes=lambda d, k=rel: download_aggregator.add_bytes(repo_id, k, d),
+                    cancel_check=lambda: _repo_cancelled(repo_id),
+                ))
+            except DownloadCancelled as exc:
+                # A user cancel, not an accelerator failure: it must never be
+                # classified as one, or the install falls back to
+                # snapshot_download and downloads the whole model anyway.
+                raise _InstallCancelled() from exc
         if not os.path.lexists(pointer):
             _create_cache_pointer(blob_path, pointer)
 
@@ -436,7 +480,9 @@ def model_install_status():
             {
                 "repo_id": repo_id,
                 "target": "local",
-                "state": "downloading",
+                # Reported until the worker has stopped and cleaned up, so the
+                # UI keeps Cancel disabled instead of offering it again.
+                "state": "cancelling" if repo_id in _cancelled else "downloading",
                 **(aggregate.snapshot() if aggregate else {}),
             }
         )
@@ -599,6 +645,26 @@ async def install_model(req: InstallModelRequest):
             ),
         )
     loop = asyncio.get_running_loop()
+    _cache_before = None
+
+    def _rollback_cancelled_install() -> None:
+        """Remove the partial data a cancelled install wrote: transfer files,
+        blobs and snapshot entries that did not exist before it started, and
+        rewritten revision markers. A dependency another install is still
+        writing is left alone."""
+        if _cache_before is None:
+            return
+        from services import hf_cache_rollback
+        with _active_installs_lock:
+            busy = {
+                repo for repo in _cache_before.repos
+                if repo != req.repo_id and repo in _active_installs
+            }
+        try:
+            hf_cache_rollback.rollback(_cache_before, skip=busy)
+        except Exception:  # noqa: BLE001 — cleanup must not mask the cancel
+            logger.warning("model install %s: cancelled download cleanup failed", req.repo_id)
+        invalidate_cache()
 
     def _do():
         # Failure handling must work even when imports, token resolution or
@@ -621,6 +687,18 @@ async def install_model(req: InstallModelRequest):
                 LocalEntryNotFoundError,
             )
             logger.info("model install starting: %s", req.repo_id)
+            # Record the cache before any byte lands, so a cancel can remove
+            # exactly what this install added and keep what was already there.
+            nonlocal _cache_before
+            try:
+                from huggingface_hub import constants as _hf_constants
+                from services import hf_cache_rollback
+                _cache_before = hf_cache_rollback.capture(
+                    _hf_constants.HF_HUB_CACHE,
+                    [req.repo_id, *(d["repo_id"] for d in model_spec.get("dependencies") or ())],
+                )
+            except Exception:  # noqa: BLE001 — install proceeds without rollback data
+                logger.warning("model install %s: cache state could not be recorded", req.repo_id)
             # Apply opt-in Xet tuning knobs (high-perf / HDD) before downloading.
             apply_xet_env()
             # Drive snapshot_download explicitly (FDL-02): pass our progress-
@@ -637,9 +715,7 @@ async def install_model(req: InstallModelRequest):
             _bearer = resolved_token.token if resolved_token else None
             if allow_patterns:
                 dl_kwargs["allow_patterns"] = allow_patterns
-            _tqdm_cls = hf_progress.tracked_tqdm_class()
-            if _tqdm_cls is not None:
-                dl_kwargs["tqdm_class"] = _tqdm_cls
+            dl_kwargs["tqdm_class"] = _cancellable_tqdm_class(req.repo_id)
             _endpoint = _download_endpoint(gated=_gated)
             if _endpoint:
                 dl_kwargs["endpoint"] = _endpoint
@@ -652,8 +728,6 @@ async def install_model(req: InstallModelRequest):
 
             # Emit a 'resolving' heartbeat every 2s while snapshot_download
             # resolves repo metadata (before any tqdm bars appear).
-            import time as _t
-
             def _heartbeat():
                 _step = 0
                 while not _resolving.is_set():
@@ -702,6 +776,8 @@ async def install_model(req: InstallModelRequest):
                     if dependency.get("allow_patterns"):
                         dependency_plan_kwargs["allow_patterns"] = dependency["allow_patterns"]
                     _plan.extend(snapshot_download(**dependency_plan_kwargs))  # nosec B615 -- immutable revision_for pin
+                if req.repo_id in _cancelled:
+                    raise _InstallCancelled()
                 _summary = compute_plan(_plan)
                 # Disk-space guard (before a single byte flows): the preflight
                 # gives an exact "to download" size, so reject an install that
@@ -792,6 +868,8 @@ async def install_model(req: InstallModelRequest):
                         except _InstallCancelled:
                             raise
                         except Exception as _seg_err:
+                            if req.repo_id in _cancelled:
+                                raise _InstallCancelled() from _seg_err
                             if is_disk_full_error(_seg_err):
                                 raise  # the plain path would hit the same wall
                             _segmented_off, _seg_reraise = _segmented_retry_plan(
@@ -833,7 +911,14 @@ async def install_model(req: InstallModelRequest):
                     if req.repo_id in _cancelled:
                         raise _InstallCancelled()
                     break
+                except _InstallCancelled:
+                    raise
                 except Exception as net_err:
+                    # Whatever an aborted transfer surfaces as (a wrapped
+                    # exception, an Xet error from the progress callback), a
+                    # failure after the user cancelled is that cancel.
+                    if req.repo_id in _cancelled:
+                        raise _InstallCancelled() from net_err
                     # #1224: a truncated body ("peer closed connection without
                     # sending complete message body") arrives as
                     # httpx.RemoteProtocolError, which inherits from Exception
@@ -885,7 +970,7 @@ async def install_model(req: InstallModelRequest):
                         "attempt": _attempt,
                         "error": str(net_err),
                     })
-                    _t.sleep(_backoff)
+                    _sleep_unless_cancelled(req.repo_id, _backoff)
             # Stop heartbeat once download completes
             _resolving.set()
             # Flush the overall bar to 100% with the true byte total (FDL-06):
@@ -922,6 +1007,7 @@ async def install_model(req: InstallModelRequest):
             # A cancel is user intent, not a failure — don't set a cooldown.
             _install_cooldowns.pop(req.repo_id, None)
             _install_failures.pop(req.repo_id, None)
+            _rollback_cancelled_install()
             hf_progress.emit({
                 "repo_id": req.repo_id,
                 "filename": req.repo_id,
@@ -1068,11 +1154,11 @@ async def cancel_install_and_wait(repo_id: str) -> None:
 async def cancel_install(req: InstallModelRequest):
     """Request cancellation of an in-flight install (FDL-11).
 
-    Best-effort: stops further retry attempts and marks the row cancelled. A
-    single in-flight snapshot_download/Xet fetch isn't interruptible mid-file
-    in hf_hub 1.7.2, so an already-streaming file finishes; the cancel takes
-    effect at the next retry boundary. Clears the cooldown so the user can
-    immediately restart."""
+    Returns at once; the worker stops the transfer at its next chunk (or the
+    next boundary before any byte flows), removes the partial data it wrote
+    and reports ``install_cancelled``. ``/models/install/status`` shows the
+    job as ``cancelling`` until then. Clears the cooldown so the user can
+    restart immediately."""
     target = (req.target or "local").strip() or "local"
     if target != "local":
         raise HTTPException(

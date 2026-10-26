@@ -25,6 +25,7 @@ struct DubEditorView: View {
     @State private var previewLabel = ""
     @State private var previewSegmentID: String?
     @State private var previewing = false
+    @State private var replaceCastOverrides = false
     var body: some View {
         Page {
             ChoicePicker(label: model.t("mobile.speak.language"),selection: $target,options: record.request.targets.map { SelectionOption(id: $0.code,title: $0.name) })
@@ -38,6 +39,7 @@ struct DubEditorView: View {
                     Button(model.t("mobile.editing.export_vtt")) { export(vtt: true) }
                 } label: { Label(model.t("mobile.editing.subtitles"),systemImage: "captions.bubble") }
             }.buttonStyle(.borderless).disabled(saving)
+            castPanel
             LazyVStack(spacing: VSTokens.spacingGap) {
                 ForEach(Array(segments.enumerated()),id: \.element.id) { index,segment in
                     segmentCard(index,segment)
@@ -64,6 +66,11 @@ struct DubEditorView: View {
     private func segmentCard(_ index: Int,_ segment: PhoneDubSegment) -> some View {
         let id = segment.id ?? "legacy-\(index)"
         return Card {
+            TextField(model.t("mobile.dub_advanced.speaker"),text: Binding(get: { currentSegment(segment,index: index).speaker ?? "" },set: { value in
+                guard let current = segmentIndex(segment,index: index) else { return }; rememberEdit("speaker-"+id)
+                if segments[current].referenceOrigin == "cast" { voices[id] = ""; segments[current].referenceFile = nil; segments[current].referenceText = nil; segments[current].referenceOrigin = nil; segments[current].voiceID = nil }
+                segments[current].speaker = value
+            })).accessibilityLabel(model.t("mobile.dub_advanced.speaker"))
             TextField(model.t("mobile.editing.source_text"),text: Binding(get: { currentSegment(segment,index: index).speech.text },set: { value in
                 guard let current = segmentIndex(segment,index: index) else { return }
                 rememberEdit("source-"+id); let old = segments[current].speech
@@ -77,7 +84,10 @@ struct DubEditorView: View {
                 guard let current = segmentIndex(segment,index: index) else { return }
                 rememberEdit("translation-"+id+target); segments[current].translations[target] = value
             }),axis: .vertical).lineLimit(2...8)
-            ChoicePicker(label: model.t("mobile.speak.voice"),selection: Binding(get: { selection(segment) },set: { rememberEdit(); voices[id] = $0 }),options: (segment.referenceFile == nil ? [] : [SelectionOption(id: "__keep__",title: model.t("clone.keep_reference"))])+[SelectionOption(id: "",title: model.t("stories.defaultVoice"))]+model.phone.voices.map { SelectionOption(id: $0.id.uuidString,title: $0.name) })
+            ChoicePicker(label: model.t("mobile.speak.voice"),selection: Binding(get: { selection(segment) },set: { value in
+                rememberEdit(); voices[id] = value
+                if value != "__keep__", let current = segmentIndex(segment,index: index) { segments[current].referenceOrigin = "segment"; segments[current].voiceID = value }
+            }),options: (segment.referenceFile == nil ? [] : [SelectionOption(id: "__keep__",title: model.t("clone.keep_reference"))])+[SelectionOption(id: "",title: model.t("stories.defaultVoice"))]+model.phone.voices.map { SelectionOption(id: $0.id.uuidString,title: $0.name) })
             Text(model.t("mobile.processing.segment_gain")+" "+String(Int(((currentSegment(segment,index: index).gain ?? 1)*100).rounded()))+"%").font(.caption).monospacedDigit()
             Slider(value: Binding(get: { currentSegment(segment,index: index).gain ?? 1 },set: { value in
                 guard let current = segmentIndex(segment,index: index) else { return }; rememberEdit("gain-"+id); segments[current].gain = value
@@ -110,6 +120,29 @@ struct DubEditorView: View {
                 }.buttonStyle(.borderless)
             }
         }
+    }
+    private var castPanel: some View {
+        Card {
+            Text(model.t("mobile.dub_advanced.cast")).font(.headline)
+            Text(model.t("mobile.dub_advanced.manual_cast_hint")).font(.caption)
+            if !PhoneDubCast.speakers(segments).isEmpty {
+                Toggle(model.t("mobile.dub_advanced.replace_overrides"),isOn: $replaceCastOverrides).frame(minHeight: 44)
+                ForEach(PhoneDubCast.speakers(segments),id: \.self) { speaker in
+                    ChoicePicker(label: speaker,selection: Binding(get: {
+                        castSelection(speaker)
+                    },set: { value in
+                        guard value != "__keep__" else { return }; rememberEdit()
+                        for cue in segments where cue.speaker?.trimmingCharacters(in: .whitespacesAndNewlines) == speaker && (replaceCastOverrides || !PhoneDubCast.isLineOverride(cue)) { if let id = cue.id { voices[id] = value } }
+                        segments = PhoneDubCast.assigning(segments,speaker: speaker,voiceID: value,replaceOverrides: replaceCastOverrides)
+                    }),options: [SelectionOption(id: "__keep__",title: model.t("mobile.dub_advanced.keep_cast")),SelectionOption(id: "",title: model.t("stories.defaultVoice"))]+model.phone.voices.map { SelectionOption(id: $0.id.uuidString,title: $0.name) })
+                }
+            }
+        }.disabled(saving || previewing)
+    }
+    private func castSelection(_ speaker: String) -> String {
+        let values = Set(segments.filter { $0.speaker?.trimmingCharacters(in: .whitespacesAndNewlines) == speaker && !PhoneDubCast.isLineOverride($0) }.compactMap(\.voiceID))
+        guard values.count == 1, let selected = values.first, selected.isEmpty || model.phone.voices.contains(where: { $0.id.uuidString == selected }) else { return "__keep__" }
+        return selected
     }
     private func selection(_ segment: PhoneDubSegment) -> String { voices[segment.id ?? ""] ?? (segment.referenceFile == nil ? "" : "__keep__") }
     private func rememberEdit(_ key: String? = nil) {
@@ -185,12 +218,14 @@ struct DubEditorView: View {
             await model.performPhone {
                 guard let store = model.phone.dubStore, let voiceStore = model.phone.voiceStore else { throw ClientError("mobile.simple.media_failed") }
                 var references: [Int:(PCMChunk,String)] = [:]; var edits = segments
+                var referenceCache: [UUID:(PCMChunk,String)] = [:]
                 for (index,segment) in edits.enumerated() {
                     let id = selection(segment)
                     if id == "__keep__" { continue }
                     if id.isEmpty { edits[index].referenceFile = nil; if segment.referenceFile != nil { edits[index].referenceText = nil }; continue }
                     guard let voice = model.phone.voices.first(where: { $0.id.uuidString == id }) else { throw ClientError("audiobook.blocked.voice") }
-                    references[index] = (try await voiceStore.reference(voice),voice.transcript)
+                    if let cached = referenceCache[voice.id] { references[index] = cached }
+                    else { let reference = (try await voiceStore.reference(voice),voice.transcript); referenceCache[voice.id] = reference; references[index] = reference }
                 }
                 try await store.edit(record.id,segments: edits,references: references)
                 await model.phone.refresh(); dismiss(); model.phone.startDub(record.id)

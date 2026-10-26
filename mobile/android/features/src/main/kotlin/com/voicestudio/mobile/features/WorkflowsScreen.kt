@@ -32,9 +32,10 @@ private fun workflowStepKey(kind: String)=if(kind=="normalize") "mobile.producti
     val scope=rememberCoroutineScope()
     val untitled=tr("workflows.untitled")
     val saver=remember {Saver<PhoneWorkflow,String>(save={Json.encodeToString(PhoneWorkflow.serializer(),it)},restore={Json.decodeFromString(PhoneWorkflow.serializer(),it)})}
-    fun fresh()=PhoneWorkflow(name=untitled,steps=listOf(PhoneWorkflowStep(kind="normalize"),PhoneWorkflowStep(kind="speak")))
+    fun fresh()=PhoneWorkflow(name=untitled,graph=WorkflowGraph.create(untitled))
     var workflow by rememberSaveable(stateSaver=saver) {mutableStateOf(initialWorkflow ?: fresh())}
     var library by remember {mutableStateOf(emptyList<PhoneWorkflow>())}
+    var runs by remember {mutableStateOf(emptyList<WorkflowGraphRun>())}
     var deleting by remember {mutableStateOf<PhoneWorkflow?>(null)}
     var input by rememberSaveable {mutableStateOf(initialWorkflow?.inputText.orEmpty())}
     var voice by rememberSaveable {mutableStateOf("preset:0")}
@@ -50,20 +51,24 @@ private fun workflowStepKey(kind: String)=if(kind=="normalize") "mobile.producti
     val recognizer=model("workflow-asr","asr");val tts=model("production-tts","tts");val clone=model("production-clone","clone");val translator=model("workflow-translate","translate")
     val speaks=workflow.steps.any {it.kind=="speak"};val translates=workflow.steps.any {it.kind=="translate"}
     val selected=if(voice.startsWith("phone:")) clone else tts
-    val needed=listOfNotNull(selected.takeIf {speaks},translator.takeIf {translates},recognizer.takeIf {workflow.steps.any {it.kind=="transcribe"}})
+    val nodes=workflow.graph?.steps.orEmpty()
+    val needed=if(workflow.graph!=null) listOfNotNull(recognizer.takeIf {nodes.any {it.kind in setOf("transcribe","convert")}},translator.takeIf {nodes.any {it.kind=="translate"}},clone.takeIf {nodes.any {it.kind=="convert"||(it.kind=="speak"&&it.voiceId.orEmpty().startsWith("phone:"))}},tts.takeIf {nodes.any {it.kind=="speak"&&it.voiceId.orEmpty().startsWith("preset:")}}) else listOfNotNull(selected.takeIf {speaks},translator.takeIf {translates},recognizer.takeIf {workflow.steps.any {it.kind=="transcribe"}})
     val speakers=tts?.option("num_speakers","1")?.toIntOrNull()?.coerceIn(1,128) ?: 1
     val voices=(0 until speakers).map {Choice("preset:$it",tr("mobile.local.preset_voice",mapOf("number" to it+1)))}+phone.voices.map {Choice("phone:"+it.id,it.name)}
     val catalog=rememberLanguageCatalog(vm::fail)
-    val valid=workflow.valid&&(input.isNotBlank()||workflow.steps.firstOrNull()?.kind=="transcribe")&&input.length<=20000&&(workflow.steps.firstOrNull()?.kind!="transcribe"||(workflow.inputFile!=null&&recognizer!=null))&&(!translates||translator!=null)&&(!speaks||(selected!=null&&voices.any {it.id==voice}))&&needed.all {phone.canRun(it,vm.phone.ramBytes)}
-    suspend fun reload() {library=vm.phone.workflows.list()}
+    val graphReady=nodes.filter {it.kind in setOf("speak","convert")}.all {node ->voices.any {it.id==node.voiceId}&&(if(node.voiceId.orEmpty().startsWith("phone:")) clone!=null else tts!=null)&&(node.kind!="convert"||node.voiceId.orEmpty().startsWith("phone:"))}
+    val valid=workflow.valid&&input.length<=20000&&needed.all {phone.canRun(it,vm.phone.ramBytes)}&&if(workflow.graph!=null) graphReady&&(if(workflow.graph!!.needsAudio) workflow.inputFile!=null else input.isNotBlank())&&(!nodes.any {it.kind in setOf("transcribe","convert")}||recognizer!=null)&&(!nodes.any {it.kind=="translate"}||translator!=null) else (input.isNotBlank()||workflow.steps.firstOrNull()?.kind=="transcribe")&&(workflow.steps.firstOrNull()?.kind!="transcribe"||(workflow.inputFile!=null&&recognizer!=null))&&(!translates||translator!=null)&&(!speaks||(selected!=null&&voices.any {it.id==voice}))
+    suspend fun reload() {library=vm.phone.workflows.list();runs=vm.phone.workflows.graphRuns(workflow)}
     LaunchedEffect(Unit) {try {vm.phone.refresh();reload()} catch(e:CancellationException) {throw e} catch(e:Exception) {vm.fail(e)}}
     LaunchedEffect(workflow.id) {
+        runs=vm.phone.workflows.graphRuns(workflow)
         workManager.getWorkInfosForUniqueWorkFlow("workflow:${workflow.id}").collect {items ->
             workers=items;val latest=items.firstOrNull {!it.state.isFinished} ?: items.lastOrNull()
             progress=latest?.progress?.getInt("percent",0)?.div(100f) ?: 0f
             if(latest?.state==WorkInfo.State.SUCCEEDED) {
                 val textFile=latest.outputData.getString("text_file")
                 result=PhoneWorkflowResult(withContext(Dispatchers.IO) {textFile?.let {File(it).takeIf(File::isFile)?.readText()}.orEmpty()},latest.outputData.getString("file")?.let(::File))
+                runs=vm.phone.workflows.graphRuns(workflow)
                 result?.audio?.let {subject=ReportSubject("speak:phone:"+it.absolutePath,"speak","phone",latest.outputData.getString("repo") ?: "unknown",latest.outputData.getString("revision"))}
             }
             latest?.outputData?.getString("error")?.let {vm.fail(com.voicestudio.mobile.network.ClientFailure(it))}
@@ -77,6 +82,14 @@ private fun workflowStepKey(kind: String)=if(kind=="normalize") "mobile.producti
             try {workflow=vm.phone.workflows.importAudio(source,workflow)} finally {source.delete()}
         } catch(e:Exception) {vm.fail(e)}}
     }
+    val workflowImporter=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) {uri ->if(uri!=null) scope.launch {try {
+        val raw=withContext(Dispatchers.IO) {context.contentResolver.openInputStream(uri).use {stream->requireNotNull(stream);val output=java.io.ByteArrayOutputStream();val buffer=ByteArray(65536);var total=0;while(true) {val count=stream.read(buffer,0,minOf(buffer.size,4*1024*1024+1-total));if(count<0) break;total+=count;require(total<=4*1024*1024);output.write(buffer,0,count)};output.toString(Charsets.UTF_8.name())}}
+        val graph=WorkflowGraphInterchange.decode(raw);workflow=PhoneWorkflow(name=graph.name,graph=graph,inputText=graph.inputText);input=graph.inputText;result=null;runs=emptyList()
+    } catch(e:Exception) {vm.fail(e)}}}
+    val workflowExporter=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) {uri ->if(uri!=null) scope.launch {try {
+        val graph=requireNotNull(workflow.graph).copy(name=workflow.name);val raw=WorkflowGraphInterchange.encode(graph,input)
+        withContext(Dispatchers.IO) {context.contentResolver.openOutputStream(uri).use {output->requireNotNull(output);output.write(raw.toByteArray(Charsets.UTF_8))}}
+    } catch(e:Exception) {vm.fail(e)}}}
     Screen {
         ScreenTitle("workflows.title")
         Text(tr("mobile.local.this_phone"))
@@ -85,6 +98,29 @@ private fun workflowStepKey(kind: String)=if(kind=="normalize") "mobile.producti
         Secondary("mobile.flow.import_media",!running) {importer.launch(arrayOf("audio/*","video/*"))}
         workflow.inputName?.let {Text(it)}
         Row {listOf("clean","translate","transcribe").forEach {kind ->TextButton(enabled=!running,onClick={workflow=PhoneWorkflow(name=untitled,steps=(if(kind=="clean") listOf("normalize","speak") else if(kind=="translate") listOf("normalize","translate","speak") else listOf("transcribe","normalize","translate","speak")).map {PhoneWorkflowStep(kind=it)})}) {Text(tr("mobile.flow.template_$kind"))}}}
+        Row {
+            TextButton(enabled=!running,onClick={workflowImporter.launch(arrayOf("application/json","text/json"))}) {Text(tr("mobile.workflowParity.import_json"))}
+            TextButton(enabled=!running&&workflow.graph!=null&&workflow.valid,onClick={workflowExporter.launch("workflow.json")}) {Text(tr("mobile.workflowParity.export_json"))}
+        }
+        Row {
+            TextButton(enabled=!running,onClick={
+                var graph=WorkflowGraph.create(untitled,listOf("start","condition","speak","speak","end"));val n=graph.steps
+                graph=graph.copy(steps=n.mapIndexed {i,s->if(i==1) s.copy(text="?") else s},connections=listOf(WorkflowGraphConnection(source=n[0].id,target=n[1].id),WorkflowGraphConnection(source=n[1].id,target=n[2].id,sourceHandle="yes"),WorkflowGraphConnection(source=n[1].id,target=n[3].id,sourceHandle="no"),WorkflowGraphConnection(source=n[2].id,target=n[4].id),WorkflowGraphConnection(source=n[3].id,target=n[4].id)))
+                workflow=PhoneWorkflow(name=untitled,graph=graph);input=""
+            }) {Text(tr("mobile.workflowParity.branch_template"))}
+            TextButton(enabled=!running,onClick={workflow=PhoneWorkflow(name=untitled,graph=WorkflowGraph.create(untitled,listOf("audio","convert","normalize","end")));input=""}) {Text(tr("workflows.step_convert"))}
+        }
+        if(workflow.graph!=null) {
+            Text(tr("mobile.workflowParity.bind_hint"))
+            if(!running) WorkflowGraphEditor(workflow.graph!!,voices,catalog?.dubChoices().orEmpty().map {Choice(it.first,it.second)}) {workflow=workflow.copy(graph=it.copy(updatedAt=System.currentTimeMillis().toDouble()))}
+            if(!running) {
+                TaskModelPicker(vm,"production-tts",setOf("tts"),tts,key="production-tts")
+                TaskModelPicker(vm,"production-clone",setOf("clone"),clone,key="production-clone")
+                TaskModelPicker(vm,"workflow-translate",setOf("translate"),translator,key="workflow-translate")
+                TaskModelPicker(vm,"workflow-asr",setOf("asr"),recognizer,key="workflow-asr")
+                Secondary("common.save",workflow.name.isNotBlank()) {scope.launch {try {workflow=workflow.copy(inputText=input);vm.phone.workflows.save(workflow);reload()} catch(e:Exception) {vm.fail(e)}}}
+            }
+        } else {
         workflow.steps.forEachIndexed {index,step ->
             Group {Column(Modifier.padding(VSTheme.inset)) {
                 Row {
@@ -114,6 +150,7 @@ private fun workflowStepKey(kind: String)=if(kind=="normalize") "mobile.producti
             TaskModelPicker(vm,"workflow-asr",setOf("asr"),recognizer,key="workflow-asr")
             Secondary("common.save",workflow.name.isNotBlank()) {scope.launch {try {workflow=workflow.copy(inputText=input,voiceSelection=voice);vm.phone.workflows.save(workflow);reload()} catch(e:Exception) {vm.fail(e)}}}
         }
+        }
         if(needed.any {!phone.canRun(it,vm.phone.ramBytes)}) MissingModelsCard(vm,"workflows.title",needed)
         if(running) {
             LinearProgressIndicator(progress={progress},modifier=Modifier.fillMaxWidth())
@@ -130,6 +167,14 @@ private fun workflowStepKey(kind: String)=if(kind=="normalize") "mobile.producti
             value.audio?.let {file ->LocalAudioPlayer(file,vm::fail);Secondary("mobile.speak.share") {scope.launch {try {shareLocalFile(context,file,"audio/wav")} catch(e:Exception) {vm.fail(e)}}}}
             subject?.let {report->ReportButton(vm) {report}}
         }
+        if(runs.isNotEmpty()) Heading("mobile.workflowParity.runs")
+        runs.forEach {run ->Group {Column(Modifier.padding(VSTheme.inset)) {
+            Text(java.text.DateFormat.getDateTimeInstance().format(java.util.Date(run.updatedAt.toLong())))
+            Text(tr(if(run.done) "mobile.android.stage_done" else run.failure ?: "mobile.simple.cancelled"))
+            Text(tr("mobile.workflowParity.saved_steps",mapOf("count" to run.visited.size)))
+            if(run.text.isNotBlank()) Text(run.text,maxLines=4)
+            if(run.audio!=null) Secondary("mobile.speak.share") {scope.launch {try {vm.phone.workflows.graphRunAudio(workflow,run)?.let {shareLocalFile(context,it,"audio/wav")}} catch(e:Exception) {vm.fail(e)}}}
+        }}}
         Heading("workflows.library")
         Secondary("workflows.new",!running) {workflow=fresh();input="";voice="preset:0";result=null}
         library.forEach {item->Row {

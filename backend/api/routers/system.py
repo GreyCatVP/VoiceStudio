@@ -1584,6 +1584,12 @@ async def network_enable(request: Request):
     }
 
 
+@router.get("/system/network/check")
+async def network_check(request: Request):
+    """Self-check for LAN sharing: bind address, port and per-address listener probe."""
+    return await network_share.self_check(request.app)
+
+
 @router.post("/system/network/disable")
 async def network_disable(request: Request):
     st = await network_share.disable(request.app)

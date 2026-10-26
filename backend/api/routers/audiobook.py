@@ -26,6 +26,7 @@ import json
 import logging
 import os
 import re
+import time
 import uuid
 
 from collections.abc import Awaitable, Callable
@@ -54,6 +55,7 @@ from services.longform_render import (
     write_lf_text,
 )
 from services import longform_resume  # pure (no torch) — durable resume manifest
+from services.longform_progress import RenderProgress, chapter_weight
 
 logger = logging.getLogger("omnivoice.audiobook")
 router = APIRouter()
@@ -617,18 +619,23 @@ def _build_synth(
             voice_leases.hold(lease, cache[key].get("ref_audio"))
         return cache[key]
 
-    from services.tts_backend import ensure_engine_licence
+    from services.tts_backend import ensure_engine_licence, get_engine_instance
 
     engine_id = active_backend_id()
     cls = get_backend_class(engine_id)
-    # `cls()` below bypasses the instance cache and its licence check.
     ensure_engine_licence(cls)
     if cls is OmniVoiceBackend:
         from services.model_manager import get_model
         return {"mode": "omnivoice", "resolve": resolve, "engine_id": engine_id,
                 "get_model": get_model, "language": language, "opts": opts}
 
-    backend = cls()
+    # The process-wide engine instance (#3417), the one /generate and the
+    # OpenAI route reuse. This used to be a fresh `cls()` per CHAPTER (and per
+    # preview): every chapter reloaded the weights from disk — or spawned a new
+    # sidecar for a subprocess engine — and left the previous copy resident,
+    # so a long book on unified memory (Apple Silicon) piled up model copies
+    # and ground into swap with the GPU pegged.
+    backend = get_engine_instance(cls)
     native_proxy = bool(getattr(cls, "supports_native_omnivoice_controls", False))
     extra = (_omnivoice_sampling_kwargs(opts) if native_proxy
              else _generic_extra_kwargs(opts))
@@ -691,7 +698,7 @@ async def _prepare_synth(
 
 
 def _render_chapter_cached(chapter, synth, sr, engine_id, resolve, cache_dir, lexicon=None,
-                           language=None, opts=None, voice_map=None):
+                           language=None, opts=None, voice_map=None, on_progress=None):
     """Render one chapter, content-addressed so a re-run reuses it (resume).
 
     Returns ``(wav_path, duration_s, was_cached, seg_stats)``. Two cache
@@ -718,6 +725,10 @@ def _render_chapter_cached(chapter, synth, sr, engine_id, resolve, cache_dir, le
     per-project dictionary operates on normalized text and toggling / changing
     normalization output naturally invalidates cached chapters and segments.
 
+    ``on_progress`` (#3417) is handed to ``synthesize_chapter`` on a chapter
+    miss so the render reports every chunk; a chapter-cache hit reports
+    nothing (the caller marks the whole chapter done).
+
     Runs in the GPU-pool executor.
     """
     import json
@@ -737,7 +748,7 @@ def _render_chapter_cached(chapter, synth, sr, engine_id, resolve, cache_dir, le
         wav_is_complete,
     )
     from core.config import VOICES_DIR
-    from services.pronunciation import normalize_lexicon
+    from services.pronunciation import lexicon_signature
     from services.text_normalization import normalize_for_tts
     from services.watermark import mark_synthetic, will_mark
 
@@ -778,7 +789,8 @@ def _render_chapter_cached(chapter, synth, sr, engine_id, resolve, cache_dir, le
     if lexicon:
         # Fold the lexicon into the cache key so editing pronunciations
         # invalidates cached chapters (reserved key can't collide with a voice id).
-        lex_sig = json.dumps(normalize_lexicon(lexicon), sort_keys=True)
+        # Order-aware where entry order changes the output (#2728).
+        lex_sig = lexicon_signature(lexicon)
         sig["\x00lexicon"] = lex_sig
     # Fold the #1208 expressive signature into BOTH cache layers so changing any
     # new knob (sampling, emotion, seed, cache opt-out) re-renders instead of
@@ -878,7 +890,8 @@ def _render_chapter_cached(chapter, synth, sr, engine_id, resolve, cache_dir, le
                              vary_repeats=opts.vary_repeats,
                              legacy_voice_sigs=legacy_voice_sigs)
     audio, dur = synthesize_chapter(spans, synth, sr, lexicon=lexicon,
-                                    segment_cache=seg_cache, **opts.join_kwargs())
+                                    segment_cache=seg_cache, on_progress=on_progress,
+                                    **opts.join_kwargs())
     # Invisible provenance mark on the assembled chapter (#1169), tensor stage,
     # before the WAV lands in the cache — this single site covers every
     # longform front door (/audiobook, /longform/render [Stories],
@@ -898,8 +911,10 @@ def _render_chapter_cached(chapter, synth, sr, engine_id, resolve, cache_dir, le
 
 
 async def _run_chapter(chapter, *, default_voice, language, opts, voice_map,
-                       lexicon, cache_dir, lease=None):
-    """Render one chapter on this machine through the guarded GPU pool."""
+                       lexicon, cache_dir, lease=None, on_progress=None):
+    """Render one chapter on this machine through the guarded GPU pool.
+
+    ``on_progress`` is called from the GPU thread after every chunk (#3417)."""
     from services import gpu_gateway
     from services.model_manager import generate_timeout_s
     from services.tts_backend import get_backend_class
@@ -925,7 +940,7 @@ async def _run_chapter(chapter, *, default_voice, language, opts, voice_map,
         local=gpu_gateway.LocalCall(
             fn=lambda: _render_chapter_cached(
                 chapter, synth, sr, engine_id, resolve, cache_dir, lexicon,
-                language, opts, voice_map,
+                language, opts, voice_map, on_progress=on_progress,
             ),
             what="Audiobook chapter",
             timeout=generate_timeout_s(text, engine=timeout_engine),
@@ -1059,8 +1074,10 @@ async def _render_longform_sse(
             except Exception:
                 pass  # best-effort job history
 
-    def _emit(payload: dict) -> str:
-        if job_store is not None:
+    def _emit(payload: dict, *, persist: bool = True) -> str:
+        # `progress` events (#3417) are live-only: one per chunk would flood
+        # job history, and a reader of it needs only the chapter outcomes.
+        if persist and job_store is not None:
             try:
                 job_store.append_event(job_id, json.dumps(payload))
             except Exception:
@@ -1106,6 +1123,36 @@ async def _render_longform_sse(
         # instead of restating the symptom (#1321).
         last_chapter_exc: Exception | None = None
         interrupted = False
+        # Per-chunk progress + rolling ETA (#3417). The GPU thread reports each
+        # finished chunk through `progress_q`; the loop below forwards them as
+        # live `progress` events while the chapter is still rendering.
+        tracker = RenderProgress([chapter_weight(c) for c in plan.chapters])
+        loop = asyncio.get_running_loop()
+        progress_q: asyncio.Queue = asyncio.Queue()
+
+        def _progress_sink(index: int):
+            def on_progress(done, chapter_total, *, audio_s=0.0, cached=False):
+                stamp = time.monotonic()
+                try:
+                    loop.call_soon_threadsafe(progress_q.put_nowait,
+                                              (index, done, chapter_total, audio_s, cached, stamp))
+                except RuntimeError:  # loop already closed: nobody is listening
+                    pass
+            return on_progress
+
+        def _drain(first=None) -> bool:
+            items = [first] if first is not None else []
+            while not progress_q.empty():
+                items.append(progress_q.get_nowait())
+            for index, done, chapter_total, audio_s, cached, stamp in items:
+                tracker.chunk(index, done, chapter_total, audio_s=audio_s,
+                              cached=cached, now=stamp)
+            return bool(items)
+
+        def _progress_event(index: int) -> str:
+            return _emit({"type": "progress", "index": index, "total": total,
+                          **tracker.snapshot()}, persist=False)
+
         yield _emit({"type": "started", "job_id": job_id, "chapters": total})
 
         for i, chapter in enumerate(plan.chapters):
@@ -1128,12 +1175,28 @@ async def _render_longform_sse(
                 if gone:
                     interrupted = True
                     break
+            tracker.start_chapter(i)
+            task = asyncio.ensure_future(_run_chapter(
+                chapter, default_voice=default_voice, language=resolved_lang,
+                opts=opts, voice_map=voice_map, lexicon=lexicon,
+                cache_dir=cache_dir, lease=voice_lease,
+                on_progress=_progress_sink(i),
+            ))
             try:
-                wav_path, dur, was_cached, seg_stats = await _run_chapter(
-                    chapter, default_voice=default_voice, language=resolved_lang,
-                    opts=opts, voice_map=voice_map, lexicon=lexicon,
-                    cache_dir=cache_dir, lease=voice_lease,
-                )
+                while not task.done():
+                    getter = asyncio.ensure_future(progress_q.get())
+                    try:
+                        await asyncio.wait({task, getter},
+                                           return_when=asyncio.FIRST_COMPLETED)
+                    finally:
+                        if not getter.done():
+                            getter.cancel()
+                    first = getter.result() if getter.done() and not getter.cancelled() else None
+                    if _drain(first):
+                        yield _progress_event(i)
+                if _drain():  # reports that landed with the chapter's result
+                    yield _progress_event(i)
+                wav_path, dur, was_cached, seg_stats = task.result()
             except Exception as e:  # isolate a bad chapter — keep going
                 logger.warning("[%s] chapter %d (%s) failed to render",
                                job_id, i, chapter.title, exc_info=True)
@@ -1156,7 +1219,17 @@ async def _render_longform_sse(
                              # The terminal error below carries one.
                              **build_failure(e, stage="audiobook_chapter",
                                              include_diagnostic=False)})
+                tracker.finish_chapter(i)
+                yield _progress_event(i)
                 continue
+            finally:
+                if not task.done():
+                    # The stream was cancelled/closed mid-chapter: stop waiting
+                    # on the render (the pool guard abandons it between chunks)
+                    # and never leave its outcome unretrieved.
+                    task.cancel()
+                    task.add_done_callback(
+                        lambda t: t.cancelled() or t.exception())
             chapter_files.append(wav_path)
             dur_ms = int(round(dur * 1000))
             chapters_meta.append((chapter.title, dur_ms))
@@ -1173,6 +1246,8 @@ async def _render_longform_sse(
                 ev["segments"] = seg_stats["total"]
                 ev["cached_segments"] = seg_stats["cached"]
             yield _emit(ev)
+            tracker.finish_chapter(i)
+            yield _progress_event(i)
 
         if interrupted:
             logger.info("[%s] client disconnected — stopped after %d/%d chapters",

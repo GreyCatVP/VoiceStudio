@@ -23,12 +23,15 @@ public struct PhoneDubSegment: Codable, Sendable, Equatable {
     public var referenceNeedsTranscription: Bool?
     public var gain: Double?
     public var muted: Bool?
+    public var speaker: String?
+    public var referenceOrigin: String?
+    public var voiceID: String?
     public var speech: SpeechSegment
     public var referenceText: String?
     public var translations: [String: String] = [:]
     public var referenceFile: String? = nil
-    public init(speech: SpeechSegment, referenceText: String? = nil, translations: [String:String] = [:], referenceFile: String? = nil, id: String? = UUID().uuidString, referenceNeedsTranscription: Bool? = nil, gain: Double? = nil, muted: Bool? = nil) {
-        self.id = id; self.referenceNeedsTranscription = referenceNeedsTranscription; self.gain = gain; self.muted = muted
+    public init(speech: SpeechSegment, referenceText: String? = nil, translations: [String:String] = [:], referenceFile: String? = nil, id: String? = UUID().uuidString, referenceNeedsTranscription: Bool? = nil, gain: Double? = nil, muted: Bool? = nil, speaker: String? = nil, referenceOrigin: String? = nil, voiceID: String? = nil) {
+        self.id = id; self.referenceNeedsTranscription = referenceNeedsTranscription; self.gain = gain; self.muted = muted; self.speaker = speaker; self.referenceOrigin = referenceOrigin; self.voiceID = voiceID
         self.speech = speech; self.referenceText = referenceText; self.translations = translations; self.referenceFile = referenceFile
     }
 }
@@ -89,6 +92,7 @@ public func phoneDubVoiceModel(pins: [String: String], in models: [PhoneModel]) 
     guard let model = models.first(where: { $0.capability == .clone && pins[$0.id] != nil }) else { return nil }
     return (model.repo, (try? phoneModelPin(model)) == pins[model.id] ? model.revision : nil)
 }
+private struct PhoneDubReferenceBuffer: Hashable { let address: UInt; let frames: Int; let text: String }
 public actor PhoneDubStore {
     private let root: URL
     internal private(set) var checkpointWrites = 0
@@ -160,12 +164,22 @@ public actor PhoneDubStore {
         guard FileManager.default.fileExists(atPath: try file(id,"original.pcm").path), !segments.isEmpty, segments.count <= 10000, Set(segments.compactMap(\.id)).count == segments.count,
               segments.allSatisfy({ $0.speech.start.isFinite && $0.speech.end.isFinite && $0.speech.start >= 0 && $0.speech.end > $0.speech.start && $0.speech.end <= duration && $0.speech.end-$0.speech.start <= 30 && !$0.speech.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0.speech.text.utf16.count <= 4000 && ($0.gain ?? 1).isFinite && (0...2).contains($0.gain ?? 1) && $0.translations.allSatisfy { key,value in request.targets.contains { $0.code == key } && !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && value.utf16.count <= 4000 } })
         else { throw ClientError("mobile.simple.media_failed") }
-        var updated = segments, created: [URL] = []
+        var updated = segments.map { cue in var value = cue; value.speaker = cue.speaker?.trimmingCharacters(in: .whitespacesAndNewlines); if value.speaker?.isEmpty == true { value.speaker = nil }; return value }, created: [URL] = [], sharedReferences: [String:String] = [:]
+        var referenceFingerprints: [PhoneDubReferenceBuffer:String] = [:]
+        guard segments.allSatisfy({ PhoneDubCast.valid($0) }) else { throw ClientError("mobile.dub_advanced.invalid_cast") }
         do {
             for (index,reference) in references {
                 guard updated.indices.contains(index), !reference.1.isEmpty, reference.0.sampleRate == 24000, (2400...720000).contains(reference.0.samples.count) else { throw ClientError("mobile.simple.media_failed") }
-                let name = "edited-reference-"+UUID().uuidString+".pcm", url = try file(id,name)
-                try PCMFile.write(reference.0,to: url); created.append(url)
+                let buffer = reference.0.samples.withUnsafeBufferPointer { PhoneDubReferenceBuffer(address: UInt(bitPattern: $0.baseAddress!),frames: $0.count,text: reference.1) }
+                let fingerprint: String
+                if let known = referenceFingerprints[buffer] { fingerprint = known }
+                else { fingerprint = phoneDubFingerprint([phoneDubAudioHash(reference.0),reference.1]); referenceFingerprints[buffer] = fingerprint }
+                let name: String
+                if let shared = sharedReferences[fingerprint] { name = shared }
+                else {
+                    name = "edited-reference-"+UUID().uuidString+".pcm"; let url = try file(id,name)
+                    try PCMFile.write(reference.0,to: url); created.append(url); sharedReferences[fingerprint] = name
+                }
                 updated[index].referenceFile = name; updated[index].referenceText = reference.1
             }
             let previous = Dictionary(uniqueKeysWithValues: current.segments.compactMap { s in s.id.map { ($0,s) } })

@@ -481,6 +481,7 @@ class _RefinementBody(BaseModel):
     smart_cleanup: bool | None = None
     self_correction: bool | None = None
     preserve_technical: bool | None = None
+    spoken_punctuation: bool | None = None
 
 
 def _refinement_state():

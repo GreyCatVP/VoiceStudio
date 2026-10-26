@@ -15,7 +15,8 @@ import { PipelineFailure } from '@/components/pipeline-failure';
 import { importToText } from '@shared/utils/importStory';
 import { cueSheetFor } from './cue-sheet';
 import { saveLocalFile } from '@/lib/local-export';
-import { StoryCast, StoryEditor } from './story-editor';
+import { StoryEditor } from './story-editor';
+import { StoryCast } from './story-cast';
 import { clearedScriptPatch, scriptSize } from './story-clear';
 import { ConfirmDialog } from '../clone/confirm-dialog';
 import { AudiobookMarkupToolbar } from './audiobook-markup-toolbar';
@@ -41,6 +42,7 @@ import { useTranslation } from 'react-i18next';
 import { DownloadIcon, ListIcon, SparklesIcon } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { WaveformPlayer } from '@/components/waveform-player';
 import { SyncedAudiobookPlayer } from './synced-audiobook-player';
 import { GeneratePanel } from './generate-panel';
@@ -52,7 +54,7 @@ import { useProfiles } from '@/hooks/use-profiles';
 import { apiJson, apiPath, describeError } from '@/lib/api/client';
 import { saveExport } from '@/lib/export-history';
 import { EngineLanguagePicker } from '@/features/clone/engine-language-picker';
-import { LANG_CODES } from '@shared/utils/languages';
+import { outputLanguageOptions } from './output-languages';
 import {
   editLongform,
   dismissLongformError,
@@ -64,6 +66,7 @@ import {
 } from './longform-session';
 import { SAMPLE_AUDIOBOOK_SCRIPT } from '@shared/data/sampleAudiobook';
 import { useTtsReadiness } from '@/hooks/use-tts-readiness';
+const FORMATS = ['m4b', 'mp3'] as const;
 interface Recovery {
   job_id: string;
   type: string;
@@ -81,6 +84,7 @@ export function LongformPage({ mode }: { mode: Mode }) {
     mode === 'audiobook' ? draft.script : draft.lines.map((line) => line.text).join('\n');
   const names = useMemo(() => parseCastNames(text), [text]);
   const stats = useMemo(() => scriptStats(text), [text]);
+  const languageOptions = useMemo(() => outputLanguageOptions(draft.language), [draft.language]);
   const { data: profiles = [] } = useProfiles();
   const [importing, setImporting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -241,7 +245,7 @@ export function LongformPage({ mode }: { mode: Mode }) {
           }
           libraryLabel={t('projects.title')}
           onCollapsedChange={setSidebarCollapsed}
-          className="space-y-3 [&>details]:rounded-xl [&>details]:border [&>details]:border-border/60 [&>details]:bg-muted/20 [&>details]:p-3 [&>section]:rounded-xl [&>section]:border [&>section]:border-border/60 [&>section]:bg-muted/20 [&>section]:p-3"
+          className="space-y-3"
         >
           <div className="space-y-4 rounded-xl border border-border/60 bg-muted/20 p-3">
             <label className="block space-y-2 text-xs font-medium text-muted-foreground">
@@ -259,7 +263,7 @@ export function LongformPage({ mode }: { mode: Mode }) {
             <div className="space-y-1">
               <h2 className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
                 <FingerprintIcon className="size-4" aria-hidden="true" />
-                {t('stories.voice')}
+                {t('stories.voiceLabel')}
               </h2>
               {!profiles.length && (
                 <p className="text-xs text-muted-foreground">{t('stories.noProfiles')}</p>
@@ -286,7 +290,7 @@ export function LongformPage({ mode }: { mode: Mode }) {
               <EngineLanguagePicker
                 operation={ttsOperation}
                 value={draft.language}
-                options={['Auto', ...LANG_CODES.map((l) => l.label)]}
+                options={languageOptions}
                 disabled={locked}
                 onValueChange={(language) => set({ language })}
               />
@@ -296,18 +300,28 @@ export function LongformPage({ mode }: { mode: Mode }) {
                 <FileAudioIcon className="size-4" aria-hidden="true" />
                 {t('audiobook.format')}
               </h2>
-              <div className="flex gap-1 rounded-lg bg-background/40 p-1">
-                {(['m4b', 'mp3'] as const).map((format) => (
-                  <Button
+              <ToggleGroup
+                aria-label={t('audiobook.format')}
+                value={[draft.format]}
+                disabled={locked}
+                onValueChange={(values) => {
+                  const format = FORMATS.find((candidate) => candidate === values[0]);
+                  if (format) set({ format });
+                }}
+                spacing={0}
+                className="grid w-full grid-cols-2 gap-0.5 rounded-lg bg-muted/40 p-0.5 ring-1 ring-inset ring-border/50"
+              >
+                {FORMATS.map((format) => (
+                  <ToggleGroupItem
                     key={format}
-                    variant={draft.format === format ? 'secondary' : 'ghost'}
-                    disabled={locked}
-                    onClick={() => set({ format })}
+                    value={format}
+                    size="sm"
+                    className="h-7 w-full rounded-md text-muted-foreground hover:bg-background/60 aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
                   >
                     {t('audiobook.format_' + format)}
-                  </Button>
+                  </ToggleGroupItem>
                 ))}
-              </div>
+              </ToggleGroup>
             </div>
           </div>
           {mode === 'stories' && (
@@ -373,7 +387,9 @@ export function LongformPage({ mode }: { mode: Mode }) {
                   <BookOpenTextIcon className="size-4 text-muted-foreground" />
                   {t('clone.script')}
                 </h2>
-                <p className="mt-1 text-xs text-muted-foreground">{t(mode + '.subtitle')}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t(mode === 'stories' ? 'stories.scriptSubtitle' : 'audiobook.subtitle')}
+                </p>
               </div>
               <label className={buttonVariants({ variant: 'outline', size: 'sm' })}>
                 <ImportIcon />
@@ -437,6 +453,7 @@ export function LongformPage({ mode }: { mode: Mode }) {
                   setText={(script) => set({ script })}
                 />
                 <textarea
+                  dir="auto"
                   ref={audiobookInput}
                   aria-label={t('clone.script')}
                   className="min-h-64 flex-1 resize-none bg-transparent text-base leading-7 outline-none"

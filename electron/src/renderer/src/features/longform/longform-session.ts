@@ -17,6 +17,7 @@ import { consumeLongformStream } from '@shared/utils/longformStream';
 import { storyToSpans } from '@shared/utils/storyToSpans';
 import { beginAppActivity } from '@/lib/app-activity';
 import { publicFailureFromEvent, type PublicFailure } from '@/lib/api/failure';
+import { parseProgressEvent, type RenderProgressSnapshot } from './render-eta';
 export type Mode = 'stories' | 'audiobook';
 export interface Character {
   id: string;
@@ -69,6 +70,12 @@ interface Session {
   storageError: boolean;
   chapters: AudiobookRenderChapter[];
   stopped: boolean;
+  /** Latest per-chunk `progress` event (#3417); null on older backends. */
+  progress: RenderProgressSnapshot | null;
+  /** `Date.now()` of `started`, kept here so leaving the page keeps the clock. */
+  startedAt: number | null;
+  /** `Date.now()` of the last sign of life — the stall detector's baseline. */
+  lastActivityAt: number | null;
 }
 export const blankLongformDraft = (): Draft => ({
   projectId: null,
@@ -156,6 +163,9 @@ export const longformSession = new Store<Session>({
   storageError: false,
   chapters: [],
   stopped: false,
+  progress: null,
+  startedAt: null,
+  lastActivityAt: null,
 });
 export const useLongformSession = () => useStore(longformSession);
 /** Fences document imports that finish after a new dub replaces the Stories draft. */
@@ -239,6 +249,9 @@ export async function renderLongform(mode: Mode, resumeId?: string) {
     failure: null,
     chapters: [],
     stopped: false,
+    progress: null,
+    startedAt: Date.now(),
+    lastActivityAt: Date.now(),
   });
   let done = false;
   let outputChapters: AudiobookRenderChapter[] = [];
@@ -284,12 +297,18 @@ export async function renderLongform(mode: Mode, resumeId?: string) {
           }));
           patch({
             stage: 'rendering',
+            startedAt: Date.now(),
+            lastActivityAt: Date.now(),
             total: Number(event.chapters) || 0,
             chapters: outputChapters.map((chapter, index) => ({
               ...chapter,
               status: index === 0 ? 'rendering' : 'pending',
             })),
           });
+        }
+        if (event.type === 'progress') {
+          const progress = parseProgressEvent(event, Date.now());
+          if (progress) patch({ progress, lastActivityAt: progress.receivedAt });
         }
         if (event.type === 'chapter' || event.type === 'chapter_error') {
           const index = Number(event.index);
@@ -315,6 +334,7 @@ export async function renderLongform(mode: Mode, resumeId?: string) {
                 : {}),
             };
           patch({
+            lastActivityAt: Date.now(),
             completed: Number(event.index) + 1,
             chapters: outputChapters.map((chapter, chapterIndex) => ({
               ...chapter,

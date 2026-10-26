@@ -15,9 +15,14 @@ import { segmentGenInputs } from '@shared/utils/segments';
 import { clampSegmentEdit } from '@shared/utils/timeline';
 import { dialectLabel, dialectMatchesLang, dialectOptionsFor } from '@shared/api/dialects';
 import { DubExportPanel } from './dub-export-panel';
+import { argosPackInstall, argosPackStatus, buildArgosPackRequest } from './argos-packs';
+import { dubSourceLanguage } from './source-language';
 import { DubTimeline } from './dub-timeline';
 import { PasteTranslation } from './paste-translation';
 import { GlossaryPanel } from './glossary-panel';
+import { SegmentFindBar } from './segment-find-bar';
+import { HighlightedText } from './segment-highlight';
+import { isFindBarTarget, useSegmentFind } from './use-segment-find';
 import { CastingBoard } from './casting-board';
 import { DubbingDemo } from './dubbing-demo';
 import { CheckpointBanner, type CheckpointStage } from './checkpoint-banner';
@@ -101,6 +106,14 @@ import { createObjectUrl, revokeObjectUrl } from '@/lib/audio/object-url';
 import { requestPlaybackSeek } from '@/lib/audio/playback-clock';
 import { beginAppActivity } from '@/lib/app-activity';
 import { LANG_CODES } from '@shared/utils/languages';
+import {
+  LANGUAGE_VARIANTS,
+  hasVariantChoices,
+  languageTagName,
+  variantChoice,
+  withVariantChoices,
+} from '@/lib/language-variants';
+import { TRANSLATION_TARGET_LABELS, translationTargetCode } from '@/lib/translation-targets';
 import { cn } from '@/lib/utils';
 import {
   useDubSession,
@@ -149,17 +162,14 @@ import {
 
 const DEFAULT_TRANSLATION_AGENT_KEY = 'voicestudio.defaultTranslationAgent';
 const LIVE_PREVIEW_KEY = 'voicestudio.dubLivePreview';
-const targetOptions = LANG_CODES.map((item) => item.label);
+// Targets include translate-and-speak-only languages (Uyghur, #2810); the
+// source picker stays on what speech recognition can transcribe.
+const targetOptions = TRANSLATION_TARGET_LABELS;
+const sourceOptions = LANG_CODES.map((item) => item.label);
+// #3143: Brazilian and European Portuguese are separate target choices; each
+// maps to the "Portuguese" track plus its dialect.
+const targetChoices = withVariantChoices(targetOptions);
 const sentenceEnd = /[.!?\u3002\uff01\uff1f]/;
-
-type ArgosPackStatus = {
-  source_lang: string;
-  pairs: Array<{
-    source_lang: string;
-    target_lang: string;
-    installed: boolean;
-  }>;
-};
 
 function compactSourceLabel(source: string): string {
   if (!source) return '';
@@ -345,7 +355,17 @@ export function DubPage() {
   useLayoutEffect(() => {
     requestAnimationFrame(() => segmentVirtualizer.measure());
   }, [editingSegmentId, expandedSegmentId, segmentVirtualizer]);
-  const code = LANG_CODES.find((item) => item.label === target)?.code;
+  const code = translationTargetCode(target);
+  const scrollToSegmentRow = useCallback(
+    (row: number) => segmentVirtualizer.scrollToIndex(row, { align: 'center' }),
+    [segmentVirtualizer],
+  );
+  const find = useSegmentFind({
+    segments: session.segments,
+    targetCode: code,
+    select: setSelectedSegmentId,
+    scrollToRow: scrollToSegmentRow,
+  });
   const batchTargets = multiLangTargets(target, code || '', session.multiTargets || []);
   const agentBatchReady = Boolean(
     session.agentCli &&
@@ -401,14 +421,7 @@ export function DubPage() {
   const needsArgosPackCheck = Boolean(
     provider?.id === 'argos' && session.jobId && session.segments.length && argosTargets.length,
   );
-  const argosPackRequest = {
-    source_lang:
-      (session.sourceLang || session.sourceLanguage || '').toLowerCase() === 'auto'
-        ? undefined
-        : session.sourceLang || session.sourceLanguage || undefined,
-    target_langs: argosTargets,
-    job_id: session.jobId || undefined,
-  };
+  const argosPackRequest = buildArgosPackRequest(session, argosTargets);
   const argosPacks = useQuery({
     enabled: needsArgosPackCheck,
     queryKey: [
@@ -417,13 +430,7 @@ export function DubPage() {
       argosPackRequest.job_id,
       ...argosTargets,
     ],
-    queryFn: ({ signal }) =>
-      apiJson<ArgosPackStatus>('/engines/translation/argos/packs/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(argosPackRequest),
-        signal,
-      }),
+    queryFn: ({ signal }) => argosPackStatus(argosPackRequest, signal),
     staleTime: 30_000,
   });
   const missingArgosPacks = argosPacks.data?.pairs.filter((pair) => !pair.installed) || [];
@@ -577,6 +584,8 @@ export function DubPage() {
         return;
       const key = event.key.toLowerCase();
       if (key === 'z') {
+        // The find and replace inputs keep their own text undo.
+        if (isFindBarTarget(event.target)) return;
         event.preventDefault();
         if (event.shiftKey) redoDubEdit();
         else undoDubEdit();
@@ -905,11 +914,7 @@ export function DubPage() {
     if (!missingArgosPacks.length || installingArgosPacks) return;
     setInstallingArgosPacks(true);
     try {
-      await apiJson<ArgosPackStatus>('/engines/translation/argos/packs/install', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(argosPackRequest),
-      });
+      await argosPackInstall(argosPackRequest);
       await argosPacks.refetch();
     } catch (error) {
       toast.error(describeError(error));
@@ -1152,7 +1157,7 @@ export function DubPage() {
                   LANG_CODES.find((item) => item.code === session.sourceLanguage)?.label ||
                   t('dub.num_speakers_auto')
                 }
-                options={[t('dub.num_speakers_auto'), ...targetOptions]}
+                options={[t('dub.num_speakers_auto'), ...sourceOptions]}
                 disabled={busy || Boolean(session.recovery)}
                 onValueChange={(value) =>
                   setDubProduction({
@@ -1344,18 +1349,21 @@ export function DubPage() {
               {t('dub.target_language')}
             </h2>
             <LanguagePicker
-              value={target}
-              onValueChange={(language) => {
-                const selectedCode = LANG_CODES.find((item) => item.label === language)?.code;
+              value={hasVariantChoices(target) ? variantChoice(target, session.dialect) : target}
+              onValueChange={(choice) => {
+                const variant = LANGUAGE_VARIANTS[choice];
+                const language = variant?.base ?? choice;
+                const selectedCode = translationTargetCode(language);
                 setTarget(language, selectedCode);
-                if (!dialectMatchesLang(session.dialect, selectedCode))
+                if (variant) setDubTranslationOptions({ dialect: variant.dialect });
+                else if (!dialectMatchesLang(session.dialect, selectedCode))
                   setDubTranslationOptions({ dialect: undefined });
                 if (selectedCode)
                   setDubMultiTargets(
                     (session.multiTargets || []).filter((item) => item.code !== selectedCode),
                   );
               }}
-              options={targetOptions}
+              options={targetChoices}
               disabled={busy || Boolean(session.recovery)}
             />
             <MultiLanguagePicker
@@ -1365,13 +1373,13 @@ export function DubPage() {
               onChange={(languages) =>
                 setDubMultiTargets(
                   languages.flatMap((language) => {
-                    const item = LANG_CODES.find((candidate) => candidate.label === language);
-                    return item ? [{ lang: item.label, code: item.code }] : [];
+                    const itemCode = translationTargetCode(language);
+                    return itemCode ? [{ lang: language, code: itemCode }] : [];
                   }),
                 )
               }
             />
-            {dialectOptionsFor(code).length > 0 && (
+            {dialectOptionsFor(code).length > 0 && !hasVariantChoices(code) && (
               <details className="group space-y-2 border-t border-border/50 pt-2">
                 <summary className="flex cursor-pointer list-none items-center gap-2 text-xs font-medium text-muted-foreground">
                   <LanguagesIcon className="size-3.5" />
@@ -1461,6 +1469,7 @@ export function DubPage() {
                   {t('dubStyle.label')}
                 </label>
                 <textarea
+                  dir="auto"
                   id="dub-translation-instructions"
                   aria-describedby="dub-translation-instructions-help"
                   rows={4}
@@ -1559,6 +1568,22 @@ export function DubPage() {
             {session.translationFallback && (
               <div role="status" className="space-y-2 text-xs text-muted-foreground">
                 <p>{t('dub_workflow.cinematic_no_llm')}</p>
+                <Link to="/settings/models/$family" params={{ family: 'llm' }}>
+                  {t('engineSidebar.llm')}
+                </Link>
+              </div>
+            )}
+            {/* #2752: the engine could not honour the chosen dialect. Without
+                this the pick looked applied and the output looked simply wrong. */}
+            {session.dialectIgnored && (
+              <div role="status" className="space-y-2 text-xs text-muted-foreground">
+                <p>
+                  {session.dialectUsed
+                    ? t('dub_workflow.dialect_used', {
+                        variant: languageTagName(session.dialectUsed, i18n.language),
+                      })
+                    : t('dub_workflow.dialect_not_applied')}
+                </p>
                 <Link to="/settings/models/$family" params={{ family: 'llm' }}>
                   {t('engineSidebar.llm')}
                 </Link>
@@ -2244,6 +2269,14 @@ export function DubPage() {
                   </div>
                 </div>
               )}
+              {session.segments.length > 0 && (
+                <SegmentFindBar
+                  {...find.bar}
+                  canReplace={find.bar.canReplace && !busy && !session.recovery}
+                  canReplaceAll={find.bar.canReplaceAll && !busy && !session.recovery}
+                  disabled={busy || Boolean(session.recovery)}
+                />
+              )}
               {showCheckpoint && checkpointStage && (
                 <CheckpointBanner
                   stage={checkpointStage}
@@ -2281,7 +2314,9 @@ export function DubPage() {
               {glossaryOpen && code && session.jobId && session.segments.length > 0 && (
                 <GlossaryPanel
                   projectId={session.jobId}
-                  sourceLang={session.sourceLang || session.sourceLanguage || 'auto'}
+                  sourceLang={
+                    dubSourceLanguage(session.sourceLanguage, session.sourceLang) || 'auto'
+                  }
                   targetLang={code}
                   segments={session.segments}
                   disabled={busy || Boolean(session.recovery)}
@@ -2345,10 +2380,10 @@ export function DubPage() {
                     options={targetOptions}
                     disabled={busy || Boolean(session.recovery)}
                     onValueChange={(language) => {
-                      const lang = LANG_CODES.find((item) => item.label === language);
-                      if (lang)
+                      const langCode = translationTargetCode(language);
+                      if (langCode)
                         editDubSegments(selectedSegmentIds, {
-                          target_lang: lang.code,
+                          target_lang: langCode,
                         });
                     }}
                   />
@@ -2459,9 +2494,7 @@ export function DubPage() {
                                 })
                               }
                             />
-                            <span>
-                              {segmentTimeLabel(segment.start)}
-                            </span>
+                            <span>{segmentTimeLabel(segment.start)}</span>
                           </div>
                           <div className="min-w-0">
                             <div className="flex min-h-6 min-w-0 items-center gap-1">
@@ -2502,12 +2535,21 @@ export function DubPage() {
                               {segment.text_original && segment.text_original !== segment.text ? (
                                 <p
                                   className={cn(
-                                    'min-w-0 flex-1 truncate px-1 text-xs text-muted-foreground/50 transition-colors group-hover/segment:text-muted-foreground/70 group-focus-within/segment:text-foreground/70',
+                                    'min-w-0 flex-1 px-1 text-xs text-muted-foreground/50 transition-colors group-hover/segment:text-muted-foreground/70 group-focus-within/segment:text-foreground/70',
                                     selectedSegmentId === segment.id && 'text-foreground/72',
+                                    // Show the whole line while it holds the active find hit.
+                                    find.holdsActive(segment.id, 'text_original')
+                                      ? 'break-words'
+                                      : 'truncate',
                                   )}
                                   title={segment.text_original}
+                                  dir="auto"
                                 >
-                                  {segment.text_original}
+                                  <HighlightedText
+                                    text={segment.text_original}
+                                    query={find.query}
+                                    {...find.activeRange(segment.id, 'text_original')}
+                                  />
                                 </p>
                               ) : (
                                 <span className="min-w-0 flex-1" />
@@ -2685,6 +2727,7 @@ export function DubPage() {
                             </div>
                             {editingSegmentId === segment.id ? (
                               <textarea
+                                dir="auto"
                                 data-segment-id={segment.id}
                                 aria-label={t('clone.text_label') + ' ' + (index + 1)}
                                 rows={1}
@@ -2744,7 +2787,17 @@ export function DubPage() {
                                   setEditingSegmentId(segment.id);
                                 }}
                               >
-                                <span className="line-clamp-2">{segment.text}</span>
+                                <HighlightedText
+                                  className={
+                                    find.holdsActive(segment.id, 'text')
+                                      ? undefined
+                                      : 'line-clamp-2'
+                                  }
+                                  dir="auto"
+                                  text={segment.text}
+                                  query={find.query}
+                                  {...find.activeRange(segment.id, 'text')}
+                                />
                               </button>
                             )}
                             {segment.plan?.suggested_text && (

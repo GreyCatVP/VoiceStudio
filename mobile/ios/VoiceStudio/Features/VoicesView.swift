@@ -46,6 +46,7 @@ struct VoicesView: View {
                             Text(String(entry.name.prefix(1)).uppercased()).frame(width: 44,height: 44).background(theme.color("input"),in: Circle()).accessibilityHidden(true)
                             VStack(alignment: .leading,spacing: 4) {
                                 Text(entry.name).lineLimit(1)
+                                if let attribution = entry.phone?.sourceAttribution { Text([attribution["author"],attribution["license"],attribution["name"]].compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(theme.color("textMuted")).textSelection(.enabled) }
                                 Text(model.t(entry.phone == nil ? "mobile.simple.computer" : "mobile.simple.phone")).font(.caption).foregroundStyle(theme.color("textMuted"))
                             }.frame(maxWidth: .infinity,alignment: .leading)
                             Button(model.t("common.play"), systemImage: "play.fill") {

@@ -28,6 +28,7 @@ describe('generationFailureMessage', () => {
     ['HOST_MEMORY_EXHAUSTED', 'tts_errors.host_memory_exhausted'],
     ['ENGINE_DEPENDENCY_MISSING', 'tts_errors.engine_dependency_missing'],
     ['REFERENCE_STT_MISSING', 'tts_errors.reference_stt_missing'],
+    ['SOURCE_LANGUAGE_REQUIRED', 'tts_errors.source_language_required'],
   ])('localizes the %s diagnostic topic instead of the generic floor message', (topic, key) => {
     const translate = vi.fn((k: string) => `t:${k}`);
     expect(generationFailureMessage({ docs_topic: topic }, translate)).toBe(`t:${key}`);
@@ -35,7 +36,9 @@ describe('generationFailureMessage', () => {
 
   it('never turns a server-supplied code into a translation key', () => {
     const translate = vi.fn();
-    expect(generationFailureMessage({ code: 'tts_errors.no_audio_track' }, translate)).toBeUndefined();
+    expect(
+      generationFailureMessage({ code: 'tts_errors.no_audio_track' }, translate),
+    ).toBeUndefined();
     expect(translate).not.toHaveBeenCalled();
   });
 });

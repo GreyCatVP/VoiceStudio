@@ -7,7 +7,7 @@ final class ProductionScreens: XCTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["consent.no"].waitForExistence(timeout: 15))
         app.buttons["consent.no"].tap()
-        for (route,title) in [("design","Voice design"),("stories","Stories"),("audiobook","Audiobook"),("batch","Batch dubbing"),("gallery","Gallery"),("workflows","Workflows"),("calls","Calls"),("local-api","Phone speech API"),("tools","Tools")] {
+        for (route,title) in [("transcriptions","Transcriptions"),("handoff","Project handoff and backup"),("design","Voice design"),("stories","Stories"),("audiobook","Audiobook"),("batch","Batch dubbing"),("gallery","Gallery"),("workflows","Workflows"),("calls","Calls"),("local-api","Phone speech API"),("tools","Tools")] {
             let card = app.buttons["home."+route]
             for _ in 0..<8 { if card.isHittable { break }; app.swipeUp() }
             XCTAssertTrue(card.isHittable,route); card.tap()

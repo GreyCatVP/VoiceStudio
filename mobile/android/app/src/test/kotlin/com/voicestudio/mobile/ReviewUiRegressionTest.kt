@@ -47,7 +47,7 @@ class ReviewUiRegressionTest {
         try {
             content {HomeScreen(vm) {destination=it}}
             await {!vm.phone.state.value.loading}
-            compose.onNodeWithText("VoiceStudio.sh Open Source").assertExists()
+            compose.onNodeWithText("VoiceStudio").assertExists()
             for(route in listOf("speak","voices","dub","dictate","models","connect")) {
                 compose.onNodeWithTag("home.$route").performScrollTo().performClick()
                 assertEquals(route,destination)
