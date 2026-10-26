@@ -127,20 +127,30 @@ def test_import_failure_log_is_sanitized():
     assert "sanitize(" in block, "the failure detail must go through core.failure.sanitize"
 
 
-@pytest.mark.parametrize("failure", [None, "preparation", "torchaudio"])
+@pytest.mark.parametrize("failure", [None, "preparation", "torchaudio", "both"])
 def test_main_audio_guard_prepares_before_import_and_degrades(monkeypatch, caplog, failure):
     import builtins
     import logging
     from types import SimpleNamespace
 
-    _, guarded_import = _main_audio_import_guard()
+    source, guarded_import = _main_audio_import_guard()
+    preparation_guard = next(
+        node for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.Try) and any(
+            isinstance(statement, ast.Expr)
+            and isinstance(statement.value, ast.Call)
+            and isinstance(statement.value.func, ast.Name)
+            and statement.value.func.id == "prepare_audio_imports"
+            for statement in node.body
+        )
+    )
     original_import = builtins.__import__
     events = []
     audio_module = SimpleNamespace()
 
     def prepare_audio():
         events.append("preparation")
-        if failure == "preparation":
+        if failure in {"preparation", "both"}:
             raise OSError("compatibility preparation failed")
 
     def controlled_import(name, *args, **kwargs):
@@ -148,17 +158,19 @@ def test_main_audio_guard_prepares_before_import_and_degrades(monkeypatch, caplo
             return SimpleNamespace(prepare_audio_imports=prepare_audio)
         if name == "torchaudio":
             events.append("torchaudio")
-            if failure == "torchaudio":
+            if failure in {"torchaudio", "both"}:
                 raise OSError("native audio import failed")
             return audio_module
         return original_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", controlled_import)
     namespace = {"logging": logging}
-    block = ast.Module(body=[guarded_import], type_ignores=[])
+    blocks = sorted([preparation_guard, guarded_import], key=lambda node: node.lineno)
+    block = ast.Module(body=blocks, type_ignores=[])
     exec(compile(block, str(_MAIN), "exec"), namespace)
-    assert events == (["preparation"] if failure == "preparation" else ["preparation", "torchaudio"])
-    assert namespace["torchaudio"] is (None if failure else audio_module)
+    assert events == ["preparation", "torchaudio"]
+    import_failed = failure in {"torchaudio", "both"}
+    assert namespace["torchaudio"] is (None if import_failed else audio_module)
     records = [record for record in caplog.records if record.name == "omnivoice.model"]
-    assert len(records) == (1 if failure else 0)
+    assert len(records) == (1 if import_failed else 0)
     assert all(record.exc_info is None for record in records)
