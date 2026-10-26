@@ -270,9 +270,9 @@
     "title": "Từ điển phát âm",
     "help": "Dạy động cơ cách nói những từ khó. Mỗi mục thay thế một từ bằng cách viết lại trước khi tổng hợp, vì vậy nó áp dụng trên mọi công cụ. Phạm vi một mục nhập cho một ngôn ngữ hoặc để nó Toàn cầu. Trong dòng, [[word|respelling]] ghi đè từ điển một lần.",
     "term": "kỳ hạn",
-    "term_placeholder": "từ hoặc cụm từ (ví dụ: GIF)",
+    "term_placeholder": "vd: GIF",
     "replacement": "thay thế",
-    "replacement_placeholder": "đánh vần lại (ví dụ: jiff)",
+    "replacement_placeholder": "vd: jiff",
     "scope": "Phạm vi",
     "global": "Toàn cầu",
     "type": "Loại",
@@ -284,14 +284,14 @@
     "remove": "Xóa {{term}}",
     "empty": "Chưa có mục nào. Thêm một mục bên dưới để sửa một từ phát âm sai.",
     "test_label": "Kiểm tra một câu",
-    "test_placeholder": "Nhập một câu để xem trước sự thay thế…",
+    "test_placeholder": "Nhập một câu…",
     "test_result": "Sẽ được nói như:",
     "test_nochange": "Không có mục nào khớp - nói như viết.",
     "load_error": "Không thể tải từ điển phát âm.",
     "save_error": "Không thể lưu mục đó.",
     "lang_label": "Mã ngôn ngữ (ví dụ: en, de) hoặc để trống cho Toàn cầu",
     "enable_entry": "Bật {{term}}",
-    "lang_placeholder": "en, de… (bỏ trống = Toàn cầu)",
+    "lang_placeholder": "vd: en",
     "test_language": "Ngôn ngữ xem trước",
     "test_global_hint": "Chỉ đang xem trước các mục Toàn cầu — chọn một ngôn ngữ để bao gồm các mục theo ngôn ngữ.",
     "test_error": "Không thể xem trước — không liên lạc được với backend.",
@@ -299,10 +299,14 @@
     "backup_hint": "Tải xuống từ điển dưới dạng tệp JSON, hoặc nhập các mục từ một lần xuất trước đó.",
     "export": "Xuất JSON",
     "import": "Nhập JSON",
-    "import_replace_prompt": "Thay thế {{count}} mục hiện có bằng tệp đã nhập? Chọn Không để thêm các mục đã nhập bên cạnh các mục hiện có.",
-    "import_done": "Đã nhập {{count}} mục.",
+    "import_replace_prompt_one": "Thay {{count}} mục hiện có bằng tệp đã nhập? Chọn Không để thêm các mục đã nhập bên cạnh.",
+    "import_replace_prompt_other": "Thay {{count}} mục hiện có bằng tệp đã nhập? Chọn Không để thêm các mục đã nhập bên cạnh.",
+    "import_done_one": "Đã nhập {{count}} mục.",
+    "import_done_other": "Đã nhập {{count}} mục.",
     "import_error": "Không thể nhập tệp đó — cần JSON từ một lần xuất phát âm.",
-    "export_error": "Không thể xuất từ điển."
+    "export_error": "Không thể xuất từ điển.",
+    "entries_count_one": "{{count}} mục",
+    "entries_count_other": "{{count}} mục"
   },
   "preferences": {
     "title": "Cài đặt",
@@ -404,7 +408,8 @@
     "change": "Đổi bộ máy",
     "failed": "Không thể đổi bộ máy. Hãy thử lại.",
     "empty": "Chưa có công cụ hoặc mô hình nào cho nhóm này.",
-    "modelsInstalled": "Đã cài {{installed}}/{{count}}"
+    "modelsInstalled": "Đã cài {{installed}}/{{count}}",
+    "dictation_enabled": "Bật đọc chính tả"
   },
   "modelMaintenance": {
     "download": "Tải xuống",
@@ -447,7 +452,7 @@
     "mode_fast": "Nhanh",
     "mode_fast_desc": "Sử dụng mô hình đọc chính tả có độ trễ thấp đã chọn.",
     "mode_accurate": "Chính xác",
-    "mode_accurate_desc": "Sử dụng mô hình ASR đã chọn với dấu thời gian chi tiết.",
+    "mode_accurate_desc": "Dùng mô hình chuyển giọng nói thành văn bản đã chọn, kèm mốc thời gian chi tiết.",
     "title": "Phiên âm",
     "entries": "{{count}} mục",
     "search_placeholder": "Tìm kiếm bản chép lời…",
@@ -474,7 +479,8 @@
     "identify_speakers": "Nhận diện người nói",
     "speakers_unavailable": "Không thể nhận diện người nói. Bản chép lời đã được lưu mà không có nhãn người nói.",
     "missing_model": "Chưa cài đặt mô hình chuyển giọng nói thành văn bản — tính năng này cần một mô hình để phiên âm.",
-    "original_transcript": "Bản chép lời gốc"
+    "original_transcript": "Bản chép lời gốc",
+    "active_model": "Mô hình: {{model}}"
   },
   "engineRuntime": {
     "ready": "Sẵn sàng",
@@ -803,7 +809,6 @@
     "install_disabled_title": "Cài đặt bị vô hiệu hóa trong các bản dựng đóng gói",
     "needs_install_suffix": "- cần cài đặt",
     "glossary_title": "Ghim bản dịch cho các thuật ngữ định kỳ (tên, từ thương hiệu, biệt ngữ)",
-    "glossary_btn": "+ Bảng thuật ngữ ({{count}})",
     "selected_count": "{{count}} đã chọn",
     "set_voice": "Đặt giọng nói…",
     "clear_voice": "⊘ Mặc định",
@@ -926,7 +931,12 @@
     "input_issue_unsupported": "Loại tệp không được hỗ trợ — hãy chọn tệp video hoặc âm thanh",
     "input_issue_empty": "Tệp này trống — hãy chọn tệp khác",
     "file_actions": "Thao tác tệp",
-    "translator_agent": "Tác tử"
+    "translator_agent": "Tác tử",
+    "segment_count_one": "{{count}} đoạn",
+    "segment_count_other": "{{count}} đoạn",
+    "glossary_terms_one": "Bảng thuật ngữ · {{count}} thuật ngữ",
+    "glossary_terms_other": "Bảng thuật ngữ · {{count}} thuật ngữ",
+    "glossary_label": "Bảng thuật ngữ"
   },
   "dub_workflow": {
     "preparing_audio": "Đang chuẩn bị âm thanh…",
@@ -1116,7 +1126,7 @@
     "engine_switched": "Đã chuyển {{family}} sang {{engine}}",
     "usage": "Mức sử dụng",
     "usage_desc": "Những gì bạn đã tạo bằng VoiceStudio — được đếm ngay trên thiết bị của bạn.",
-    "usage_privacy": "Các số liệu này được tính từ lịch sử trên thiết bị này và không bao giờ được gửi đi. VoiceStudio không dùng dịch vụ phân tích — không có dữ liệu nào ở đây rời khỏi máy tính của bạn.",
+    "usage_privacy": "Các con số này được tính từ lịch sử của chính bạn và chỉ nằm trên máy tính này. Phân tích tùy chọn được điều chỉnh riêng trong Bảo mật.",
     "usage_empty": "Bạn chưa tạo nội dung nào — hãy tạo một nội dung và nó sẽ xuất hiện ở đây.",
     "usage_takes": "Lượt tạo",
     "usage_since": "kể từ {{date}}",
@@ -1251,7 +1261,7 @@
     "hf_token_test_now": "Kiểm tra ngay",
     "hf_source_env_label": "Biến môi trường",
     "hf_token_not_checked": "Chưa kiểm tra",
-    "translation_providers_desc": "Khóa API dành cho người dịch trực tuyến, được đặt cho phiên này.",
+    "translation_providers_desc": "Khóa cho các trình dịch trực tuyến: Google Cloud, DeepL, Microsoft Azure và AWS. Được lưu trên máy tính này và giữ lại sau khi khởi động lại.",
     "hf_token_verified": "Đã xác minh",
     "ffmpeg": "FFmpeg",
     "hf_token_not_set": "Chưa đặt",
@@ -1315,6 +1325,7 @@
     "storage_cat_data": "Dữ liệu ứng dụng",
     "storage_child_preview": "Bản xem trước",
     "storage_desc": "Nơi VoiceStudio lưu giữ dữ liệu và kết quả đầu ra của bạn.",
+    "models_dir_desc": "Các mô hình đã tải được lưu ở đây. Hãy chọn ổ có nhiều dung lượng trống hơn nếu ổ này đầy.",
     "storage_child_batch": "Tác vụ hàng loạt",
     "storage_top_models": "Mô hình lớn nhất",
     "storage_refresh": "Làm mới",
@@ -1398,7 +1409,7 @@
     "uninstall_models_warning": "Điều này bao gồm bộ đệm Hugging Face được chia sẻ ({{size}}) — các mô hình mà các công cụ AI khác được tải xuống có thể đi kèm với nó.",
     "uninstall_total": "Vị trí {{count}} · {{size}} sẽ được giải phóng",
     "llmp_saved_not_active": "Đã lưu - chưa được sử dụng để dịch. Nhấp vào “Lưu và sử dụng cho bản dịch” để chuyển đổi.",
-    "llmp_active_env_pin": "Lựa chọn LLM được cố định bởi LLM_DEFAULT_PROVIDER hoặc OMNIVOICE_LLM_BACKEND.",
+    "llmp_active_env_pin": "Mô hình ngôn ngữ được đặt bằng một biến môi trường trên máy tính này nên không thể thay đổi tại đây.",
     "llmp_models_truncated": "{{count}} đầu tiên được hiển thị — nhập để thu hẹp tên mô hình",
     "llm_skills": "LLM Kỹ năng",
     "llmskills_desc": "Định tuyến từng tính năng do AI hỗ trợ tới LLM của chính nó — duy trì công việc nhạy cảm trên mô hình cục bộ (Ollama/LM Studio) trong khi các công việc nặng hơn sử dụng nhà cung cấp từ xa — hoặc tắt hoàn toàn một tính năng. Tắt hoạt động giống hệt như không có LLM được định cấu hình: tính năng này quay trở lại đường dẫn không phải LLM.",
@@ -1439,7 +1450,7 @@
     "remote_backend_desc": "Chạy suy luận trên máy khác; để trống URL cho chương trình phụ trợ cục bộ. Lưu tải lại ứng dụng để áp dụng.",
     "remote_backend_hint": "Bắt đầu chương trình phụ trợ trên máy kia với bộ <1>OMNIVOICE_API_KEY</1>, tiếp cận máy đó qua tailnet của bạn và trỏ ứng dụng này vào máy đó.",
     "remote_backend_url": "URL phụ trợ",
-    "remote_backend_key_placeholder": "giá trị của OMNIVOICE_API_KEY trên máy chủ",
+    "remote_backend_key_placeholder": "Khóa API đặt trên máy tính kia",
     "remote_backend_probe_ok": "Được — {{detail}}",
     "remote_backend_probe_fail": "Không thành công — {{detail}}",
     "remote_backend_unreachable": "không thể truy cập được",
@@ -1527,7 +1538,7 @@
     "more_actions": "Thao tác khác",
     "use_in_stories": "Dùng trong Kịch bản",
     "set_audiobook_default": "Đặt làm giọng mặc định cho Sách nói",
-    "open_designer": "Mở trong Trình thiết kế",
+    "open_designer": "Mở trong Thiết kế",
     "no_matches": "Không có giọng nói nào phù hợp với các bộ lọc này.",
     "load_more": "Tải thêm",
     "saved_as_profile": "Đã thêm \"{{name}}\" vào giọng nói của bạn.",
@@ -1549,7 +1560,7 @@
     "trim_load_failed": "Không thể tải âm thanh để cắt: {{message}}",
     "delete": "Xóa",
     "community_empty": "Chưa tải được giọng nói cộng đồng nào — hãy kết nối internet rồi mở lại, hoặc trở thành người đầu tiên gửi một giọng nói.",
-    "community_explainer": "Các cài đặt trước được thiết kế và giọng nói ghi âm do cộng đồng chia sẻ, được tải từ omnivoice-gallery.",
+    "community_explainer": "Các cài đặt sẵn đã thiết kế và giọng nói ghi âm do cộng đồng chia sẻ.",
     "no_designer": "Giọng nói ghi âm — hãy dùng \"Sử dụng giọng nói\" thay thế.",
     "no_preview": "Không có bản xem trước — thêm bằng \"Sử dụng giọng nói\" để nghe thử.",
     "submit_failed": "Không thể mở biểu mẫu gửi.",
@@ -1675,7 +1686,9 @@
     "probe_placeholder": "/Users/bạn/Phim/sample.mp4",
     "probe_failed": "Thăm dò không thành công: {{message}}",
     "parse_failed": "Phân tích cú pháp không thành công: {{message}}",
-    "fit_failed": "Lắp không thành công: {{message}}"
+    "fit_failed": "Lắp không thành công: {{message}}",
+    "placeholder_direction": "ví dụ: Thì thầm như một bí mật, rồi để sự hào hứng dâng lên.",
+    "placeholder_rate_fit": "Dán dòng đã dịch để so với khoảng thời gian của nó."
   },
   "projects": {
     "title": "Dự án",
@@ -1721,7 +1734,9 @@
     "delete_selected": "Xóa mục đã chọn ({{count}})",
     "deleted_count": "Đã xóa: {{count}}",
     "delete_warning": "Không thể hoàn tác. Dự án và bản chép lời sẽ bị xóa. Xóa giọng nói hoặc bản thu cũng xóa âm thanh đã lưu của chúng. Tệp đã xuất và âm thanh kết xuất hoàn tất được giữ lại.",
-    "draft_changed": "Bản nháp của bạn đã thay đổi trong khi tải dự án này. Xác nhận lại để thay thế bản nháp."
+    "draft_changed": "Bản nháp của bạn đã thay đổi trong khi tải dự án này. Xác nhận lại để thay thế bản nháp.",
+    "all_projects": "Tất cả dự án",
+    "library_group": "Thư viện"
   },
   "projectActions": {
     "delete": "Xóa “{{name}}”? Không thể hoàn tác thao tác này.",
@@ -1746,7 +1761,9 @@
     "tagline": "Nhân bản giọng nói địa phương. Không có gì rời khỏi máy của bạn.",
     "coming_soon": "Sắp ra mắt",
     "switch_to_light": "Chuyển sang giao diện nhẹ nhàng",
-    "switch_to_dark": "Chuyển sang chủ đề tối"
+    "switch_to_dark": "Chuyển sang chủ đề tối",
+    "not_found_title": "Không tìm thấy trang",
+    "not_found_body": "Địa chỉ này không khớp với trang nào trong VoiceStudio."
   },
   "stories": {
     "title": "Biên tập truyện",
@@ -1763,7 +1780,8 @@
     "autocast": "Tự động truyền",
     "autocastHint": "Phát hiện ai đang nói và tự động gán giọng nói",
     "autocastEmpty": "Không có gì để tự động truyền — trước tiên hãy dán hoặc nhập câu chuyện.",
-    "autocastDone": "Tự động truyền {{lines}} dòng qua {{voices}} giọng nói",
+    "autocastDone_one": "Đã phân {{lines}} dòng cho {{count}} giọng",
+    "autocastDone_other": "Đã phân {{lines}} dòng cho {{count}} giọng",
     "importFailed": "Không thể đọc tập tin đó.",
     "addLine": "Thêm dòng",
     "addChapter": "Thêm chương",
@@ -1798,13 +1816,13 @@
     "splitModeHint": "Mỗi dòng được đọc như một lần thu riêng. Với một người đọc, đoạn văn hoặc cả chương nghe liền mạch hơn câu.",
     "emptyText": "Bắt đầu câu chuyện của bạn bằng cách thêm lời thoại và lời kể. Gán cho mỗi nhân vật một giọng nói trong Cast.",
     "addFirst": "Thêm dòng đầu tiên",
-    "linePlaceholder": "Nhập đoạn hội thoại hoặc tường thuật… sử dụng [tạm dừng 0,5 giây] để nghỉ im lặng",
+    "linePlaceholder": "Nhập đoạn hội thoại hoặc tường thuật… sử dụng [pause 0.5s] để nghỉ im lặng",
     "text": "văn bản",
     "defaultVoice": "Mặc định",
     "inlineVoice": "Đặt giọng nói nội tuyến",
     "inlineVoiceHint": "Chuyển giọng nói cho văn bản được đánh dấu (hoặc chèn một công tắc ở con trỏ)",
     "resetInlineVoice": "Đặt lại về giọng nói",
-    "insertPause": "Chèn dấu ngắt [tạm dừng 0,5 giây]",
+    "insertPause": "Chèn dấu ngắt [pause 0.5s]",
     "preview": "Xem trước dòng này",
     "removeLine": "Xóa dòng",
     "tune": "Giai điệu & tốc độ",
@@ -1842,7 +1860,8 @@
     "toneChip": "Ngữ điệu và tốc độ: {{speed}}",
     "lineVoice": "Giọng của dòng",
     "chapterHeading": "Tiêu đề chương",
-    "lineActions": "Thao tác dòng"
+    "lineActions": "Thao tác dòng",
+    "recovery_title": "Truyện bị gián đoạn"
   },
   "audiobook": {
     "cast": "Dàn giọng",
@@ -1866,7 +1885,6 @@
     "stats_one": "{{count}} chương · {{words}} từ · {{runtime}} thời lượng ước tính",
     "stats_other": "{{count}} chương · {{words}} từ · {{runtime}} thời lượng ước tính",
     "warnings_title": "Trước khi tạo",
-    "warn_unknown_voice": "Giọng không xác định ‘{{name}}’ — sẽ dùng giọng mặc định",
     "warn_empty_chapter": "Chương “{{title}}” không có nội dung để đọc",
     "warn_unknown_tag": "Thẻ không nhận dạng {{tag}} — sẽ được đọc to",
     "untitled": "Sách nói không tiêu đề",
@@ -1878,7 +1896,7 @@
     "tab_book": "Sách",
     "subtitle": "Viết hoặc nhập câu chuyện, chọn giọng cho từng vai, rồi xuất sách nói hoàn chỉnh với các chương thực sự.",
     "script": "kịch bản",
-    "script_placeholder": "# Chương Một\nNgày xửa ngày xưa… [tạm dừng 500ms] đoạn cuối.\n\n# Chương hai\n[giọng:người kể chuyện] Và cứ thế mọi chuyện tiếp tục.",
+    "script_placeholder": "# Chương Một\nNgày xửa ngày xưa… [pause 0.5s] đoạn cuối.\n\n# Chương hai\n[voice:người kể chuyện] Và cứ thế mọi chuyện tiếp tục.",
     "default_voice": "Giọng nói mặc định",
     "engine_default": "Mặc định công cụ",
     "preview_plan": "Xem trước kế hoạch",
@@ -1888,7 +1906,7 @@
       "busy": "Một cuốn sách khác đang được kết xuất. Hãy chờ hoặc dừng nó trước.",
       "importing": "Đang nhập… Tạo sẽ mở khi hoàn tất.",
       "engine_loading": "Đang kiểm tra engine giọng nói…",
-      "engine": "Engine giọng nói chưa sẵn sàng. Kiểm tra Cài đặt → Engine.",
+      "engine": "Engine giọng nói chưa sẵn sàng. Kiểm tra Cài đặt → Mô hình.",
       "no_lines": "Thêm ít nhất một dòng thoại để tạo.",
       "no_script": "Viết hoặc nhập kịch bản để tạo.",
       "voice": "Chọn giọng mặc định hoặc gán giọng cho từng dòng.",
@@ -1954,7 +1972,7 @@
     "lex_add": "Thêm từ",
     "lex_remove": "Xóa",
     "markup_help": "Tham chiếu đánh dấu",
-    "markup_hint": "# Tiêu đề chương · [voice:NAME] chuyển giọng nói · [pause 500ms] / [pause 1s] · [slow]…[/slow] · [fast]…[/fast] · [emphasis]…[/emphasis] · [spell]…[/spell] · Phản ứng (VoiceStudio): [laughter] [sigh] [confirmation-en] [question-en] [question-ah] [question-oh] [question-ei] [question-yi] [surprise-ah] [surprise-oh] [surprise-wa] [surprise-yo] [dissatisfaction-hnn]",
+    "markup_hint": "# Tiêu đề chương · [voice:NAME] chuyển giọng nói · [pause 0.5s] · [slow]…[/slow] · [fast]…[/fast] · [emphasis]…[/emphasis] · [spell]…[/spell] · Phản ứng (VoiceStudio): [laughter] [sigh] [confirmation-en] [question-en] [question-ah] [question-oh] [question-ei] [question-yi] [surprise-ah] [surprise-oh] [surprise-wa] [surprise-yo] [dissatisfaction-hnn]",
     "language": "Ngôn ngữ",
     "expressive": "Ghi đè sản xuất",
     "reset": "Đặt lại",
@@ -1971,7 +1989,10 @@
     "emotion_text": "Mô tả cảm xúc",
     "emotion_text_ph": "ví dụ: nghe vẻ mệt mỏi và buồn",
     "emotion_alpha": "Độ mạnh của cảm xúc",
-    "lex_duplicate": "Chỉ dùng một cách phát âm cho mỗi từ."
+    "lex_duplicate": "Chỉ dùng một cách phát âm cho mỗi từ.",
+    "recovery_busy": "Đang có một lượt kết xuất khác. Hãy tiếp tục khi nó xong.",
+    "cast_note_one": "{{names}} chưa được chọn giọng nên sẽ đọc bằng giọng chính. Hãy chọn giọng trong mục Vai.",
+    "cast_note_other": "{{names}} chưa được chọn giọng nên sẽ đọc bằng giọng chính. Hãy chọn giọng trong mục Vai."
   },
   "credentials": {
     "microsoft_key": "Khóa dịch của Microsoft",
@@ -1982,6 +2003,7 @@
     "deepl_base_url_help": "Điểm cuối API DeepL tùy chỉnh (mặc định: https://api.deepl.com/v2). Thay đổi cho proxy/tự lưu trữ.",
     "microsoft_base_url_help": "Điểm cuối Azure Translator tùy chỉnh (mặc định: https://api.cognitive.microsofttranslator.com).",
     "region": "Khu vực",
+    "base_url": "URL cơ sở",
     "aws_profile": "Hồ sơ AWS",
     "deepl_key_placeholder": "DeepL khóa API",
     "microsoft_key_placeholder": "Microsoft khóa API"
@@ -2006,11 +2028,12 @@
     "self_check_warn": "Cảnh báo",
     "self_check_fail": "Thất bại",
     "self_check_healthy": "Tất cả kiểm tra đều đạt — bản cài đặt này có vẻ ổn.",
-    "self_check_attention": "{{count}} kiểm tra thất bại — xem gợi ý ở trên.",
+    "self_check_attention_one": "{{count}} bước kiểm tra thất bại — xem gợi ý ở trên.",
+    "self_check_attention_other": "{{count}} bước kiểm tra thất bại — xem gợi ý ở trên.",
     "save_bundle": "Lưu gói chẩn đoán",
     "bundle_saved": "Đã lưu gói chẩn đoán: {{filename}}",
     "title": "Giới thiệu",
-    "diagnostics": "Đèn chiếu trước hệ thống",
+    "diagnostics": "Chẩn đoán",
     "model_credits": "Ghi công mô hình",
     "model_credits_hint": "Ghi công các mô hình được hỗ trợ. Mô hình và thành phần có điều khoản riêng; phần ghi công này không cấp quyền sử dụng thương mại.",
     "model_terms": "Điều khoản mô hình",
@@ -2019,7 +2042,8 @@
   "privacy": {
     "translator_online": "Người dịch đang trực tuyến: {{provider}}",
     "analytics_title": "Giúp cải thiện VoiceStudio",
-    "translator_offline": "Trình dịch ngoại tuyến",
+    "translator_offline": "Chỉ ngoại tuyến",
+    "change_translator": "Đổi trình dịch",
     "translator_unknown": "Không rõ",
     "watermark_subtitle": "Bật theo mặc định. Đánh dấu âm thanh được tạo là do AI tạo ra để có thể nhận biết về sau. Chỉ ảnh hưởng đến âm thanh được tạo từ giờ trở đi.",
     "analytics_subtitle": "Mặc định tắt. Dữ liệu ẩn danh về bộ máy, ngôn ngữ, thời lượng, số ký tự và loại lỗi. Không gửi văn bản hay âm thanh.",
@@ -2364,7 +2388,8 @@
     "generating_voice_a": "Đang tạo giọng nói và...",
     "generating_voice_b": "Đang tạo giọng nói B...",
     "comparison_complete": "So sánh hoàn tất!",
-    "play_failed": "Chơi không thành công: {{message}}"
+    "play_failed": "Chơi không thành công: {{message}}",
+    "test_phrase_placeholder": "Nhập một câu để cả hai giọng cùng đọc."
   },
   "demo": {
     "clone_coachmark": "Đây là bản demo có hướng dẫn — hãy thử lời nhắc gợi ý hoặc viết lời nhắc của riêng bạn.",
@@ -2574,7 +2599,8 @@
       "aria": "{{raised}} trong số {{goal}} mục tiêu hàng tháng",
       "remaining": "{{amount}} đi",
       "met": "🎉 Đã đạt mục tiêu — {{raised}} tăng lên. Cảm ơn!",
-      "social_proof": "Tham gia cùng những người ủng hộ {{count}} tài trợ cho AI địa phương"
+      "social_proof_one": "Tham gia cùng {{count}} người ủng hộ AI cục bộ",
+      "social_proof_other": "Tham gia cùng {{count}} người ủng hộ AI cục bộ"
     },
     "postcard": {
       "title": "Hỗ trợ phát triển VoiceStudio",
@@ -2686,14 +2712,14 @@
     "openDocs": "Mở tài liệu cho lỗi này",
     "crash_port_in_use": "Không thể khởi động backend vì cổng 3900 đã được sử dụng — một bản VoiceStudio khác (hoặc ứng dụng đã chiếm cổng đó) đang giữ nó. Hãy thoát bản kia rồi khởi chạy lại; nếu không thấy gì đang chạy, một backend còn sót từ phiên trước vẫn đang giữ cổng.",
     "crash_oom_kill": "Tiến trình bị buộc dừng (tín hiệu 9), thường có nghĩa là hệ điều hành đã hết bộ nhớ (RAM). Hãy đóng các ứng dụng ngốn bộ nhớ, chọn mô hình ASR nhỏ hơn trong Cài đặt → Mô hình, hoặc giải phóng mô hình TTS trước khi chuyển lời nói thành văn bản.",
-    "crash_native_fault": "Nó sập bên trong tầng tính toán chứ không phải do hết bộ nhớ — điều này cho thấy trình điều khiển GPU không khớp với CUDA runtime đi kèm, hoặc tệp mô hình tải xuống không trọn vẹn. Hãy cập nhật trình điều khiển GPU, rồi tải lại mô hình trong Cài đặt → Mô hình (nó sửa bản tải dở ngay tại chỗ). Nếu vẫn tiếp diễn, hãy chuyển sang engine cách ly sự cố trong Cài đặt → Engine — \"VoiceStudio (subprocess)\" cho tổng hợp giọng nói, \"Faster-Whisper (crash-isolated subprocess)\" cho chuyển lời nói thành văn bản. Chúng chạy mô hình trong tiến trình riêng, nên sự cố như thế chỉ hạ tiến trình đó thay vì toàn bộ backend.",
+    "crash_native_fault": "Nó sập bên trong tầng tính toán chứ không phải do hết bộ nhớ — điều này cho thấy trình điều khiển GPU không khớp với CUDA runtime đi kèm, hoặc tệp mô hình tải xuống không trọn vẹn. Hãy cập nhật trình điều khiển GPU, rồi tải lại mô hình trong Cài đặt → Mô hình (nó sửa bản tải dở ngay tại chỗ). Nếu vẫn tiếp diễn, hãy chuyển sang engine cách ly sự cố trong Cài đặt → Mô hình — \"VoiceStudio (subprocess)\" cho tổng hợp giọng nói, \"Faster-Whisper (crash-isolated subprocess)\" cho chuyển lời nói thành văn bản. Chúng chạy mô hình trong tiến trình riêng, nên sự cố như thế chỉ hạ tiến trình đó thay vì toàn bộ backend.",
     "report": "Báo cáo lỗi này",
     "report_failed": "Không mở được báo cáo lỗi. Vui lòng thử lại, hoặc sao chép chi tiết ở trên vào một issue mới.",
     "searchIssues": "Tìm các vấn đề tương tự",
     "unexpected": "Lỗi không mong muốn: {{message}}",
     "backend_shutting_down": "VoiceStudio đang tắt. Mở lại ứng dụng rồi thử lại.",
     "crash_broken_env": "Nó dừng khi đang nạp các phụ thuộc Python của chính mình, nên đây không phải chuyện bộ nhớ hay GPU — môi trường bị thiếu hoặc cập nhật dở dang. Hãy dùng \"Dọn dẹp & Thử lại\" trong Cài đặt → Nhật ký → Backend: nó dựng lại từ đầu và sửa ngay tại chỗ, không đụng đến giọng nói hay dự án của bạn. Nếu vẫn lỗi, phần chi tiết sự cố sẽ nêu đúng gói không nạp được.",
-    "crash_vram_default": "Trên các GPU nhỏ hơn, nguyên nhân thường gặp là hết VRAM khi tải mô hình ASR chồng lên mô hình TTS: hãy giải phóng mô hình TTS trước, hoặc chọn mô hình ASR nhỏ hơn trong Danh mục mô hình → Mô hình.",
+    "crash_vram_default": "Trên các GPU nhỏ hơn, nguyên nhân thường gặp là hết VRAM khi tải mô hình ASR chồng lên mô hình TTS: hãy giải phóng mô hình TTS trước, hoặc chọn mô hình ASR nhỏ hơn trong Cài đặt → Mô hình.",
     "stream_cut_backend_alive": "Luồng kết thúc sớm, nhưng backend vẫn đang chạy — nên nó không hề sập. Trong môi trường chạy qua server hoặc container, nguyên nhân thường là reverse proxy hoặc load balancer đang đệm hoặc ngắt kết nối do hết thời gian chờ: hãy tắt đệm phản hồi cho tuyến này (nginx: proxy_buffering off; X-Accel-Buffering: no) và tăng thời gian chờ đọc của nó. Chạy trực tiếp ứng dụng desktop, hoặc chạy trên localhost không qua proxy, sẽ xác nhận điều đó."
   },
   "segmentEditing": {
@@ -2870,7 +2896,8 @@
     "plan_impossible": "Không vừa +{{seconds}}giây",
     "plan_impossible_title": "Lời nói dự kiến ≈{{est}}giây, thời gian có sẵn {{avail}}giây. Khoảng {{seconds}}giây vượt quá khả năng điều chỉnh nên âm thanh sẽ bị cắt. Hãy rút ngắn văn bản trước khi tạo.",
     "plan_tight": "Vừa sát giới hạn",
-    "plan_tight_title": "Lời nói dự kiến ≈{{est}}giây, thời gian có sẵn {{avail}}giây. Căn chỉnh thông minh có thể bù bằng cách tăng tốc giọng nói rõ rệt hoặc làm chậm video. Hãy rút ngắn văn bản để có kết quả tốt hơn."
+    "plan_tight_title": "Lời nói dự kiến ≈{{est}}giây, thời gian có sẵn {{avail}}giây. Căn chỉnh thông minh có thể bù bằng cách tăng tốc giọng nói rõ rệt hoặc làm chậm video. Hãy rút ngắn văn bản để có kết quả tốt hơn.",
+    "replace_toggle": "Tìm và thay thế"
   },
   "update": {
     "checking": "Đang kiểm tra bản cập nhật…",
@@ -2948,8 +2975,6 @@
     "translate_hint": "Đọc lướt văn bản mục tiêu. Các dòng quá dài được tăng tốc độ; bạn cũng có thể chỉnh sửa trực tiếp.",
     "done_title": "Lồng tiếng hoàn tất",
     "done_hint": "Xem lại tỷ lệ thời gian và đồng bộ hóa. Tinh chỉnh bất kỳ dòng nào và nhấn \"Regen đã thay đổi\" để làm lại một phần nhanh chóng.",
-    "segment_one": "Đoạn {{count}}",
-    "segment_other": "{{count}} phân đoạn",
     "dismiss_title": "Loại bỏ - sẽ không xuất hiện lại ở giai đoạn này cho đến khi tải lại",
     "timing_review_one": "{{count}} đoạn cần kiểm tra thời gian",
     "timing_review_other": "{{count}} đoạn cần kiểm tra thời gian",
@@ -3021,7 +3046,7 @@
     "fast": "Nhanh",
     "balanced": "Cân bằng",
     "quality": "Chất lượng",
-    "hint": "Áp dụng cho lấy mẫu OmniVoice và giải mã Faster-Whisper / NLLB. Các công cụ khác giữ nguyên cài đặt hiện tại của chúng.",
+    "hint": "Đặt tốc độ và chất lượng cho tạo giọng nói, chép lời và dịch. Các engine không có những tùy chỉnh này giữ thiết lập riêng.",
     "auto": "Tự động",
     "autoHint": "Chọn mức tốt nhất cho máy tính này."
   },
@@ -3055,7 +3080,7 @@
     "upload_or_select": "Tải lên âm thanh hoặc chọn cấu hình giọng nói",
     "timeout": "Đã hết thời gian tạo - mô hình có thể vẫn đang được tải xuống. Kiểm tra Cài đặt → Nhật ký, sau đó thử lại.",
     "ignored_unsupported": "Đã bỏ qua hướng dẫn không được hỗ trợ: {{items}}",
-    "model_not_downloaded": "Mô hình chưa được tải xuống. Mở Cài đặt → Công cụ của ứng dụng chính để cài đặt nó.",
+    "model_not_downloaded": "Mô hình chưa được tải xuống. Mở Cài đặt → Mô hình để cài đặt.",
     "backend_unreachable": "Động cơ cục bộ không thể truy cập được.",
     "too_long": "Đoạn clip có độ dài {{duration}}s. Công cụ chấp nhận tối đa {{max}} không có bản ghi.",
     "gpu_arch_unsupported": "Bản dựng PyTorch này không hỗ trợ GPU của bạn. Chọn CPU trong Cài đặt → Hiệu năng và thiết bị hoặc cài đặt bản dựng PyTorch tương thích.",
@@ -3068,8 +3093,8 @@
     "gpu_oom": "GPU đã hết bộ nhớ. Hãy đóng các ứng dụng khác dùng nhiều GPU hoặc gỡ mô hình khỏi bộ nhớ rồi thử lại. Bạn cũng có thể chọn CPU trong Cài đặt → Hiệu năng & Thiết bị hoặc chọn công cụ TTS nhỏ hơn.",
     "host_memory_exhausted": "Máy tính đã hết bộ nhớ. Hãy đóng các ứng dụng và thẻ trình duyệt khác dùng nhiều bộ nhớ, gỡ các mô hình không dùng, tạo đoạn ngắn hơn hoặc chọn công cụ TTS nhẹ hơn.",
     "disk_full": "Ổ đĩa đã đầy. Hãy giải phóng dung lượng trên ổ chứa dữ liệu, bộ nhớ đệm mô hình hoặc thư mục tạm của VoiceStudio rồi thử lại. Cài đặt → Lưu trữ hiển thị mức dùng ổ đĩa và có thể xóa tệp tạm.",
-    "engine_dependency_missing": "Một gói Python mà công cụ này cần chưa được cài đặt nên công cụ không thể khởi động. Hãy mở Danh mục mô hình, chọn công cụ và dùng Cài đặt / Sửa chữa, rồi khởi động lại VoiceStudio.",
-    "reference_stt_missing": "Giọng này không có bản chép lời và chưa cài mô hình chuyển giọng nói thành văn bản để tạo bản chép. Hãy nhập nội dung đoạn âm thanh tham chiếu vào ô bản chép lời (đoạn tối đa 20 giây), hoặc cài mô hình chuyển giọng nói thành văn bản trong Danh mục mô hình, chọn nó rồi tạo lại.",
+    "engine_dependency_missing": "Một gói Python mà công cụ này cần chưa được cài đặt nên công cụ không thể khởi động. Hãy mở Cài đặt → Mô hình, chọn công cụ và dùng Cài đặt / Sửa chữa, rồi khởi động lại VoiceStudio.",
+    "reference_stt_missing": "Giọng này không có bản chép lời và chưa cài mô hình chuyển giọng nói thành văn bản để tạo bản chép. Hãy nhập nội dung đoạn âm thanh tham chiếu vào ô bản chép lời (đoạn tối đa 20 giây), hoặc cài mô hình chuyển giọng nói thành văn bản trong Cài đặt → Mô hình, chọn nó rồi tạo lại.",
     "install_speech_model": "Cài đặt mô hình chuyển giọng nói thành văn bản",
     "proxy_gateway_error": "Một proxy hoặc cổng giữa bạn và VoiceStudio đã trả lời HTTP {{status}} thay cho backend. Backend có thể vẫn đang xử lý. Hãy tăng thời gian chờ đọc của proxy (với nginx là proxy_read_timeout) cho các lần tạo dài, rồi kiểm tra Cài đặt → Nhật ký → Backend.",
     "route_not_found": "Backend VoiceStudio đang chạy không có điểm cuối {{route}}. Hãy khởi động lại VoiceStudio để ứng dụng và backend khớp nhau; nếu vẫn lỗi, hãy cập nhật cả hai lên cùng một phiên bản."
@@ -3644,6 +3669,10 @@
     "categoryConditions": "Sử dụng thương mại có điều kiện",
     "categoryNoncommercial": "Chỉ dùng cá nhân và nghiên cứu",
     "categoryUnknown": "Không xác định được giấy phép",
+    "shortCommercial": "Được dùng thương mại",
+    "shortConditions": "Có điều kiện",
+    "shortNoncommercial": "Phi thương mại",
+    "shortUnknown": "Không rõ",
     "categoryHint": "Dựa trên văn bản giấy phép được công bố, VoiceStudio chưa xác minh. Không phải tư vấn pháp lý.",
     "reviewed": "Đã xem xét",
     "notReviewed": "Chưa xem xét",
@@ -4323,7 +4352,7 @@
     },
     "model_missing": {
       "title": "Chưa tải mô hình",
-      "fix1": "Tải về trong Danh mục mô hình",
+      "fix1": "Tải về trong Cài đặt → Mô hình",
       "fix2": "Dùng Sửa để cài đặt"
     },
     "busy": {
@@ -4405,5 +4434,20 @@
     "nextMemory": "Thiết bị này đã hết bộ nhớ. Chọn hồ sơ nhẹ hơn trong Cài đặt → Hiệu suất, rồi thử lại.",
     "downloads": "Tải xuống",
     "activeCount": "Đang tải xuống: {{count}}"
+  },
+  "disabledReason": {
+    "files_required": "Hãy thêm ít nhất một video trước.",
+    "languages_required": "Chọn ít nhất một ngôn ngữ đích.",
+    "language_required": "Hãy chọn ngôn ngữ đích trước.",
+    "translation_not_ready": "Hãy thiết lập công cụ dịch trước.",
+    "recovery_pending": "Hãy tiếp tục hoặc hủy bước bị gián đoạn trước.",
+    "segments_required": "Hãy chép lời video trước.",
+    "text_required": "Hãy nhập văn bản trước.",
+    "path_required": "Hãy nhập đường dẫn đầy đủ tới tệp trước.",
+    "slot_required": "Hãy nhập khoảng thời gian dài hơn 0 giây.",
+    "voices_required": "Hãy chọn cả hai giọng trước.",
+    "generating": "Hãy đợi bản hiện tại hoàn tất.",
+    "name_required": "Hãy nhập tên trước.",
+    "audio_missing": "Bản này không có tệp âm thanh để lưu."
   }
 }

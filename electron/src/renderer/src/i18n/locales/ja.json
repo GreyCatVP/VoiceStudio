@@ -270,9 +270,9 @@
     "title": "発音辞典",
     "help": "エンジンに難しい言葉の言い方を教えます。各エントリは合成前に単語をリスペリングに置き換えるので、すべてのエンジンに適用されます。エントリの範囲を 1 つの言語にするか、グローバルのままにします。インラインでは、[[word|respelling]] は辞書を 1 回オーバーライドします。",
     "term": "期間",
-    "term_placeholder": "単語またはフレーズ (GIF など)",
+    "term_placeholder": "例: GIF",
     "replacement": "交換",
-    "replacement_placeholder": "リスペリング (例: jiff)",
+    "replacement_placeholder": "例: jiff",
     "scope": "範囲",
     "global": "グローバル",
     "type": "タイプ",
@@ -284,14 +284,14 @@
     "remove": "{{term}} を削除",
     "empty": "まだエントリーはありません。発音が間違っている単語を修正するには、下に 1 つ追加します。",
     "test_label": "文をテストする",
-    "test_placeholder": "文を入力して置換をプレビューします…",
+    "test_placeholder": "文を入力…",
     "test_result": "次のように話されます。",
     "test_nochange": "一致するエントリはありません - 書かれたとおりに話されています。",
     "load_error": "発音辞書を読み込めませんでした。",
     "save_error": "そのエントリを保存できませんでした。",
     "lang_label": "言語コード (en、de など)、またはグローバルの場合は空白のままにします",
     "enable_entry": "{{term}} を有効にする",
-    "lang_placeholder": "en, de…（空欄 = グローバル）",
+    "lang_placeholder": "例: en",
     "test_language": "プレビューの言語",
     "test_global_hint": "グローバルなエントリーのみをプレビューしています — 言語別のエントリーを含めるには言語を選択してください。",
     "test_error": "プレビューを利用できません — バックエンドに接続できませんでした。",
@@ -299,10 +299,14 @@
     "backup_hint": "辞書を JSON ファイルとしてダウンロードするか、以前のエクスポートからエントリーをインポートします。",
     "export": "JSON をエクスポート",
     "import": "JSON をインポート",
-    "import_replace_prompt": "既存の {{count}} 件のエントリーをインポートしたファイルで置き換えますか?「いいえ」を選ぶと、既存のエントリーに追加されます。",
-    "import_done": "{{count}} 件のエントリーをインポートしました。",
+    "import_replace_prompt_one": "既存の {{count}} 件をインポートしたファイルで置き換えますか？「いいえ」を選ぶと、インポートした項目を追加します。",
+    "import_replace_prompt_other": "既存の {{count}} 件をインポートしたファイルで置き換えますか？「いいえ」を選ぶと、インポートした項目を追加します。",
+    "import_done_one": "{{count}} 件をインポートしました。",
+    "import_done_other": "{{count}} 件をインポートしました。",
     "import_error": "そのファイルをインポートできませんでした — 発音エクスポートの JSON が必要です。",
-    "export_error": "辞書をエクスポートできませんでした。"
+    "export_error": "辞書をエクスポートできませんでした。",
+    "entries_count_one": "{{count}} 件",
+    "entries_count_other": "{{count}} 件"
   },
   "preferences": {
     "title": "設定",
@@ -404,7 +408,8 @@
     "change": "エンジンを変更",
     "failed": "エンジンを変更できませんでした。再試行してください。",
     "empty": "このカテゴリのエンジンやモデルはまだありません。",
-    "modelsInstalled": "{{count}} 個中 {{installed}} 個をインストール済み"
+    "modelsInstalled": "{{count}} 個中 {{installed}} 個をインストール済み",
+    "dictation_enabled": "音声入力を有効にする"
   },
   "modelMaintenance": {
     "download": "ダウンロード",
@@ -447,7 +452,7 @@
     "mode_fast": "速い",
     "mode_fast_desc": "選択した低遅延ディクテーション モデルを使用します。",
     "mode_accurate": "正確な",
-    "mode_accurate_desc": "選択した ASR モデルと詳細なタイムスタンプを使用します。",
+    "mode_accurate_desc": "選択した音声認識モデルを使い、詳細なタイムスタンプを付けます。",
     "title": "転写",
     "entries": "{{count}} エントリ",
     "search_placeholder": "文字起こしを検索…",
@@ -474,7 +479,8 @@
     "identify_speakers": "話者を識別",
     "speakers_unavailable": "話者の識別は利用できません。文字起こしは話者ラベルなしで保存されました。",
     "missing_model": "音声認識モデルがインストールされていません — この機能で文字起こしを行うにはモデルが必要です。",
-    "original_transcript": "元の文字起こし"
+    "original_transcript": "元の文字起こし",
+    "active_model": "モデル: {{model}}"
   },
   "engineRuntime": {
     "ready": "準備完了",
@@ -803,7 +809,6 @@
     "install_disabled_title": "パッケージ化されたビルドではインストールが無効になっています",
     "needs_install_suffix": "— インストールが必要です",
     "glossary_title": "繰り返し現れる用語 (名前、ブランド単語、専門用語) の翻訳をピン留めする",
-    "glossary_btn": "+ 用語集 ({{count}})",
     "selected_count": "{{count}} が選択されました",
     "set_voice": "音声を設定…",
     "clear_voice": "⊘ デフォルト",
@@ -926,7 +931,12 @@
     "input_issue_unsupported": "サポートされていないファイル形式です — 動画または音声ファイルを選んでください",
     "input_issue_empty": "このファイルは空です — 別のファイルを選んでください",
     "file_actions": "ファイル操作",
-    "translator_agent": "エージェント"
+    "translator_agent": "エージェント",
+    "segment_count_one": "{{count}} セグメント",
+    "segment_count_other": "{{count}} セグメント",
+    "glossary_terms_one": "用語集 · {{count}} 語",
+    "glossary_terms_other": "用語集 · {{count}} 語",
+    "glossary_label": "用語集"
   },
   "dub_workflow": {
     "preparing_audio": "オーディオを準備しています…",
@@ -1116,7 +1126,7 @@
     "engine_switched": "{{family}} を {{engine}} に切り替えました",
     "usage": "使用状況",
     "usage_desc": "VoiceStudioで作成したものを、このデバイス上で集計します。",
-    "usage_privacy": "これらの数値は、このデバイス上の履歴から集計され、外部には送信されません。VoiceStudioは分析サービスを使用しておらず、ここにある情報がコンピューターの外へ出ることはありません。",
+    "usage_privacy": "これらの数値はあなた自身の履歴から集計され、このコンピューター内にとどまります。任意の利用状況の分析は「プライバシー」で別途設定できます。",
     "usage_empty": "まだ何も生成していません。作成すると、ここに表示されます。",
     "usage_takes": "生成したテイク",
     "usage_since": "{{date}}以降",
@@ -1251,7 +1261,7 @@
     "hf_token_test_now": "今すぐテスト",
     "hf_source_env_label": "環境変数",
     "hf_token_not_checked": "未テスト",
-    "translation_providers_desc": "このセッション用に設定されたオンライン翻訳者の API キー。",
+    "translation_providers_desc": "オンライン翻訳（Google Cloud、DeepL、Microsoft Azure、AWS）のキー。このコンピューターに保存され、再起動後も保持されます。",
     "hf_token_verified": "確認済み",
     "ffmpeg": "FFmpeg",
     "hf_token_not_set": "未設定",
@@ -1315,6 +1325,7 @@
     "storage_cat_data": "アプリデータ",
     "storage_child_preview": "プレビュー",
     "storage_desc": "VoiceStudio がデータと出力を保管する場所。",
+    "models_dir_desc": "ダウンロードしたモデルはここに保存されます。空き容量が足りなくなったら、より空きのあるドライブを選んでください。",
     "storage_child_batch": "バッチジョブ",
     "storage_top_models": "大きいモデル",
     "storage_refresh": "更新",
@@ -1438,7 +1449,7 @@
     "uninstall_target_data": "音声、プロジェクト、生成されたオーディオ、履歴",
     "uninstall_target_models": "ダウンロードされたモデルの重み (共有 Hugging Face キャッシュ)",
     "uninstall_total": "{{count}}場所 ·{{size}}解放されるだろう",
-    "llmp_active_env_pin": "LLMの選択はLLM_DEFAULT_PROVIDERまたはOMNIVOICE_LLM_BACKENDで固定されています。",
+    "llmp_active_env_pin": "言語モデルはこのコンピューターの環境変数で指定されているため、ここでは変更できません。",
     "llmskills_dub_translation_desc": "設定された LLM プロバイダー ([ダブ] タブの「LLM」エンジン) を使用してダブ ラインを直接翻訳します。オフ: LLM エンジンは使用できません。別のエンジンを選択してください。",
     "llmskills_cinematic_translation_desc": "翻訳された各行を、自然な文字どおりの配信 (および Autofit の時間割り当て) に書き換えます。オフ: 吹き替えでは高速翻訳結果が使用されます。",
     "llmskills_slot_fitting_name": "スピーチレートスロットフィッティング",
@@ -1448,7 +1459,7 @@
     "audio_tools_restored": "{{tool}}アプリ管理のビルドに復元されました。",
     "audio_tools_manual_hint": "パッケージマネージャーの方がいいですか? FFmpeg を自分でインストールし (macOS: brew install ffmpeg · Debian/Ubuntu: sudo apt install ffmpeg · Windows: winget install ffmpeg)、[Use system copy] を押します。アプリによってシステム全体に何もインストールされることはありません。",
     "audio_tools_ytdlp_desc": "ビデオ/クリップのインポートを強化します。サイトのサポートはアプリのリリースよりも早く変更されます。インポートが失敗し始めたら、ここで更新してください。",
-    "remote_backend_key_placeholder": "の値OMNIVOICE_API_KEYサーバー上で",
+    "remote_backend_key_placeholder": "もう一方のコンピューターで設定した API キー",
     "remote_backend_invalid_url": "http:// または https:// で始まる有効な URL を入力してください (例:http://gpu-box:3900).",
     "remote_backend_confirm_title": "未検証のバックエンドを使用しますか?",
     "review_mode": "レビューモード",
@@ -1527,7 +1538,7 @@
     "more_actions": "その他の操作",
     "use_in_stories": "ストーリーで使用",
     "set_audiobook_default": "オーディオブックのデフォルト音声に設定",
-    "open_designer": "デザイナーで開く",
+    "open_designer": "デザインで開く",
     "no_matches": "これらのフィルターに一致する音声はありません。",
     "load_more": "さらにロードする",
     "saved_as_profile": "ボイスに「{{name}}」を追加しました。",
@@ -1549,7 +1560,7 @@
     "trim_load_failed": "トリミングするオーディオをロードできませんでした：{{message}}",
     "delete": "削除",
     "community_empty": "コミュニティの音声はまだ読み込まれていません — インターネットに接続して開き直すか、最初の投稿者になりましょう。",
-    "community_explainer": "コミュニティが共有したデザイン済みプリセットと録音音声です。omnivoice-gallery から読み込まれます。",
+    "community_explainer": "コミュニティが共有したデザイン済みプリセットと録音音声です。",
     "no_designer": "録音された音声です — 代わりに「音声を使用する」をお使いください。",
     "no_preview": "プレビューはありません — 「音声を使用する」で追加すると聞けます。",
     "submit_failed": "投稿フォームを開けませんでした。",
@@ -1675,7 +1686,9 @@
     "probe_placeholder": "/ユーザー/あなた/映画/sample.mp4",
     "probe_failed": "プローブが失敗しました: {{message}}",
     "parse_failed": "解析に失敗しました: {{message}}",
-    "fit_failed": "フィットに失敗しました: {{message}}"
+    "fit_failed": "フィットに失敗しました: {{message}}",
+    "placeholder_direction": "例: 秘密のようにささやき、だんだん高揚させて。",
+    "placeholder_rate_fit": "翻訳した行を貼り付けて、時間枠と比べます。"
   },
   "projects": {
     "title": "プロジェクト",
@@ -1721,7 +1734,9 @@
     "delete_selected": "選択項目を削除（{{count}}）",
     "deleted_count": "削除済み：{{count}}",
     "delete_warning": "この操作は取り消せません。プロジェクトと文字起こしが削除されます。音声やテイクを削除すると、保存された音声も削除されます。エクスポートしたファイルと完成したレンダリング音声は保持されます。",
-    "draft_changed": "プロジェクトの読み込み中に下書きが変更されました。置き換えるには、もう一度確認してください。"
+    "draft_changed": "プロジェクトの読み込み中に下書きが変更されました。置き換えるには、もう一度確認してください。",
+    "all_projects": "すべてのプロジェクト",
+    "library_group": "ライブラリ"
   },
   "projectActions": {
     "delete": "「{{name}}」を削除しますか？この操作は元に戻せません。",
@@ -1746,7 +1761,9 @@
     "tagline": "ローカル音声のクローン作成。マシンからは何も残りません。",
     "coming_soon": "近日公開",
     "switch_to_light": "ライトテーマに切り替える",
-    "switch_to_dark": "ダークテーマに切り替える"
+    "switch_to_dark": "ダークテーマに切り替える",
+    "not_found_title": "ページが見つかりません",
+    "not_found_body": "このアドレスに一致する VoiceStudio のページはありません。"
   },
   "stories": {
     "title": "ストーリーエディター",
@@ -1763,7 +1780,8 @@
     "autocast": "オートキャスト",
     "autocastHint": "誰が話しているのかを検出し、自動的に音声を割り当てます",
     "autocastEmpty": "自動キャストするものはありません。最初にストーリーを貼り付けるかインポートしてください。",
-    "autocastDone": "{{voices}} 音声全体に {{lines}} 行を自動キャストします",
+    "autocastDone_one": "{{lines}} 行を {{count}} 個の音声に自動割り当てしました",
+    "autocastDone_other": "{{lines}} 行を {{count}} 個の音声に自動割り当てしました",
     "importFailed": "そのファイルを読み取れませんでした。",
     "addLine": "行を追加",
     "addChapter": "章を追加",
@@ -1798,13 +1816,13 @@
     "splitModeHint": "各行は独立したテイクとして読み上げられます。語り手が一人なら、文より段落や章全体のほうが自然につながります。",
     "emptyText": "会話やナレーションを追加してストーリーを開始します。各キャラクターにキャストの声を割り当てます。",
     "addFirst": "最初の行を追加",
-    "linePlaceholder": "ダイアログまたはナレーションを入力します...無音の休憩には [一時停止 0.5 秒] を使用してください",
+    "linePlaceholder": "ダイアログまたはナレーションを入力します...無音の休憩には [pause 0.5s] を使用してください",
     "text": "テキスト",
     "defaultVoice": "デフォルト",
     "inlineVoice": "インライン音声を設定する",
     "inlineVoiceHint": "ハイライトされたテキストの音声を切り替えます (またはカーソルにスイッチを挿入します)",
     "resetInlineVoice": "LINE音声にリセット",
-    "insertPause": "[一時停止 0.5 秒] の休憩を挿入します",
+    "insertPause": "[pause 0.5s] の休憩を挿入します",
     "preview": "この行をプレビューする",
     "removeLine": "行を削除",
     "tune": "トーンとスピード",
@@ -1842,7 +1860,8 @@
     "toneChip": "トーンと速度: {{speed}}",
     "lineVoice": "行の音声",
     "chapterHeading": "章タイトル",
-    "lineActions": "行の操作"
+    "lineActions": "行の操作",
+    "recovery_title": "中断したストーリー"
   },
   "audiobook": {
     "cast": "キャスト",
@@ -1866,7 +1885,6 @@
     "stats_one": "{{count}} 章 · 約 {{words}} 語 · 推定 {{runtime}}",
     "stats_other": "{{count}} 章 · 約 {{words}} 語 · 推定 {{runtime}}",
     "warnings_title": "作成する前に",
-    "warn_unknown_voice": "不明な声 ‘{{name}}’ — デフォルトを使用します",
     "warn_empty_chapter": "章「{{title}}」に読み上げるテキストがありません",
     "warn_unknown_tag": "不明なタグ {{tag}} — そのまま読み上げられます",
     "untitled": "無題のオーディオブック",
@@ -1878,7 +1896,7 @@
     "tab_book": "ブック",
     "subtitle": "物語を書いたり読み込んだり、声を配役して、本格的な章付きオーディオブックを書き出せます。",
     "script": "スクリプト",
-    "script_placeholder": "# 第一章\nむかしむかし… [500 ミリ秒停止] 終了。\n\n# 第二章\n[音声:ナレーター] そして、それは続きました。",
+    "script_placeholder": "# 第一章\nむかしむかし… [pause 0.5s] 終了。\n\n# 第二章\n[voice:ナレーター] そして、それは続きました。",
     "default_voice": "デフォルトボイス",
     "engine_default": "エンジンのデフォルト",
     "preview_plan": "プレビュープラン",
@@ -1888,7 +1906,7 @@
       "busy": "別の本をレンダリング中です。完了を待つか、先に停止してください。",
       "importing": "インポート中… 完了すると生成できます。",
       "engine_loading": "音声エンジンを確認中…",
-      "engine": "音声エンジンの準備ができていません。設定 → エンジン を確認してください。",
+      "engine": "音声エンジンの準備ができていません。設定 → モデル を確認してください。",
       "no_lines": "生成するには、読み上げる行を1行以上追加してください。",
       "no_script": "生成するには、スクリプトを書くかインポートしてください。",
       "voice": "既定の音声を選ぶか、すべての行に音声を割り当ててください。",
@@ -1954,7 +1972,7 @@
     "lex_add": "単語を追加",
     "lex_remove": "削除",
     "markup_help": "マークアップリファレンス",
-    "markup_hint": "# 章タイトル · [voice:NAME] 音声切り替え · [pause 500ms] / [pause 1s] · [slow]…[/slow] · [fast]…[/fast] · [emphasis]…[/emphasis] · [spell]…[/spell] · リアクション (VoiceStudio): [laughter] [sigh] [confirmation-en] [question-en] [question-ah] [question-oh] [question-ei] [question-yi] [surprise-ah] [surprise-oh] [surprise-wa] [surprise-yo] [dissatisfaction-hnn]",
+    "markup_hint": "# 章タイトル · [voice:NAME] 音声切り替え · [pause 0.5s] · [slow]…[/slow] · [fast]…[/fast] · [emphasis]…[/emphasis] · [spell]…[/spell] · リアクション (VoiceStudio): [laughter] [sigh] [confirmation-en] [question-en] [question-ah] [question-oh] [question-ei] [question-yi] [surprise-ah] [surprise-oh] [surprise-wa] [surprise-yo] [dissatisfaction-hnn]",
     "language": "言語",
     "expressive": "プロダクションオーバーライド",
     "reset": "リセット",
@@ -1971,7 +1989,10 @@
     "emotion_text": "感情の説明",
     "emotion_text_ph": "例 疲れているように聞こえ、悲しい",
     "emotion_alpha": "感情の強さ",
-    "lex_duplicate": "各単語の発音は1つだけ指定してください。"
+    "lex_duplicate": "各単語の発音は1つだけ指定してください。",
+    "recovery_busy": "別のレンダリングを実行中です。終わってから再開してください。",
+    "cast_note_one": "{{names}} はまだ配役されていないため、メインの音声で読み上げます。キャストで音声を選んでください。",
+    "cast_note_other": "{{names}} はまだ配役されていないため、メインの音声で読み上げます。キャストで音声を選んでください。"
   },
   "credentials": {
     "microsoft_key": "Microsoft トランスレータ キー",
@@ -1982,6 +2003,7 @@
     "deepl_base_url_help": "カスタム DeepL API エンドポイント (デフォルト: https://api.deepl.com/v2)。プロキシ/セルフホスト用に変更します。",
     "microsoft_base_url_help": "カスタム Azure Translator エンドポイント (既定: https://api.cognitive.microsofttranslator.com)。",
     "region": "リージョン",
+    "base_url": "ベース URL",
     "aws_profile": "AWSプロファイル",
     "deepl_key_placeholder": "DeepLAPIキー",
     "microsoft_key_placeholder": "MicrosoftAPIキー"
@@ -2006,11 +2028,12 @@
     "self_check_warn": "警告",
     "self_check_fail": "失敗",
     "self_check_healthy": "すべてのチェックに合格 — このインストールは正常のようです。",
-    "self_check_attention": "{{count}} 件のチェックが失敗しました — 上のヒントをご覧ください。",
+    "self_check_attention_one": "{{count}} 件のチェックが失敗しました。上のヒントを確認してください。",
+    "self_check_attention_other": "{{count}} 件のチェックが失敗しました。上のヒントを確認してください。",
     "save_bundle": "診断バンドルを保存",
     "bundle_saved": "診断バンドルを保存しました: {{filename}}",
     "title": "情報",
-    "diagnostics": "システムプリフライト",
+    "diagnostics": "診断",
     "model_credits": "モデルのクレジット",
     "model_credits_hint": "対応モデルのクレジットです。モデルと各構成要素にはそれぞれの利用条件が適用されます。この表示は商用利用の権利を付与するものではありません。",
     "model_terms": "モデルの利用条件",
@@ -2019,7 +2042,8 @@
   "privacy": {
     "translator_online": "翻訳者はオンラインです: {{provider}}",
     "analytics_title": "VoiceStudio の改善に協力",
-    "translator_offline": "オフライン翻訳者",
+    "translator_offline": "オフラインのみ",
+    "change_translator": "翻訳エンジンを変更",
     "translator_unknown": "不明",
     "watermark_subtitle": "既定で有効。生成した音声を AI 生成として印付けし、後から識別できるようにします。今後生成する音声にのみ適用されます。",
     "analytics_subtitle": "初期設定では無効です。エンジン、言語、所要時間、文字数、エラーの種類を匿名で送信します。テキストや音声は送信しません。",
@@ -2364,7 +2388,8 @@
     "generating_voice_a": "音声を生成中...",
     "generating_voice_b": "ボイスBを生成中...",
     "comparison_complete": "比較完了！",
-    "play_failed": "プレイに失敗しました: {{message}}"
+    "play_failed": "プレイに失敗しました: {{message}}",
+    "test_phrase_placeholder": "両方の音声が読む文を入力してください。"
   },
   "demo": {
     "clone_coachmark": "これはガイド付きデモです。提案されたプロンプトを試すか、独自のプロンプトを作成してください。",
@@ -2574,7 +2599,8 @@
       "aria": "月間目標 {{raised}}/{{goal}}",
       "remaining": "{{amount}} 行きます",
       "met": "🎉 目標達成 — {{raised}} が発生しました。ありがとう！",
-      "social_proof": "{{count}} サポーターに参加してローカル AI に資金を提供しましょう"
+      "social_proof_one": "ローカル AI を支える {{count}} 人のサポーターに加わろう",
+      "social_proof_other": "ローカル AI を支える {{count}} 人のサポーターに加わろう"
     },
     "postcard": {
       "title": "VoiceStudio の開発を支援",
@@ -2686,14 +2712,14 @@
     "openDocs": "このエラーのドキュメントを開く",
     "crash_port_in_use": "ポート 3900 がすでに使用されているため、バックエンドを起動できませんでした。別の VoiceStudio（またはそのポートを取得したアプリ）が保持しています。もう一方を終了して再起動してください。見えている実行中のものがない場合は、前のセッションの取り残されたバックエンドがポートを保持しています。",
     "crash_oom_kill": "強制終了されました（シグナル 9）。通常はオペレーティングシステムのメモリ（RAM）が不足して停止したことを意味します。メモリを多く使うアプリを閉じ、設定 → モデルでより小さい ASR モデルを選ぶか、文字起こしの前に TTS モデルをアンロードしてください。",
-    "crash_native_fault": "メモリ不足ではなく、計算スタックの内部でクラッシュしました。同梱の CUDA ランタイムと一致しない GPU ドライバー、またはダウンロードが不完全なモデルファイルが原因と考えられます。GPU ドライバーを更新し、設定 → モデルからモデルを再ダウンロードしてください（不完全なダウンロードはその場で修復されます）。繰り返す場合は、設定 → エンジンでクラッシュ分離エンジンに切り替えてください — 音声合成には「VoiceStudio (subprocess)」、文字起こしには「Faster-Whisper (crash-isolated subprocess)」。これらはモデルを別プロセスで実行するため、このようなクラッシュはバックエンド全体ではなくそのプロセスだけを停止させます。",
+    "crash_native_fault": "メモリ不足ではなく、計算スタックの内部でクラッシュしました。同梱の CUDA ランタイムと一致しない GPU ドライバー、またはダウンロードが不完全なモデルファイルが原因と考えられます。GPU ドライバーを更新し、設定 → モデルからモデルを再ダウンロードしてください（不完全なダウンロードはその場で修復されます）。繰り返す場合は、設定 → モデルでクラッシュ分離エンジンに切り替えてください — 音声合成には「VoiceStudio (subprocess)」、文字起こしには「Faster-Whisper (crash-isolated subprocess)」。これらはモデルを別プロセスで実行するため、このようなクラッシュはバックエンド全体ではなくそのプロセスだけを停止させます。",
     "report": "このバグを報告",
     "report_failed": "バグレポートを開けませんでした。もう一度お試しいただくか、上記の内容を新しい Issue にコピーしてください。",
     "searchIssues": "類似の問題を検索",
     "unexpected": "予期しないエラー: {{message}}",
     "backend_shutting_down": "VoiceStudio を終了しています。アプリを開き直してからもう一度お試しください。",
     "crash_broken_env": "自身の Python 依存関係を読み込んでいる最中に停止しました。メモリや GPU の問題ではなく、環境が不完全か、更新が中途半端なまま残っています。設定 → ログ → バックエンド の「クリーンアップして再試行」を実行してください。環境をゼロから作り直してその場で修復し、音声やプロジェクトには手を触れません。それでも失敗する場合は、クラッシュ詳細に読み込めなかったパッケージ名が出ています。",
-    "crash_vram_default": "小さめの GPU では、TTS モデルを読み込んだまま ASR モデルを読み込む際に VRAM が不足するのがよくある原因です。先に TTS モデルをアンロードするか、モデルカタログ → モデル でより小さい ASR モデルを選んでください。",
+    "crash_vram_default": "小さめの GPU では、TTS モデルを読み込んだまま ASR モデルを読み込む際に VRAM が不足するのがよくある原因です。先に TTS モデルをアンロードするか、設定 → モデル でより小さい ASR モデルを選んでください。",
     "stream_cut_backend_alive": "ストリームは途中で終了しましたが、バックエンドはまだ動作しています。つまりクラッシュではありません。サーバー経由やコンテナ環境では、リバースプロキシやロードバランサーが接続をバッファリングまたはタイムアウトさせているのがよくある原因です。このルートのレスポンスバッファリングを無効にし（nginx: proxy_buffering off; X-Accel-Buffering: no）、読み取りタイムアウトを延ばしてください。デスクトップアプリを直接実行するか、プロキシなしの localhost で実行すれば確認できます。"
   },
   "segmentEditing": {
@@ -2870,7 +2896,8 @@
     "plan_impossible": "収まりません +{{seconds}}秒",
     "plan_impossible_title": "予測音声は約{{est}}秒、使用可能時間は{{avail}}秒です。調整できる範囲を約{{seconds}}秒超えており、音声が切り詰められます。生成前に文章を短くしてください。",
     "plan_tight": "余裕が少ない",
-    "plan_tight_title": "予測音声は約{{est}}秒、使用可能時間は{{avail}}秒です。スマートフィットで調整できますが、音声の速度上昇や動画の減速が目立ちます。より自然な結果にするには文章を短くしてください。"
+    "plan_tight_title": "予測音声は約{{est}}秒、使用可能時間は{{avail}}秒です。スマートフィットで調整できますが、音声の速度上昇や動画の減速が目立ちます。より自然な結果にするには文章を短くしてください。",
+    "replace_toggle": "検索と置換"
   },
   "update": {
     "checking": "アップデートを確認中…",
@@ -2948,8 +2975,6 @@
     "translate_hint": "対象のテキストをざっと読んでください。長すぎる回線の速度が向上します。直接編集することもできます。",
     "done_title": "ダビング完了",
     "done_hint": "タイミングと同期率を確認します。任意の行を微調整し、「Regen Changed」を押すと、部分的に素早くやり直すことができます。",
-    "segment_one": "{{count}} セグメント",
-    "segment_other": "{{count}} セグメント",
     "dismiss_title": "閉じる — リロードするまでこのステージでは再表示されません",
     "timing_review_one": "{{count}} 個のセグメントのタイミングを確認してください",
     "timing_review_other": "{{count}} 個のセグメントでタイミングの確認が必要です",
@@ -3021,7 +3046,7 @@
     "fast": "高速",
     "balanced": "バランス",
     "quality": "品質",
-    "hint": "OmniVoice のサンプリングと Faster-Whisper / NLLB のデコードに適用されます。他のエンジンは現在の設定を維持します。",
+    "hint": "音声生成・文字起こし・翻訳の速度と品質を設定します。これらの調整に対応していないエンジンは独自の設定を保ちます。",
     "auto": "自動",
     "autoHint": "このコンピューターに最適なレベルを選びます。"
   },
@@ -3056,7 +3081,7 @@
     "timeout": "生成がタイムアウトしました — モデルはまだダウンロード中の可能性があります。 「設定」→「ログ」を確認して、もう一度お試しください。",
     "ignored_unsupported": "サポートされていない命令は無視されました: {{items}}",
     "too_long": "クリップは {{duration}}s です。エンジンは、トランスクリプトなしで最大 {{max}} を受け入れます。",
-    "model_not_downloaded": "モデルはまだダウンロードされていません。メインアプリの「設定」→「エンジン」を開いてインストールします。",
+    "model_not_downloaded": "モデルはまだダウンロードされていません。「設定」→「モデル」を開いてインストールしてください。",
     "backend_unreachable": "ローカル エンジンにアクセスできません。",
     "gpu_arch_unsupported": "このPyTorchビルドはお使いのGPUに対応していません。設定 → パフォーマンスとデバイスでCPUを選択するか、互換性のあるPyTorchビルドをインストールしてください。",
     "windows_app_control_blocked": "Windowsのアプリケーション制御が必要なファイルをブロックしました。信頼できるVoiceStudioランタイムを許可するよう管理者に依頼し、アプリを再起動してください。",
@@ -3068,8 +3093,8 @@
     "gpu_oom": "GPU のメモリが不足しました。GPU を多く使う他のアプリを閉じるかモデルをアンロードしてから、もう一度お試しください。設定 → パフォーマンスとデバイスで CPU を選ぶか、より小さな TTS エンジンを選ぶこともできます。",
     "host_memory_exhausted": "コンピューターのメモリが不足しました。メモリを多く使う他のアプリやブラウザータブを閉じ、使っていないモデルをアンロードし、短い文章で生成するか、より軽い TTS エンジンを選んでください。",
     "disk_full": "ディスクがいっぱいです。VoiceStudio のデータ、モデルキャッシュ、一時フォルダーがあるドライブの空き容量を増やしてから、もう一度お試しください。設定 → ストレージでディスク使用量を確認し、一時ファイルを削除できます。",
-    "engine_dependency_missing": "このエンジンに必要な Python パッケージがインストールされていないため、エンジンを起動できませんでした。モデルカタログを開き、エンジンを選んでインストール/修復を使い、VoiceStudio を再起動してください。",
-    "reference_stt_missing": "この音声には文字起こしがなく、作成するための音声認識モデルもインストールされていません。参照クリップの内容を文字起こし欄に入力する（20 秒までのクリップ）か、モデルカタログで音声認識モデルをインストールして選択し、もう一度生成してください。",
+    "engine_dependency_missing": "このエンジンに必要な Python パッケージがインストールされていないため、エンジンを起動できませんでした。「設定」→「モデル」を開き、エンジンを選んでインストール/修復を使い、VoiceStudio を再起動してください。",
+    "reference_stt_missing": "この音声には文字起こしがなく、作成するための音声認識モデルもインストールされていません。参照クリップの内容を文字起こし欄に入力する（20 秒までのクリップ）か、「設定」→「モデル」で音声認識モデルをインストールして選択し、もう一度生成してください。",
     "install_speech_model": "音声認識モデルをインストール",
     "proxy_gateway_error": "お使いの環境と VoiceStudio の間のプロキシまたはゲートウェイが、バックエンドの代わりに HTTP {{status}} を返しました。バックエンドはまだ処理中の可能性があります。長い生成のためにプロキシの読み取りタイムアウト（nginx では proxy_read_timeout）を延ばし、設定 → ログ → バックエンドを確認してください。",
     "route_not_found": "実行中の VoiceStudio バックエンドに {{route}} エンドポイントがありません。アプリとバックエンドを一致させるため VoiceStudio を再起動してください。解決しない場合は両方を同じバージョンに更新してください。"
@@ -3644,6 +3669,10 @@
     "categoryConditions": "条件付きで商用利用可",
     "categoryNoncommercial": "個人・研究用途のみ",
     "categoryUnknown": "ライセンス不明",
+    "shortCommercial": "商用可",
+    "shortConditions": "条件付き",
+    "shortNoncommercial": "非商用",
+    "shortUnknown": "不明",
     "categoryHint": "申告されたライセンス文に基づく表示で、VoiceStudio は検証していません。法的助言ではありません。",
     "reviewed": "確認済み",
     "notReviewed": "未確認",
@@ -4323,7 +4352,7 @@
     },
     "model_missing": {
       "title": "モデルがダウンロードされていません",
-      "fix1": "モデルカタログでダウンロードする",
+      "fix1": "設定 → モデル でダウンロードする",
       "fix2": "「修復」を使ってインストールする"
     },
     "busy": {
@@ -4405,5 +4434,20 @@
     "nextMemory": "このデバイスのメモリが不足しました。設定 → パフォーマンス で軽いプロファイルを選んでから再試行してください。",
     "downloads": "ダウンロード",
     "activeCount": "進行中のダウンロード: {{count}}"
+  },
+  "disabledReason": {
+    "files_required": "まず動画を 1 本以上追加してください。",
+    "languages_required": "翻訳先の言語を 1 つ以上選んでください。",
+    "language_required": "まず翻訳先の言語を選んでください。",
+    "translation_not_ready": "まず翻訳エンジンを設定してください。",
+    "recovery_pending": "まず中断した手順を再開するか取り消してください。",
+    "segments_required": "まず動画を文字起こししてください。",
+    "text_required": "まずテキストを入力してください。",
+    "path_required": "まずファイルのフルパスを入力してください。",
+    "slot_required": "0 秒より長いスロットを入力してください。",
+    "voices_required": "まず両方の音声を選んでください。",
+    "generating": "現在のテイクが終わるまでお待ちください。",
+    "name_required": "まず名前を入力してください。",
+    "audio_missing": "このテイクには保存できる音声ファイルがありません。"
   }
 }

@@ -133,6 +133,9 @@ export function LongformPage({ mode }: { mode: Mode }) {
         mode={mode}
         active={Boolean(session.active)}
         disabled={locked || ttsBlocker !== null}
+        disabledReason={
+          ttsBlocker !== null ? t('engines.none_ready_title') : t('audiobook.recovery_busy')
+        }
         onResume={(jobId) => void renderLongform(mode, jobId)}
       />
       <GeneratePanel
@@ -356,7 +359,10 @@ export function LongformPage({ mode }: { mode: Mode }) {
           />
         </SecondarySidebar>
         <section className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-          <div className="mx-auto flex w-full max-w-6xl min-h-0 flex-1 flex-col gap-4 px-6 py-5">
+          {/* Grows to fill the pane but never shrinks below its content: the
+              editor keeps its height and the notes below it stay in normal flow,
+              so a short window scrolls the pane instead of stacking them. */}
+          <div className="mx-auto flex w-full max-w-6xl flex-[1_0_auto] flex-col gap-4 px-6 py-5">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="flex items-center gap-2 text-sm font-medium">

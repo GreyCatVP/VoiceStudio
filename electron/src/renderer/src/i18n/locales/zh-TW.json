@@ -270,9 +270,9 @@
     "title": "發音字典",
     "help": "教引擎如何說出棘手的單字。每個條目在合成之前都會用重新拼寫替換一個單詞，因此它適用於每個引擎。將條目範圍限定為一種語言或將其保留為全域。內聯，[[word|respelling]] 覆蓋字典一次。",
     "term": "期限",
-    "term_placeholder": "單字或片語（例如 GIF）",
+    "term_placeholder": "例如 GIF",
     "replacement": "更換",
-    "replacement_placeholder": "重新拼字（例如 jiff）",
+    "replacement_placeholder": "例如 jiff",
     "scope": "適用範圍",
     "global": "全球",
     "type": "類型",
@@ -284,14 +284,14 @@
     "remove": "刪除 {{term}}",
     "empty": "還沒有條目。在下面添加一個以糾正發音錯誤的單字。",
     "test_label": "測試一個句子",
-    "test_placeholder": "輸入一個句子來預覽替換...",
+    "test_placeholder": "輸入一句話…",
     "test_result": "將被說成：",
     "test_nochange": "沒有符合的條目 — 口頭與書面一致。",
     "load_error": "無法載入發音字典。",
     "save_error": "無法儲存該條目。",
     "lang_label": "語言代碼（例如 en、de）或留空表示全球",
     "enable_entry": "啟用 {{term}}",
-    "lang_placeholder": "en, de…（留空 = 全球）",
+    "lang_placeholder": "例如 en",
     "test_language": "預覽語言",
     "test_global_hint": "僅預覽全球條目 — 選擇一種語言以包含依語言限定的條目。",
     "test_error": "預覽無法使用 — 無法連線後端。",
@@ -299,10 +299,14 @@
     "backup_hint": "將字典下載為 JSON 檔案，或從先前的匯出中匯入條目。",
     "export": "匯出 JSON",
     "import": "匯入 JSON",
-    "import_replace_prompt": "用匯入的檔案取代現有的 {{count}} 個條目？選擇「否」則將匯入的條目新增到現有條目旁。",
-    "import_done": "已匯入 {{count}} 個條目。",
+    "import_replace_prompt_one": "要用匯入的檔案取代現有的 {{count}} 個條目嗎？選擇「否」可將匯入的條目一併新增。",
+    "import_replace_prompt_other": "要用匯入的檔案取代現有的 {{count}} 個條目嗎？選擇「否」可將匯入的條目一併新增。",
+    "import_done_one": "已匯入 {{count}} 個條目。",
+    "import_done_other": "已匯入 {{count}} 個條目。",
     "import_error": "無法匯入該檔案 — 需要發音匯出的 JSON。",
-    "export_error": "無法匯出字典。"
+    "export_error": "無法匯出字典。",
+    "entries_count_one": "{{count}} 個條目",
+    "entries_count_other": "{{count}} 個條目"
   },
   "preferences": {
     "title": "設定",
@@ -404,7 +408,8 @@
     "change": "更換引擎",
     "failed": "無法更換引擎，請重試。",
     "empty": "此類別尚無引擎或模型。",
-    "modelsInstalled": "已安裝 {{installed}}/{{count}}"
+    "modelsInstalled": "已安裝 {{installed}}/{{count}}",
+    "dictation_enabled": "啟用聽寫"
   },
   "modelMaintenance": {
     "download": "下載",
@@ -447,7 +452,7 @@
     "mode_fast": "快速地",
     "mode_fast_desc": "使用選定的低延遲聽寫模型。",
     "mode_accurate": "準確的",
-    "mode_accurate_desc": "使用帶有詳細時間戳的選定 ASR 模型。",
+    "mode_accurate_desc": "使用所選的語音轉文字模型，並提供詳細時間戳記。",
     "title": "轉錄",
     "entries": "{{count}} 條目",
     "search_placeholder": "搜尋轉錄...",
@@ -474,7 +479,8 @@
     "identify_speakers": "辨識說話者",
     "speakers_unavailable": "說話者辨識無法使用。逐字稿已儲存，但沒有說話者標籤。",
     "missing_model": "尚未安裝語音轉文字模型 — 此功能需要一個模型來轉錄音訊。",
-    "original_transcript": "原始轉錄"
+    "original_transcript": "原始轉錄",
+    "active_model": "模型：{{model}}"
   },
   "engineRuntime": {
     "ready": "準備好",
@@ -803,7 +809,6 @@
     "install_disabled_title": "在打包版本中停用安裝",
     "needs_install_suffix": "— 需要安裝",
     "glossary_title": "重複出現的術語（名稱、品牌詞、行話）的 Pin 翻譯",
-    "glossary_btn": "+ 術語表 ({{count}})",
     "selected_count": "已選擇 {{count}}",
     "set_voice": "設定語音...",
     "clear_voice": "⊘ 預設",
@@ -926,7 +931,12 @@
     "input_issue_unsupported": "不支援的檔案類型 — 請選擇影片或音訊檔案",
     "input_issue_empty": "此檔案是空的 — 請選擇其他檔案",
     "file_actions": "檔案操作",
-    "translator_agent": "智慧代理"
+    "translator_agent": "智慧代理",
+    "segment_count_one": "{{count}} 個片段",
+    "segment_count_other": "{{count}} 個片段",
+    "glossary_terms_one": "術語表 · {{count}} 個術語",
+    "glossary_terms_other": "術語表 · {{count}} 個術語",
+    "glossary_label": "術語表"
   },
   "dub_workflow": {
     "preparing_audio": "正在準備音訊...",
@@ -1116,7 +1126,7 @@
     "engine_switched": "已將 {{family}} 切換至 {{engine}}",
     "usage": "使用情況",
     "usage_desc": "你使用 VoiceStudio 製作的內容，只在你的裝置上統計。",
-    "usage_privacy": "這些數字由此裝置上的歷史記錄計算，絕不會傳送到任何地方。VoiceStudio 不使用分析服務，此處的任何資料都不會離開你的電腦。",
+    "usage_privacy": "這些數字根據你自己的歷史紀錄統計，並保留在這台電腦上。選用的使用分析可在「隱私政策」中另外設定。",
     "usage_empty": "你尚未產生任何內容；建立內容後就會顯示在這裡。",
     "usage_takes": "已產生的片段",
     "usage_since": "自 {{date}} 起",
@@ -1251,7 +1261,7 @@
     "hf_token_test_now": "立即測試",
     "hf_source_env_label": "環境變數",
     "hf_token_not_checked": "未測試",
-    "translation_providers_desc": "為此會話設定的線上翻譯器的 API 金鑰。",
+    "translation_providers_desc": "線上翻譯服務（Google Cloud、DeepL、Microsoft Azure、AWS）的金鑰。儲存在這台電腦上，重新啟動後仍會保留。",
     "hf_token_verified": "已驗證",
     "ffmpeg": "FFmpeg",
     "hf_token_not_set": "未設定",
@@ -1315,6 +1325,7 @@
     "storage_cat_data": "應用程式資料",
     "storage_child_preview": "預覽",
     "storage_desc": "VoiceStudio 保存您的資料和輸出的地方。",
+    "models_dir_desc": "下載的模型存放在這裡。如果此磁碟空間不足，請選擇剩餘空間更多的磁碟。",
     "storage_child_batch": "批次工作",
     "storage_top_models": "最大的模型",
     "storage_refresh": "重新整理",
@@ -1400,7 +1411,7 @@
     "uninstall_total": "{{count}} 位置 · {{size}} 將會被釋放",
     "llmp_saved_not_active": "已儲存 — 尚未用於翻譯。點擊「儲存並用於翻譯」進行切換。",
     "llmp_env_override": "透過環境變數設定 - 覆蓋此字段",
-    "llmp_active_env_pin": "LLM 選擇由 LLM_DEFAULT_PROVIDER 或 OMNIVOICE_LLM_BACKEND 固定。",
+    "llmp_active_env_pin": "語言模型由這台電腦上的環境變數指定，因此無法在此變更。",
     "llmp_models_truncated": "顯示的第一個 {{count}} — 鍵入以縮小型號名稱",
     "llm_skills": "LLM 技能",
     "llmskills_desc": "將每個 AI 驅動的功能路由到其自己的 LLM - 將敏感工作保留在本地模型上 (Ollama/LM Studio)，而繁重的工作則使用遠端提供者 - 或完全關閉功能。關閉的行為與未配置 LLM 完全相同：此功能回退到其非LLM 路徑。",
@@ -1440,7 +1451,7 @@
     "remote_backend_title": "遠端後端",
     "remote_backend_desc": "在另一台機器上執行推理；對於本機後端，將 URL 留空。儲存後會重新載入應用程式以應用。",
     "remote_backend_url": "後端網址",
-    "remote_backend_key_placeholder": "伺服器上 OMNIVOICE_API_KEY 的值",
+    "remote_backend_key_placeholder": "另一台電腦上設定的 API 金鑰",
     "remote_backend_probe_ok": "好的 — {{detail}}",
     "remote_backend_probe_fail": "失敗 - {{detail}}",
     "remote_backend_unreachable": "無法到達的",
@@ -1527,7 +1538,7 @@
     "more_actions": "更多操作",
     "use_in_stories": "在劇本中使用",
     "set_audiobook_default": "設為有聲書預設語音",
-    "open_designer": "在設計器中打開",
+    "open_designer": "在「設計聲音」中開啟",
     "no_matches": "沒有聲音符合這些過濾器。",
     "load_more": "加載更多",
     "saved_as_profile": "在您的聲音中加入了「{{name}}」。",
@@ -1549,7 +1560,7 @@
     "trim_load_failed": "無法載入音訊進行修剪：{{message}}",
     "delete": "刪除",
     "community_empty": "尚未載入任何社群語音 — 請連上網路後重新開啟，或成為第一個投稿的人。",
-    "community_explainer": "由社群分享的設計預設與錄製語音，從 omnivoice-gallery 載入。",
+    "community_explainer": "由社群分享的設計預設與錄製語音。",
     "no_designer": "錄製的語音 — 請改用「使用語音」。",
     "no_preview": "沒有預覽 — 透過「使用語音」加入後即可試聽。",
     "submit_failed": "無法開啟投稿表單。",
@@ -1675,7 +1686,9 @@
     "probe_placeholder": "/用户/你/电影/sample.mp4",
     "probe_failed": "探測失敗：{{message}}",
     "parse_failed": "解析失敗：{{message}}",
-    "fit_failed": "擬合失敗：{{message}}"
+    "fit_failed": "擬合失敗：{{message}}",
+    "placeholder_direction": "例如：像說祕密一樣輕聲說，然後逐漸興奮起來。",
+    "placeholder_rate_fit": "貼上譯文，與其時段進行比對。"
   },
   "projects": {
     "title": "專案",
@@ -1721,7 +1734,9 @@
     "delete_selected": "刪除所選項目（{{count}}）",
     "deleted_count": "已刪除：{{count}}",
     "delete_warning": "此操作無法復原。專案和轉錄文字將被刪除。刪除聲音或錄音也會刪除其儲存的音訊。匯出的檔案和已完成算繪的音訊將保留。",
-    "draft_changed": "載入此專案時，你的草稿已變更。請再次確認以取代草稿。"
+    "draft_changed": "載入此專案時，你的草稿已變更。請再次確認以取代草稿。",
+    "all_projects": "所有專案",
+    "library_group": "資料庫"
   },
   "projectActions": {
     "delete": "刪除「{{name}}」？此操作無法復原。",
@@ -1746,7 +1761,9 @@
     "tagline": "本地語音克隆。沒有任何東西可以離開你的機器。",
     "coming_soon": "即將推出",
     "switch_to_light": "切換到淺色主題",
-    "switch_to_dark": "切換到深色主題"
+    "switch_to_dark": "切換到深色主題",
+    "not_found_title": "找不到頁面",
+    "not_found_body": "此位址不符合 VoiceStudio 中的任何頁面。"
   },
   "stories": {
     "title": "故事編輯器",
@@ -1763,7 +1780,8 @@
     "autocast": "自動施法",
     "autocastHint": "偵測誰在說話並自動分配聲音",
     "autocastEmpty": "無需自動投射 - 首先貼上或匯入故事。",
-    "autocastDone": "在 {{voices}} 語音中自動投射 {{lines}} 行",
+    "autocastDone_one": "已將 {{lines}} 行自動分配給 {{count}} 個聲音",
+    "autocastDone_other": "已將 {{lines}} 行自動分配給 {{count}} 個聲音",
     "importFailed": "無法讀取該檔案。",
     "addLine": "新增線路",
     "addChapter": "新增章節",
@@ -1798,13 +1816,13 @@
     "splitModeHint": "每一行都作為獨立的一段錄音朗讀。單人朗讀時，按段落或整章拆分比按句子更連貫。",
     "emptyText": "透過加入對話和旁白來開始你的故事。為演員陣容中的每個角色分配一個聲音。",
     "addFirst": "新增第一行",
-    "linePlaceholder": "輸入對話或旁白…使用 [暫停 0.5 秒] 進行靜默休息",
+    "linePlaceholder": "輸入對話或旁白…使用 [pause 0.5s] 進行靜默休息",
     "text": "文字",
     "defaultVoice": "預設",
     "inlineVoice": "設定內嵌語音",
     "inlineVoiceHint": "切換突出顯示文字的語音（或在遊標處插入開關）",
     "resetInlineVoice": "重設為線路語音",
-    "insertPause": "插入 [暫停 0.5 秒] 中斷",
+    "insertPause": "插入 [pause 0.5s] 中斷",
     "preview": "預覽此行",
     "removeLine": "刪除線",
     "tune": "音調和速度",
@@ -1842,7 +1860,8 @@
     "toneChip": "語氣與語速：{{speed}}",
     "lineVoice": "本行聲音",
     "chapterHeading": "章節標題",
-    "lineActions": "行操作"
+    "lineActions": "行操作",
+    "recovery_title": "中斷的故事"
   },
   "audiobook": {
     "cast": "配音角色",
@@ -1866,7 +1885,6 @@
     "stats_one": "{{count}} 章 · 約 {{words}} 字 · 約 {{runtime}} 預計時長",
     "stats_other": "{{count}} 章 · 約 {{words}} 字 · 約 {{runtime}} 預計時長",
     "warnings_title": "建立前",
-    "warn_unknown_voice": "未知聲音 ‘{{name}}’ — 將使用預設聲音",
     "warn_empty_chapter": "章節「{{title}}」沒有可朗讀的文字",
     "warn_unknown_tag": "無法辨識的標記 {{tag}} — 將被朗讀出來",
     "untitled": "未命名有聲書",
@@ -1878,7 +1896,7 @@
     "tab_book": "書籍",
     "subtitle": "撰寫或匯入故事，為每個角色分配聲音，再匯出具備真實章節的精緻有聲書。",
     "script": "腳本",
-    "script_placeholder": "#第一章\n從前…[停頓 500 毫秒]結束。\n\n# 第二章\n[聲音：旁白] 就這樣繼續下去。",
+    "script_placeholder": "# 第一章\n從前…[pause 0.5s]結束。\n\n# 第二章\n[voice:旁白] 就這樣繼續下去。",
     "default_voice": "預設語音",
     "engine_default": "引擎預設",
     "preview_plan": "預覽計劃",
@@ -1888,7 +1906,7 @@
       "busy": "另一本書正在算繪。請等待完成，或先將其停止。",
       "importing": "正在匯入… 完成後即可產生。",
       "engine_loading": "正在檢查語音引擎…",
-      "engine": "語音引擎尚未就緒。請檢查 設定 → 引擎。",
+      "engine": "語音引擎尚未就緒。請檢查 設定 → 模型。",
       "no_lines": "請至少新增一行朗讀內容後再產生。",
       "no_script": "請撰寫或匯入腳本後再產生。",
       "voice": "請選擇預設聲音，或為每一行指定聲音。",
@@ -1954,7 +1972,7 @@
     "lex_add": "添加單字",
     "lex_remove": "刪除",
     "markup_help": "標記參考",
-    "markup_hint": "# 章節標題 · [voice:NAME] 切換語音 · [pause 500ms] / [pause 1s] · [slow]…[/slow] · [fast]…[/fast] · [emphasis]…[/emphasis] · [spell]…[/spell] · 反應 (VoiceStudio)： [laughter] [sigh] [confirmation-en] [question-en] [question-ah] [question-oh] [question-ei] [question-yi] [surprise-ah] [surprise-oh] [surprise-wa] [surprise-yo] [dissatisfaction-hnn]: [laughter] [sigh] [confirmation-en] [question-en] [question-ah] [question-oh] [question-ei] [question-yi] [surprise-ah] [surprise-oh] [surprise-wa] [surprise-yo] [dissatisfaction-hnn]",
+    "markup_hint": "# 章節標題 · [voice:NAME] 切換語音 · [pause 0.5s] · [slow]…[/slow] · [fast]…[/fast] · [emphasis]…[/emphasis] · [spell]…[/spell] · 反應 (VoiceStudio)： [laughter] [sigh] [confirmation-en] [question-en] [question-ah] [question-oh] [question-ei] [question-yi] [surprise-ah] [surprise-oh] [surprise-wa] [surprise-yo] [dissatisfaction-hnn]: [laughter] [sigh] [confirmation-en] [question-en] [question-ah] [question-oh] [question-ei] [question-yi] [surprise-ah] [surprise-oh] [surprise-wa] [surprise-yo] [dissatisfaction-hnn]",
     "language": "語言",
     "expressive": "製作覆蓋",
     "reset": "重置",
@@ -1971,7 +1989,10 @@
     "emotion_text": "情感描述",
     "emotion_text_ph": "例如 聽起來很疲勞和悲傷",
     "emotion_alpha": "情感強度",
-    "lex_duplicate": "每個詞只保留一種發音。"
+    "lex_duplicate": "每個詞只保留一種發音。",
+    "recovery_busy": "另一個算繪正在進行，完成後再繼續。",
+    "cast_note_one": "{{names}} 尚未分配聲音，將使用主要聲音朗讀。請在「角色」中選擇聲音。",
+    "cast_note_other": "{{names}} 尚未分配聲音，將使用主要聲音朗讀。請在「角色」中選擇聲音。"
   },
   "credentials": {
     "microsoft_key": "微軟翻譯金鑰",
@@ -1982,6 +2003,7 @@
     "deepl_base_url_help": "自訂 DeepL API 端點（預設：https://api.deepl.com/v2）。變更為代理/自架。",
     "microsoft_base_url_help": "自訂 Azure 翻譯端點（預設：https://api.cognitive.microsofttranslator.com）。",
     "region": "區域",
+    "base_url": "基礎 URL",
     "aws_profile": "AWS 設定檔",
     "deepl_key_placeholder": "DeepLAPI 金鑰",
     "microsoft_key_placeholder": "MicrosoftAPI 金鑰"
@@ -2006,11 +2028,12 @@
     "self_check_warn": "警告",
     "self_check_fail": "未通過",
     "self_check_healthy": "所有檢查均已通過 — 此安裝看起來運作正常。",
-    "self_check_attention": "{{count}} 項檢查未通過 — 請參閱上方提示。",
+    "self_check_attention_one": "{{count}} 項檢查未通過，請查看上方提示。",
+    "self_check_attention_other": "{{count}} 項檢查未通過，請查看上方提示。",
     "save_bundle": "儲存診斷套件",
     "bundle_saved": "診斷套件已儲存：{{filename}}",
     "title": "關於軟體",
-    "diagnostics": "系統預檢",
+    "diagnostics": "診斷",
     "model_credits": "模型致謝",
     "model_credits_hint": "支援模型的來源與作者。模型和元件分別適用各自的條款；這些致謝不授予商業使用權。",
     "model_terms": "模型條款",
@@ -2019,7 +2042,8 @@
   "privacy": {
     "translator_online": "譯者在線：{{provider}}",
     "analytics_title": "協助改善 VoiceStudio",
-    "translator_offline": "離線翻譯器",
+    "translator_offline": "僅離線",
+    "change_translator": "變更翻譯引擎",
     "translator_unknown": "未知",
     "watermark_subtitle": "預設開啟。將產生的音訊標記為 AI 製作，以便日後識別。僅影響從現在起產生的音訊。",
     "analytics_subtitle": "預設關閉。引擎、語言、時長、字元數和錯誤類型的匿名統計。絕不傳送您的文字或音訊。",
@@ -2364,7 +2388,8 @@
     "generating_voice_a": "生成語音...",
     "generating_voice_b": "生成語音 B...",
     "comparison_complete": "對比完畢！",
-    "play_failed": "播放失敗：{{message}}"
+    "play_failed": "播放失敗：{{message}}",
+    "test_phrase_placeholder": "輸入一句兩個聲音都會朗讀的話。"
   },
   "demo": {
     "clone_coachmark": "這是一個引導演示 - 嘗試建議的提示或編寫您自己的提示。",
@@ -2574,7 +2599,8 @@
       "aria": "{{raised}} 每月目標 {{goal}}",
       "remaining": "{{amount}} 去",
       "met": "🎉 目標達成 — {{raised}} 提高。謝謝你！",
-      "social_proof": "加入資助本地人工智慧的 {{count}} 支持者"
+      "social_proof_one": "加入 {{count}} 位支持本地 AI 的贊助者",
+      "social_proof_other": "加入 {{count}} 位支持本地 AI 的贊助者"
     },
     "postcard": {
       "title": "支持 VoiceStudio 開發",
@@ -2686,14 +2712,14 @@
     "openDocs": "開啟此錯誤的文檔",
     "crash_port_in_use": "後端無法啟動，因為連接埠 3900 已被占用 — 另一個 VoiceStudio 執行個體（或占用該連接埠的應用程式）正持有它。請結束另一個執行個體後重新啟動；若看不到任何正在執行的程式，則是上一次工作階段殘留的後端仍占用該連接埠。",
     "crash_oom_kill": "程序遭強制終止（信號 9），通常表示作業系統記憶體（RAM）不足而將其停止。請關閉占用記憶體較大的應用程式，在設定 → 模型中選擇較小的 ASR 模型，或在轉錄前卸載 TTS 模型。",
-    "crash_native_fault": "它是在計算堆疊內部崩潰的，而不是記憶體耗盡 — 這通常指向與內建 CUDA 執行環境不相符的 GPU 驅動程式，或未完整下載的模型檔案。請更新 GPU 驅動程式，然後在設定 → 模型中重新下載該模型（可就地修復未完成的下載）。若反覆發生，請在設定 → 引擎中切換到崩潰隔離引擎 — 合成用「VoiceStudio (subprocess)」，轉錄用「Faster-Whisper (crash-isolated subprocess)」。它們在獨立程序中執行模型，因此這類崩潰只會終止該程序，而非整個後端。",
+    "crash_native_fault": "它是在計算堆疊內部崩潰的，而不是記憶體耗盡 — 這通常指向與內建 CUDA 執行環境不相符的 GPU 驅動程式，或未完整下載的模型檔案。請更新 GPU 驅動程式，然後在設定 → 模型中重新下載該模型（可就地修復未完成的下載）。若反覆發生，請在設定 → 模型中切換到崩潰隔離引擎 — 合成用「VoiceStudio (subprocess)」，轉錄用「Faster-Whisper (crash-isolated subprocess)」。它們在獨立程序中執行模型，因此這類崩潰只會終止該程序，而非整個後端。",
     "report": "回報此錯誤",
     "report_failed": "無法開啟錯誤回報。請重試，或將上方的詳細資訊複製到新的 issue 中。",
     "searchIssues": "搜尋類似問題",
     "unexpected": "未預期的錯誤：{{message}}",
     "backend_shutting_down": "VoiceStudio 正在關閉。請重新開啟應用程式後再試。",
     "crash_broken_env": "它在載入自身的 Python 相依套件時結束，因此與記憶體或顯示卡無關——執行環境不完整，或更新到一半就停住了。請在 設定 → 系統日誌 → 後端 中使用「清理並重試」，它會從頭重建環境並就地修復，不會動到你的聲音或專案。若之後仍然失敗，當機詳情會指出無法匯入的確切套件。",
-    "crash_vram_default": "在較小的 GPU 上，常見原因是在 TTS 模型仍載入時再載入 ASR 模型，導致顯示記憶體（VRAM）不足：請先卸載 TTS 模型，或在 模型庫 → 模型 中選擇較小的 ASR 模型。",
+    "crash_vram_default": "在較小的 GPU 上，常見原因是在 TTS 模型仍載入時再載入 ASR 模型，導致顯示記憶體（VRAM）不足：請先卸載 TTS 模型，或在 設定 → 模型 中選擇較小的 ASR 模型。",
     "stream_cut_backend_alive": "串流提前結束，但後端仍在執行——因此它並沒有當機。在伺服器或容器化部署中，這通常是反向代理或負載平衡器在緩衝連線或使其逾時：請為此路由停用回應緩衝（nginx: proxy_buffering off; X-Accel-Buffering: no）並調高讀取逾時。直接執行桌面應用程式，或在沒有代理的 localhost 上執行，即可確認。"
   },
   "segmentEditing": {
@@ -2870,7 +2896,8 @@
     "plan_impossible": "無法容納 +{{seconds}}秒",
     "plan_impossible_title": "預計語音約{{est}}秒，可用時間為{{avail}}秒。約有{{seconds}}秒超出任何適配方式的調整範圍，音訊將被截斷。請在產生前縮短文字。",
     "plan_tight": "勉強適配",
-    "plan_tight_title": "預計語音約{{est}}秒，可用時間為{{avail}}秒。智慧適配可以處理，但會明顯加快語速或減慢影片。縮短文字可獲得更自然的效果。"
+    "plan_tight_title": "預計語音約{{est}}秒，可用時間為{{avail}}秒。智慧適配可以處理，但會明顯加快語速或減慢影片。縮短文字可獲得更自然的效果。",
+    "replace_toggle": "尋找和取代"
   },
   "update": {
     "checking": "正在檢查更新…",
@@ -2948,8 +2975,6 @@
     "translate_hint": "瀏覽目標文字。超長線路速度提升；您也可以直接編輯。",
     "done_title": "配音完成",
     "done_hint": "檢查時序和同步比率。調整任何線條並點擊“Regen Changed”即可快速部分重做。",
-    "segment_one": "{{count}} 段",
-    "segment_other": "{{count}} 段",
     "dismiss_title": "關閉 — 在重新載入之前不會再次出現在該階段",
     "timing_review_one": "{{count}} 個片段需要檢查時間",
     "timing_review_other": "{{count}} 個片段需要檢查時間同步",
@@ -3021,7 +3046,7 @@
     "fast": "快速",
     "balanced": "均衡",
     "quality": "品質",
-    "hint": "適用於 OmniVoice 取樣和 Faster-Whisper / NLLB 解碼。其他引擎保留目前設定。",
+    "hint": "設定語音生成、轉錄與翻譯的速度與品質。不支援這些選項的引擎會保留各自的設定。",
     "auto": "自動",
     "autoHint": "為這台電腦選擇最佳等級。"
   },
@@ -3056,7 +3081,7 @@
     "timeout": "產生超時 - 模型可能仍在下載。檢查設定 → 日誌，然後重試。",
     "ignored_unsupported": "忽略不支援的指令：{{items}}",
     "too_long": "該剪輯是 {{duration}}s。引擎最多接受沒有成績單的 {{max}}。",
-    "model_not_downloaded": "該模型尚未下載。打開主應用程式的「設定」→「引擎」進行安裝。",
+    "model_not_downloaded": "該模型尚未下載。請開啟「設定」→「模型」進行安裝。",
     "backend_unreachable": "本地引擎無法存取。",
     "gpu_arch_unsupported": "此 PyTorch 組建不支援您的 GPU。請在設定 → 效能與裝置中選擇 CPU，或安裝相容的 PyTorch 組建。",
     "windows_app_control_blocked": "Windows 應用程式控制封鎖了必要檔案。請聯絡管理員允許受信任的 VoiceStudio 執行環境，然後重新啟動應用程式。",
@@ -3068,8 +3093,8 @@
     "gpu_oom": "GPU 記憶體不足。請關閉其他佔用 GPU 的應用程式或卸載模型後重試。你也可以在 設定 → 效能與裝置 中選擇 CPU，或選擇較小的 TTS 引擎。",
     "host_memory_exhausted": "電腦記憶體不足。請關閉其他佔用記憶體的應用程式和瀏覽器分頁，卸載不用的模型，產生較短的片段，或選擇更輕量的 TTS 引擎。",
     "disk_full": "磁碟已滿。請在存放 VoiceStudio 資料、模型快取或暫存資料夾的磁碟上釋放空間，然後重試。設定 → 儲存空間會顯示磁碟用量，並可清除暫存檔案。",
-    "engine_dependency_missing": "此引擎所需的 Python 套件尚未安裝，因此引擎無法啟動。請開啟模型目錄，選擇該引擎並使用 安裝 / 修復，然後重新啟動 VoiceStudio。",
-    "reference_stt_missing": "此聲音沒有逐字稿，也沒有安裝可用於產生逐字稿的語音轉文字模型。請在逐字稿欄位輸入參考音訊所說的內容（音訊不超過 20 秒），或在模型目錄中安裝並選擇一個語音轉文字模型，然後重新產生。",
+    "engine_dependency_missing": "此引擎所需的 Python 套件尚未安裝，因此引擎無法啟動。請開啟「設定」→「模型」，選擇該引擎並使用 安裝 / 修復，然後重新啟動 VoiceStudio。",
+    "reference_stt_missing": "此聲音沒有逐字稿，也沒有安裝可用於產生逐字稿的語音轉文字模型。請在逐字稿欄位輸入參考音訊所說的內容（音訊不超過 20 秒），或在「設定」→「模型」中安裝並選擇一個語音轉文字模型，然後重新產生。",
     "install_speech_model": "安裝語音辨識模型",
     "proxy_gateway_error": "你與 VoiceStudio 之間的代理或閘道回傳了 HTTP {{status}}，而不是後端的回應。後端可能仍在處理。對於較長的產生作業，請調高代理的讀取逾時（nginx 為 proxy_read_timeout），然後查看 設定 → 記錄 → 後端。",
     "route_not_found": "正在執行的 VoiceStudio 後端沒有 {{route}} 端點。請重新啟動 VoiceStudio 使應用程式與後端一致；若仍然如此，請將兩者更新到同一版本。"
@@ -3644,6 +3669,10 @@
     "categoryConditions": "附條件的商業使用",
     "categoryNoncommercial": "僅限個人與研究使用",
     "categoryUnknown": "無法辨識授權",
+    "shortCommercial": "可商用",
+    "shortConditions": "有條件",
+    "shortNoncommercial": "非商用",
+    "shortUnknown": "未知",
     "categoryHint": "依據聲明的授權文字，未經 VoiceStudio 核實。不構成法律建議。",
     "reviewed": "已審查",
     "notReviewed": "未審查",
@@ -4323,7 +4352,7 @@
     },
     "model_missing": {
       "title": "尚未下載模型",
-      "fix1": "在模型目錄中下載",
+      "fix1": "在 設定 → 模型 中下載",
       "fix2": "點選修復進行安裝"
     },
     "busy": {
@@ -4405,5 +4434,20 @@
     "nextMemory": "此裝置記憶體不足。請在 設定 → 效能 中選擇較輕量的設定檔，然後重試。",
     "downloads": "下載",
     "activeCount": "進行中的下載：{{count}}"
+  },
+  "disabledReason": {
+    "files_required": "請先至少新增一部影片。",
+    "languages_required": "請至少選擇一種目標語言。",
+    "language_required": "請先選擇目標語言。",
+    "translation_not_ready": "請先設定翻譯引擎。",
+    "recovery_pending": "請先繼續或取消中斷的步驟。",
+    "segments_required": "請先轉寫影片。",
+    "text_required": "請先輸入文字。",
+    "path_required": "請先輸入檔案的完整路徑。",
+    "slot_required": "請輸入大於 0 秒的時長。",
+    "voices_required": "請先選擇兩個聲音。",
+    "generating": "請等待目前的生成完成。",
+    "name_required": "請先輸入名稱。",
+    "audio_missing": "此條生成沒有可儲存的音訊檔案。"
   }
 }

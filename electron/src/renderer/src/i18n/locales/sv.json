@@ -270,9 +270,9 @@
     "title": "Uttalsordbok",
     "help": "Lär motorn hur man säger kluriga ord. Varje post ersätter ett ord med en omstavning före syntes, så det gäller på alla motorer. Omfattning av en post till ett språk eller lämna den global. Inline åsidosätter [[ord|omstavning]] ordboken en gång.",
     "term": "Termin",
-    "term_placeholder": "ord eller fras (t.ex. GIF)",
+    "term_placeholder": "t.ex. GIF",
     "replacement": "Byte",
-    "replacement_placeholder": "omstavning (t.ex. jiff)",
+    "replacement_placeholder": "t.ex. jiff",
     "scope": "Omfattning",
     "global": "Global",
     "type": "Typ",
@@ -284,14 +284,14 @@
     "remove": "Ta bort {{term}}",
     "empty": "Inga inlägg ännu. Lägg till ett nedan för att fixa ett felaktigt uttalat ord.",
     "test_label": "Testa en mening",
-    "test_placeholder": "Skriv en mening för att förhandsgranska ersättningen...",
+    "test_placeholder": "Skriv en mening…",
     "test_result": "Kommer att talas som:",
     "test_nochange": "Inga poster matchar – talat som skrivet.",
     "load_error": "Det gick inte att läsa in uttalsordboken.",
     "save_error": "Det gick inte att spara den posten.",
     "lang_label": "Språkkod (t.ex. en, de) eller lämna tomt för Global",
     "enable_entry": "Aktivera {{term}}",
-    "lang_placeholder": "en, de… (tomt = Global)",
+    "lang_placeholder": "t.ex. en",
     "test_language": "Förhandsvisningsspråk",
     "test_global_hint": "Förhandsvisar endast globala poster — välj ett språk för att ta med språkbundna poster.",
     "test_error": "Förhandsvisning otillgänglig — backend kunde inte nås.",
@@ -299,10 +299,14 @@
     "backup_hint": "Ladda ner ordboken som en JSON-fil, eller importera poster från en tidigare export.",
     "export": "Exportera JSON",
     "import": "Importera JSON",
-    "import_replace_prompt": "Ersätta de {{count}} befintliga posterna med den importerade filen? Välj Nej för att lägga till de importerade posterna bredvid de befintliga.",
-    "import_done": "{{count}} poster importerade.",
+    "import_replace_prompt_one": "Ersätta {{count}} befintlig post med den importerade filen? Välj Nej för att lägga till de importerade posterna bredvid.",
+    "import_replace_prompt_other": "Ersätta de {{count}} befintliga posterna med den importerade filen? Välj Nej för att lägga till de importerade posterna bredvid.",
+    "import_done_one": "{{count}} post importerad.",
+    "import_done_other": "{{count}} poster importerade.",
     "import_error": "Kunde inte importera filen — JSON från en uttalsexport förväntades.",
-    "export_error": "Kunde inte exportera ordboken."
+    "export_error": "Kunde inte exportera ordboken.",
+    "entries_count_one": "{{count}} post",
+    "entries_count_other": "{{count}} poster"
   },
   "preferences": {
     "title": "Inställningar",
@@ -404,7 +408,8 @@
     "change": "Byt motor",
     "failed": "Kunde inte byta motor. Försök igen.",
     "empty": "Inga motorer eller modeller för den här kategorin ännu.",
-    "modelsInstalled": "{{installed}} av {{count}} installerade"
+    "modelsInstalled": "{{installed}} av {{count}} installerade",
+    "dictation_enabled": "Aktivera diktering"
   },
   "modelMaintenance": {
     "download": "Ladda ner",
@@ -447,7 +452,7 @@
     "mode_fast": "Snabb",
     "mode_fast_desc": "Använder den valda dikteringsmodellen med låg latens.",
     "mode_accurate": "Exakt",
-    "mode_accurate_desc": "Använder den valda ASR-modellen med detaljerade tidsstämplar.",
+    "mode_accurate_desc": "Använder den valda tal-till-text-modellen med detaljerade tidsstämplar.",
     "title": "Transkriptioner",
     "entries": "{{count}} poster",
     "search_placeholder": "Sök efter transkriptioner...",
@@ -474,7 +479,8 @@
     "identify_speakers": "Identifiera talare",
     "speakers_unavailable": "Talaridentifiering är inte tillgänglig. Transkriptionen sparades utan talaretiketter.",
     "missing_model": "Ingen tal-till-text-modell är installerad — den här funktionen behöver en för att transkribera ljud.",
-    "original_transcript": "Ursprunglig transkription"
+    "original_transcript": "Ursprunglig transkription",
+    "active_model": "Modell: {{model}}"
   },
   "engineRuntime": {
     "ready": "Klar",
@@ -803,7 +809,6 @@
     "install_disabled_title": "Installationer är inaktiverade i paketerade versioner",
     "needs_install_suffix": "- behöver installeras",
     "glossary_title": "Fäst översättningar för återkommande termer (namn, varumärkesord, jargong)",
-    "glossary_btn": "+ Ordlista ({{count}})",
     "selected_count": "{{count}} har valts",
     "set_voice": "Ställ in röst...",
     "clear_voice": "⊘ Standard",
@@ -926,7 +931,12 @@
     "input_issue_unsupported": "Filtypen stöds inte – välj en video- eller ljudfil",
     "input_issue_empty": "Filen är tom – välj en annan fil",
     "file_actions": "Filåtgärder",
-    "translator_agent": "Agent"
+    "translator_agent": "Agent",
+    "segment_count_one": "{{count}} segment",
+    "segment_count_other": "{{count}} segment",
+    "glossary_terms_one": "Ordlista · {{count}} term",
+    "glossary_terms_other": "Ordlista · {{count}} termer",
+    "glossary_label": "Ordlista"
   },
   "dub_workflow": {
     "preparing_audio": "Förbereder ljud...",
@@ -1116,7 +1126,7 @@
     "engine_switched": "{{family}} bytt till {{engine}}",
     "usage": "Användning",
     "usage_desc": "Det du har skapat med VoiceStudio, räknat på din egen enhet.",
-    "usage_privacy": "Dessa siffror beräknas från historiken på den här enheten och skickas aldrig någonstans. VoiceStudio använder ingen analystjänst — inget här lämnar din dator.",
+    "usage_privacy": "Siffrorna räknas från din egen historik och stannar på den här datorn. Valfri analys styrs separat under Integritet.",
     "usage_empty": "Du har inte genererat något ännu. Skapa något så visas det här.",
     "usage_takes": "Genererade tagningar",
     "usage_since": "sedan {{date}}",
@@ -1251,7 +1261,7 @@
     "hf_token_test_now": "Testa nu",
     "hf_source_env_label": "Miljövariabel",
     "hf_token_not_checked": "Inte testad",
-    "translation_providers_desc": "API-nycklar för onlineöversättare, inställda för denna session.",
+    "translation_providers_desc": "Nycklar för onlineöversättarna Google Cloud, DeepL, Microsoft Azure och AWS. Sparas på den här datorn och finns kvar efter omstart.",
     "hf_token_verified": "Verifierad",
     "ffmpeg": "FFmpeg",
     "hf_token_not_set": "Inte angiven",
@@ -1315,6 +1325,7 @@
     "storage_cat_data": "Appdata",
     "storage_child_preview": "Förhandsvisningar",
     "storage_desc": "Där VoiceStudio förvarar dina data och utdata.",
+    "models_dir_desc": "Nedladdade modeller lagras här. Välj en enhet med mer ledigt utrymme om den här blir full.",
     "storage_child_batch": "Batchjobb",
     "storage_top_models": "Största modellerna",
     "storage_refresh": "Uppdatera",
@@ -1397,7 +1408,7 @@
     "uninstall_optional_group": "Frivillig",
     "uninstall_models_warning": "Detta inkluderar den delade Hugging Face-cachen ({{size}}) – modeller som andra nedladdade AI-verktyg kan följa med.",
     "llmp_env_override": "inställd via en miljövariabel — åsidosätter detta fält",
-    "llmp_active_env_pin": "LLM-valet är låst av LLM_DEFAULT_PROVIDER eller OMNIVOICE_LLM_BACKEND.",
+    "llmp_active_env_pin": "Språkmodellen styrs av en miljövariabel på den här datorn och kan inte ändras här.",
     "llmp_models_truncated": "första {{count}} visas – skriv för att begränsa modellnamnet",
     "llm_skills": "LLM Färdigheter",
     "llmskills_desc": "Dirigera varje AI-driven funktion till sin egen LLM – behåll känsligt arbete på en lokal modell (Ollama/LM Studio) medan tyngre jobb använder en fjärrleverantör – eller stäng av en funktion helt. Off beter sig exakt som att ha ingen LLM konfigurerad: funktionen faller tillbaka till sin icke-LLM sökväg.",
@@ -1449,7 +1460,7 @@
     "audio_tools_ytdlp_updated": "yt-dlp{{version}}installerad — starta om backend för att tillämpa.",
     "audio_tools_moved_note": "Åsidosättandet av FFmpeg flyttade till sin egen panel med mer kontroll (version, ursprung, återställning).",
     "remote_backend_title": "Fjärrstyrd backend",
-    "remote_backend_key_placeholder": "värdet avOMNIVOICE_API_KEYpå servern",
+    "remote_backend_key_placeholder": "API-nyckel som angetts på den andra datorn",
     "remote_backend_confirm_unverified": "Denna backend-URL har inte klarat ett anslutningstest. Spara den och ladda om ändå? Om det är fel kan appen inte nå någon backend förrän du ändrar tillbaka den här.",
     "review_mode": "Granskningsläge",
     "review_mode_desc": "Pausa mellan stegen i pipeline så att du kan granska ASR/översättningsutdata.",
@@ -1527,7 +1538,7 @@
     "more_actions": "Fler åtgärder",
     "use_in_stories": "Använd i Berättelser",
     "set_audiobook_default": "Ange som standardröst för Ljudbok",
-    "open_designer": "Öppna i Designer",
+    "open_designer": "Öppna i Designa",
     "no_matches": "Inga röster matchar dessa filter.",
     "load_more": "Ladda mer",
     "saved_as_profile": "Lade till \"{{name}}\" till dina röster.",
@@ -1549,7 +1560,7 @@
     "trim_load_failed": "Det gick inte att ladda ljudet för trimning: {{message}}",
     "delete": "Ta bort",
     "community_empty": "Inga communityröster har laddats ännu — anslut till internet och öppna igen, eller bli först med att skicka in en.",
-    "community_explainer": "Designade förinställningar och inspelade röster som delas av communityn, laddade från omnivoice-gallery.",
+    "community_explainer": "Designade förinställningar och inspelade röster som delas av communityn.",
     "no_designer": "Inspelad röst — använd \"Använd röst\" i stället.",
     "no_preview": "Ingen förhandsgranskning — lägg till den med \"Använd röst\" för att höra den.",
     "submit_failed": "Det gick inte att öppna inskickningsformuläret.",
@@ -1675,7 +1686,9 @@
     "probe_placeholder": "/Users/you/Movies/sample.mp4",
     "probe_failed": "Sond misslyckades: {{message}}",
     "parse_failed": "Analysen misslyckades: {{message}}",
-    "fit_failed": "Anpassningen misslyckades: {{message}}"
+    "fit_failed": "Anpassningen misslyckades: {{message}}",
+    "placeholder_direction": "t.ex. Viska det som en hemlighet och låt sedan förväntan växa.",
+    "placeholder_rate_fit": "Klistra in den översatta raden för att jämföra med dess tidsfönster."
   },
   "projects": {
     "title": "Projekt",
@@ -1721,7 +1734,9 @@
     "delete_selected": "Ta bort markerade ({{count}})",
     "deleted_count": "Borttagna: {{count}}",
     "delete_warning": "Detta kan inte ångras. Projekt och transkriptioner tas bort. När röster eller tagningar tas bort raderas även deras sparade ljud. Exporterade filer och färdigrenderat ljud behålls.",
-    "draft_changed": "Ditt utkast ändrades medan projektet laddades. Bekräfta igen för att ersätta det."
+    "draft_changed": "Ditt utkast ändrades medan projektet laddades. Bekräfta igen för att ersätta det.",
+    "all_projects": "Alla projekt",
+    "library_group": "Bibliotek"
   },
   "projectActions": {
     "delete": "Ta bort ”{{name}}”? Detta kan inte ångras.",
@@ -1746,7 +1761,9 @@
     "tagline": "Lokal röstkloning. Inget lämnar din maskin.",
     "coming_soon": "Kommer snart",
     "switch_to_light": "Byt till ljustema",
-    "switch_to_dark": "Byt till mörkt tema"
+    "switch_to_dark": "Byt till mörkt tema",
+    "not_found_title": "Sidan hittades inte",
+    "not_found_body": "Den här adressen matchar ingen sida i VoiceStudio."
   },
   "stories": {
     "title": "Redaktör för berättelser",
@@ -1763,7 +1780,8 @@
     "autocast": "Autocast",
     "autocastHint": "Upptäck vem som talar och tilldela röster automatiskt",
     "autocastEmpty": "Inget att autocasta – klistra in eller importera en berättelse först.",
-    "autocastDone": "Autocasta {{lines}} linjer över {{voices}} röst(er)",
+    "autocastDone_one": "{{lines}} rader tilldelade {{count}} röst",
+    "autocastDone_other": "{{lines}} rader fördelade på {{count}} röster",
     "importFailed": "Kunde inte läsa den filen.",
     "addLine": "Lägg till rad",
     "addChapter": "Lägg till kapitel",
@@ -1798,13 +1816,13 @@
     "splitModeHint": "Varje rad läses som en egen tagning. För en enda berättare flyter stycken eller hela kapitel bättre än meningar.",
     "emptyText": "Börja din berättelse genom att lägga till dialog- och berättarrader. Tilldela varje karaktär en röst i rollen.",
     "addFirst": "Lägg till första raden",
-    "linePlaceholder": "Gå in i dialog eller berättarröst... använd [paus 0,5s] för en tyst paus",
+    "linePlaceholder": "Gå in i dialog eller berättarröst... använd [pause 0.5s] för en tyst paus",
     "text": "text",
     "defaultVoice": "Standard",
     "inlineVoice": "Ställ in inline röst",
     "inlineVoiceHint": "Byt röst för den markerade texten (eller infoga en knapp vid markören)",
     "resetInlineVoice": "Återställ till linjeröst",
-    "insertPause": "Sätt in en [paus 0,5s] paus",
+    "insertPause": "Sätt in en [pause 0.5s] paus",
     "preview": "Förhandsgranska den här raden",
     "removeLine": "Ta bort linjen",
     "tune": "Ton och hastighet",
@@ -1842,7 +1860,8 @@
     "toneChip": "Ton och tempo: {{speed}}",
     "lineVoice": "Radens röst",
     "chapterHeading": "Kapiteltitel",
-    "lineActions": "Radåtgärder"
+    "lineActions": "Radåtgärder",
+    "recovery_title": "Avbruten berättelse"
   },
   "audiobook": {
     "cast": "Rollbesättning",
@@ -1866,7 +1885,6 @@
     "stats_one": "{{count}} kapitel · {{words}} ord · {{runtime}} uppskattad speltid",
     "stats_other": "{{count}} kapitel · {{words}} ord · {{runtime}} uppskattad speltid",
     "warnings_title": "Innan du skapar",
-    "warn_unknown_voice": "Okänd röst ‘{{name}}’ — standardrösten används",
     "warn_empty_chapter": "Kapitlet ”{{title}}” saknar uppläst text",
     "warn_unknown_tag": "Okänd tagg {{tag}} — den läses upp",
     "untitled": "Namnlös ljudbok",
@@ -1878,7 +1896,7 @@
     "tab_book": "Bok",
     "subtitle": "Skriv eller importera din berättelse, tilldela varje roll en röst och exportera en finslipad ljudbok med riktiga kapitel.",
     "script": "Manus",
-    "script_placeholder": "# Kapitel ett\nDet var en gång... [paus 500ms] slutet.\n\n# Kapitel två\n[voice:berättare] Och så fortsatte det.",
+    "script_placeholder": "# Kapitel ett\nDet var en gång... [pause 0.5s] slutet.\n\n# Kapitel två\n[voice:berättare] Och så fortsatte det.",
     "default_voice": "Standardröst",
     "engine_default": "Standard för motor",
     "preview_plan": "Förhandsgranska plan",
@@ -1888,7 +1906,7 @@
       "busy": "En annan bok renderas redan. Vänta på den eller stoppa den först.",
       "importing": "Importerar… Generera låses upp när det är klart.",
       "engine_loading": "Kontrollerar röstmotorn…",
-      "engine": "Röstmotorn är inte redo. Kontrollera Inställningar → Motorer.",
+      "engine": "Röstmotorn är inte redo. Kontrollera Inställningar → Modeller.",
       "no_lines": "Lägg till minst en talad rad för att generera.",
       "no_script": "Skriv eller importera ett manus för att generera.",
       "voice": "Välj en standardröst eller ge varje rad en röst.",
@@ -1954,7 +1972,7 @@
     "lex_add": "Lägg till ord",
     "lex_remove": "Ta bort",
     "markup_help": "Markeringsreferens",
-    "markup_hint": "# Kapiteltitel · [voice:NAME] byt röst · [pause 500ms] / [pause 1s] · [slow]…[/slow] · [fast]…[/fast] · [emphasis]…[/emphasis] · [spell]…[/spell] · Reaktioner (VoiceStudio): [laughter] [sigh] [confirmation-en] [question-en] [question-ah] [question-oh] [question-ei] [question-yi] [surprise-ah] [surprise-oh] [surprise-wa] [surprise-yo] [dissatisfaction-hnn]",
+    "markup_hint": "# Kapiteltitel · [voice:NAME] byt röst · [pause 0.5s] · [slow]…[/slow] · [fast]…[/fast] · [emphasis]…[/emphasis] · [spell]…[/spell] · Reaktioner (VoiceStudio): [laughter] [sigh] [confirmation-en] [question-en] [question-ah] [question-oh] [question-ei] [question-yi] [surprise-ah] [surprise-oh] [surprise-wa] [surprise-yo] [dissatisfaction-hnn]",
     "language": "Språk",
     "expressive": "Produktionsåsidosättanden",
     "reset": "Återställ",
@@ -1971,7 +1989,10 @@
     "emotion_text": "Emotionsbeskrivning",
     "emotion_text_ph": "t.ex. låter uttömd och ledsen",
     "emotion_alpha": "Emotionsstyrka",
-    "lex_duplicate": "Ange ett uttal per ord."
+    "lex_duplicate": "Ange ett uttal per ord.",
+    "recovery_busy": "En annan rendering pågår. Återuppta när den är klar.",
+    "cast_note_one": "{{names}} har ingen röst än och läses med huvudrösten. Välj en under Rollbesättning.",
+    "cast_note_other": "{{names}} har inga röster än och läses med huvudrösten. Välj röster under Rollbesättning."
   },
   "credentials": {
     "microsoft_key": "Microsoft Translator-nyckel",
@@ -1982,6 +2003,7 @@
     "deepl_base_url_help": "Anpassad DeepL API-slutpunkt (standard: https://api.deepl.com/v2). Ändra för proxy/självvärd.",
     "microsoft_base_url_help": "Anpassad Azure Translator-slutpunkt (standard: https://api.cognitive.microsofttranslator.com).",
     "region": "Region",
+    "base_url": "Bas-URL",
     "aws_profile": "AWS-profil",
     "deepl_key_placeholder": "DeepL API-nyckel",
     "microsoft_key_placeholder": "Microsoft API-nyckel"
@@ -2006,11 +2028,12 @@
     "self_check_warn": "Varning",
     "self_check_fail": "Misslyckades",
     "self_check_healthy": "Alla kontroller godkända — installationen ser frisk ut.",
-    "self_check_attention": "{{count}} kontroll(er) misslyckades — se tipsen ovan.",
+    "self_check_attention_one": "{{count}} kontroll misslyckades – se tipsen ovan.",
+    "self_check_attention_other": "{{count}} kontroller misslyckades – se tipsen ovan.",
     "save_bundle": "Spara diagnostikpaket",
     "bundle_saved": "Diagnostikpaket sparat: {{filename}}",
     "title": "Om",
-    "diagnostics": "System preflight",
+    "diagnostics": "Diagnostik",
     "model_credits": "Modellernas upphovspersoner",
     "model_credits_hint": "Upphovsuppgifter för modeller som stöds. Modeller och komponenter har separata villkor; dessa uppgifter ger inga rättigheter till kommersiell användning.",
     "model_terms": "Modellvillkor",
@@ -2019,7 +2042,8 @@
   "privacy": {
     "translator_online": "Översättaren är online: {{provider}}",
     "analytics_title": "Hjälp till att förbättra VoiceStudio",
-    "translator_offline": "Offlineöversättare",
+    "translator_offline": "Endast offline",
+    "change_translator": "Byt översättare",
     "translator_unknown": "Okänd",
     "watermark_subtitle": "På som standard. Märker genererat ljud som AI-skapat så att det kan identifieras senare. Gäller bara ljud som genereras från och med nu.",
     "analytics_subtitle": "Av som standard. Anonyma uppgifter om motor, språk, varaktighet, antal tecken och feltyper. Aldrig din text eller ditt ljud.",
@@ -2364,7 +2388,8 @@
     "generating_voice_a": "Genererar röst A...",
     "generating_voice_b": "Genererar röst B...",
     "comparison_complete": "Jämförelsen klar!",
-    "play_failed": "Uppspelning misslyckades: {{message}}"
+    "play_failed": "Uppspelning misslyckades: {{message}}",
+    "test_phrase_placeholder": "Skriv en mening som båda rösterna läser."
   },
   "demo": {
     "clone_coachmark": "Det här är en guidad demo - prova den föreslagna uppmaningen eller skriv din egen.",
@@ -2574,7 +2599,8 @@
       "aria": "{{raised}} av {{goal}} månadsmål",
       "remaining": "{{amount}} kvar",
       "met": "🎉 Målet uppfyllt — {{raised}} höjt. Tack!",
-      "social_proof": "Gå med i {{count}}-supportrar som finansierar lokal AI"
+      "social_proof_one": "Gå med {{count}} supporter som finansierar lokal AI",
+      "social_proof_other": "Gå med {{count}} supportrar som finansierar lokal AI"
     },
     "postcard": {
       "title": "Stöd utvecklingen av VoiceStudio",
@@ -2686,14 +2712,14 @@
     "openDocs": "Öppna dokument för detta fel",
     "crash_port_in_use": "Backend kunde inte starta eftersom port 3900 redan används — en annan kopia av VoiceStudio (eller en app som tagit porten) håller den. Avsluta den andra instansen och starta om; om inget syns köra håller en föräldralös backend från en tidigare session fortfarande porten.",
     "crash_oom_kill": "Processen tvångsavslutades (signal 9), vilket vanligtvis betyder att operativsystemet fick slut på minne (RAM). Stäng minneskrävande appar, välj en mindre ASR-modell under Inställningar → Modeller, eller ladda ur TTS-modellen före transkribering.",
-    "crash_native_fault": "Kraschen skedde inne i beräkningsstacken snarare än på grund av slut på minne — det pekar på en GPU-drivrutin som inte matchar den medföljande CUDA-körtiden, eller en modellfil som laddats ner ofullständigt. Uppdatera GPU-drivrutinen och ladda sedan ner modellen på nytt under Inställningar → Modeller (en ofullständig nedladdning repareras på plats). Om det fortsätter, byt till en kraschisolerad motor under Inställningar → Motorer — ”VoiceStudio (subprocess)” för syntes, ”Faster-Whisper (crash-isolated subprocess)” för transkribering. De kör modellen i en separat process, så en sådan krasch fäller den processen i stället för hela backend.",
+    "crash_native_fault": "Kraschen skedde inne i beräkningsstacken snarare än på grund av slut på minne — det pekar på en GPU-drivrutin som inte matchar den medföljande CUDA-körtiden, eller en modellfil som laddats ner ofullständigt. Uppdatera GPU-drivrutinen och ladda sedan ner modellen på nytt under Inställningar → Modeller (en ofullständig nedladdning repareras på plats). Om det fortsätter, byt till en kraschisolerad motor under Inställningar → Modeller — ”VoiceStudio (subprocess)” för syntes, ”Faster-Whisper (crash-isolated subprocess)” för transkribering. De kör modellen i en separat process, så en sådan krasch fäller den processen i stället för hela backend.",
     "report": "Rapportera den här buggen",
     "report_failed": "Det gick inte att öppna felrapporten. Försök igen, eller kopiera detaljerna ovan till ett nytt ärende.",
     "searchIssues": "Sök liknande problem",
     "unexpected": "Oväntat fel: {{message}}",
     "backend_shutting_down": "VoiceStudio stängs av. Öppna appen igen och försök på nytt.",
     "crash_broken_env": "Den dog när den läste in sina egna Python-beroenden, så det handlar varken om minne eller om din GPU — miljön är ofullständig eller halvuppdaterad. Använd ”Rensa & Försök igen” under Inställningar → Loggar → Backend, som bygger om den från grunden och reparerar den på plats utan att röra dina röster eller projekt. Misslyckas det ändå anger kraschdetaljerna exakt vilket paket som inte gick att importera.",
-    "crash_vram_default": "På mindre GPU:er är den vanliga orsaken att VRAM-minnet tar slut när ASR-modellen läses in ovanpå TTS-modellen: ladda ur TTS-modellen först, eller välj en mindre ASR-modell under Modellkatalog → Modeller.",
+    "crash_vram_default": "På mindre GPU:er är den vanliga orsaken att VRAM-minnet tar slut när ASR-modellen läses in ovanpå TTS-modellen: ladda ur TTS-modellen först, eller välj en mindre ASR-modell under Inställningar → Modeller.",
     "stream_cut_backend_alive": "Strömmen avbröts i förtid, men backend körs fortfarande — den kraschade alltså inte. I en serverad eller containerbaserad miljö beror det oftast på en omvänd proxy eller lastbalanserare som buffrar anslutningen eller bryter den efter en tidsgräns: stäng av svarsbuffring för den här rutten (nginx: proxy_buffering off; X-Accel-Buffering: no) och höj dess tidsgräns för läsning. Att köra skrivbordsappen direkt, eller på localhost utan proxy, bekräftar det."
   },
   "segmentEditing": {
@@ -2870,7 +2896,8 @@
     "plan_impossible": "Ryms inte +{{seconds}}s",
     "plan_impossible_title": "Beräknat tal ≈{{est}}s, tillgänglig tid {{avail}}s. Cirka {{seconds}}s överskrider vad anpassningen klarar och ljudet skulle klippas. Korta texten före generering.",
     "plan_tight": "Ryms precis",
-    "plan_tight_title": "Beräknat tal ≈{{est}}s, tillgänglig tid {{avail}}s. Smart anpassning kan lösa detta med hörbart snabbare tal eller långsammare video. Korta texten för ett bättre resultat."
+    "plan_tight_title": "Beräknat tal ≈{{est}}s, tillgänglig tid {{avail}}s. Smart anpassning kan lösa detta med hörbart snabbare tal eller långsammare video. Korta texten för ett bättre resultat.",
+    "replace_toggle": "Sök och ersätt"
   },
   "update": {
     "checking": "Söker efter uppdateringar…",
@@ -2948,8 +2975,6 @@
     "translate_hint": "Skumma måltexten. Överlånga linjer får fart; du kan också redigera direkt.",
     "done_title": "Dubbningen är klar",
     "done_hint": "Granska timing och synkroniseringsförhållanden. Justera vilken linje som helst och tryck på \"Regen ändrad\" för en snabb delvis redo.",
-    "segment_one": "{{count}} segment",
-    "segment_other": "{{count}} segment",
     "dismiss_title": "Avvisa — kommer inte att dyka upp igen för det här steget förrän du laddar om",
     "timing_review_one": "{{count}} segment behöver tidsgranskning",
     "timing_review_other": "{{count}} segment behöver tidsgranskas",
@@ -3021,7 +3046,7 @@
     "fast": "Snabb",
     "balanced": "Balanserad",
     "quality": "Kvalitet",
-    "hint": "Gäller OmniVoice sampling och Faster-Whisper / NLLB avkodning. Andra motorer behåller sina nuvarande inställningar.",
+    "hint": "Styr hastighet och kvalitet för röstgenerering, transkribering och översättning. Motorer utan dessa reglage behåller sina egna inställningar.",
     "auto": "Auto",
     "autoHint": "Väljer den bästa nivån för den här datorn."
   },
@@ -3056,7 +3081,7 @@
     "timeout": "Tidsgränsen för generationen gick ut – modellen kanske fortfarande laddas ned. Kontrollera Inställningar → Loggar och försök sedan igen.",
     "ignored_unsupported": "Ignorerad instruktion som inte stöds: {{items}}",
     "too_long": "Klippet är {{duration}}s. Motorn accepterar högst {{max}} utan transkription.",
-    "model_not_downloaded": "Modellen är inte nedladdad ännu. Öppna huvudappens Inställningar → Motorer för att installera den.",
+    "model_not_downloaded": "Modellen är inte nedladdad ännu. Öppna Inställningar → Modeller för att installera den.",
     "backend_unreachable": "Den lokala motorn är inte tillgänglig.",
     "gpu_arch_unsupported": "Den här PyTorch-versionen stöder inte din GPU. Välj CPU under Inställningar → Prestanda och enhet eller installera en kompatibel PyTorch-version.",
     "windows_app_control_blocked": "Windows programkontroll blockerade en nödvändig fil. Be administratören tillåta den betrodda VoiceStudio-körmiljön och starta sedan om appen.",
@@ -3068,8 +3093,8 @@
     "gpu_oom": "GPU:n fick slut på minne. Stäng andra GPU-tunga appar eller avlasta modeller och försök igen. Du kan också välja CPU under Inställningar → Prestanda och enhet eller välja en mindre TTS-motor.",
     "host_memory_exhausted": "Datorn fick slut på minne. Stäng andra minnestunga appar och webbläsarflikar, avlasta modeller du inte använder, generera ett kortare stycke eller välj en lättare TTS-motor.",
     "disk_full": "Disken är full. Frigör utrymme på enheten som innehåller VoiceStudios data, modellcache eller tillfälliga mapp och försök igen. Inställningar → Lagring visar diskanvändningen och kan rensa tillfälliga filer.",
-    "engine_dependency_missing": "Ett Python-paket som den här motorn behöver är inte installerat, så motorn kunde inte starta. Öppna Modellkatalogen, välj motorn och använd Installera / Reparera och starta sedan om VoiceStudio.",
-    "reference_stt_missing": "Rösten saknar transkription och ingen tal-till-text-modell är installerad för att skapa en. Skriv in vad referensklippet säger i transkriptionsrutan (klipp upp till 20 sekunder) eller installera en tal-till-text-modell i Modellkatalogen, välj den och generera igen.",
+    "engine_dependency_missing": "Ett Python-paket som den här motorn behöver är inte installerat, så motorn kunde inte starta. Öppna Inställningar → Modeller, välj motorn och använd Installera / Reparera och starta sedan om VoiceStudio.",
+    "reference_stt_missing": "Rösten saknar transkription och ingen tal-till-text-modell är installerad för att skapa en. Skriv in vad referensklippet säger i transkriptionsrutan (klipp upp till 20 sekunder) eller installera en tal-till-text-modell under Inställningar → Modeller, välj den och generera igen.",
     "install_speech_model": "Installera taligenkänningsmodell",
     "proxy_gateway_error": "En proxy eller gateway mellan dig och VoiceStudio svarade HTTP {{status}} i stället för backend. Backend kanske fortfarande arbetar. Höj proxyns läs-timeout (i nginx proxy_read_timeout) för långa genereringar och kontrollera sedan Inställningar → Loggar → Backend.",
     "route_not_found": "Den körande VoiceStudio-backenden har ingen {{route}}-ändpunkt. Starta om VoiceStudio så att appen och backend matchar; om det kvarstår, uppdatera båda till samma version."
@@ -3644,6 +3669,10 @@
     "categoryConditions": "Kommersiell användning med villkor",
     "categoryNoncommercial": "Endast personlig användning och forskning",
     "categoryUnknown": "Licensen kunde inte identifieras",
+    "shortCommercial": "Kommersiellt OK",
+    "shortConditions": "Med villkor",
+    "shortNoncommercial": "Icke-kommersiell",
+    "shortUnknown": "Okänd",
     "categoryHint": "Baserat på den angivna licenstexten, inte verifierat av VoiceStudio. Inte juridisk rådgivning.",
     "reviewed": "Granskad",
     "notReviewed": "Inte granskad",
@@ -4323,7 +4352,7 @@
     },
     "model_missing": {
       "title": "Modellen är inte nedladdad",
-      "fix1": "Ladda ned den i Modellkatalogen",
+      "fix1": "Ladda ned den under Inställningar → Modeller",
       "fix2": "Använd Åtgärda för att installera den"
     },
     "busy": {
@@ -4405,5 +4434,20 @@
     "nextMemory": "Enheten fick slut på minne. Välj en lättare profil under Inställningar → Prestanda och försök sedan igen.",
     "downloads": "Nedladdningar",
     "activeCount": "Pågående nedladdningar: {{count}}"
+  },
+  "disabledReason": {
+    "files_required": "Lägg först till minst en video.",
+    "languages_required": "Välj minst ett målspråk.",
+    "language_required": "Välj ett målspråk först.",
+    "translation_not_ready": "Konfigurera en översättningsmotor först.",
+    "recovery_pending": "Återuppta eller avbryt det avbrutna steget först.",
+    "segments_required": "Transkribera videon först.",
+    "text_required": "Skriv in text först.",
+    "path_required": "Ange först den fullständiga sökvägen till en fil.",
+    "slot_required": "Ange ett tidsfönster längre än 0 sekunder.",
+    "voices_required": "Välj båda rösterna först.",
+    "generating": "Vänta tills den aktuella tagningen är klar.",
+    "name_required": "Ange ett namn först.",
+    "audio_missing": "Den här tagningen har ingen ljudfil att spara."
   }
 }
