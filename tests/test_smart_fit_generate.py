@@ -52,7 +52,7 @@ class _FakeModel:
     def generate(self, text=None, **kwargs):
         self.calls.append(text)
         dur = float(text.split(":", 1)[0])
-        n = int(dur * SR)
+        n = int(dur * self.sampling_rate)
         return [torch.full((1, n), 0.25)]
 
 
@@ -353,12 +353,14 @@ def test_final_dub_track_and_seg_wav_are_watermarked(patched_generate, monkeypat
     assert int(33.0 * SR) != int(35.0 * SR)
 
 
-def test_zero_and_negative_duration_segments_dont_crash(patched_generate):
+@pytest.mark.parametrize("sample_rate", [12000, SR])
+def test_zero_and_negative_duration_segments_dont_crash(patched_generate, sample_rate):
     """Zero/negative-duration slots must not feed a negative length to
     torch.zeros (raises) nor write an empty WAV (atomic_save_wav raises).
     They become harmless in-memory entries the assembly tolerates, and the
     positive-duration silence's mix_<id> scratch WAV is cleaned up (#639)."""
     run, model, job, job_dir = patched_generate
+    model.sampling_rate = sample_rate
 
     job["duration"] = 5.0
     segs = [
@@ -373,8 +375,9 @@ def test_zero_and_negative_duration_segments_dont_crash(patched_generate):
     _done(parsed)
     track = job_dir / "dubbed_es.wav"
     assert track.exists()
-    n, sr = _read_wav(track)[0].shape[-1], SR
-    assert n == int(5.0 * SR)
+    n, sr = _track_samples(job_dir)
+    assert sr == sample_rate
+    assert n == int(5.0 * sr)
 
     # The mix_<id> scratch WAV for the positive-duration silence is gone.
     leftovers = [p.name for p in job_dir.glob("seg_mix_*.wav")]

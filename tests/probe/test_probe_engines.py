@@ -13,10 +13,15 @@ from .judges import engine as E
 _SPEC = os.path.join(os.path.dirname(__file__), "specs", "engines.probe.yaml")
 
 
-def test_engine_matrix(probe_report, boot_capture):
+def _judge_engine_matrix(capture):
+    """Evaluate a capture without recording synthetic cases in the live report."""
     spec = probe_spec.load_spec(_SPEC)
-    ctx = {"engines_tts": boot_capture["engines_tts"], "engines_asr": boot_capture["engines_asr"]}
-    results = probe_spec.run_judges(spec, ctx)
+    ctx = {"engines_tts": capture["engines_tts"], "engines_asr": capture["engines_asr"]}
+    return spec, probe_spec.run_judges(spec, ctx)
+
+
+def test_engine_matrix(probe_report, boot_capture):
+    spec, results = _judge_engine_matrix(boot_capture)
     probe_report.record(spec, results)
     assert probe_spec.blocking_failures(results) == [], "\n".join(str(r) for r in results)
     # Real-world sanity: the shipped defaults are available out of the box.
@@ -30,7 +35,7 @@ def test_engine_matrix(probe_report, boot_capture):
     ("pytorch-whisper", False),
     ("missing", False),
 ])
-def test_engine_matrix_respects_selected_asr(probe_report, active, available):
+def test_engine_matrix_respects_selected_asr(active, available):
     capture = {
         "engines_tts": {
             "active": "tts",
@@ -44,11 +49,14 @@ def test_engine_matrix_respects_selected_asr(probe_report, active, available):
             ],
         },
     }
+    _, results = _judge_engine_matrix(capture)
+    failures = probe_spec.blocking_failures(results)
     if available:
-        test_engine_matrix(probe_report, capture)
+        assert failures == [], "\n".join(str(r) for r in results)
     else:
-        with pytest.raises(AssertionError, match="active engine"):
-            test_engine_matrix(probe_report, capture)
+        assert len(failures) == 1
+        assert failures[0].name == "active_engine_available"
+        assert failures[0].measured == active
 
 
 def test_unavailable_engines_explained_synthetic():

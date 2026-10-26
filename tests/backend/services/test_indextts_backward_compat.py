@@ -34,8 +34,9 @@ from engines.indextts import bootstrap
 def _make_fake_venv(venv_dir: Path) -> Path:
     """Create a minimal venv layout using the existing Python installation.
 
-    Returns a symlink or copy of the running interpreter. A Windows venv
-    redirector also needs pyvenv.cfg to locate the existing base Python.
+    Returns a symlink or copy of the running interpreter. Prefix metadata
+    locates the existing base Python even when a copied POSIX executable
+    can no longer resolve its original installation through a symlink.
     No packages or additional interpreter are installed.
     """
     if sys.platform == "win32":
@@ -45,11 +46,11 @@ def _make_fake_venv(venv_dir: Path) -> Path:
         bin_dir = venv_dir / "bin"
         py_name = "python"
     bin_dir.mkdir(parents=True, exist_ok=True)
-    if sys.platform == "win32":
-        (venv_dir / "pyvenv.cfg").write_text(
-            f"home = {sys.base_prefix}\ninclude-system-site-packages = false\n",
-            encoding="utf-8",
-        )
+    (venv_dir / "pyvenv.cfg").write_text(
+        f"home = {Path(sys._base_executable).parent}\n"
+        "include-system-site-packages = false\n",
+        encoding="utf-8",
+    )
     py_path = bin_dir / py_name
     if py_path.exists():
         py_path.unlink()
@@ -71,17 +72,20 @@ def test_fake_venv_runs_existing_interpreter(monkeypatch, tmp_path, force_copy):
             raise OSError("symlinks unavailable in this fixture")
 
         monkeypatch.setattr(Path, "symlink_to", deny_symlink)
-    python_path = _make_fake_venv(tmp_path / "fixture with spaces")
+    venv_dir = tmp_path / "fixture with spaces"
+    python_path = _make_fake_venv(venv_dir)
 
     process = subprocess.run(
-        [str(python_path), "-c", "import sys; print(sys.base_prefix)"],
+        [str(python_path), "-c", "import sys; print(sys.base_prefix); print(sys.prefix)"],
         capture_output=True,
         text=True,
         timeout=10,
     )
 
     assert process.returncode == 0, process.stderr
-    assert Path(process.stdout.strip()) == Path(sys.base_prefix)
+    base_prefix, prefix = process.stdout.splitlines()
+    assert Path(base_prefix) == Path(sys.base_prefix)
+    assert Path(prefix) == venv_dir
 
 
 def _install_stub_indextts(venv_dir: Path) -> None:
