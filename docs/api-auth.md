@@ -268,6 +268,16 @@ proxies are unwrapped so they match IPv4 CIDRs; the value is read at request
 time, so in production **restart the backend** to apply a change. Default empty
 — no change to the strict loopback default.
 
+### Docker host loopback
+
+`OMNIVOICE_TRUST_HOST_LOOPBACK=1` (server mode only) lets the Docker host's own
+browser skip the **share PIN**. Inside the container that browser arrives from
+the default gateway, so only that exact socket address qualifies, only on the
+main port (not the LAN-share listener), and forwarded headers are never read
+for it. It grants the PIN's consumption rights only: the API-key gate and admin
+routes are unaffected. Default off. Risks and setup:
+[Docker install](install/docker.md#trust-host-loopback).
+
 ---
 
 ## Admin routes and server mode

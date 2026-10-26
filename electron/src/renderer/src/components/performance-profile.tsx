@@ -24,6 +24,7 @@ import { engineFamilyState, useEngines } from '@/hooks/use-engines';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { useAppActivities } from '@/lib/app-activity';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/popover';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { LiveDeviceUsage } from '@/components/live-device-usage';
 import { cn } from '@/lib/utils';
 import {
@@ -329,9 +330,92 @@ export function PerformanceProfile({
       )}
     </PopoverContent>
   );
+  const tierName = shownTier && shownTier !== 'auto' ? t('performanceProfile.' + shownTier) : null;
+  // The current level, beside the slider it reads from. In the sidebar it also opens the details.
+  const tierLabel = (
+    <>
+      <TierIcon className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+      <span className="min-w-0 truncate">{tierName ?? t('performanceProfile.auto')}</span>
+    </>
+  );
   const body = (
-    <div ref={compactControl} className="min-w-0 space-y-1.5 py-1.5">
-      <div className="flex items-center justify-between gap-2 px-1">
+    <div ref={compactControl} data-slot="performance-control" className="min-w-0 space-y-1 py-1.5">
+      {/* One labelled row: the control's name, then the Auto mode it can hand over to. */}
+      <div className="flex min-h-6 items-center justify-between gap-2 ps-1">
+        <span
+          id={groupId}
+          className="min-w-0 truncate text-[11px] font-medium whitespace-nowrap text-muted-foreground"
+        >
+          {t(supported ? 'performanceProfile.title' : 'modelSettings.unavailable')}
+        </span>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <button
+                type="button"
+                data-slot="performance-auto"
+                aria-pressed={autoOn}
+                aria-describedby={groupId + '-auto'}
+                disabled={disabled}
+                onClick={() => void choose(autoOn ? (plan?.resolved ?? 'balanced') : 'auto')}
+                className={cn(
+                  'inline-flex h-6 shrink-0 items-center justify-center gap-1 rounded-md px-1.5 text-[11px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50',
+                  autoOn
+                    ? 'bg-primary/12 text-primary'
+                    : 'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground',
+                )}
+              />
+            }
+          >
+            <WandSparklesIcon className="size-3" aria-hidden="true" />
+            {t('performanceProfile.auto')}
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-56">
+            {t('performanceProfile.autoHint')}
+          </TooltipContent>
+        </Tooltip>
+        <span id={groupId + '-auto'} className="sr-only">
+          {t('performanceProfile.autoHint')}
+        </span>
+      </div>
+      <div className="flex min-w-0 items-center gap-2 ps-1">
+        <DirectionProvider direction={i18n.dir(i18n.language)}>
+          <Slider.Root
+            min={0}
+            max={tiers.length - 1}
+            step={1}
+            largeStep={1}
+            value={sliderPosition}
+            disabled={disabled}
+            aria-busy={profile.isSaving}
+            onValueChange={(value) => setDraft(value)}
+            onValueCommitted={(value) => void choose(tiers[value])}
+            className={cn('min-w-14 flex-1', disabled && 'opacity-50', autoOn && 'opacity-60')}
+          >
+            <Slider.Control className="relative flex h-6 w-full min-w-0 touch-none items-center select-none">
+              <Slider.Track className="relative h-1 w-full min-w-0 rounded-full bg-sidebar-accent">
+                <Slider.Indicator className="rounded-full bg-primary" />
+                {/* One tick per tier, so the steps read without labels. */}
+                {tiers.map((tier, index) => (
+                  <span
+                    key={tier}
+                    aria-hidden="true"
+                    className="pointer-events-none absolute top-1/2 size-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-sidebar-foreground/30 rtl:translate-x-1/2"
+                    style={{
+                      insetInlineStart: `${(index / Math.max(tiers.length - 1, 1)) * 100}%`,
+                    }}
+                  />
+                ))}
+                <Slider.Thumb
+                  aria-labelledby={groupId}
+                  aria-describedby={groupId + '-help'}
+                  getAriaValueText={(_formatted, value) => t('performanceProfile.' + tiers[value])}
+                  className="size-3.5 rounded-full bg-primary shadow-[0_1px_4px_rgb(0_0_0/30%)] ring-2 ring-sidebar outline-none focus-within:ring-4 focus-within:ring-ring/40"
+                />
+              </Slider.Track>
+            </Slider.Control>
+          </Slider.Root>
+        </DirectionProvider>
         {popoverMode ? (
           <PopoverTrigger
             openOnHover
@@ -340,83 +424,29 @@ export function PerformanceProfile({
               <button
                 type="button"
                 data-slot="performance-trigger"
-                aria-label={hardwareSummary || undefined}
-                className="group/hw flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1 text-xs whitespace-nowrap text-foreground/85 outline-none hover:bg-sidebar-accent/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={
+                  hardwareSummary
+                    ? `${tierName ?? t('performanceProfile.auto')} · ${hardwareSummary}`
+                    : undefined
+                }
+                className="group/hw flex h-6 max-w-[60%] min-w-0 shrink-0 items-center gap-1 rounded-md px-1.5 text-xs font-medium whitespace-nowrap text-foreground/85 outline-none hover:bg-sidebar-accent/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
               />
             }
           >
-            <TierIcon className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
-            {/* The control's name for assistive tech; sighted users read the tier and its icon. */}
-            <span id={groupId} className="sr-only">
-              {t(supported ? 'performanceProfile.title' : 'modelSettings.unavailable')}
-            </span>
-            <span className="min-w-0 truncate font-medium">
-              {shownTier && shownTier !== 'auto'
-                ? t('performanceProfile.' + shownTier)
-                : t('performanceProfile.auto')}
-            </span>
+            {tierLabel}
             <ChevronRightIcon
               className="size-3 shrink-0 opacity-50 transition-transform group-hover/hw:translate-x-0.5 rtl:rotate-180 motion-reduce:transition-none"
               aria-hidden="true"
             />
           </PopoverTrigger>
         ) : (
-          <span className="min-w-0 truncate text-[11px] whitespace-nowrap text-muted-foreground">
-            <span id={groupId}>
-              {t(supported ? 'performanceProfile.title' : 'modelSettings.unavailable')}
+          supported && (
+            <span className="flex h-6 max-w-[60%] min-w-0 shrink-0 items-center gap-1 px-1.5 text-xs font-medium whitespace-nowrap text-foreground/85">
+              {tierLabel}
             </span>
-            {supported && shownTier && shownTier !== 'auto' && (
-              <span className="ms-1.5 font-medium text-foreground/80">
-                {t('performanceProfile.' + shownTier)}
-              </span>
-            )}
-          </span>
+          )
         )}
-        <button
-          type="button"
-          aria-pressed={autoOn}
-          aria-label={popoverMode ? t('performanceProfile.auto') : undefined}
-          title={popoverMode ? t('performanceProfile.auto') : undefined}
-          disabled={disabled}
-          onClick={() => void choose(autoOn ? (plan?.resolved ?? 'balanced') : 'auto')}
-          className={cn(
-            'inline-flex h-6 shrink-0 items-center justify-center gap-1 rounded-full text-[11px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50',
-            popoverMode ? 'w-6' : 'px-2',
-            autoOn
-              ? 'bg-primary/15 text-primary ring-1 ring-inset ring-primary/30'
-              : 'text-muted-foreground ring-1 ring-inset ring-border/60 hover:text-foreground',
-          )}
-        >
-          <WandSparklesIcon className="size-3" aria-hidden="true" />
-          {!popoverMode && t('performanceProfile.auto')}
-        </button>
       </div>
-      <DirectionProvider direction={i18n.dir(i18n.language)}>
-        <Slider.Root
-          min={0}
-          max={tiers.length - 1}
-          step={1}
-          largeStep={1}
-          value={sliderPosition}
-          disabled={disabled}
-          aria-busy={profile.isSaving}
-          onValueChange={(value) => setDraft(value)}
-          onValueCommitted={(value) => void choose(tiers[value])}
-          className={cn('w-full min-w-0 px-1', disabled && 'opacity-50', autoOn && 'opacity-60')}
-        >
-          <Slider.Control className="relative flex h-6 w-full min-w-0 touch-none items-center select-none">
-            <Slider.Track className="relative h-1.5 w-full min-w-0 rounded-full bg-sidebar-accent">
-              <Slider.Indicator className="rounded-full bg-primary/70" />
-              <Slider.Thumb
-                aria-labelledby={groupId}
-                aria-describedby={groupId + '-help'}
-                getAriaValueText={(_formatted, value) => t('performanceProfile.' + tiers[value])}
-                className="size-4 rounded-full border border-border bg-foreground shadow-sm ring-ring/40 outline-none focus-within:ring-4"
-              />
-            </Slider.Track>
-          </Slider.Control>
-        </Slider.Root>
-      </DirectionProvider>
       {plan && !family && showHardware && (
         <Popover open={hardwareOpen} onOpenChange={setHardwareOpen}>
           <PopoverTrigger

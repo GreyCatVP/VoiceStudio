@@ -1,4 +1,18 @@
 {
+  "cloneEmotion": {
+    "title": "情绪",
+    "off": "关闭",
+    "text": "文字描述",
+    "vector": "情绪滑块",
+    "happy": "快乐",
+    "angry": "愤怒",
+    "sad": "悲伤",
+    "afraid": "恐惧",
+    "disgusted": "厌恶",
+    "melancholic": "忧郁",
+    "surprised": "惊讶",
+    "calm": "平静"
+  },
   "cloneQuality": {
     "title": "音频质量",
     "precision": "WAV 精度",
@@ -7,7 +21,7 @@
     "hint24": "为编辑和混音提供更高精度。",
     "hint32": "保留完整精度。文件更大，但不会改善声音本身。",
     "effort": "声音细化",
-    "effortHint": "处理次数越多，耗时越长；声音不一定更好。",
+    "effortHint": "处理次数越少，音质可能越差；次数越多，耗时越长。",
     "mastering": "平衡音量",
     "masteringHint": "让声音更均衡、音量更一致。",
     "nextTake": "用于下一次录音。",
@@ -20,7 +34,8 @@
     "preset16": "标准",
     "preset24": "用于编辑",
     "preset32": "原始",
-    "sizeUnknown": "生成后显示文件大小。"
+    "sizeUnknown": "生成后显示文件大小。",
+    "sampleRate": "{{rate}} kHz"
   },
   "presetVoice": {
     "label": "预设声音"
@@ -102,7 +117,13 @@
     "dub": "翻译并配音音频或视频。",
     "stories": "用多种声音创作场景。",
     "audiobook": "制作分章节的有声书。",
-    "transcribe": "将录音转成文字。"
+    "transcribe": "将录音转成文字。",
+    "creatorCoreTeam": "创建者 · 核心团队",
+    "coreTeam": "核心团队",
+    "maintainerPalash": "Palash Debnath",
+    "maintainerShimul": "Shimul Debnath",
+    "follow": "关注",
+    "website": "网站"
   },
   "twilioIntegration": {
     "exposureWarning": "开启后会打开一个单独的本地端口，由你的隧道发布到互联网。只接受使用你的 Twilio Auth Token 签名的请求；VoiceStudio 的其余部分保持私密。",
@@ -347,7 +368,9 @@
     "unavailable": "无法播放",
     "play": "播放",
     "pause": "暂停",
-    "missing": "音频文件缺失。"
+    "missing": "音频文件缺失。",
+    "now_playing": "正在播放",
+    "kind_convert": "语音转换"
   },
   "synthesisState": {
     "preparing": "准备中…",
@@ -379,11 +402,13 @@
     "inactive": "未启用",
     "translation": "翻译",
     "diarisation": "说话人分离",
-    "localDevice": "本地设备"
+    "localDevice": "本地设备",
+    "localShort": "本地"
   },
   "paneActions": {
     "collapse": "折叠面板",
-    "edit": "编辑声音档案"
+    "edit": "编辑声音档案",
+    "expand": "展开窗格"
   },
   "modelSettings": {
     "models": "模型",
@@ -392,7 +417,9 @@
     "select": "选择",
     "selected": "已选择",
     "change": "更换引擎",
-    "failed": "无法更换引擎，请重试。"
+    "failed": "无法更换引擎，请重试。",
+    "empty": "此类别暂无引擎或模型。",
+    "modelsInstalled": "已安装 {{installed}}/{{count}}"
   },
   "modelMaintenance": {
     "download": "下载",
@@ -474,6 +501,8 @@
     "paste_failed": "剪贴板访问被阻止。请使用键盘直接粘贴到文本框中。",
     "prompt": "提示词",
     "language": "语言",
+    "take_language_next": "新录音使用{{language}}",
+    "take_language_used": "本条录音使用的语言",
     "steps": "步数",
     "voice_source": "声音来源",
     "reference_audio": "参考音频",
@@ -518,7 +547,7 @@
     "preset_anxious_whisper": "🤫 低语",
     "preset_surprised_woman": "😲 惊讶",
     "preset_elderly_story": "👴 长者",
-    "preset_sichuan": "🌶️ 四川话",
+    "preset_sichuan": "四川话",
     "prompt_placeholder": "想让这个声音说什么？",
     "design_placeholder": "描述这个声音，然后输入它要说的话…",
     "speed": "速度",
@@ -548,6 +577,28 @@
     "opt_high_pitch": "高音",
     "opt_very_high_pitch": "极高音",
     "opt_whisper": "低语",
+    "opt_american_accent": "美式口音",
+    "opt_british_accent": "英式口音",
+    "opt_australian_accent": "澳式口音",
+    "opt_canadian_accent": "加拿大口音",
+    "opt_indian_accent": "印度口音",
+    "opt_chinese_accent": "中式口音",
+    "opt_korean_accent": "韩式口音",
+    "opt_japanese_accent": "日式口音",
+    "opt_portuguese_accent": "葡萄牙口音",
+    "opt_russian_accent": "俄式口音",
+    "dialect_henan": "河南话",
+    "dialect_shaanxi": "陕西话",
+    "dialect_sichuan": "四川话",
+    "dialect_guizhou": "贵州话",
+    "dialect_yunnan": "云南话",
+    "dialect_guilin": "桂林话",
+    "dialect_jinan": "济南话",
+    "dialect_shijiazhuang": "石家庄话",
+    "dialect_gansu": "甘肃话",
+    "dialect_ningxia": "宁夏话",
+    "dialect_qingdao": "青岛话",
+    "dialect_dongbei": "东北话",
     "style_placeholder": "例如：低语",
     "stop_playback": "停止播放",
     "describe_label": "描述你想要的声音",
@@ -628,10 +679,15 @@
     "replace_reference": "替换参考音频",
     "keep_reference": "保留当前参考音频",
     "new_reference": "新参考音频：{{name}}",
-    "replace_reference_hint": "保存后将替换此音色的参考样本。由于新片段可能来自其他说话人，已锁定的片段和本人声音验证会被清除。转写留空即可自动转写新片段。"
+    "replace_reference_hint": "保存后将替换此音色的参考样本。由于新片段可能来自其他说话人，已锁定的片段和本人声音验证会被清除。转写留空即可自动转写新片段。",
+    "cannotCloneUseDesign": "此模型无法克隆声音。请在声音设计中描述一个声音，或选择支持克隆的模型。",
+    "savedTab": "已保存",
+    "recentsTab": "最近"
   },
   "designWorkspace": {
     "title": "设计",
+    "takes_show": "显示最近录音",
+    "saved_empty": "已保存的设计会显示在这里。",
     "save_failed": "保存语音配置文件失败",
     "engine_cannot_design": "{{engine}} 需要参考音频片段，无法设计声音。请切换到支持声音设计的引擎（例如 OmniVoice），或改为克隆声音。",
     "engine_cannot_reuse_sample": "{{engine}} 无法使用参考音频，因此不能用样本重新生成这个已保存的声音。请切换到支持声音克隆的引擎（例如 OmniVoice）。"
@@ -877,7 +933,13 @@
     "agent_cli_desc": "{{agent}} 会结合上下文翻译每个片段，并在测量语音后重写不符合时长的内容。",
     "choose_translation_agent": "选择翻译智能体",
     "no_local_agents": "安装 Codex、Claude Code、OpenCode 或 Pi，以使用本地代理翻译。",
-    "agent_translation_complete": "{{agent}} 已完成片段翻译。"
+    "agent_translation_complete": "{{agent}} 已完成片段翻译。",
+    "input_issue_no_audio": "没有音轨 — 请选择带声音的视频或音频文件",
+    "input_issue_invalid_media": "无法读取此文件 — 请选择完整、可播放的文件",
+    "input_issue_unsupported": "不支持的文件类型 — 请选择视频或音频文件",
+    "input_issue_empty": "此文件为空 — 请选择其他文件",
+    "file_actions": "文件操作",
+    "translator_agent": "智能体"
   },
   "dub_workflow": {
     "preparing_audio": "正在准备音频...",
@@ -911,6 +973,7 @@
     "mirror_failed": "还原演绎失败：{{message}}",
     "cinematic_no_llm": "此质量需要 LLM 提供商。请在“LLM 提供商”中配置后继续。",
     "dialect_not_applied": "所选方言需要 LLM 才能生效——请将翻译引擎切换为 OpenAI/Ollama，或在 设置 → 凭证 → LLM 端点 中配置 LLM。",
+    "dialect_used": "此引擎只能输出{{variant}}。如需应用所选方言，请使用 LLM 翻译引擎。",
     "translate_errors": "{{errorCount}}/{{totalCount}} 段失败：{{firstError}}",
     "translate_degraded": "全部 {{totalCount}} 个片段已翻译 — 其中 {{count}} 个因润色步骤被跳过而使用直译（{{reason}}）",
     "translated_segments": "已翻译 {{count}} 个片段 → {{lang}}",
@@ -1408,7 +1471,7 @@
     "gpu_report_state_intel_unsupported": "找到了 {{gpu}}，但已安装的引擎都无法使用 Intel GPU，因此所有任务都在 CPU 上运行。",
     "gpu_report_state_unknown": "无法确定 GPU 状态。",
     "gpu_report_option_vulkan_engines": "使用自带 GPU 运行时的引擎：audio.cpp 通过 Vulkan 在 AMD Radeon GPU 上运行（设置 → 模型 → 安装运行时）。",
-    "gpu_report_option_rocm_windows_manual": "VoiceStudio 不会在 Windows 上安装带 ROCm 的 PyTorch。AMD 为较新的 Radeon 显卡单独发布了 wheel，但它们需要比这里引擎测试所用版本更新的 PyTorch，部分引擎会因此无法工作。仅在你能自行排查问题时再尝试（参见 Windows 安装指南）。",
+    "gpu_report_option_rocm_windows_manual": "在受支持的 Windows 11 x64 AMD 硬件上，可通过 OMNIVOICE_TORCH_VARIANT=rocm 启用 VoiceStudio 的 ROCm 7.2.1 安装。若已安装，请重新运行安装程序并检查 AMD 的驱动和硬件兼容性表。可选引擎有各自的限制，请参阅 Windows 安装指南。",
     "gpu_report_option_rocm_variant_linux": "设置 OMNIVOICE_TORCH_VARIANT=rocm 并重新运行安装程序，即可安装 ROCm 版 PyTorch。",
     "gpu_report_option_rocm_device_access": "请确认 amdgpu 驱动已加载，且当前用户可以打开 /dev/kfd（render 和 video 用户组）。",
     "gpu_report_option_reinstall_cuda_torch": "重新安装运行时，使其安装 CUDA 版 PyTorch。",
@@ -1481,6 +1544,12 @@
     "submit_failed": "无法打开提交表单。",
     "submit_preset": "提交预设",
     "submit_voice": "提交声音",
+    "community_packs": "合集",
+    "community_all_packs": "全部",
+    "community_language": "语言",
+    "community_all_languages": "所有语言",
+    "community_new": "新",
+    "community_author_profile": "{{author}} 的 GitHub",
     "zone_community": "社区",
     "import_persona": "导入 .ovsvoice 角色包",
     "persona_imported": "导入“{{name}}”{{unverified}}。",
@@ -1559,7 +1628,10 @@
     "aec_description": "从麦克风中移除 VoiceStudio 的播放声音。",
     "aec_row_title": "为听写启用回声消除",
     "aec_experimental": "实验性",
-    "aec_hint": "可在播放预览、配音或视频时听写，而不会转写应用自身的声音。会增加少量音频处理；如果不会在播放时听写，请保持关闭。"
+    "aec_hint": "可在播放预览、配音或视频时听写，而不会转写应用自身的声音。会增加少量音频处理；如果不会在播放时听写，请保持关闭。",
+    "cleanup_title": "文本整理",
+    "spoken_punctuation": "语音标点",
+    "spoken_punctuation_desc": "说 “comma”, “period”, “question mark”, “new line” 即可输入。仅支持英语。"
   },
   "tools": {
     "title": "工具",
@@ -1667,7 +1739,6 @@
     "title": "故事编辑器",
     "subtitle": "多轨有声书，为每个角色分配语音",
     "cast": "配音",
-    "castTitle": "配音 — 为每个角色分配语音",
     "addCharacter": "添加角色",
     "character": "角色",
     "characterName": "角色名称",
@@ -1716,7 +1787,6 @@
     "addFirst": "添加第一句",
     "linePlaceholder": "输入对白或旁白……使用 [pause 0.5s] 插入静音停顿",
     "text": "文本",
-    "voice": "语音",
     "defaultVoice": "默认",
     "inlineVoice": "设置行内语音",
     "inlineVoiceHint": "为选中文本切换语音（或在光标处插入切换）",
@@ -1747,7 +1817,19 @@
     "global_speed_apply": "应用到所有行",
     "deleteProjectConfirm": "永久删除此项目？",
     "moveUp": "上移",
-    "moveDown": "下移"
+    "moveDown": "下移",
+    "voiceLabel": "声音",
+    "scriptSubtitle": "逐行撰写，并为每个角色分配专属声音。",
+    "speedHint": "适用于没有单独设置语速的行。",
+    "castEmpty": "添加角色，然后为每一行选择说话人。",
+    "speaker": "说话人",
+    "speakerNone": "旁白",
+    "speakerChip": "说话人：{{name}}",
+    "voiceChip": "声音：{{name}}",
+    "toneChip": "语气与语速：{{speed}}",
+    "lineVoice": "本行声音",
+    "chapterHeading": "章节标题",
+    "lineActions": "行操作"
   },
   "audiobook": {
     "cast": "配音角色",
@@ -1802,6 +1884,10 @@
     "open_cache_failed": "无法打开章节缓存",
     "progress_summary": "正在合成第 {{current}}/{{total}} 章",
     "eta": "剩余约 {{time}}",
+    "eta_estimating": "正在估算剩余时间…",
+    "realtime": "{{rate}}× 实时",
+    "realtime_hint": "每渲染一秒生成的音频秒数",
+    "stalled": "已有 {{time}} 没有进展。引擎可能卡住了：请查看 日志 → 后端，或停止后稍后重新创建。已完成的部分会保留。",
     "chapter_n": "第 {{n}} 章",
     "cached_tag": "已缓存",
     "failed_tag": "失败",
@@ -1874,7 +1960,9 @@
     "deepl_base_url_help": "自定义 DeepL API 端点（默认 https://api.deepl.com/v2）。代理或自托管时修改。",
     "microsoft_base_url_help": "自定义 Azure Translator 端点（默认 https://api.cognitive.microsofttranslator.com）。",
     "region": "区域",
-    "aws_profile": "AWS 配置"
+    "aws_profile": "AWS 配置",
+    "deepl_key_placeholder": "DeepLAPI 密钥",
+    "microsoft_key_placeholder": "MicrosoftAPI 密钥"
   },
   "about": {
     "architecture": "架构",
@@ -1958,6 +2046,7 @@
     "original": "原声",
     "dub_suffix": "(配音)",
     "bg_audio": "背景音频",
+    "bg_level": "背景音量",
     "mix_bg_video": "在每个配音音轨下混合音乐/FX",
     "subs_in_video": "视频内嵌字幕",
     "hardsub": "将字幕烧录到画面中（硬字幕）",
@@ -2054,6 +2143,7 @@
     "setup_access": "请允许写入应用数据文件夹，然后重试。",
     "setup_unsupported_platform": "此 Intel Mac 无法运行本地 AI 后端——PyTorch 不提供 macOS Intel 构建。请在下方连接远程后端，无需本地安装。",
     "setup_wrong_architecture": "这是通过 Rosetta 在 Apple Silicon Mac 上运行的 VoiceStudio Intel (x64) 版本，因此无法安装本地 AI 后端。请退出应用，覆盖安装 Apple Silicon (arm64) 版 DMG 后重新打开——你的声音和项目都会保留。",
+    "setup_missing_system_library": "此 Windows 系统缺少 PyTorch 音频扩展所需的 Microsoft Visual C++ 2015-2022 可再分发组件 (x64)。请从 Microsoft 安装后点击重试。",
     "download_apple_silicon": "下载 Apple Silicon 版本",
     "retry": "重试",
     "ready": "引擎已就绪",
@@ -2077,7 +2167,23 @@
     "hint_spawn_blocked": "操作系统或安全软件拒绝启动本地引擎。请将 VoiceStudio 的运行时文件夹添加到杀毒软件的排除项（Windows：Windows 安全中心 → 病毒和威胁防护 → 管理设置 → 排除项），并确认它不在 OneDrive 等云同步文件夹内，然后重试。",
     "hint_smart_app_control": "Windows 智能应用控制阻止了本地引擎。它不支持按应用设置例外，因此添加杀毒软件排除项无效。请在 Windows 安全中心 → 应用和浏览器控制 → 智能应用控制设置 中将其关闭（不重置系统就无法再次开启），或将 VoiceStudio 连接到另一台电脑上运行的引擎，然后重试。",
     "hint_slow_start": "等待超时时，引擎仍在启动。电脑较慢（尤其是没有独立显卡）以及安装后的首次启动（杀毒软件会扫描每个新文件）可能需要几分钟。请关闭占用大量内存的应用后重试；之后的启动会快得多。",
-    "hint_synced_folder": "此位置位于云同步文件夹（OneDrive、Dropbox、iCloud Drive、Google Drive）内。仅在线的占位文件和文件锁定会破坏 Python 环境。请将 VoiceStudio 移到普通本地文件夹（例如 Windows 上的 C:\\VoiceStudio，或 macOS 和 Linux 上的 ~/VoiceStudio），然后重新设置。"
+    "hint_synced_folder": "此位置位于云同步文件夹（OneDrive、Dropbox、iCloud Drive、Google Drive）内。仅在线的占位文件和文件锁定会破坏 Python 环境。请将 VoiceStudio 移到普通本地文件夹（例如 Windows 上的 C:\\VoiceStudio，或 macOS 和 Linux 上的 ~/VoiceStudio），然后重新设置。",
+    "cause_smart_app_control": "Windows 智能应用控制拦截了引擎",
+    "cause_spawn_blocked": "安全软件阻止了引擎启动",
+    "cause_native_crash": "引擎在启动时崩溃（原生故障）",
+    "cause_missing_env": "Python 环境缺失或不完整",
+    "cause_permission": "没有写入引擎文件夹的权限",
+    "cause_synced_folder": "引擎文件夹位于云同步文件夹内",
+    "cause_slow_start": "引擎在较慢的电脑上仍在启动",
+    "choose_folder": "选择其他文件夹",
+    "copy_diagnostics": "复制诊断信息",
+    "diagnostics_copied": "已复制诊断信息",
+    "details": "详细信息",
+    "pill_starting": "正在启动",
+    "pill_recovering": "正在恢复",
+    "pill_failed": "失败",
+    "pill_repeats": "连续 {{count}} 次",
+    "offline_bar": "引擎正忙，正在自动重新连接"
   },
   "bootstrap": {
     "checking": "正在检查环境…",
@@ -2088,6 +2194,10 @@
     "download_rate": "{{rate}}/秒",
     "eta": "剩余约 {{time}}",
     "downloads_complete": "下载完成 · 正在安装软件包",
+    "download_source": "来自 {{host}}",
+    "download_stalled": "{{seconds}} 秒内未从 {{host}} 收到数据",
+    "download_stalled_generic": "{{seconds}} 秒内未收到下载数据",
+    "download_stalled_hint": "取消并重试时会保留已完成的文件。VPN 或代理可能有帮助。",
     "verifying": "正在验证环境…",
     "clean_retry": "清理并重试",
     "clean_retry_confirm": "这将重建 Python 环境并复用已验证的下载。是否继续？",
@@ -2372,7 +2482,8 @@
     "storage_temp": "临时文件",
     "change": "更改…",
     "reset_default": "恢复默认",
-    "region_label": "下载区域"
+    "region_label": "下载区域",
+    "free_space": "此磁盘可用空间 {{free}} GB，大约需要 {{needed}} GB"
   },
   "asr_missing": {
     "message": "尚未安装语音转文字模型 — 此功能需要一个模型来转写音频。",
@@ -2514,7 +2625,18 @@
     "staleTitle": "有可用更新",
     "staleMessage": "你正在使用 VoiceStudio {{current}}，但 {{latest}} 已经发布——这个错误可能已在新版本中修复。报告前先查看最新版本？",
     "staleView": "查看更新",
-    "staleFileAnyway": "仍然报告"
+    "staleFileAnyway": "仍然报告",
+    "summary_label": "出了什么问题？",
+    "summary_placeholder": "一句话描述，例如：配音在 40% 处停止",
+    "summary_required": "请先填写一句话描述。",
+    "sent_title": "将发送的内容",
+    "sent_app": "应用版本和构建号",
+    "sent_system": "操作系统、GPU、内存和可用磁盘空间",
+    "sent_engines": "当前启用的引擎",
+    "sent_logs": "最近的引擎日志行（已移除主目录路径和令牌）",
+    "sent_pages": "最近访问的页面名称",
+    "not_sent": "绝不发送：你的音频、文本或声音。文件名可能出现在日志或你的描述中，请在提交前检查 GitHub 预览。",
+    "submit": "打开 GitHub Issue"
   },
   "crash": {
     "notice": "语音后端于 {{ago}}前崩溃（{{exit}}），正在自动重启。",
@@ -2657,6 +2779,15 @@
     "vol": "音量",
     "vol_title": "音量（0–200%）",
     "search_placeholder": "搜索文本…",
+    "replace_placeholder": "替换为…",
+    "replace": "替换",
+    "replace_all": "全部替换",
+    "find_next": "下一个匹配",
+    "find_prev": "上一个匹配",
+    "find_count": "第 {{current}} / {{total}} 处",
+    "find_none": "无匹配",
+    "replace_done_one": "已替换 {{count}} 处",
+    "replace_done_other": "已替换 {{count}} 处",
     "all_speakers": "所有说话人",
     "select_all_title": "全选当前筛选",
     "sel_count": "已选 {{count}} 条",
@@ -2849,6 +2980,7 @@
     "latencyMs": "{{ms}} 毫秒",
     "none_ready_title": "语音合成尚未就绪",
     "none_ready_body": "VoiceStudio 可以自动为此设备设置最佳兼容选项。",
+    "set_up": "设置",
     "active": "引擎：{{name}}",
     "none": "没有启用的引擎",
     "localInstallRequired": "请在后端计算机上通过 localhost 或安装指南安装此引擎。远程安装已禁用。",
@@ -2865,7 +2997,8 @@
     "balanced": "均衡",
     "quality": "质量",
     "hint": "适用于 OmniVoice 采样和 Faster-Whisper / NLLB 解码。其他引擎保留当前设置。",
-    "auto": "自动"
+    "auto": "自动",
+    "autoHint": "为这台电脑选择最佳级别。"
   },
   "recording": {
     "input_device": "输入设备",
@@ -2904,6 +3037,7 @@
     "windows_app_control_blocked": "Windows 应用程序控制阻止了所需文件。请联系管理员允许受信任的 VoiceStudio 运行环境，然后重启应用。",
     "audio_io_failed": "无法读取或保存音频。请检查文件格式、磁盘剩余空间和文件访问权限，并在设置 → 存储中检查文件夹。",
     "no_audio_track": "此文件没有音轨，因此没有可转录、配音或克隆的语音。请选择包含声音的视频或音频文件。",
+    "source_language_required": "语音识别未报告此视频所用的语言，因此无法在此翻译。请在配音中打开该视频并选择其源语言，或选择能检测语言的语音识别模型。",
     "transcription_media_tool": "转录需要 ffmpeg，但 VoiceStudio 无法找到或运行它。请打开设置 → 音频工具并使用下载/修复，或安装 ffmpeg（macOS：brew install ffmpeg；Windows：winget install Gyan.FFmpeg；Linux：你的包管理器），然后重启 VoiceStudio。你也可以将 FFMPEG_PATH 指向 ffmpeg 可执行文件。",
     "transcription_pipe_lost": "转录期间后端丢失了通往应用的输出管道（broken pipe）。请重启 VoiceStudio 后重试。",
     "gpu_oom": "GPU 显存不足。请关闭其他占用 GPU 的应用或卸载模型后重试。你也可以在 设置 → 性能与设备 中选择 CPU，或选择更小的 TTS 引擎。",
@@ -2928,12 +3062,25 @@
     "open_in_browser": "在浏览器中打开",
     "qr_alt": "{{ip}} 的二维码",
     "pin": "PIN：",
-    "connect": "连接"
+    "connect": "连接",
+    "self_check": "自检",
+    "listening_on": "正在监听 {{host}}:{{port}}",
+    "recheck": "重新检查",
+    "address_ok": "正在监听",
+    "address_down": "无响应",
+    "firewall_hint": "无法连接？请使用同一 Wi-Fi，在防火墙中允许 VoiceStudio（Windows 上选择专用网络），并关闭 VPN。"
   },
   "repairAgent": {
     "title": "询问 VoiceStudio Agent",
     "notInstalled": "未安装",
-    "noSource": "请打开可写的 VoiceStudio 源码检出目录，让智能体进行修复。",
+    "noSource": "要修复代码，请选择用 git clone 获取的 VoiceStudio 副本。已安装的应用无法编辑。",
+    "sourceRejected": {
+      "installed_app": "这是已安装的应用，无法编辑。请改选 git clone 的文件夹。",
+      "not_git": "该文件夹不是 git clone。ZIP 下载不可用，请使用 git clone。",
+      "not_voicestudio": "该文件夹中未找到 VoiceStudio 克隆。",
+      "read_only": "VoiceStudio 无法写入该文件夹。请选择你自己的文件夹。"
+    },
+    "chooseFailed": "无法使用该文件夹。请重试或选择其他文件夹。",
     "noneFound": "安装 Codex、Claude Code、OpenCode 或 Pi 以使用本地修复。",
     "ready": "就绪",
     "placeholder": "出了什么问题？请添加操作步骤、可见错误或预期行为。",
@@ -3212,7 +3359,30 @@
     "match_contains": "包含",
     "match_equals": "完全等于",
     "match_starts": "开头为",
-    "match_ends": "结尾为"
+    "match_ends": "结尾为",
+    "subtitle": "把朗读、翻译、导出等步骤串起来，一次运行完成。",
+    "saved": "已保存",
+    "saved_hint": "更改会自动保存在此设备上。",
+    "name_label": "工作流名称",
+    "from_template": "从模板新建",
+    "template_title": "从模板开始",
+    "template_hint": "选择一个起点，之后每个步骤都可以修改。",
+    "group_narration": "旁白",
+    "group_audio": "音频",
+    "group_calls": "通话",
+    "template_recipe": "用同一个声音朗读脚本，每个脚本生成一个片段。",
+    "template_clean_recipe": "朗读脚本，然后统一音量。",
+    "template_transcription": "把音频片段转成文字。",
+    "template_conversion": "用已保存的声音重新配音音频片段。",
+    "template_localization": "转写片段、翻译并朗读结果。",
+    "template_restaurant": "打电话给餐厅预订座位。",
+    "template_reschedule": "打电话改约时间。",
+    "template_hours": "打电话询问营业时间。",
+    "needs_setup": "需要设置",
+    "run_blocked": "{{step}}需要设置",
+    "add_kind": "添加{{step}}",
+    "add_after": "在所选步骤后添加{{step}}",
+    "palette_hint": "点击添加，或拖到画布上。"
   },
   "proPage": {
     "title": "VoiceStudio Pro",
@@ -3386,6 +3556,8 @@
     "hint": "通常建议保留默认值。引导强度控制提示词的影响，其他选项改变模型构建声音的方式。每次只调整一项。"
   },
   "languagePicker": {
+    "dialectFollowsVoice": "{{model}} 只有一个{{language}}模型，因此口音取决于参考音色。",
+    "dialectUsed": "{{model}} 仅支持{{variant}}。",
     "auto": "自动",
     "unavailable": "不支持",
     "unsupportedBy": "{{model}} 不支持",
@@ -3396,7 +3568,11 @@
     "unknown": "支持的语言未知",
     "error": "无法检查语言",
     "modelLanguages": "此模型的语言",
-    "changeModel": "更换模型"
+    "changeModel": "更换模型",
+    "recent": "最近使用",
+    "available": "可用",
+    "showAll": "显示所有语言",
+    "hideUnsupported": "隐藏不支持的语言"
   },
   "modelLicense": {
     "title": "模型条款",
@@ -3526,6 +3702,10 @@
     "detailsFailed": "无法加载许可详情。请关闭此对话框后重试。"
   },
   "mobile": {
+    "home": {
+      "subtitle": "你的开源、完全本地运行的 ElevenLabs 替代方案——克隆与设计声音、视频配音、语音输入、转录和有声书制作，支持 646 种语言。",
+      "brought_by": "由以下开发者为你呈现"
+    },
     "tabs": {
       "speak": "朗读",
       "voices": "声音",
@@ -3889,6 +4069,271 @@
       "retry": "重试",
       "rate_limited": "此网络的举报次数过多,请稍后再试。",
       "invalid": "无法发送此举报。请更新应用后重试。"
+    },
+    "production": {
+      "new": "新建项目",
+      "script_hint": "用 # 章节标题划分章节，在行首使用 [voice:Name] 切换角色。仅支持纯文本，其他标记会被直接朗读。",
+      "conversion_hint": "选择不超过30秒的音频片段。转换功能会先转写，再用所选声音朗读；不会保留原始表演方式。",
+      "normalize_text": "整理文本"
+    },
+    "calls": {
+      "remote_control": "允许已配对设备控制通话",
+      "remote_control_hint": "允许通过 API 密钥认证的手机发起和管理通话。通话设置仍由此电脑管理。",
+      "hint": "通话通过已配对的电脑及其配置的 Twilio 号码进行。请先在该电脑上启用通话控制。",
+      "authentication": "请使用电脑的 API 密钥配对以控制通话。共享 PIN 码不能授权通话。",
+      "billing": "通话将按 Twilio 费率收费。",
+      "clone_hint": "Whisper 只负责转录样本。另一个克隆模型会在保存前生成克隆试听；两种模型均不可缺少。"
+    },
+    "host": {
+      "title": "手机语音 API",
+      "hint": "通过 OpenAI 风格的语音接口和 MCP（2025-11-25）提供所选已安装音色。仅在此页面打开且应用处于前台时运行。",
+      "lan": "允许局域网连接",
+      "lan_hint": "关闭：仅此手机可访问。开启：局域网设备可使用临时 Bearer 令牌连接。请妥善保管令牌。",
+      "start": "启动服务器",
+      "copy": "复制 Bearer 令牌",
+      "running": "服务器运行中",
+      "capabilities_hint": "仅开放所选的已安装模型和音色。此页面保持打开时，语音生成、转录和翻译均在此手机上运行。",
+      "allow_speech": "允许语音生成",
+      "allow_transcription": "允许转录",
+      "allow_translation": "允许翻译",
+      "voice_source": "音色来源",
+      "preset": "预设音色",
+      "saved": "已保存音色",
+      "audio_hint": "转录接受 base64 编码的 PCM16 单声道 WAV，采样率 8–24 kHz，时长不超过 30 秒。"
+    },
+    "books": {
+      "import_failed": "无法导入此书。请使用未加密的 EPUB、文本 PDF 或 UTF-8 文本（最大 64 MB）。",
+      "no_text": "未找到可读文本。扫描版 PDF 需要先进行文字识别再导入。",
+      "export_failed": "无法导出音频。M4B 最多支持 255 个章节。",
+      "invalid_controls": "请使用 0.5 至 2 的速度、最长 30 秒的停顿，以及非空的发音条目。",
+      "controls_hint": "导入 EPUB、文本 PDF 或 TXT。添加 [pause:0.5] 插入以秒计的静音；在行首添加 [speed:1.25] 更改该行速度。未修改的行会复用已保存的音频。",
+      "line_speed": "单行速度",
+      "restore_recipe": "编辑已保存的声音配方",
+      "save_recipe_copy": "保存为新声音"
+    },
+    "editing": {
+      "undo": "撤销",
+      "redo": "重做",
+      "subtitles": "字幕",
+      "import_subtitles": "导入 SRT / VTT",
+      "export_srt": "导出 SRT",
+      "export_vtt": "导出 VTT",
+      "source_text": "原文",
+      "original": "原始音频",
+      "generated": "生成音频",
+      "split_at": "分割位置",
+      "split": "分割片段",
+      "merge": "与下一段合并",
+      "replace_subtitles": "替换字幕时间轴？",
+      "replace": "替换",
+      "replace_subtitles_detail": "这将替换此语言的片段时间轴。其他语言可能需要重新翻译。生成前可以撤销。",
+      "preview_unavailable": "请先生成此片段，再试听音频。",
+      "subtitle_invalid": "请选择有效的 SRT 或 VTT 文件，每个字幕片段不超过 30 秒。",
+      "subtitle_missing": "导出字幕前请翻译所有片段。",
+      "split_invalid": "请在片段内选择分割点，确保两侧都有足够的文字。",
+      "merge_invalid": "请合并使用相同声音的相邻片段，总时长不超过 30 秒。",
+      "waveform": "音频波形"
+    },
+    "jobs": {
+      "title": "手机处理",
+      "checkpointed": "已完成的步骤已保存。可随时取消并继续。",
+      "power_paused": "为保护电池或降低手机温度，处理已暂停。情况改善后可继续。",
+      "background_paused": "已在后台暂停。重新打开此任务，可从已保存的步骤继续。",
+      "requesting_gpu": "正在申请后台 GPU 权限…",
+      "requesting_cpu": "正在申请后台 CPU 时间…",
+      "continued_gpu": "已获准在后台使用 GPU；iOS 仍可暂停或结束此任务。",
+      "continued_cpu": "已获准在后台使用 CPU；iOS 仍可暂停或结束此任务。",
+      "switching_cpu": "正在保存进度并释放 GPU，然后用 CPU 继续…",
+      "background_limited": "iOS 会限制后台运行时间。时间用尽时，已完成的步骤会保留。",
+      "background_requestable": "此手机支持申请后台 GPU 使用。每个任务仍需 iOS 批准。",
+      "gpu_unavailable": "此处无法在后台使用 GPU。可用 CPU 继续，或重新打开以恢复已保存的步骤。",
+      "cpu_fallback": "后台 GPU 不可用时允许用 CPU 继续",
+      "cpu_tradeoff": "CPU 运行较慢，可能更耗电。前台工作通常使用 GPU。",
+      "cpu_unavailable": "已安装的版本无法用 CPU 继续此模型。仍可在前台恢复已保存的步骤。",
+      "resume_checkpoint": "恢复已保存的任务",
+      "foreground_service": "只要 Android 允许，前台服务就会让此任务继续运行。"
+    },
+    "flow": {
+      "import_media": "导入音频或视频",
+      "template_clean": "整理并朗读",
+      "template_translate": "翻译并朗读",
+      "template_transcribe": "转录并翻译",
+      "contains": "文本包含以下内容时继续（区分大小写）",
+      "skip": "不包含时跳过 {{count}} 个步骤",
+      "skip_label": "不包含时跳过的步骤数",
+      "retries": "重试次数：{{count}}",
+      "retries_label": "出错后重试次数",
+      "step_transcribe": "转录媒体",
+      "step_condition": "条件"
+    },
+    "integration": {
+      "received": "收到的内容",
+      "review": "运行任务前请检查分享的内容。不会自动开始。",
+      "shortcut_speak": "打开朗读",
+      "shortcut_dictate": "打开听写",
+      "widget_description": "打开朗读或听写。只有点按开始后才会录音。",
+      "text": "文本"
+    },
+    "export": {
+      "failed": "无法导出音频。请检查剩余存储空间并重试。"
+    },
+    "processing": {
+      "audio_editor": "音频编辑器",
+      "hint": "离线语音编辑：24 kHz 单声道。原始文件保持不变。",
+      "select_audio": "选择音频",
+      "fade_in": "淡入（秒）",
+      "fade_out": "淡出（秒）",
+      "gain_db": "增益（dB）",
+      "normalize": "峰值归一化",
+      "target_peak": "目标峰值（dBFS）",
+      "noise_gate": "噪声门",
+      "gate_threshold": "噪声门阈值（dBFS）",
+      "process": "应用编辑",
+      "result": "处理后的音频",
+      "peak": "峰值",
+      "changed_settings": "设置已更改。请应用编辑后试听或导出更新后的音频。",
+      "preview_hint": "原始音频预览从裁剪起点播放，最长 30 秒。",
+      "invalid": "请检查裁剪时间、淡入淡出时长和音频电平。",
+      "segment_gain": "片段音量",
+      "mute": "静音片段",
+      "record_consent": "我有权将此录音用于声音转换。",
+      "merge_levels": "合并片段前，请使用相同的音量和静音设置。"
+    },
+    "transcripts": {
+      "hint": "在此手机上转录最长四小时的音频或视频。已完成的部分会保存，以便继续处理。",
+      "edited_hint": "原始转录文本会保留。编辑文本后，请恢复原文以导出带时间轴的字幕。"
+    },
+    "workflowParity": {
+      "bind_hint": "移动 JSON 后请重新选择声音。翻译使用所选手机模型。请重新附加音频；转换仅支持最长 30 秒的片段。",
+      "bind_voices": "请为每个朗读或转换步骤选择手机上的声音。",
+      "branch_template": "是／否工作流",
+      "choose_next": "选择下一步",
+      "export_json": "导出桌面版 JSON",
+      "graph_hint": "将每张卡片连接到下一步。条件的两条路径可以汇合。每条路径都必须到达结束节点。",
+      "import_json": "导入桌面版 JSON",
+      "incompatible_merge": "这些步骤传递的文本或音频类型不兼容。汇合路径必须传递相同类型的值。",
+      "input_type": "输入",
+      "invalid_graph": "将所有步骤从一个输入连接到结束节点。条件必须有是、否两条路径；不允许循环。",
+      "invalid_language": "请为每个翻译步骤选择源语言和目标语言。",
+      "next_route": "下一步",
+      "no_route": "否路径",
+      "runs": "已保存的运行",
+      "saved_steps": "已保存 {{count}} 个经过的步骤",
+      "single_input": "每个工作流仅使用一份文本或一个音频源。请先拆分桌面批次再导入。",
+      "source_language": "源语言",
+      "unsupported": "此手机无法执行 {{kind}} 节点。请先在桌面版移除或替换它再导入。",
+      "unsupported_settings": "工作流设置不受支持或超出范围。",
+      "yes_route": "是路径",
+      "auto_voice_language": "手机上保存的声音会从文本检测语言。请将其朗读语言设为自动。"
+    },
+    "galleryCopy": {
+      "action": "复制到此手机",
+      "ready": "已复制到此手机",
+      "requires_host": "请先在电脑上使用一个声音，再将其参考音频复制到此手机。",
+      "confirm": "是否从已配对的电脑下载此声音的参考音频和转写文本？仅当您拥有该声音或已获授权，并将遵守其许可条款时才可继续。",
+      "unavailable": "复制需要不超过30秒的参考音频及非空转写文本。"
+    },
+    "dub_advanced": {
+      "ass": "样式字幕 (.ass)",
+      "background_hint": "混合背景音需要电脑生成的独立音轨。",
+      "cast": "配音",
+      "cast_checked": "我已检查说话人标签和声音",
+      "clips": "逐片段剪辑 (.zip)",
+      "color": "字幕颜色",
+      "computer_hint": "使用已配对电脑上安装的引擎运行。",
+      "cyan": "青色",
+      "detect": "在电脑上检测说话人",
+      "detect_hint": "使用电脑上已安装的模型。分析可能改变片段；请检查配音角色并重新生成每个目标语言。",
+      "dual": "双语（翻译 + 原文）",
+      "export_limit": "音频包总大小限 1 GiB，每个文件限 512 MiB。",
+      "exports": "导出选项",
+      "font_size": "字号",
+      "generate_first": "请先生成此语言再导出。",
+      "install_on_computer": "请先在电脑上安装说话人分离模型。",
+      "invalid_cast": "说话人分析不完整或无效。",
+      "invalid_export": "这些导出选项无效。",
+      "keep_cast": "保留当前角色声音",
+      "manual_cast_hint": "在手机上指定说话人标签。自动检测请使用电脑。",
+      "merge_speakers": "无法合并不同说话人的片段。",
+      "missing_translation": "翻译未覆盖所有片段。请使用相同源内容重试。",
+      "multi_audio": "包含多条音轨的视频",
+      "multi_audio_hint": "包含所有已生成的语言，默认播放所选语言。",
+      "replace_overrides": "替换单独台词的声音",
+      "review_cast": "检查检测到的标签，并为每位说话人选择声音。",
+      "source_voice": "此说话人的声音",
+      "speaker": "说话人",
+      "stems": "配音＋原始音频 (.zip)",
+      "stems_hint": "原始录音尚未分离。请使用电脑分离背景音轨。",
+      "timing": "时间匹配",
+      "top": "将字幕置于顶部",
+      "video_required": "请先生成视频再导出多条音轨。",
+      "white": "白色",
+      "yellow": "黄色"
+    },
+    "handoff": {
+      "title": "项目传输与备份",
+      "hint": "备份可编辑项目，并在手机和电脑之间移动。导入时会创建新副本。",
+      "permission": "我有权使用随附的声音录音。",
+      "inbox": "收到的项目",
+      "receive": "接收",
+      "imported": "项目已导入",
+      "failed": "项目传输失败。",
+      "invalid": "不支持或已损坏的项目归档。",
+      "too_large": "归档上限：总计 1 GB，每个文件 512 MB。",
+      "voices_required": "导入或发送声音录音前，请确认使用权限。",
+      "compatibility": "此设备使用已安装的兼容模型生成音频。引擎专用设置和其他设备的生成缓存会保留在归档中。",
+      "import": "导入",
+      "export": "导出",
+      "send": "发送"
     }
+  },
+  "failureCause": {
+    "details": "详情",
+    "fixes": "建议的解决办法",
+    "vram": {
+      "title": "GPU 显存不足",
+      "fix1": "关闭其他占用 GPU 的应用",
+      "fix2": "改用 CPU 或更小的引擎"
+    },
+    "model_missing": {
+      "title": "模型尚未下载",
+      "fix1": "在模型目录中下载",
+      "fix2": "点击修复进行安装"
+    },
+    "busy": {
+      "title": "引擎正忙",
+      "fix1": "等待当前任务完成",
+      "fix2": "稍后重试"
+    },
+    "timeout": {
+      "title": "生成超时",
+      "fix1": "尝试更短的文本",
+      "fix2": "调高代理超时时间"
+    },
+    "bad_response": {
+      "title": "服务器返回了意外响应",
+      "fix1": "在 设置 > 日志 中检查后端",
+      "fix2": "重启 VoiceStudio 后重试"
+    }
+  },
+  "modelInstall": {
+    "queued": "等待开始…",
+    "downloading": "正在下载…",
+    "downloadingPct": "正在下载 · {{pct}}%",
+    "finishing": "正在校验并安装…",
+    "cancelling": "正在取消…",
+    "cancelled": "下载已取消",
+    "failed": "下载失败",
+    "ready": "可以使用",
+    "bytes": "{{done}}，共 {{total}}",
+    "speed": "{{rate}}/秒",
+    "eta": "剩余 {{time}}",
+    "downloadAgain": "重新下载",
+    "nextDisk": "磁盘空间不足。请释放空间，或在 设置 → 存储 中移动模型文件夹，然后重试。",
+    "nextGated": "此模型需要 Hugging Face 访问权限。请在模型页面申请，并在 设置 → 凭证 中添加令牌，然后重试。",
+    "nextNetwork": "无法连接下载服务器。请在 设置 → 网络 中检查网络连接、代理或镜像，然后重试。",
+    "nextMemory": "此设备内存不足。请在 设置 → 性能 中选择更轻量的配置，然后重试。",
+    "downloads": "下载",
+    "activeCount": "正在进行的下载：{{count}}"
   }
 }

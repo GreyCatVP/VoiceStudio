@@ -1,21 +1,26 @@
 import { decideMissingRuntime, runtimeWasInstalled } from './runtime-repair';
+import { windowsRocmInstalled, windowsRocmRequested } from './runtime-windows-rocm';
+import { runtimeProjectReady } from './runtime-readiness';
+import { runRuntimeProbe } from './runtime-probe';
 import {
   installRuntime,
+  MISSING_SYSTEM_LIBRARY_CODE,
   promoteLegacyRuntimeCaches,
-  runtimeCompatible,
   runtimeDependenciesReady,
+  runtimeDownloadHosts,
   runtimeInstallInterrupted,
-  runtimeReady,
   runtimePython,
+  runtimeUvCache,
   stageRuntimeSources,
   type RuntimeRegion,
 } from './runtime-project';
-import { collectHostSnapshot, type HostSnapshot } from './host-snapshot';
+import { collectHostSnapshot, freeGb, type HostSnapshot } from './host-snapshot';
 import { runtimeSetupSupported } from './distribution';
 import { asciiSafePthFiles } from './pth-ascii';
 import { devProbeStamped, writeDevProbeStamp } from './dev-probe-stamp';
 import { CrashJournal } from './crash-journal';
 import { nativeFaultSummary } from '../shared/utils/crashReport';
+import { backendStartupFailure, isBrokenEnvironmentOutput } from '../shared/utils/backendOutput';
 import { availableBackendPort } from './backend-port';
 import { scopedStorage, scopedStorageEnv, type ScopedStorage } from './storage-scope';
 import { legacyStorageEnv } from './legacy-storage';
@@ -53,6 +58,7 @@ import {
 } from './remote-backend';
 import { toolSearchDirs, toolSearchDirsAsync } from './tool-path';
 import { SetupProgressTracker, cleanProcessLine } from './setup-progress';
+import { SetupDownloadReporter, inFlightDownloadBytes } from './setup-downloads';
 import { scrubText } from '../shared/utils/scrub';
 import { DEFAULT_BACKEND_PORT } from '../../../config/app-config.mjs';
 
@@ -731,6 +737,16 @@ export class BackendSupervisor extends EventEmitter<{
   private readonly log: string[] = [];
   /** Only the spawned process's own output, for quoting back in failure messages. */
   private readonly childLog: string[] = [];
+  /**
+   * The spawned process's stderr only.
+   *
+   * The backend's verdict about a failed start is printed there, while the
+   * access log uvicorn writes to stdout can be the last line of a failed
+   * launch — every /health poll during startup prints one. Quoting "the last
+   * line" therefore reported `503 Service Unavailable` to a user whose real
+   * problem was a native extension that would not load (#3058).
+   */
+  private readonly childErrorLog: string[] = [];
   /** When the spawned process last printed a line (0 = nothing yet this launch). */
   private lastChildOutputAt = 0;
   /** Bumped on every start/shutdown so stale poll loops and exit handlers no-op. */
@@ -748,6 +764,9 @@ export class BackendSupervisor extends EventEmitter<{
   private diagnosis: BackendStatus['diagnosis'];
   private setupIssue: BackendStatus['setupIssue'];
   private setupRequiredGib: number | undefined;
+  /** Free GiB on the drive that will hold the runtime; probed once per location during setup. */
+  private runtimeFreeGib: number | undefined;
+  private freeProbeRoot: string | undefined;
   private runtimeInterrupted = false;
   private repairAttempted = false;
   private runtimeRepairFailed = false;
@@ -837,6 +856,8 @@ export class BackendSupervisor extends EventEmitter<{
     if (this.stage === 'setup_required' && this.setupIssue) status.setupIssue = this.setupIssue;
     if (this.stage === 'setup_required' && this.setupIssue === 'space' && this.setupRequiredGib)
       status.setupRequiredGib = this.setupRequiredGib;
+    if (this.stage === 'setup_required' && app.isPackaged && this.runtimeFreeGib !== undefined)
+      status.runtimeFreeGib = this.runtimeFreeGib;
     if (this.stage === 'setup_required' && this.runtimeInterrupted)
       status.runtimeInterrupted = true;
     if (this.stage === 'setup_required' && this.runtimeRepairFailed)
@@ -876,6 +897,7 @@ export class BackendSupervisor extends EventEmitter<{
     // quote the backend it just killed, and a completed runtime install must
     // not quote the installer — setupRuntime's uv children share this ring.
     this.childLog.length = 0;
+    this.childErrorLog.length = 0;
     this.lastChildOutputAt = 0;
     this.setStage('attaching', { managed: false, message: undefined });
     try {
@@ -929,6 +951,8 @@ export class BackendSupervisor extends EventEmitter<{
               previouslyInstalled: await runtimeWasInstalled(project),
               repairAttempted: this.repairAttempted,
               unsupported: isUnsupportedPlatform(),
+              rocmNotYetInstalled:
+                windowsRocmRequested() && !(await windowsRocmInstalled(project)),
             });
             this.runtimeRepairFailed = action === 'repair_failed';
             this.runtimeInterrupted = await runtimeInstallInterrupted(project);
@@ -1026,6 +1050,7 @@ export class BackendSupervisor extends EventEmitter<{
     this.startedAt = Date.now();
     this.log.length = 0;
     this.childLog.length = 0;
+    this.childErrorLog.length = 0;
     this.setupIssue = undefined;
     this.setupRequiredGib = undefined;
     this.runtimeRepairFailed = false;
@@ -1033,11 +1058,9 @@ export class BackendSupervisor extends EventEmitter<{
     this.setupPhase = 'checking';
     this.setupProgress.reset();
     this.setStage('installing', { message: undefined });
+    const stopWatching = this.watchSetupDownloads(gen, controller.signal);
     try {
-      const reusable =
-        ((await runtimeReady(backendRoot(), project)) ||
-          (await runtimeCompatible(backendRoot(), project))) &&
-        (await runtimeDependenciesReady(project));
+      const reusable = await runtimeProjectReady(backendRoot(), project);
       if (gen !== this.generation || controller.signal.aborted) return;
       if (reusable) {
         await this.start();
@@ -1063,10 +1086,7 @@ export class BackendSupervisor extends EventEmitter<{
           'Creating a separate Electron runtime; existing environment preserved.',
         );
         this.emitStatus();
-        const fallbackReusable =
-          ((await runtimeReady(backendRoot(), project)) ||
-            (await runtimeCompatible(backendRoot(), project))) &&
-          (await runtimeDependenciesReady(project));
+        const fallbackReusable = await runtimeProjectReady(backendRoot(), project);
         if (gen !== this.generation || controller.signal.aborted) return;
         if (fallbackReusable) {
           await this.start();
@@ -1086,8 +1106,27 @@ export class BackendSupervisor extends EventEmitter<{
         backendRoot(),
         project,
         findUv(),
-        (command, args, cwd, env) =>
-          new Promise<string>((resolve, reject) => {
+        (command, args, cwd, env, options) => {
+          if (options?.timeoutMs)
+            return runRuntimeProbe(
+              command,
+              args,
+              cwd,
+              { ...childEnv(this.port, this.runtimeRegion), ...env },
+              {
+                timeoutMs: options.timeoutMs,
+                signal: controller.signal,
+                onSpawn: (child) => {
+                  this.child = child;
+                  this.attachLineReader(child.stdout, 'out');
+                  this.attachLineReader(child.stderr, 'err');
+                },
+                onClose: (child) => {
+                  if (this.child === child) this.child = null;
+                },
+              },
+            );
+          return new Promise<string>((resolve, reject) => {
             if (controller.signal.aborted) {
               reject(controller.signal.reason);
               return;
@@ -1125,7 +1164,8 @@ export class BackendSupervisor extends EventEmitter<{
                   }),
                 );
             });
-          }),
+          });
+        },
         controller.signal,
         (phase) => {
           if (gen !== this.generation) return;
@@ -1143,9 +1183,11 @@ export class BackendSupervisor extends EventEmitter<{
             ? (platformSetupIssue() ?? 'unsupported_platform')
             : code === 'ENOSPC'
               ? 'space'
-              : ['EACCES', 'EPERM', 'EROFS'].includes(code || '')
-                ? 'access'
-                : undefined;
+              : code === MISSING_SYSTEM_LIBRARY_CODE
+                ? 'missing_system_library'
+                : ['EACCES', 'EPERM', 'EROFS'].includes(code || '')
+                  ? 'access'
+                  : undefined;
         this.setupRequiredGib =
           code === 'ENOSPC' ? (error as { requiredGib?: number }).requiredGib : undefined;
         this.runtimeRepairFailed = this.repairAttempted;
@@ -1154,8 +1196,43 @@ export class BackendSupervisor extends EventEmitter<{
         this.setStage('setup_required', { message: errorMessage(error) });
       }
     } finally {
+      stopWatching();
       if (this.installation === controller) this.installation = null;
     }
+  }
+
+  /**
+   * uv prints nothing while a large wheel downloads, so watch its cache for
+   * in-flight bytes: the setup screen names the source host, and a download
+   * that stops receiving data shows as stalled instead of frozen (#3411).
+   */
+  private watchSetupDownloads(gen: number, signal: AbortSignal): () => void {
+    const reporter = new SetupDownloadReporter();
+    void Promise.resolve()
+      .then(() => runtimeDownloadHosts(backendRoot()))
+      .then((hosts) => this.setupProgress.setDownloadHosts(hosts))
+      .catch(() => undefined);
+    let sampling = false;
+    const timer = setInterval(() => {
+      if (sampling || signal.aborted || gen !== this.generation || this.stage !== 'installing')
+        return;
+      if (this.setupPhase !== 'installing_deps' || !this.runtimeProject) return;
+      sampling = true;
+      void inFlightDownloadBytes(runtimeUvCache(this.runtimeProject))
+        .then((bytes) => {
+          if (signal.aborted || gen !== this.generation || this.stage !== 'installing') return;
+          this.setupProgress.observeInFlight(bytes);
+          const snapshot = this.setupProgress.snapshot();
+          for (const line of reporter.lines(snapshot)) this.pushLog('out', line);
+          if (snapshot.downloadsComplete === false) this.emitStatus();
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          sampling = false;
+        });
+    }, 3_000);
+    timer.unref?.();
+    return () => clearInterval(timer);
   }
 
   /** Remove only an Electron-owned Python project, then perform a fresh install. */
@@ -1295,7 +1372,9 @@ export class BackendSupervisor extends EventEmitter<{
   setRuntimeLocation(parent: string | null): { path: string; custom: boolean } {
     if (
       !app.isPackaged ||
-      this.stage !== 'setup_required' ||
+      // A failed start can be fixed by moving the runtime (permission, synced
+      // folder, missing environment), so those stages may change location too.
+      !['setup_required', 'failed', 'crashed', 'port_in_use'].includes(this.stage) ||
       this.installation ||
       this.cleaningRuntime
     )
@@ -1376,10 +1455,7 @@ export class BackendSupervisor extends EventEmitter<{
       configured ? [configured] : [this.runtimeProject, own, ...legacyTauriRuntimeProjects()]
     ).filter((candidate): candidate is string => Boolean(candidate));
     for (const project of new Set(candidates.map((candidate) => resolve(candidate)))) {
-      if (
-        ((await runtimeReady(bundle, project)) || (await runtimeCompatible(bundle, project))) &&
-        (await runtimeDependenciesReady(project))
-      ) {
+      if (await runtimeProjectReady(bundle, project)) {
         this.runtimeProject = project;
         if (project !== own && project !== configured)
           this.pushLog('out', `Reusing compatible Tauri runtime: ${project}`);
@@ -1391,7 +1467,26 @@ export class BackendSupervisor extends EventEmitter<{
   }
 
   private emitStatus(): void {
+    this.probeRuntimeFree();
     this.emit('status', this.status);
+  }
+
+  /** Reads the free space of the install drive once per location so the setup screen can show it. */
+  private probeRuntimeFree(): void {
+    if (this.stage !== 'setup_required' || !app.isPackaged) {
+      this.freeProbeRoot = undefined;
+      return;
+    }
+    const root = dirname(this.runtimeProject ?? join(defaultRuntimeRoot(), 'project'));
+    if (this.freeProbeRoot === root) return;
+    this.freeProbeRoot = root;
+    void freeGb(root)
+      .then((gb) => {
+        if (this.freeProbeRoot !== root) return;
+        this.runtimeFreeGib = gb ?? undefined;
+        this.emit('status', this.status);
+      })
+      .catch(() => undefined);
   }
 
   private pushLog(stream: 'out' | 'err', line: string, fromChild = false): void {
@@ -1412,6 +1507,11 @@ export class BackendSupervisor extends EventEmitter<{
       this.childLog.push(line);
       if (this.childLog.length > LOG_RING_LINES)
         this.childLog.splice(0, this.childLog.length - LOG_RING_LINES);
+      if (stream === 'err') {
+        this.childErrorLog.push(line);
+        if (this.childErrorLog.length > LOG_RING_LINES)
+          this.childErrorLog.splice(0, this.childErrorLog.length - LOG_RING_LINES);
+      }
     }
     (stream === 'err' ? console.error : console.log)(`[backend] ${line}`);
     if (this.stage === 'installing') {
@@ -1562,9 +1662,68 @@ export class BackendSupervisor extends EventEmitter<{
     // log line. Name the fault and where it happened instead (#2382, #2187).
     const lastLine = nativeFaultSummary(recorded?.logTail.join('\n') ?? '') || this.childLog.at(-1);
     const why = signal ? `signal ${signal}` : `exit code ${code}`;
+    // The backend's own verdict names the cause of a failed start. Without it
+    // the message quoted uvicorn's access log for the last /health poll —
+    // "503 Service Unavailable" — and hid the import error that actually
+    // killed the process (#3058).
+    const startup = backendStartupFailure(this.childErrorLog);
+    // A backend that died while importing its own dependencies is a broken
+    // environment, not a crash to retry: its wheels are damaged or a system
+    // library they link against is gone. Repair the managed runtime once per
+    // launch instead of leaving the user with a dead app (#3058).
+    if (this.canRepairRuntime() && isBrokenEnvironmentOutput(this.childErrorLog)) {
+      this.repairAttempted = true;
+      this.pushLog(
+        'out',
+        'The backend died while loading its Python dependencies; repairing the runtime.',
+      );
+      this.setStage('setup_required', { managed: true, message: undefined });
+      void this.setupRuntime();
+      return;
+    }
     this.setStage('crashed', {
-      message: `Backend exited unexpectedly (${why}).${lastLine ? ` Last output: ${lastLine}` : ''}`,
+      // The child was ours: the failure belongs to the managed runtime, and a
+      // report that says "Managed: false" sends the triage the wrong way.
+      managed: true,
+      message: startup
+        ? `Backend failed to start during '${startup.step}' (${why}): ${startup.reason}`
+        : `Backend exited unexpectedly (${why}).${lastLine ? ` Last output: ${lastLine}` : ''}`,
     });
+  }
+
+  /**
+   * Whether this launch may rebuild the managed runtime on its own.
+   *
+   * The same guard the setup flow uses: a packaged app with a user-initiated
+   * runtime, no custom backend command, a resolved runtime project and no
+   * install already running.
+   */
+  /**
+   * Whether the resolved runtime project is one this install created. A
+   * compatible legacy Tauri project can be adopted as the runtime; a crash-time
+   * repair must never run `uv sync` inside files another install owns.
+   */
+  private ownsRuntimeProject(): boolean {
+    const project = this.runtimeProject;
+    if (!project) return false;
+    if (samePath(project, join(defaultRuntimeRoot(), 'project'))) return true;
+    const configured = storedRuntimeLocation();
+    return Boolean(
+      configured?.owned && samePath(project, join(configured.root, 'project')),
+    );
+  }
+
+  private canRepairRuntime(): boolean {
+    return (
+      app.isPackaged &&
+      runtimeSetupSupported() &&
+      !parseBackendCmdOverride(process.env.OMNIVOICE_BACKEND_CMD) &&
+      !isUnsupportedPlatform() &&
+      this.ownsRuntimeProject() &&
+      !this.repairAttempted &&
+      !this.installation &&
+      !this.cleaningRuntime
+    );
   }
 
   private async probe(baseUrl = this.baseUrl, identityOnly = false): Promise<boolean> {
@@ -1669,6 +1828,9 @@ export class BackendSupervisor extends EventEmitter<{
     const credentials = await this.remoteCredentials();
     if (gen !== this.generation) return false;
     if (credentials === 'valid') {
+      // A healthy run must not leave import errors behind: a later unrelated
+      // exit would otherwise match them and be misread as a broken runtime.
+      this.childErrorLog.length = 0;
       this.setStage('ready', patch);
     } else if (credentials === 'rejected') {
       if (this.diagnosis !== 'auth_required' || this.stage !== 'failed') {

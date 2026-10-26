@@ -20,6 +20,8 @@ vi.mock('react-i18next', () => ({
 }));
 import { ModelLibrary, PerformanceModelPacks, SystemRecommendations } from './model-library';
 import { modelFamilies } from './model-family';
+import { EngineFamilyList } from './model-list/engine-family-list';
+import { DiarisationSettings } from './model-list/diarisation-list';
 import { performancePackRepos } from './performance-model-packs';
 afterEach(() => {
   cleanup();
@@ -64,7 +66,7 @@ it('prioritizes required and curated models across families, with optional downl
   const invalidate = vi.spyOn(client, 'invalidateQueries');
   render(
     <QueryClientProvider client={client}>
-      <ModelLibrary setup />
+      <ModelLibrary />
     </QueryClientProvider>,
   );
   const required = await screen.findByText('Required');
@@ -122,7 +124,13 @@ it('names each model in the compact setup pack, even two of the same family', as
     }
     if (path === '/models/install/status') return Promise.resolve({ jobs: [] });
     if (path === '/setup/recommendations') {
-      return Promise.resolve({ device: { label: 'Linux x64' }, models: [], download_gb_remaining: 0, total_gb: 0, all_installed: false });
+      return Promise.resolve({
+        device: { label: 'Linux x64' },
+        models: [],
+        download_gb_remaining: 0,
+        total_gb: 0,
+        all_installed: false,
+      });
     }
     return Promise.resolve({});
   });
@@ -287,7 +295,7 @@ it('unloads a resident model before deleting its slash-separated repository', as
 
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <ModelLibrary family="tts" />
+      <EngineFamilyList family="tts" />
     </QueryClientProvider>,
   );
 
@@ -334,7 +342,7 @@ it('confirms reinstall, removes the old copy, then starts a fresh install', asyn
 
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <ModelLibrary family="asr" />
+      <EngineFamilyList family="asr" />
     </QueryClientProvider>,
   );
 
@@ -396,7 +404,7 @@ it('surfaces the backend routing verdict when selecting an ASR model from the ca
 
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <ModelLibrary family="asr" />
+      <EngineFamilyList family="asr" />
     </QueryClientProvider>,
   );
 
@@ -432,7 +440,7 @@ it('surfaces an interrupted cache as repairable and removable', async () => {
 
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <ModelLibrary family="tts" />
+      <EngineFamilyList family="tts" />
     </QueryClientProvider>,
   );
 
@@ -475,7 +483,7 @@ it('keeps speaker diarisation models discoverable after setup', async () => {
   expect(modelFamilies).toContain('diarisation');
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <ModelLibrary family={'diarisation' as never} />
+      <DiarisationSettings />
     </QueryClientProvider>,
   );
 
@@ -496,6 +504,8 @@ it('searches model metadata and keeps incompatible choices folded', async () => 
             note: 'Expressive narration',
             supported: true,
           },
+          { ...base, repo_id: 'owner/second', label: 'Second model', supported: true },
+          { ...base, repo_id: 'owner/third', label: 'Third model', supported: true },
           {
             ...base,
             repo_id: 'owner/apple-only',
@@ -513,7 +523,7 @@ it('searches model metadata and keeps incompatible choices folded', async () => 
 
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <ModelLibrary family="tts" />
+      <EngineFamilyList family="tts" />
     </QueryClientProvider>,
   );
 
@@ -567,16 +577,19 @@ it('shows device recommendations and live aggregate download telemetry', async (
 
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <ModelLibrary family="tts" />
+      <EngineFamilyList family="tts" />
     </QueryClientProvider>,
   );
 
   await screen.findByText('Fast local model');
   expect(screen.getByText('firstrun.chip_recommended')).toBeInTheDocument();
   expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '50');
-  expect(screen.getByText('512.0 MB / 1.00 GB')).toBeInTheDocument();
-  expect(screen.getByText('8.0 MB/s')).toBeInTheDocument();
-  expect(screen.getByText('~2m')).toBeInTheDocument();
+  // Bytes, speed and ETA come from the shared install progress (formatted
+  // values are covered in model-install-progress.test.tsx).
+  expect(screen.getByRole('status')).toHaveTextContent('modelInstall.downloadingPct');
+  expect(
+    screen.getByText('modelInstall.bytes · modelInstall.speed · modelInstall.eta'),
+  ).toBeInTheDocument();
 });
 
 it('shows the device bundle, warns before exceeding disk space, and starts selected installs', async () => {
@@ -784,7 +797,7 @@ it('sends a gated install that failed on a chosen mirror to the mirror settings'
 
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <ModelLibrary family="tts" />
+      <EngineFamilyList family="tts" />
     </QueryClientProvider>,
   );
 

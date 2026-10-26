@@ -19,6 +19,8 @@ const mocks = vi.hoisted(() => ({
   rm: vi.fn(),
   stage: vi.fn(),
   spawn: vi.fn(),
+  inFlight: vi.fn(async (_cache: string) => 0),
+  hosts: vi.fn(async () => new Map<string, string>()),
 }));
 vi.mock('electron', () => ({ app: { isPackaged: true, getPath: () => '/private/voicestudio' } }));
 vi.mock('node:child_process', () => ({ spawn: mocks.spawn, spawnSync: vi.fn() }));
@@ -59,6 +61,7 @@ vi.mock('node:fs', async (importOriginal) => {
 });
 vi.mock('node:fs/promises', () => ({ rm: mocks.rm }));
 vi.mock('./runtime-project', () => ({
+  MISSING_SYSTEM_LIBRARY_CODE: 'MISSING_SYSTEM_LIBRARY',
   runtimeDependenciesReady: mocks.dependencies,
   runtimeReady: mocks.ready,
   runtimeCompatible: mocks.compatible,
@@ -67,6 +70,12 @@ vi.mock('./runtime-project', () => ({
   promoteLegacyRuntimeCaches: mocks.promoteCaches,
   stageRuntimeSources: mocks.stage,
   runtimePython: (root: string) => root + '/.venv/bin/python',
+  runtimeDownloadHosts: mocks.hosts,
+  runtimeUvCache: (project: string) => project + '/../.uv-cache',
+}));
+vi.mock('./setup-downloads', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./setup-downloads')>()),
+  inFlightDownloadBytes: mocks.inFlight,
 }));
 import {
   BackendSupervisor,
@@ -313,6 +322,77 @@ it('startup and retry await explicit setup without staging, spawning or installi
   expect(mocks.stage).not.toHaveBeenCalled();
   expect(mocks.install).not.toHaveBeenCalled();
   await supervisor.shutdown();
+});
+// #3411: uv prints nothing while a big wheel downloads. Bytes landing in its
+// cache keep the install live; when they stop, the screen names the stalled host.
+it('shows a stalled download with its source host once in-flight bytes stop growing', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => {
+      throw new Error('no backend');
+    }),
+  );
+  vi.stubEnv('OMNIVOICE_BACKEND_CMD', '');
+  vi.stubEnv('VOICESTUDIO_SKIP_BACKEND', '');
+  mocks.hosts.mockResolvedValue(new Map([['torch', 'download-r2.pytorch.org']]));
+  let received = 0;
+  mocks.inFlight.mockImplementation(async () => received);
+  mocks.install.mockImplementation(
+    (
+      _bundle: string,
+      _project: string,
+      _uv: string | null,
+      _run: unknown,
+      signal: AbortSignal,
+      phase: (value: string) => void,
+    ) => {
+      phase('installing_deps');
+      return new Promise((_resolve, reject) =>
+        signal.addEventListener('abort', () => reject(signal.reason), { once: true }),
+      );
+    },
+  );
+  const supervisor = new BackendSupervisor();
+  await supervisor.start();
+  vi.useFakeTimers();
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
+  const install = supervisor.setupRuntime();
+  await vi.advanceTimersByTimeAsync(0);
+  const internal = supervisor as unknown as {
+    pushLog(stream: 'out' | 'err', line: string, fromChild?: boolean): void;
+  };
+  internal.pushLog('err', 'Downloading torch (2.0GiB)', true);
+
+  // Bytes keep arriving for a minute: slow is not stalled.
+  for (let second = 0; second < 60; second += 3) {
+    received += 1024 ** 2;
+    await vi.advanceTimersByTimeAsync(3_000);
+  }
+  expect(supervisor.status.setupProgress).toMatchObject({
+    downloadHost: 'download-r2.pytorch.org',
+  });
+  expect(supervisor.status.setupProgress?.stalled).toBeUndefined();
+
+  await vi.advanceTimersByTimeAsync(48_000);
+  expect(supervisor.status.setupProgress).toMatchObject({
+    stalled: true,
+    downloadHost: 'download-r2.pytorch.org',
+  });
+  expect(supervisor.status.logTail).toContain('Download source: download-r2.pytorch.org');
+  expect(
+    supervisor.status.logTail.some((line) =>
+      line.startsWith('Download stalled: no data from download-r2.pytorch.org'),
+    ),
+  ).toBe(true);
+
+  received += 1024 ** 2;
+  await vi.advanceTimersByTimeAsync(3_000);
+  expect(supervisor.status.setupProgress?.stalled).toBeUndefined();
+
+  await supervisor.shutdown();
+  await install;
 });
 it('a failed explicit installation returns to setup and allows another attempt', async () => {
   vi.stubGlobal(
@@ -858,4 +938,18 @@ it('tells Apple Silicon users running the Intel build to install the arm64 build
     delete electronApp.runningUnderARM64Translation;
     restore();
   }
+});
+
+it('lets a failed start move the runtime to another folder', async () => {
+  vi.stubEnv('OMNIVOICE_BACKEND_CMD', '');
+  vi.stubEnv('VOICESTUDIO_SKIP_BACKEND', '');
+  const supervisor = new BackendSupervisor();
+  await supervisor.start();
+  for (const stage of ['failed', 'crashed', 'port_in_use'] as const) {
+    (supervisor as unknown as { stage: string }).stage = stage;
+    expect(() => supervisor.setRuntimeLocation(null)).not.toThrow();
+  }
+  (supervisor as unknown as { stage: string }).stage = 'ready';
+  expect(() => supervisor.setRuntimeLocation(null)).toThrow('runtime_location_unavailable');
+  await supervisor.shutdown();
 });

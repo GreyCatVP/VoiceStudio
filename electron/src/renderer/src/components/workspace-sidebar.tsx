@@ -1,9 +1,51 @@
-import { useId, useState, type CSSProperties, type ReactNode } from 'react';
+import {
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 import { PanelLeftCloseIcon, PanelLeftOpenIcon, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { usePaneResize } from '@/hooks/use-pane-resize';
 import { cn } from '@/lib/utils';
+import { isMac } from '@/components/bridge';
+import { useWindowFullscreen } from '@/hooks/use-window-fullscreen';
+
+/**
+ * How far a titlebar row must inset its content to clear the macOS traffic
+ * lights. Measured, not assumed: the lights reach past the slim rail into a
+ * column beside it, but never into one further right.
+ */
+function useTrafficLightInset(enabled: boolean) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [inset, setInset] = useState(0);
+  useLayoutEffect(() => {
+    const row = ref.current;
+    if (!enabled || !row) return setInset(0);
+    const measure = () =>
+      setInset(
+        Math.max(0, Math.ceil(MAC_TRAFFIC_LIGHTS_INLINE_END - row.getBoundingClientRect().left)),
+      );
+    measure();
+    // The row moves when a column before it resizes (rail collapse, pane drag).
+    const observer = new ResizeObserver(measure);
+    const column = row.parentElement;
+    for (let node = column?.previousElementSibling; node; node = node.previousElementSibling) {
+      observer.observe(node);
+    }
+    observer.observe(row);
+    window.addEventListener('resize', measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [enabled]);
+  return [ref, inset] as const;
+}
+import { MAC_TRAFFIC_LIGHTS_INLINE_END } from '@shared/utils/windowChrome';
 
 const WIDTHS = {
   default: { minimum: 248, initial: 280, maximum: 515, reserve: 480 },
@@ -13,7 +55,7 @@ const WIDTHS = {
 
 const VARIANT_STYLES = {
   controls:
-    '[&>section]:shadow-[inset_0_1px_0_color-mix(in_oklab,var(--foreground)_3%,transparent)] [&>details]:shadow-[inset_0_1px_0_color-mix(in_oklab,var(--foreground)_3%,transparent)] [&_summary]:min-h-8 [&_summary]:select-none [&_summary]:items-center [&_summary]:px-0.5 [&_summary]:font-medium [&_summary]:text-foreground/90 [&_summary:hover]:bg-background/35 [&_h2]:text-foreground/90 [&_h3]:text-foreground/90',
+    '[&_summary]:min-h-8 [&_summary]:select-none [&_summary]:items-center [&_summary]:px-0.5 [&_summary]:font-medium [&_summary]:text-foreground/90 [&_summary:hover]:bg-background/35 [&_h2]:text-foreground/90 [&_h3]:text-foreground/90',
   navigation:
     '[&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2.5 [&>button]:rounded-lg [&>button]:px-2.5 [&>button]:font-normal [&>button]:transition-[color,background-color,box-shadow] [&>button:hover]:bg-accent/55 [&>button[aria-pressed=true]]:bg-accent/80 [&>button[aria-pressed=true]]:font-medium [&>button[aria-pressed=true]]:shadow-[inset_2px_0_0_var(--primary)] [&>button>svg]:text-muted-foreground [&>button[aria-pressed=true]>svg]:text-primary',
   library:
@@ -34,6 +76,7 @@ export function SecondarySidebar({
   libraryLabel,
   collapsed: controlledCollapsed,
   onCollapsedChange,
+  tabsInHeader = false,
 }: {
   title: string;
   icon: LucideIcon;
@@ -51,10 +94,18 @@ export function SecondarySidebar({
   collapsed?: boolean;
   /** Lets the page re-home the footer's content while the pane is collapsed. */
   onCollapsedChange?: (collapsed: boolean) => void;
+  /**
+   * Show the controls/library tabs in the header row instead of the title, for
+   * pages whose title bar and tabs already name the workspace.
+   */
+  tabsInHeader?: boolean;
 }) {
   const { t } = useTranslation();
+  const fullscreen = useWindowFullscreen();
   const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(false);
   const collapsed = controlledCollapsed ?? uncontrolledCollapsed;
+  // Collapsed, the header row is an empty drag strip, so nothing needs to clear the lights.
+  const [headerRef, lightsInset] = useTrafficLightInset(isMac() && !fullscreen && !collapsed);
   const [view, setView] = useState<'controls' | 'library'>('controls');
   const [libraryVisited, setLibraryVisited] = useState(false);
   const tabsId = useId();
@@ -71,6 +122,62 @@ export function SecondarySidebar({
     if (controlledCollapsed === undefined) setUncontrolledCollapsed(resolved);
     onCollapsedChange?.(resolved);
   };
+  const headerTabs = tabsInHeader && library != null;
+  const tabList = (className: string) => (
+    <div
+      role="tablist"
+      aria-label={title}
+      data-slot="secondary-sidebar-tabs"
+      className={cn('flex min-w-0 shrink-0 gap-1', className)}
+      onKeyDown={(event) => {
+        if (event.altKey || event.ctrlKey || event.metaKey) return;
+        const tabs = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+        const current = tabs.findIndex((tab) => tab === event.target);
+        if (current < 0) return;
+        const forward =
+          getComputedStyle(event.currentTarget).direction === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
+        const backward = forward === 'ArrowRight' ? 'ArrowLeft' : 'ArrowRight';
+        const next =
+          event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? 1
+              : event.key === forward || event.key === backward
+                ? 1 - current
+                : null;
+        if (next === null) return;
+        event.preventDefault();
+        chooseView(next === 0 ? 'controls' : 'library');
+        tabs[next]?.focus();
+      }}
+    >
+      {(
+        [
+          ['controls', title],
+          ['library', libraryLabel ?? title],
+        ] as const
+      ).map(([value, label]) => (
+        <button
+          key={value}
+          type="button"
+          role="tab"
+          id={`${tabsId}-${value}`}
+          aria-controls={`${tabsId}-panel-${value}`}
+          aria-selected={view === value}
+          tabIndex={view === value ? 0 : -1}
+          onClick={() => chooseView(value)}
+          className={cn(
+            'h-7 min-w-0 flex-1 truncate rounded-md px-2 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring',
+            view === value
+              ? 'bg-accent/80 text-foreground'
+              : 'text-muted-foreground hover:bg-accent/45 hover:text-foreground',
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
   const dimensions = WIDTHS[size];
   const resize = usePaneResize({
     storageKey: `voicestudio.secondary-sidebar.${size}`,
@@ -92,7 +199,7 @@ export function SecondarySidebar({
         } as CSSProperties
       }
       className={cn(
-        'secondary-sidebar relative [--pane-resize-display:flex] @max-[40rem]:[--pane-resize-display:none] flex min-h-0 shrink-0 flex-col border-r border-border/55 bg-[color-mix(in_oklab,var(--muted)_13%,var(--background))] shadow-[inset_-1px_0_0_color-mix(in_oklab,var(--foreground)_2%,transparent)] [container-type:inline-size]',
+        'secondary-sidebar relative [--pane-resize-display:flex] @max-[40rem]:[--pane-resize-display:none] flex min-h-0 shrink-0 flex-col border-r border-border/55 bg-[color-mix(in_oklab,var(--muted)_13%,var(--background))] [container-type:inline-size]',
         collapsed
           ? 'w-11'
           : 'w-[var(--secondary-sidebar-width)] @max-[40rem]:max-h-[40%] @max-[40rem]:w-full @max-[40rem]:border-r-0 @max-[40rem]:border-b',
@@ -108,13 +215,16 @@ export function SecondarySidebar({
         </div>
       )}
       <div
+        ref={headerRef}
         data-slot="secondary-sidebar-header"
+        style={lightsInset ? { paddingInlineStart: lightsInset + 12 } : undefined}
         className={cn(
-          'workspace-titlebar flex h-12 shrink-0 items-center gap-2.5 border-b border-border/45 bg-background/30 shadow-[0_1px_0_color-mix(in_oklab,var(--foreground)_2%,transparent)] backdrop-blur-xl',
-          collapsed ? 'justify-center px-1' : 'px-3',
+          'workspace-titlebar flex h-12 shrink-0 items-center gap-2.5 border-b border-border/45',
+          collapsed ? 'px-1' : 'px-3',
         )}
       >
-        {!collapsed && (
+        {!collapsed && headerTabs && tabList('flex-1')}
+        {!collapsed && !headerTabs && (
           <>
             <span className="grid size-7 shrink-0 place-items-center rounded-lg border border-border/45 bg-background/50 text-primary shadow-[inset_0_1px_0_rgb(255_255_255/7%)]">
               <Icon aria-hidden="true" className="size-4" />
@@ -132,77 +242,24 @@ export function SecondarySidebar({
             )}
           </>
         )}
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          aria-label={t(collapsed ? 'paneActions.expand' : 'paneActions.collapse')}
-          title={t(collapsed ? 'paneActions.expand' : 'paneActions.collapse')}
-          aria-expanded={!collapsed}
-          onClick={() => setCollapsed((value) => !value)}
-          className="text-muted-foreground hover:bg-accent/60 hover:text-foreground"
-        >
-          {collapsed ? <PanelLeftOpenIcon /> : <PanelLeftCloseIcon />}
-        </Button>
+        {!collapsed && (
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label={t('paneActions.collapse')}
+            title={t('paneActions.collapse')}
+            aria-expanded
+            onClick={() => setCollapsed(true)}
+            className="text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+          >
+            <PanelLeftCloseIcon />
+          </Button>
+        )}
       </div>
-      {library != null && !collapsed && (
-        <div
-          role="tablist"
-          aria-label={title}
-          data-slot="secondary-sidebar-tabs"
-          className="flex shrink-0 gap-1 border-b border-border/45 px-2.5 py-2"
-          onKeyDown={(event) => {
-            if (event.altKey || event.ctrlKey || event.metaKey) return;
-            const tabs = [
-              ...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
-            ];
-            const current = tabs.findIndex((tab) => tab === event.target);
-            if (current < 0) return;
-            const forward =
-              getComputedStyle(event.currentTarget).direction === 'rtl'
-                ? 'ArrowLeft'
-                : 'ArrowRight';
-            const backward = forward === 'ArrowRight' ? 'ArrowLeft' : 'ArrowRight';
-            const next =
-              event.key === 'Home'
-                ? 0
-                : event.key === 'End'
-                  ? 1
-                  : event.key === forward || event.key === backward
-                    ? 1 - current
-                    : null;
-            if (next === null) return;
-            event.preventDefault();
-            chooseView(next === 0 ? 'controls' : 'library');
-            tabs[next]?.focus();
-          }}
-        >
-          {(
-            [
-              ['controls', title],
-              ['library', libraryLabel ?? title],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              id={`${tabsId}-${value}`}
-              aria-controls={`${tabsId}-panel-${value}`}
-              aria-selected={view === value}
-              tabIndex={view === value ? 0 : -1}
-              onClick={() => chooseView(value)}
-              className={cn(
-                'h-7 min-w-0 flex-1 truncate rounded-md px-2 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring',
-                view === value
-                  ? 'bg-accent/80 text-foreground'
-                  : 'text-muted-foreground hover:bg-accent/45 hover:text-foreground',
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
+      {library != null &&
+        !collapsed &&
+        !headerTabs &&
+        tabList('border-b border-border/45 px-2.5 py-2')}
       {library != null && (
         <div
           role="tabpanel"
@@ -236,7 +293,7 @@ export function SecondarySidebar({
       {footer !== undefined && footer !== null && !collapsed && !showLibrary && (
         <div
           data-slot="secondary-sidebar-footer"
-          className="flex min-h-0 max-h-[70%] flex-col space-y-3 border-t border-border/55 bg-background/40 p-3.5 text-[13px] backdrop-blur-xl"
+          className="flex min-h-0 max-h-[70%] flex-col space-y-3 border-t border-border/55 p-3.5 text-[13px]"
         >
           {footer}
         </div>
@@ -244,10 +301,12 @@ export function SecondarySidebar({
       {collapsed && (
         <button
           type="button"
-          title={title}
+          title={`${t('paneActions.expand')} · ${title}`}
           aria-label={title}
+          aria-expanded={false}
+          data-slot="secondary-sidebar-expand"
           onClick={() => setCollapsed(false)}
-          className="group mx-auto my-2 flex min-h-0 flex-1 flex-col items-center gap-2 rounded-lg px-1.5 py-2 text-muted-foreground outline-none transition-[color,background-color,border-color] hover:bg-accent/65 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+          className="group mx-1 my-2 flex min-h-0 flex-1 flex-col items-center gap-2.5 rounded-lg px-1 py-2 text-muted-foreground outline-none transition-[color,background-color,border-color] hover:bg-accent/65 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
         >
           <span className="grid size-7 shrink-0 place-items-center rounded-md border border-border/45 bg-background/45 text-primary">
             <Icon aria-hidden="true" className="size-4" />
@@ -255,6 +314,10 @@ export function SecondarySidebar({
           <span className="min-h-0 truncate text-[11px] font-semibold tracking-[0.01em] [writing-mode:vertical-rl] [text-orientation:mixed]">
             {title}
           </span>
+          <PanelLeftOpenIcon
+            aria-hidden="true"
+            className="mt-auto size-4 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+          />
         </button>
       )}
     </aside>

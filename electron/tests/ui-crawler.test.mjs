@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { ROUTE_WEIGHTS, routesForShard } from './crawler-shards.mjs';
+import { waitForQuietRequests } from './crawler-settle.mjs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -44,4 +45,92 @@ test('the route shards cover every route exactly once and share the cost evenly'
 test('a route without a weight still lands on a shard', () => {
   const owned = [1, 2, 3].map((shard) => routesForShard(['/new-route'], shard, 3));
   assert.equal(owned.flat().length, 1);
+});
+
+function clock(events = [], options = {}) {
+  let time = 0;
+  const traffic = { inflight: new Set(), activity: 0 };
+  const change = (kind) => {
+    traffic.activity += 1;
+    if (kind === 'start') traffic.inflight.add('request');
+    else traffic.inflight.delete('request');
+  };
+  return {
+    traffic, change,
+    time: () => time,
+    run: () => waitForQuietRequests(traffic, {
+      graceMs: 400, budgetMs: 1000, now: () => time,
+      wait: async (duration) => {
+        time += duration;
+        while (events.length && events[0][0] <= time) change(events.shift()[1]);
+      },
+      ...options,
+    }),
+  };
+}
+
+test('quiet traffic gets the React grace without extending the budget', async () => {
+  const run = clock();
+  assert.equal((await run.run()).settled, true);
+  assert.equal(run.time(), 400);
+});
+
+test('a late response gets a full grace window after it completes', async () => {
+  const run = clock([[300, 'start'], [350, 'finish']]);
+  assert.equal((await run.run()).settled, true);
+  assert.equal(run.time(), 750);
+});
+
+test('a request completed between samples still restarts the quiet window', async () => {
+  const run = clock([[275, 'start'], [280, 'finish']]);
+  assert.equal((await run.run()).settled, true);
+  assert.equal(run.time(), 700);
+});
+
+test('traffic during the DOM snapshot invalidates that snapshot', async () => {
+  let snapshots = 0;
+  const run = clock([], { snapshot: async () => {
+    snapshots += 1;
+    if (snapshots === 1) { run.change('start'); run.change('finish'); }
+    return snapshots;
+  } });
+  const result = await run.run();
+  assert.equal(result.settled, true);
+  assert.equal(result.snapshot, 2);
+  assert.equal(run.time(), 800);
+});
+
+test('a permanently pending request exhausts the original budget', async () => {
+  const run = clock([[100, 'start']]);
+  assert.deepEqual(await run.run(), { settled: false, pending: 1 });
+  assert.equal(run.time(), 1000);
+});
+
+test('continuous completed polls cannot turn deadline exhaustion into success', async () => {
+  const events = Array.from({ length: 10 }, (_, index) => [[index * 100 + 75, 'start'], [index * 100 + 80, 'finish']]).flat();
+  const run = clock(events);
+  assert.deepEqual(await run.run(), { settled: false, pending: 0 });
+  assert.equal(run.time(), 1000);
+});
+
+
+test('a frozen DOM snapshot cannot outlive the request budget', { timeout: 1000 }, async () => {
+  const result = await waitForQuietRequests({ inflight: new Set(), activity: 0 }, {
+    graceMs: 0,
+    budgetMs: 10,
+    wait: (duration) => new Promise((resolve) => setTimeout(resolve, duration)),
+    snapshot: () => new Promise(() => {}),
+  });
+  assert.deepEqual(result, { settled: false, pending: 0, unresponsive: true });
+});
+
+
+test('a snapshot completed after the deadline is still unresponsive', async () => {
+  let time = 0;
+  const result = await waitForQuietRequests({ inflight: new Set(), activity: 0 }, {
+    graceMs: 0, budgetMs: 1000, now: () => time,
+    wait: async () => assert.fail('no wait is needed before this snapshot'),
+    snapshot: async () => { time = 1001; return 0; },
+  });
+  assert.deepEqual(result, { settled: false, pending: 0, unresponsive: true });
 });

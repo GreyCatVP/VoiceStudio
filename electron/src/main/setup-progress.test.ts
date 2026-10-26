@@ -1,6 +1,11 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { SetupProgressTracker, cleanProcessLine, parseByteSize } from './setup-progress';
+import {
+  DOWNLOAD_STALL_MS,
+  SetupProgressTracker,
+  cleanProcessLine,
+  parseByteSize,
+} from './setup-progress';
 
 describe('SetupProgressTracker', () => {
   it('turns uv package and byte output into progress with rate and ETA', () => {
@@ -137,5 +142,39 @@ describe('SetupProgressTracker', () => {
   it('normalizes uv units and terminal escape sequences', () => {
     expect(parseByteSize('1.5', 'GiB')).toBe(1.5 * 1024 ** 3);
     expect(cleanProcessLine('\u001b[2K Downloaded torch\r')).toBe('Downloaded torch');
+  });
+
+  // #3411: uv prints nothing while a large wheel downloads.
+  it('names the source host and flags a stall only when no bytes arrive', () => {
+    const tracker = new SetupProgressTracker();
+    tracker.setDownloadHosts(new Map([['nvidia_cudnn_cu12', 'files.pythonhosted.org']]));
+    tracker.ingest('Downloading nvidia-cudnn-cu12 (634.0MiB)', 0);
+    expect(tracker.snapshot(1_000)).toMatchObject({
+      activePackage: 'nvidia-cudnn-cu12',
+      downloadHost: 'files.pythonhosted.org',
+    });
+
+    // Bytes landing in uv's cache keep a silent download live.
+    for (let at = 10_000; at <= 120_000; at += 10_000) tracker.observeInFlight(at, at);
+    expect(tracker.snapshot(120_000 + DOWNLOAD_STALL_MS - 1).stalled).toBeUndefined();
+    expect(tracker.snapshot(120_000 + DOWNLOAD_STALL_MS)).toMatchObject({
+      stalled: true,
+      stalledSeconds: DOWNLOAD_STALL_MS / 1000,
+      downloadHost: 'files.pythonhosted.org',
+    });
+    // A finished wheel leaving the temp area is not growth; the next one is.
+    tracker.observeInFlight(5, 200_000);
+    expect(tracker.snapshot(200_000).stalled).toBe(true);
+    tracker.observeInFlight(10, 201_000);
+    expect(tracker.snapshot(201_000).stalled).toBeUndefined();
+  });
+
+  it('never reports a stall once downloads are complete', () => {
+    const tracker = new SetupProgressTracker();
+    tracker.ingest('Downloading torch (2.0 GiB)', 0);
+    tracker.ingest('Downloaded torch', 1_000);
+    expect(tracker.snapshot(1_000 + DOWNLOAD_STALL_MS * 3).stalled).toBeUndefined();
+    tracker.reset();
+    expect(tracker.snapshot(DOWNLOAD_STALL_MS * 3).stalled).toBeUndefined();
   });
 });

@@ -43,7 +43,9 @@ legacy designs without a sample fall back to their saved instructions and seed.
 A ready TTS engine with cloning support is still required. Conversion transcribes
 the source and synthesizes its text in the selected voice. Match duration adjusts
 the overall length; it does not preserve the original performance's pitch, pauses,
-or expression.
+or expression. The result has the same Download action as Clone and Design takes:
+in the desktop app it opens the native save dialog for the WAV file and records the
+file in export history. The result is also saved to History.
 
 Media-tool installation retries temporary filesystem locks for up to four seconds,
 including Windows locks after the executable probe. It preserves the existing installation in a sibling backup

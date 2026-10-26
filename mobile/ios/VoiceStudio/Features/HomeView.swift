@@ -10,13 +10,23 @@ struct HomeView: View {
     var body: some View {
         Page {
             VStack(alignment: .leading, spacing: VSTokens.spacingGap * 2) {
-                VStack(alignment: .leading, spacing: VSTokens.spacingGap) {
-                    Text(model.t("homeUi.title"))
-                        .font(.custom("InterVariable", size: VSTokens.iosHomeWordmarkSize, relativeTo: .title).weight(.semibold))
-                        .fixedSize(horizontal: false, vertical: true)
-                    ViewThatFits(in: .horizontal) {
-                        HStack(alignment: .bottom, spacing: VSTokens.spacingGap) { privacy; ContributorCluster() }
-                        VStack(alignment: .leading, spacing: VSTokens.spacingGap) { privacy; ContributorCluster().frame(maxWidth: .infinity, alignment: .trailing) }
+                Group {
+                    if typeSize.isAccessibilitySize {
+                        VStack(alignment: .leading, spacing: 12) {
+                            heroText
+                            ContributorCluster().frame(maxWidth: .infinity, alignment: .trailing)
+                        }
+                    } else {
+                        ViewThatFits(in: .horizontal) {
+                            HStack(alignment: .center, spacing: 12) {
+                                heroText.frame(minWidth: 140, idealWidth: 180, maxWidth: .infinity, alignment: .leading)
+                                ContributorCluster()
+                            }
+                            VStack(alignment: .leading, spacing: 12) {
+                                heroText
+                                ContributorCluster().frame(maxWidth: .infinity, alignment: .trailing)
+                            }
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading).padding(Theme.compactInset)
@@ -35,6 +45,17 @@ struct HomeView: View {
                     destination("dictate", title: "nav.dictation", detail: "mobile.dictate.tap_to_start", icon: "mic") { DictateView() }
                     destination("models", title: "mobile.local.models", detail: "mobile.local.installed", icon: "arrow.down.circle") { ModelsView() }
                     destination("connect", title: "mobile.local.my_computer", detail: "mobile.local.pair_settings", icon: "desktopcomputer") { ConnectView() }
+                    destination("transcriptions", title: "transcriptions.title", detail: "mobile.transcripts.hint", icon: "text.bubble") { TranscriptsView() }
+                    destination("handoff", title: "mobile.handoff.title", detail: "mobile.handoff.hint", icon: "arrow.left.arrow.right") { HandoffView() }
+                    destination("design", title: "nav.design", detail: "clone.design_placeholder", icon: "wand.and.stars") { VoiceDesignView() }
+                    destination("stories", title: "nav.stories", detail: "stories.subtitle", icon: "person.2.wave.2") { ProductionView(kind: "stories") }
+                    destination("audiobook", title: "audiobook.title", detail: "audiobook.subtitle", icon: "book") { ProductionView(kind: "audiobook") }
+                    destination("batch", title: "batch.title", detail: "mobile.dub.pick_media", icon: "square.stack") { PhoneDubView(batchMode: true) }
+                    destination("gallery", title: "nav.gallery", detail: "clone.preview_voice", icon: "person.2") { GalleryView() }
+                    destination("workflows", title: "workflows.title", detail: "workflows.heading", icon: "arrow.triangle.branch") { WorkflowsView() }
+                    destination("calls", title: "calls.title", detail: "mobile.calls.hint", icon: "phone") { CallsView() }
+                    destination("local-api", title: "mobile.host.title", detail: "mobile.host.hint", icon: "network") { LocalAPIView() }
+                    destination("tools", title: "tools.title", detail: "compare.title", icon: "slider.horizontal.3") { VoiceToolsView() }
                 }
                 section("projects.generated_audio") {
                     if model.phone.recent.isEmpty && model.history.isEmpty { empty("mobile.speak.empty_recent") }
@@ -81,8 +102,17 @@ struct HomeView: View {
         .refreshable { await model.phone.refresh(); if model.connection.client != nil { await model.perform { try await model.refresh() } } }
         .onDisappear { player.pause() }
     }
-    private var privacy: some View {
-        Text(model.t("mobile.local.privacy")).font(.subheadline).foregroundStyle(theme.color("textMuted")).frame(maxWidth: .infinity, alignment: .leading)
+    private var heroText: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(model.t("app.name"))
+                .font(.custom("InterVariable", size: VSTokens.iosHomeWordmarkSize, relativeTo: .title2).weight(.semibold))
+                .lineLimit(typeSize.isAccessibilitySize ? nil : 1).minimumScaleFactor(0.8)
+                .accessibilityIdentifier("home.wordmark")
+            Text(model.t("mobile.home.subtitle")).font(typeSize.isAccessibilitySize ? .body : .caption)
+                .foregroundStyle(theme.color("textMuted"))
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("home.subtitle")
+        }
     }
     private func destination<Content: View>(_ id: String, title: String, detail: String, icon: String, primary: Bool = false, @ViewBuilder content: () -> Content) -> some View {
         NavigationLink(destination: content()) {

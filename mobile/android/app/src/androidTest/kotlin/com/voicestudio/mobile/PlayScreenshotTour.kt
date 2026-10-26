@@ -41,7 +41,12 @@ class SmallestSpeechModel: TestRule {
             val args=InstrumentationRegistry.getArguments()
             assumeTrue("Pass playScreenshots=true to capture the Play screenshots",args.getString("playScreenshots")=="true")
             val context=InstrumentationRegistry.getInstrumentation().targetContext
-            val tts=context.assets.open("models.json").bufferedReader().use {ModelCatalog.decode(it.readText())}.models.filter {it.capability=="tts"}.minBy {it.totalBytes}
+            val catalog=context.assets.open("models.json").bufferedReader().use {ModelCatalog.decode(it.readText())}.models
+            val tts=catalog.filter {it.capability=="tts"}.minBy {it.totalBytes}
+            // PhoneVoiceStore.create() requires one asr and one clone model; the scripted
+            // engine below never runs either, so the smallest asr and the first clone suffice.
+            val asr=catalog.filter {it.capability=="asr"}.minBy {it.totalBytes}
+            val clone=catalog.first {it.capability=="clone"}
             val runtime=PhoneRuntime.get(context)
             assertTrue("Use a device with the declared model RAM",tts.fits(runtime.ramBytes))
             if(tts.gated&&!runtime.licence.accepted(tts)) {
@@ -50,27 +55,41 @@ class SmallestSpeechModel: TestRule {
             }
             if(args.getString("downloadSmokeModels")=="true"&&!runtime.downloads.installed(tts)) runBlocking {runtime.downloads.download(tts,true)}
             assertTrue("Explicitly provision the smallest speech model first",runtime.downloads.installed(tts))
-            runBlocking {seedVoice(context,runtime,tts)}
+            runBlocking {seedVoice(context,runtime,tts,asr,clone)}
             base.evaluate()
         }
     }
 
     /**
      * The same store and create() the Voices screen uses (PhoneStudio), fed real
-     * speech from the installed model. The transcript is the scripted line that
-     * speech was made from, so the much larger ASR model is not needed; create()
-     * still decodes the clip, writes the reference and records consent time.
+     * speech from the installed model. Script both ASR and the preview clone:
+     * the screenshot voice uses that same speech as its preview, so neither heavy
+     * model needs provisioning. create() still decodes the clip, writes the
+     * reference and synthetic preview, and records consent time. Real cloning is
+     * exercised separately by PhoneDubInferenceTest.
      */
-    private suspend fun seedVoice(context: android.content.Context, runtime: PhoneRuntime, tts: PhoneModel) {
+    private suspend fun seedVoice(context: android.content.Context, runtime: PhoneRuntime, tts: PhoneModel, asr: PhoneModel, clone: PhoneModel) {
         val voices=PhoneVoiceStore(File(context.noBackupFilesDir,"voices"))
         if(voices.list().any {it.name==VOICE_NAME}) return
         val source=File(context.cacheDir,"play-voice.wav")
         try {
             markSynthetic(runtime.engine.synthesize(tts,VOICE_LINE,language="en"),source)
+            var previewCalls=0
             val scripted=object: LocalEngine by runtime.engine {
                 override suspend fun transcribe(model: PhoneModel, audio: LocalAudio, progress: (Float)->Unit): String = VOICE_LINE
+                override suspend fun clone(model: PhoneModel, text: String, reference: LocalAudio, referenceText: String, progress: (Float)->Unit): LocalAudio {
+                    assertEquals(VOICE_LINE,text)
+                    assertEquals(VOICE_LINE,referenceText)
+                    previewCalls++
+                    progress(1f)
+                    return reference
+                }
             }
-            voices.create(VOICE_NAME,source,true,tts,scripted)
+            val voice=voices.create(VOICE_NAME,source,true,asr,clone,scripted)
+            assertEquals("Voice creation must use the scripted preview",1,previewCalls)
+            val preview=voices.preview(voice)
+            assertEquals("Voice creation must persist the preview","preview.wav",preview.name)
+            assertTrue("The seeded preview must contain audio",preview.length()>44)
         } finally {source.delete()}
         assertTrue("The seeded phone voice must be listed",voices.list().any {it.name==VOICE_NAME})
     }

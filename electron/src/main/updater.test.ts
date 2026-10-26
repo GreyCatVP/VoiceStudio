@@ -122,7 +122,7 @@ describe('DesktopUpdater', () => {
     expect(observed).toEqual(['checking', 'available', 'downloading', 'downloaded']);
     expect(updater.snapshot()).toMatchObject({
       status: 'downloaded',
-      currentVersion: '0.5.2',
+      currentVersion: __APP_VERSION__,
       availableVersion: '0.5.3',
       notes: 'Ready',
       progress: 100,
@@ -382,6 +382,29 @@ describe('DesktopUpdater', () => {
     updater.install();
     expect(mocks.autoUpdater.setFeedURL).not.toHaveBeenCalled();
     expect(mocks.autoUpdater.checkForUpdates).not.toHaveBeenCalled();
+  });
+
+  test('a development run shows and saves the channel without updating itself', async () => {
+    mocks.app.isPackaged = false;
+    mocks.disk.file = '{"channel":"beta"}';
+    const updater = new DesktopUpdater();
+    expect(updater.snapshot()).toMatchObject({ status: 'unsupported', channel: 'beta' });
+    expect(updater.setChannel('stable')).toMatchObject({
+      status: 'unsupported',
+      channel: 'stable',
+    });
+    expect(mocks.disk.file).toContain('"stable"');
+    await updater.check();
+    expect(mocks.autoUpdater.checkForUpdates).not.toHaveBeenCalled();
+  });
+
+  test('a package-managed install exposes no channel to switch', () => {
+    vi.stubEnv('VOICESTUDIO_DISABLE_UPDATER', '1');
+    try {
+      expect(new DesktopUpdater().snapshot().channel).toBeUndefined();
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   test('stays unsupported when a package manager owns the install', async () => {

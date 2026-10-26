@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -36,6 +37,17 @@ private val destinations = listOf(
     HomeDestination("dictate", "nav.dictation", "mobile.dictate.tap_to_start", VSIcons.Mic),
     HomeDestination("models", "mobile.local.models", "mobile.local.installed", VSIcons.Download),
     HomeDestination("connect", "mobile.local.my_computer", "mobile.local.pair_settings", VSIcons.Computer),
+    HomeDestination("transcriptions", "transcriptions.title", "mobile.transcripts.hint", Icons.AutoMirrored.Filled.List),
+    HomeDestination("handoff", "mobile.handoff.title", "mobile.handoff.hint", VSIcons.Folder),
+    HomeDestination("design", "nav.design", "clone.design_placeholder", Icons.Default.Create),
+    HomeDestination("stories", "nav.stories", "stories.subtitle", Icons.Default.Person),
+    HomeDestination("audiobook", "audiobook.title", "audiobook.subtitle", VSIcons.Folder),
+    HomeDestination("batch", "batch.title", "mobile.dub.pick_media", Icons.AutoMirrored.Filled.List),
+    HomeDestination("gallery", "nav.gallery", "clone.preview_voice", Icons.Default.Person),
+    HomeDestination("workflows", "workflows.title", "workflows.heading", Icons.Default.Share),
+    HomeDestination("calls", "calls.title", "mobile.calls.hint", Icons.Default.Call),
+    HomeDestination("local-api", "mobile.host.title", "mobile.host.hint", Icons.Default.Settings),
+    HomeDestination("tools", "tools.title", "compare.title", Icons.Default.Settings),
 )
 
 @Composable fun HomeScreen(vm: StudioViewModel, navigate: (String)->Unit) {
@@ -58,13 +70,7 @@ private val destinations = listOf(
             Surface(shape=MaterialTheme.shapes.large, color=role("canvas")) {
                 Box {
                     artwork?.let { Image(it,null,Modifier.matchParentSize(),contentScale=ContentScale.Crop,alpha=.25f) }
-                    Column(Modifier.fillMaxWidth().padding(12.dp)) {
-                        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                            Text(tr("homeUi.title"),Modifier.weight(1f),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold)
-                            Info("mobile.simple.privacy","mobile.local.privacy")
-                        }
-                        ContributorStrip()
-                    }
+                    HomeHero(Modifier.fillMaxWidth().padding(12.dp))
                 }
             }
             BoxWithConstraints {
@@ -154,5 +160,28 @@ private val destinations = listOf(
             }
             Icon(Icons.AutoMirrored.Filled.ArrowForward,null,Modifier.size(18.dp),tint=role("textMuted"))
         }
+    }
+}
+
+
+/** Keep the wordmark and credits parallel; accessibility text can use the full width. */
+@Composable fun HomeHero(modifier: Modifier = Modifier) {
+    BoxWithConstraints(modifier.testTag("home.hero")) {
+        val stacked = LocalDensity.current.fontScale >= 1.6f || maxWidth < 260.dp
+        if(stacked) Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            HomeHeroText(Modifier.fillMaxWidth())
+            Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.CenterEnd) { ContributorStrip() }
+        } else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp),verticalAlignment=Alignment.CenterVertically) {
+            HomeHeroText(Modifier.weight(1f))
+            ContributorStrip()
+        }
+    }
+}
+
+@Composable private fun HomeHeroText(modifier: Modifier = Modifier) {
+    Column(modifier.testTag("home.hero-text"),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+        Text(tr("app.name"),style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.SemiBold,
+            modifier=Modifier.semantics {heading()})
+        Text(tr("mobile.home.subtitle"),style=MaterialTheme.typography.bodyMedium,color=role("textMuted"))
     }
 }

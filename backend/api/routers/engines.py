@@ -93,6 +93,7 @@ def _family_payload(family: str, module):
                 backend["output_channels"] = 1 if backend["output_sample_rate"] else None
             if engine_id == active:
                 backend["supported_language_names"] = tts_backend.language_options(active)
+                backend["rendered_dialects"] = tts_backend.rendered_dialects(active)
             if engine_id == active == "mlx-audio":
                 # Constructor resolves model preferences only; never loads weights.
                 backend["supports_cloning"] = tts_backend.MLXAudioBackend().supports_cloning
@@ -308,7 +309,21 @@ def _argos_pack_request(request: ArgosPackRequest) -> tuple[str, list[str]]:
         job = _get_job(request.job_id)
         source = job.get("source_lang") if job else None
     if not source:
-        raise HTTPException(422, "Transcribe the source before installing its language pack")
+        # The job can already be transcribed while its source language is
+        # still unknown (a whisper.cpp run without language metadata), so
+        # "transcribe the source first" is the wrong advice - the remedy is
+        # choosing the source language. Same structured code the translation
+        # path answers with, so the app can localize one guidance string.
+        raise HTTPException(
+            422,
+            detail={
+                "code": "source_language_required",
+                "message": (
+                    "Source language is unknown. Select the source language "
+                    "before checking or installing its language pack."
+                ),
+            },
+        )
     return source, request.target_langs
 
 

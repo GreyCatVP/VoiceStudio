@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { usePaneResize } from '@/hooks/use-pane-resize';
 import { useWindowFullscreen } from '@/hooks/use-window-fullscreen';
+import { MAC_TRAFFIC_LIGHTS_BAND } from '@shared/utils/windowChrome';
 import { useWorkspace } from '@/lib/store/workspace';
 import { useWorkspaceSidebarState } from './use-workspace-sidebar';
 import { WorkspaceNavigation } from './workspace-menu';
@@ -54,41 +55,44 @@ export function WorkspaceSidebar() {
             <span
               aria-hidden="true"
               data-slot="compact-sidebar-divider"
-              className={cn(
-                'pointer-events-none absolute right-0 bottom-0 w-px bg-border/50',
-                trafficLights ? 'top-[72px]' : 'top-12',
-              )}
+              style={{ top: 48 + (trafficLights ? MAC_TRAFFIC_LIGHTS_BAND : 0) }}
+              className="pointer-events-none absolute right-0 bottom-0 w-px bg-border/50"
             />
           )}
           <div
-            className={cn(
-              'workspace-titlebar flex shrink-0 justify-center',
-              trafficLights ? 'min-h-[72px] items-end pb-1' : 'h-12 items-center',
-            )}
+            data-slot="titlebar-row"
+            style={trafficLights ? { paddingTop: MAC_TRAFFIC_LIGHTS_BAND } : undefined}
+            className="workspace-titlebar box-content flex h-12 shrink-0 items-center justify-center"
           >
-            {/* The rail can always reopen itself, on every platform: the
-                brand icon alone gave Windows/Linux no local control. */}
+            {/* The brand mark, which turns into the expand icon on hover or
+                focus: the rail can always reopen itself, on every platform. */}
             <Button
               variant="ghost"
               size="icon-sm"
               aria-label={t('clone.toggle_sidebar')}
+              title={t('clone.toggle_sidebar')}
               aria-expanded={false}
               onClick={() => setOpen(true)}
-              className="shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="group/rail-toggle relative shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {mac ? (
-                <PanelLeftOpenIcon className="size-5" aria-hidden="true" />
-              ) : (
-                <img src={brandIcon} alt="" className="size-6 shrink-0" />
-              )}
+              <img
+                src={brandIcon}
+                alt=""
+                data-slot="rail-brand"
+                className="size-6 shrink-0 transition-opacity duration-150 group-hover/rail-toggle:opacity-0 group-focus-visible/rail-toggle:opacity-0 motion-reduce:transition-none"
+              />
+              <PanelLeftOpenIcon
+                aria-hidden="true"
+                className="absolute inset-0 m-auto size-5 opacity-0 transition-opacity duration-150 group-hover/rail-toggle:opacity-100 group-focus-visible/rail-toggle:opacity-100 motion-reduce:transition-none"
+              />
             </Button>
           </div>
           <WorkspaceNavigation compact />
           {!mac && <StatusBar compact />}
           <div
             className={cn(
-              'shrink-0 border-t border-border/50 py-2',
-              mac ? 'grid grid-cols-2 items-center gap-1 px-1' : 'flex flex-col items-center gap-1',
+              // One centered column, like the navigation above it.
+              'flex shrink-0 flex-col items-center gap-1 border-t border-border/50 py-2',
             )}
           >
             <Link
@@ -96,10 +100,7 @@ export function WorkspaceSidebar() {
               aria-label={t('nav.settings')}
               title={t('nav.settings')}
               className={cn(
-                buttonVariants({
-                  variant: 'ghost',
-                  size: mac ? 'icon-xs' : 'icon-sm',
-                }),
+                buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
                 'workspace-nav-item',
               )}
             >
@@ -127,12 +128,11 @@ export function WorkspaceSidebar() {
             className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-40 w-full object-cover object-right opacity-25 [mask-image:linear-gradient(black,transparent)] dark:opacity-40"
           />
           <header
-            className={cn(
-              'workspace-titlebar flex shrink-0 gap-2 px-3',
-              // The traffic lights get their own row above the brand, so the narrow
-              // column never has to reserve their width beside the wordmark.
-              trafficLights ? 'min-h-[72px] items-end pb-2' : 'items-center',
-            )}
+            data-slot="titlebar-row"
+            // The traffic lights own a strip above the brand (one shared constant
+            // with the main process); this drag row pads past it, never under it.
+            style={trafficLights ? { paddingTop: MAC_TRAFFIC_LIGHTS_BAND } : undefined}
+            className="workspace-titlebar box-content flex h-14 shrink-0 items-center gap-2 px-3"
           >
             <Link
               to="/"
@@ -141,8 +141,10 @@ export function WorkspaceSidebar() {
             >
               <img src={brandIcon} alt="" className="size-6 shrink-0" />
               <span className="flex min-w-0 flex-col leading-tight">
-                <span className="truncate text-base font-semibold">{t('app.name')}</span>
-                <span className="text-[11px] leading-none text-muted-foreground tabular-nums">
+                <span className="truncate text-[15px] font-semibold tracking-tight">
+                  {t('app.name')}
+                </span>
+                <span className="mt-0.5 truncate text-[11px] leading-none text-muted-foreground tabular-nums">
                   {versionLabel}
                 </span>
               </span>
@@ -175,8 +177,10 @@ export function WorkspaceSidebar() {
                     aria-label={t('nav.settings')}
                     title={t('nav.settings')}
                     className={cn(
-                      buttonVariants({ variant: 'ghost', size: 'icon-xs' }),
-                      'workspace-nav-item',
+                      buttonVariants({ variant: 'ghost', size: 'sm' }),
+                      // Settings may shrink (label truncates) so long translations never push
+                      // the footer row wider than the pane.
+                      'workspace-nav-item h-7 min-w-0 shrink gap-1.5 px-2 text-xs',
                     )}
                   >
                     <SettingsIcon
@@ -184,6 +188,9 @@ export function WorkspaceSidebar() {
                       data-tone="settings"
                       data-motion="turn"
                     />
+                    <span className="hidden min-w-0 truncate @[11rem]/engines:inline">
+                      {t('nav.settings')}
+                    </span>
                   </Link>
                 ) : undefined
               }
