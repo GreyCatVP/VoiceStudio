@@ -272,6 +272,86 @@ def _force_reap(predicate) -> int:
     return reaped
 
 
+# ── Memory-cap recycling ────────────────────────────────────────────────────
+#
+# A long-running sidecar can keep growing its host memory across many
+# generates (allocator caches, fragmentation); on Windows that eats the
+# system commit limit until unrelated programs fail to start (0xc000012d).
+# When a cap is set, the reaper tick also shuts down a sidecar whose committed
+# memory has reached it; the next request respawns a fresh one. Same busy
+# guard as the idle reaper: a sidecar mid-op is skipped, never interrupted.
+# ``<= 0`` (the default) disables it.
+SIDECAR_MAX_MEMORY_MB = float(os.environ.get("OMNIVOICE_SIDECAR_MAX_MEMORY_MB", "0"))
+
+
+def _resolve_sidecar_max_memory_mb() -> float:
+    """Memory cap in MB: prefs store → env → default, with env winning."""
+    from core import prefs
+    try:
+        return float(prefs.resolve(
+            "sidecar_max_memory_mb",
+            env="OMNIVOICE_SIDECAR_MAX_MEMORY_MB",
+            default=SIDECAR_MAX_MEMORY_MB,
+        ))
+    except (TypeError, ValueError):
+        return SIDECAR_MAX_MEMORY_MB
+
+
+def _sidecar_memory_mb(proc: Optional[subprocess.Popen]) -> float:
+    """Committed host memory of a sidecar and its children, in MB: private
+    bytes on Windows (what counts against the commit limit), RSS elsewhere.
+    Children are included because a venv ``python.exe`` on Windows is a
+    launcher that runs the real interpreter as its child. 0.0 if unknown."""
+    if proc is None:
+        return 0.0
+    try:
+        import psutil
+        root = psutil.Process(proc.pid)
+        total = 0
+        for p in [root, *root.children(recursive=True)]:
+            try:
+                info = p.memory_info()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+            total += getattr(info, "private", 0) or info.rss
+        return total / (1024 * 1024)
+    except Exception:
+        return 0.0
+
+
+def recycle_oversized_sidecars(max_mb: float | None = None) -> int:
+    """Shut down sidecars whose committed memory is at or above ``max_mb``.
+    Returns the count recycled. Busy-guarded like ``reap_idle_sidecars``."""
+    cap = _resolve_sidecar_max_memory_mb() if max_mb is None else max_mb
+    if cap <= 0:
+        return 0
+    recycled = 0
+    for b in list(_LIVE_BACKENDS):
+        proc = getattr(b, "_proc", None)
+        if proc is None or proc.poll() is not None:
+            continue
+        if _sidecar_memory_mb(proc) < cap:
+            continue
+        if not b._lock.acquire(blocking=False):
+            continue  # an op holds the lock → busy; next tick retries
+        try:
+            proc = b._proc
+            if proc is None or proc.poll() is not None:
+                continue
+            used = _sidecar_memory_mb(proc)
+            if used >= cap:
+                logger.info(
+                    "[%s] recycling sidecar using %.0f MB host memory "
+                    "(cap %.0f MB); next request respawns it",
+                    b.id, used, cap,
+                )
+                b.shutdown()  # shutdown() does not take _lock, so no re-entrancy
+                recycled += 1
+        finally:
+            b._lock.release()
+    return recycled
+
+
 def list_live_sidecars() -> list[dict]:
     """Snapshot of subprocess engines with a currently-running sidecar, for the
     loaded-models panel. Each entry: ``{id, pid, idle_seconds}``. Lets a user
@@ -307,6 +387,7 @@ def _reaper_loop() -> None:
         time.sleep(_REAPER_INTERVAL_S)
         try:
             reap_idle_sidecars()
+            recycle_oversized_sidecars()
         except Exception:  # pragma: no cover - defensive; a reap error must not kill the thread
             logger.exception("sidecar idle reaper error")
 
@@ -314,7 +395,10 @@ def _reaper_loop() -> None:
 def _ensure_reaper_running() -> None:
     """Start the daemon reaper thread once, lazily, on first sidecar spawn."""
     global _reaper_started
-    if _reaper_started or _resolve_sidecar_idle_timeout() <= 0:
+    if _reaper_started or (
+        _resolve_sidecar_idle_timeout() <= 0
+        and _resolve_sidecar_max_memory_mb() <= 0
+    ):
         return
     with _reaper_lock:
         if _reaper_started:
