@@ -1,9 +1,15 @@
 // @vitest-environment node
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
-import { createUninstallPlan, scanUninstallTargets, type UninstallRoots } from './uninstall-data';
+import {
+  createUninstallPlan,
+  scanUninstallTargets,
+  type UninstallRoots,
+  type UninstallTarget,
+} from './uninstall-data';
+import { within } from './reset-data';
 
 const created: string[] = [];
 afterEach(async () => {
@@ -18,7 +24,7 @@ async function fixture(): Promise<UninstallRoots & { root: string }> {
   const roots = {
     root,
     data: join(root, 'OmniVoice', 'data'),
-    environment: join(root, 'VoiceStudio', 'shell'),
+    environment: join(root, 'appdata', 'VoiceStudio'),
     logs: join(root, 'OmniVoice', 'logs'),
     userEnvironment: join(root, '.config', 'omnivoice'),
     models: join(root, '.cache', 'huggingface'),
@@ -27,6 +33,7 @@ async function fixture(): Promise<UninstallRoots & { root: string }> {
     await mkdir(path, { recursive: true });
     await writeFile(join(path, 'fixture.bin'), 'data');
   }
+  await mkdir(join(root, 'home'));
   return roots;
 }
 
@@ -61,6 +68,7 @@ it('refuses unsigned arbitrary roots and collapses descendants under an owned pa
 
 it('does not offer a nested private model directory as a separately shared target', async () => {
   const roots = await fixture();
+  await mkdir(join(roots.environment, 'models'));
   const targets = await scanUninstallTargets({
     ...roots,
     models: join(roots.environment, 'models'),
@@ -83,7 +91,361 @@ it('lists a setup-chosen location by its runtime folders so data and models stay
   const paths = targets.map((target) => target.path);
   expect(paths).toEqual(expect.arrayContaining([data, ...entries]));
   expect(paths).not.toContain(chosen);
-  const plan = await createUninstallPlan(targets.filter((t) => t.path !== data), false, null);
+  const plan = await createUninstallPlan(
+    targets.filter((t) => t.path !== data),
+    false,
+    null,
+  );
   expect(plan.paths).toEqual(expect.arrayContaining(entries));
   expect(plan.paths).not.toContain(data);
+});
+
+it('keeps a shared cache opt-in beneath an app-named workspace ancestor', async () => {
+  const roots = await fixture();
+  const models = join(roots.root, 'VoiceStudio', 'personal', '.cache', 'huggingface');
+  await mkdir(models, { recursive: true });
+  const targets = await scanUninstallTargets({ ...roots, models });
+  expect(targets.find((target) => target.key === 'models')?.shared).toBe(true);
+  expect((await createUninstallPlan(targets, false, null)).paths).not.toContain(models);
+  expect((await createUninstallPlan(targets, true, null)).paths).toContain(models);
+});
+
+it('preserves custom owned runtime entries without selecting sibling user data', async () => {
+  const roots = await fixture();
+  const runtime = join(roots.root, 'Votest', 'VoiceStudio-AMD-20261025', 'runtime');
+  const project = join(runtime, 'project');
+  const entries = ['project', '.uv-cache', '.python', '.tmp', 'tmp'].map((name) =>
+    join(runtime, name),
+  );
+  for (const path of [...entries, join(project, 'backend')]) await mkdir(path, { recursive: true });
+  const python = join(runtime, '.python', 'cpython-3.12-windows-x86_64-none-3.12.12');
+  await mkdir(python);
+  await symlink(
+    python,
+    join(runtime, '.python', 'cpython-3.12-windows-x86_64-none'),
+    process.platform === 'win32' ? 'junction' : 'dir',
+  );
+  await writeFile(join(python, 'python.bin'), 'pybin');
+  await writeFile(join(project, '.runtime-ready'), 'a'.repeat(64));
+  await writeFile(join(project, 'pyproject.toml'), '[project]\nname = "omnivoice"\n');
+  await writeFile(join(project, 'uv.lock'), 'version = 1');
+  await writeFile(join(project, 'backend', 'main.py'), 'app = None');
+  const targets = await scanUninstallTargets({ ...roots, runtimeEnvironment: entries });
+  expect(targets.find((target) => target.path === join(runtime, '.python'))?.size_bytes).toBe(5);
+  const plan = await createUninstallPlan(
+    targets.filter((target) => entries.includes(target.path)),
+    false,
+    null,
+  );
+  expect(plan.refused).toEqual([]);
+  expect(plan.paths).toEqual(entries);
+  expect(plan.paths).not.toContain(runtime);
+  const wholeRoot = await scanUninstallTargets({ ...roots, runtimeEnvironment: runtime });
+  expect((await createUninstallPlan(wholeRoot, false, null)).paths).toContain(runtime);
+});
+
+it.each(['home', 'unsigned'])(
+  'preserves shared caches beneath a rejected %s data root',
+  async (kind) => {
+    const roots = await fixture();
+    const home = join(roots.root, 'home');
+    const data = kind === 'home' ? home : join(home, 'personal');
+    const models = join(data, '.cache', 'huggingface');
+    await mkdir(models, { recursive: true });
+    await writeFile(join(models, 'unrelated.txt'), 'keep');
+    if (kind === 'home') await writeFile(join(home, 'omnivoice.db'), 'db');
+    const targets = await scanUninstallTargets({ ...roots, data, models }, home);
+    expect(targets.find((target) => target.key === 'models')).toMatchObject({
+      path: models,
+      shared: true,
+    });
+    const plan = await createUninstallPlan(targets, false, home);
+    expect(plan.refused).toContain(data);
+    expect(plan.paths).not.toContain(models);
+    expect(plan.paths).not.toContain(data);
+    const explicit = await createUninstallPlan(targets, true, home);
+    expect(explicit.paths).toContain(models);
+  },
+);
+
+it.each(['private-layout', 'inside-data', 'inside-environment'])(
+  'requires explicit selection for a %s models link to a recognized shared HF cache',
+  async (placement) => {
+    const roots = await fixture();
+    const external = join(roots.root, 'external', 'huggingface');
+    const parent =
+      placement === 'inside-data'
+        ? roots.data
+        : placement === 'inside-environment'
+          ? roots.environment
+          : join(roots.root, 'VoiceStudio');
+    const models = join(parent, 'models');
+    await mkdir(parent, { recursive: true });
+    await mkdir(external, { recursive: true });
+    await writeFile(join(external, 'unrelated.txt'), 'keep');
+    await symlink(external, models, process.platform === 'win32' ? 'junction' : 'dir');
+    const targets = await scanUninstallTargets({ ...roots, models });
+    expect(targets.find((target) => target.key === 'models')).toMatchObject({
+      path: models,
+      shared: true,
+    });
+    const automatic = await createUninstallPlan(targets, false, null);
+    expect(automatic.refused).toEqual([]);
+    const automaticPhysical = await Promise.all(automatic.paths.map((path) => realpath(path)));
+    expect(automaticPhysical).not.toContain(await realpath(external));
+    const explicit = await createUninstallPlan(targets, true, null);
+    expect(explicit.refused).toEqual([]);
+    const explicitPhysical = await Promise.all(explicit.paths.map((path) => realpath(path)));
+    expect(explicitPhysical).toContain(await realpath(external));
+    expect(await readFile(join(external, 'unrelated.txt'), 'utf8')).toBe('keep');
+  },
+);
+
+it.each(['runtime', 'environment', 'logs', 'userenv', 'data', 'environment-direct'])(
+  'preserves shared models before deduplicating a %s role at the same cache',
+  async (role) => {
+    const roots = await fixture();
+    const external = join(roots.root, 'external', 'huggingface');
+    const alias = join(roots.root, 'custom-runtime', '.uv-cache');
+    await mkdir(external, { recursive: true });
+    await mkdir(join(roots.root, 'custom-runtime'));
+    await symlink(external, alias, process.platform === 'win32' ? 'junction' : 'dir');
+    await writeFile(join(external, 'unrelated.txt'), 'keep');
+    const override: Partial<UninstallRoots> =
+      role === 'runtime'
+        ? { runtimeEnvironment: alias }
+        : role === 'environment-direct'
+          ? { environment: external }
+          : { [role === 'userenv' ? 'userEnvironment' : role]: alias };
+    const targets = await scanUninstallTargets({ ...roots, ...override, models: external });
+    expect(targets.find((target) => target.key === 'models')).toMatchObject({ shared: true });
+    const physical = await realpath(external);
+    const automatic = await createUninstallPlan(targets, false, null);
+    expect(automatic.refused).toEqual([]);
+    for (const path of automatic.paths) {
+      const candidate = await realpath(path);
+      expect(within(physical, candidate) || within(candidate, physical)).toBe(false);
+    }
+    const explicit = await createUninstallPlan(targets, true, null);
+    expect(explicit.refused).toEqual([]);
+    expect(await Promise.all(explicit.paths.map((path) => realpath(path)))).toContain(physical);
+    expect(await readFile(join(external, 'unrelated.txt'), 'utf8')).toBe('keep');
+  },
+);
+
+it.each(['parent-first', 'child-first'])(
+  'retains the shared warning and opt-in across %s overlapping runtime roles',
+  async (order) => {
+    const roots = await fixture();
+    const parent = join(roots.root, 'external', 'VoiceStudio');
+    const models = join(parent, '.cache', 'huggingface');
+    const child = join(models, 'hub');
+    await mkdir(child, { recursive: true });
+    const aliases = [join(roots.root, 'runtime-parent'), join(roots.root, 'runtime-child')];
+    await symlink(parent, aliases[0], process.platform === 'win32' ? 'junction' : 'dir');
+    await symlink(child, aliases[1], process.platform === 'win32' ? 'junction' : 'dir');
+    const targets = await scanUninstallTargets({
+      ...roots,
+      models,
+      runtimeEnvironment: order === 'parent-first' ? aliases : aliases.toReversed(),
+    });
+    expect(targets.find((target) => target.key === 'models')).toMatchObject({ shared: true });
+    for (const target of targets.filter((target) => aliases.includes(target.path))) {
+      expect(target.shared).toBe(true);
+    }
+    const automatic = await createUninstallPlan(targets, false, null);
+    expect(automatic.refused).toEqual([]);
+    const protectedPath = await realpath(models);
+    for (const path of automatic.paths) {
+      const candidate = await realpath(path);
+      expect(within(protectedPath, candidate) || within(candidate, protectedPath)).toBe(false);
+    }
+    const explicit = await createUninstallPlan(targets, true, null);
+    expect(explicit.refused).toEqual([]);
+    expect(await Promise.all(explicit.paths.map((path) => realpath(path)))).toContain(
+      await realpath(parent),
+    );
+  },
+);
+
+it.each(['same', 'parent', 'child'])(
+  'enforces shared privacy in direct plans before filtering a %s role overlap',
+  async (relation) => {
+    const roots = await fixture();
+    const parent = join(roots.root, 'external', 'VoiceStudio');
+    const models = join(parent, '.cache', 'huggingface');
+    const child = join(models, 'hub');
+    await mkdir(child, { recursive: true });
+    const destination = relation === 'same' ? models : relation === 'parent' ? parent : child;
+    const alias = join(roots.root, 'runtime-alias');
+    await symlink(destination, alias, process.platform === 'win32' ? 'junction' : 'dir');
+    const targets: UninstallTarget[] = [
+      { key: 'env', path: alias, size_bytes: 0, exists: true, shared: false },
+      { key: 'models', path: models, size_bytes: 0, exists: true, shared: true },
+    ];
+    for (const rows of [targets, targets.toReversed()]) {
+      expect((await createUninstallPlan(rows, false, null)).paths).toEqual([]);
+      const explicit = await createUninstallPlan(rows, true, null);
+      expect(explicit.refused).toEqual([]);
+      expect(explicit.paths).toHaveLength(1);
+    }
+  },
+);
+
+it('keeps a private cache and independent managed runtime in the automatic plan', async () => {
+  const roots = await fixture();
+  const models = join(roots.root, 'VoiceStudio', 'models');
+  const runtime = join(roots.root, 'VoiceStudio', '.uv-cache');
+  await mkdir(models, { recursive: true });
+  await mkdir(runtime);
+  const targets = await scanUninstallTargets({ ...roots, models, runtimeEnvironment: runtime });
+  expect(targets.every((target) => !target.shared)).toBe(true);
+  const plan = await createUninstallPlan(targets, false, null);
+  expect(plan.refused).toEqual([]);
+  const physical = await Promise.all(plan.paths.map((path) => realpath(path)));
+  expect(physical).toContain(await realpath(models));
+  expect(physical).toContain(await realpath(runtime));
+});
+
+it.each(
+  ['runtime', 'environment', 'logs', 'userenv', 'data'].flatMap((role) =>
+    ['root', 'hub'].map((layout) => [role, layout] as const),
+  ),
+)('refuses a cache-only %s %s outside the configured model cache', async (role, layout) => {
+  const roots = await fixture();
+  const external = join(roots.root, 'other', 'huggingface');
+  const alias = join(roots.root, 'other-cache-link');
+  await mkdir(external, { recursive: true });
+  const destination = layout === 'root' ? external : join(external, 'hub');
+  await mkdir(destination, { recursive: true });
+  await symlink(destination, alias, process.platform === 'win32' ? 'junction' : 'dir');
+  const override: Partial<UninstallRoots> =
+    role === 'runtime'
+      ? { runtimeEnvironment: alias }
+      : { [role === 'userenv' ? 'userEnvironment' : role]: alias };
+  const targets = await scanUninstallTargets({ ...roots, ...override });
+  for (const includeModels of [false, true]) {
+    const plan = await createUninstallPlan(targets, includeModels, null);
+    expect(plan.refused).toContain(alias);
+    expect(plan.paths).not.toContain(alias);
+  }
+});
+
+it('counts an opted-in shared cache once when its parent is the removal target', async () => {
+  const roots = await fixture();
+  const parent = join(roots.root, 'external', 'VoiceStudio');
+  const models = join(parent, '.cache', 'huggingface');
+  await mkdir(models, { recursive: true });
+  await writeFile(join(parent, 'app.bin'), 'data');
+  await writeFile(join(models, 'model.bin'), 'model');
+  const targets: UninstallTarget[] = [
+    { key: 'env', path: parent, size_bytes: 9, exists: true, shared: false },
+    { key: 'models', path: models, size_bytes: 5, exists: true, shared: true },
+  ];
+  for (const rows of [targets, targets.toReversed()]) {
+    const plan = await createUninstallPlan(rows, true, null);
+    expect(plan.refused).toEqual([]);
+    expect(plan.paths).toEqual([parent]);
+    expect(plan.size_bytes).toBe(9);
+  }
+  expect(await readFile(join(models, 'model.bin'), 'utf8')).toBe('model');
+});
+
+it.each(['..cache', '...cache'])(
+  'keeps shared models inside a literal %s child excluded through its parent',
+  async (directory) => {
+    const roots = await fixture();
+    const parent = join(roots.root, 'external', 'VoiceStudio');
+    const models = join(parent, directory, 'huggingface');
+    await mkdir(models, { recursive: true });
+    await writeFile(join(models, 'model.bin'), 'keep');
+    const scanned = await scanUninstallTargets({ ...roots, environment: parent, models });
+    expect(scanned.find((target) => target.key === 'env')?.shared).toBe(true);
+    expect(scanned.find((target) => target.key === 'models')?.shared).toBe(true);
+    const direct: UninstallTarget[] = [
+      { key: 'env', path: parent, size_bytes: 4, exists: true, shared: false },
+      { key: 'models', path: models, size_bytes: 4, exists: true, shared: true },
+    ];
+    for (const targets of [scanned, direct, direct.toReversed()]) {
+      const automatic = await createUninstallPlan(targets, false, null);
+      expect(automatic.refused).toEqual([]);
+      expect(automatic.paths).not.toContain(parent);
+      expect(automatic.paths).not.toContain(models);
+      const explicit = await createUninstallPlan(targets, true, null);
+      expect(explicit.refused).toEqual([]);
+      expect(explicit.paths).toContain(parent);
+    }
+    expect(await readFile(join(models, 'model.bin'), 'utf8')).toBe('keep');
+  },
+);
+
+it('reports physical coverage labels and inclusive bytes for overlapping root aliases', async () => {
+  const roots = await fixture();
+  const parent = join(roots.root, 'external', 'VoiceStudio');
+  const models = join(parent, '.cache', 'huggingface');
+  const parentAlias = join(roots.root, 'profile-label');
+  const modelAlias = join(roots.root, 'model-label');
+  await mkdir(models, { recursive: true });
+  await writeFile(join(parent, 'app.bin'), 'data');
+  await writeFile(join(models, 'model.bin'), 'model');
+  for (const [target, alias] of [
+    [parent, parentAlias],
+    [models, modelAlias],
+  ]) {
+    await symlink(target, alias, process.platform === 'win32' ? 'junction' : 'dir');
+  }
+  const targets = await scanUninstallTargets({
+    ...roots,
+    environment: parentAlias,
+    models: modelAlias,
+  });
+  const parentRow = targets.find((target) => target.path === parentAlias)!;
+  const modelRow = targets.find((target) => target.path === modelAlias)!;
+  expect(parentRow).toMatchObject({ size_bytes: 9, shared: true });
+  expect(modelRow).toMatchObject({ size_bytes: 5, shared: true, covered_by: [parentAlias] });
+  expect(parentRow.covered_by).toBeUndefined();
+  for (const rows of [
+    [parentRow, modelRow],
+    [modelRow, parentRow],
+  ]) {
+    expect((await createUninstallPlan(rows, false, null)).paths).toEqual([]);
+    const explicit = await createUninstallPlan(rows, true, null);
+    expect(explicit).toMatchObject({ paths: [parentAlias], size_bytes: 9, refused: [] });
+  }
+  const forged: UninstallTarget[] = [
+    { ...parentRow, covered_by: [modelAlias] },
+    { ...modelRow, covered_by: ['unselected-label'] },
+  ];
+  expect(await createUninstallPlan(forged, true, null)).toMatchObject({
+    paths: [parentAlias],
+    size_bytes: 9,
+    refused: [],
+  });
+  expect((await createUninstallPlan(forged, false, null)).paths).toEqual([]);
+  expect(await createUninstallPlan([modelRow], true, null)).toMatchObject({
+    paths: [modelAlias],
+    size_bytes: 5,
+  });
+});
+
+it('measures a resolved shared cache root while pruning its internal junctions', async () => {
+  const roots = await fixture();
+  const models = join(roots.root, 'external', 'huggingface');
+  const outside = join(roots.root, 'not-part-of-cache');
+  const alias = join(roots.root, 'cache-label');
+  await mkdir(models, { recursive: true });
+  await mkdir(outside);
+  await writeFile(join(models, 'model.bin'), 'model');
+  await writeFile(join(outside, 'unrelated.bin'), 'unrelated');
+  await symlink(
+    outside,
+    join(models, 'internal-link'),
+    process.platform === 'win32' ? 'junction' : 'dir',
+  );
+  await symlink(models, alias, process.platform === 'win32' ? 'junction' : 'dir');
+  const targets = await scanUninstallTargets({ ...roots, models: alias });
+  const row = targets.find((target) => target.key === 'models')!;
+  expect(row).toMatchObject({ path: alias, size_bytes: 5, shared: true });
+  expect((await createUninstallPlan([row], false, null)).paths).toEqual([]);
+  expect(await readFile(join(outside, 'unrelated.bin'), 'utf8')).toBe('unrelated');
 });
