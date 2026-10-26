@@ -28,6 +28,8 @@ The application data location uses Electron's native folder picker and a main-pr
 
 Remove all data scans the backend data root, Electron runtime/configuration, logs, durable environment and model cache with real sizes. Shared Hugging Face caches remain an explicit opt-in. Main compares physical paths when grouping targets, so a link to an external shared cache remains a separate choice. After typed confirmation, main rescans and validates every root, stops the backend and hands the exact plan to the signed desktop helper. The helper independently canonicalizes and validates every target, waits for Electron to exit, then removes the accepted targets, including a shared cache only when explicitly selected. A failed helper launch restores the backend and keeps the app open; a successful handoff quits immediately. Removing the installed application binary remains the operating system's normal uninstall step.
 
+Estimates measure resolved roots while skipping internal links, and count a covered child only when none of its covering roots is selected; this display metadata does not authorize deletion.
+
 `electron/tests/storage-settings-smoke.mjs` verifies warning/partial-scan display, folder reveal, cancel/confirm cleanup, partial cleanup failure and backup status with mocked mutations. Live read-only reports returned all four categories, one volume and an existing backup. No actual files were deleted. Tauri storage regression tests pass after shared-helper extraction. Connection, performance and privacy browser tests also pass after the settings-navigation refactor.
 
 Interrupted sidecar installs without an environment remain included in application data. Completed sidecar environments, checkouts and weights are counted once in the engine category.

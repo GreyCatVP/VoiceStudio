@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
+import type { UninstallTarget } from '../../../../preload/index.d';
 
 const mock = vi.hoisted(() => ({
   scan: vi.fn(),
@@ -15,7 +16,12 @@ vi.mock('@/components/bridge', () => ({
 vi.mock('sonner', () => ({ toast: { error: mock.toastError } }));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => (key === 'settings.uninstall_confirm_word' ? 'DELETE' : key),
+    t: (key: string, values?: { size?: string }) =>
+      key === 'settings.uninstall_confirm_word'
+        ? 'DELETE'
+        : key === 'settings.uninstall_total'
+          ? `${key}:${values?.size}`
+          : key,
   }),
 }));
 
@@ -64,4 +70,56 @@ it('passes the explicit shared-cache opt-in to native cleanup', async () => {
   fireEvent.change(await screen.findByRole('textbox'), { target: { value: 'delete' } });
   fireEvent.click(screen.getByRole('button', { name: 'settings.uninstall_confirm' }));
   await waitFor(() => expect(mock.purge).toHaveBeenCalledWith(true));
+});
+
+it('counts covered bytes only when their covering parent is selected', () => {
+  const parent: UninstallTarget = {
+    key: 'env',
+    path: 'E:\\profile-label',
+    size_bytes: 9,
+    exists: true,
+    shared: true,
+  };
+  const child: UninstallTarget = {
+    key: 'models',
+    path: 'D:\\model-label',
+    size_bytes: 5,
+    exists: true,
+    shared: true,
+    covered_by: [parent.path],
+  };
+  expect(uninstallBytes([parent, child], false)).toBe(0);
+  expect(uninstallBytes([parent, child], true)).toBe(9);
+  expect(uninstallBytes([child, parent], true)).toBe(9);
+  expect(uninstallBytes([child], true)).toBe(5);
+  expect(uninstallBytes([{ ...parent, exists: false }, child], true)).toBe(5);
+  expect(uninstallBytes([parent, { ...child, covered_by: undefined }], true)).toBe(14);
+  expect(uninstallBytes([child, { ...parent, shared: false }], false)).toBe(9);
+});
+
+it('updates the real checkbox estimate without counting the nested cache twice', async () => {
+  const parent: UninstallTarget = {
+    key: 'env',
+    path: 'E:\\profile-label',
+    size_bytes: 9 * 1024,
+    exists: true,
+    shared: true,
+  };
+  const child: UninstallTarget = {
+    key: 'models',
+    path: 'D:\\model-label',
+    size_bytes: 5 * 1024,
+    exists: true,
+    shared: true,
+    covered_by: [parent.path],
+  };
+  mock.scan.mockResolvedValue([parent, child]);
+  render(<UninstallSettings />);
+  await screen.findByText(child.path);
+  expect(screen.getByText('settings.uninstall_total:0 B')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('checkbox'));
+  expect(screen.getByText('settings.uninstall_total:9 KB')).toBeInTheDocument();
+  expect(screen.queryByText('settings.uninstall_total:14 KB')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('checkbox'));
+  expect(screen.getByText('settings.uninstall_total:0 B')).toBeInTheDocument();
 });

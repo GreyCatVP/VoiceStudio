@@ -1,6 +1,7 @@
 import { lstat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { isAbsolute } from 'node:path';
+import type { UninstallTarget } from '../preload/index.d';
 import {
   directorySize,
   isAppOwnedRoot,
@@ -11,6 +12,8 @@ import {
   within,
 } from './reset-data';
 
+export type { UninstallTarget } from '../preload/index.d';
+
 export interface UninstallRoots {
   data: string;
   environment: string;
@@ -19,14 +22,6 @@ export interface UninstallRoots {
   logs: string | null;
   userEnvironment: string;
   models: string;
-}
-
-export interface UninstallTarget {
-  key: 'data' | 'env' | 'logs' | 'userenv' | 'models';
-  path: string;
-  size_bytes: number;
-  exists: boolean;
-  shared: boolean;
 }
 
 export interface UninstallPlan {
@@ -118,14 +113,23 @@ export async function scanUninstallTargets(
     home,
   );
   const targets: UninstallTarget[] = [];
-  for (const { key, path, shared } of candidates) {
+  for (const { key, path, shared, physical } of candidates) {
     const present = await exists(path);
+    const coveredBy = physical
+      ? candidates
+          .filter(
+            (parent) =>
+              parent.physical && parent.physical !== physical && within(physical, parent.physical),
+          )
+          .map((parent) => parent.path)
+      : [];
     targets.push({
       key,
       path,
       shared,
       exists: present,
-      size_bytes: present ? await directorySize(path) : 0,
+      size_bytes: present && physical ? await directorySize(physical) : 0,
+      ...(coveredBy.length ? { covered_by: coveredBy } : {}),
     });
   }
   return targets;

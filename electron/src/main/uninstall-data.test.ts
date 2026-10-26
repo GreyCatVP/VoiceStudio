@@ -125,11 +125,13 @@ it('preserves custom owned runtime entries without selecting sibling user data',
     join(runtime, '.python', 'cpython-3.12-windows-x86_64-none'),
     process.platform === 'win32' ? 'junction' : 'dir',
   );
+  await writeFile(join(python, 'python.bin'), 'pybin');
   await writeFile(join(project, '.runtime-ready'), 'a'.repeat(64));
   await writeFile(join(project, 'pyproject.toml'), '[project]\nname = "omnivoice"\n');
   await writeFile(join(project, 'uv.lock'), 'version = 1');
   await writeFile(join(project, 'backend', 'main.py'), 'app = None');
   const targets = await scanUninstallTargets({ ...roots, runtimeEnvironment: entries });
+  expect(targets.find((target) => target.path === join(runtime, '.python'))?.size_bytes).toBe(5);
   const plan = await createUninstallPlan(
     targets.filter((target) => entries.includes(target.path)),
     false,
@@ -376,3 +378,74 @@ it.each(['..cache', '...cache'])(
     expect(await readFile(join(models, 'model.bin'), 'utf8')).toBe('keep');
   },
 );
+
+it('reports physical coverage labels and inclusive bytes for overlapping root aliases', async () => {
+  const roots = await fixture();
+  const parent = join(roots.root, 'external', 'VoiceStudio');
+  const models = join(parent, '.cache', 'huggingface');
+  const parentAlias = join(roots.root, 'profile-label');
+  const modelAlias = join(roots.root, 'model-label');
+  await mkdir(models, { recursive: true });
+  await writeFile(join(parent, 'app.bin'), 'data');
+  await writeFile(join(models, 'model.bin'), 'model');
+  for (const [target, alias] of [
+    [parent, parentAlias],
+    [models, modelAlias],
+  ]) {
+    await symlink(target, alias, process.platform === 'win32' ? 'junction' : 'dir');
+  }
+  const targets = await scanUninstallTargets({
+    ...roots,
+    environment: parentAlias,
+    models: modelAlias,
+  });
+  const parentRow = targets.find((target) => target.path === parentAlias)!;
+  const modelRow = targets.find((target) => target.path === modelAlias)!;
+  expect(parentRow).toMatchObject({ size_bytes: 9, shared: true });
+  expect(modelRow).toMatchObject({ size_bytes: 5, shared: true, covered_by: [parentAlias] });
+  expect(parentRow.covered_by).toBeUndefined();
+  for (const rows of [
+    [parentRow, modelRow],
+    [modelRow, parentRow],
+  ]) {
+    expect((await createUninstallPlan(rows, false, null)).paths).toEqual([]);
+    const explicit = await createUninstallPlan(rows, true, null);
+    expect(explicit).toMatchObject({ paths: [parentAlias], size_bytes: 9, refused: [] });
+  }
+  const forged: UninstallTarget[] = [
+    { ...parentRow, covered_by: [modelAlias] },
+    { ...modelRow, covered_by: ['unselected-label'] },
+  ];
+  expect(await createUninstallPlan(forged, true, null)).toMatchObject({
+    paths: [parentAlias],
+    size_bytes: 9,
+    refused: [],
+  });
+  expect((await createUninstallPlan(forged, false, null)).paths).toEqual([]);
+  expect(await createUninstallPlan([modelRow], true, null)).toMatchObject({
+    paths: [modelAlias],
+    size_bytes: 5,
+  });
+});
+
+it('measures a resolved shared cache root while pruning its internal junctions', async () => {
+  const roots = await fixture();
+  const models = join(roots.root, 'external', 'huggingface');
+  const outside = join(roots.root, 'not-part-of-cache');
+  const alias = join(roots.root, 'cache-label');
+  await mkdir(models, { recursive: true });
+  await mkdir(outside);
+  await writeFile(join(models, 'model.bin'), 'model');
+  await writeFile(join(outside, 'unrelated.bin'), 'unrelated');
+  await symlink(
+    outside,
+    join(models, 'internal-link'),
+    process.platform === 'win32' ? 'junction' : 'dir',
+  );
+  await symlink(models, alias, process.platform === 'win32' ? 'junction' : 'dir');
+  const targets = await scanUninstallTargets({ ...roots, models: alias });
+  const row = targets.find((target) => target.key === 'models')!;
+  expect(row).toMatchObject({ path: alias, size_bytes: 5, shared: true });
+  expect((await createUninstallPlan([row], false, null)).paths).toEqual([]);
+  expect(await readFile(join(outside, 'unrelated.bin'), 'utf8')).toBe('unrelated');
+});
