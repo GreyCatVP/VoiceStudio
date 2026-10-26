@@ -9,9 +9,30 @@ import socket
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import pytest
+
 from fastapi.testclient import TestClient
 
-from services import network_share as ns
+
+
+def _ns():
+    """Resolve at call time: suites that purge and re-import ``services.*``
+    mid-run would otherwise leave a module-level alias pointing at a stale
+    copy, so a patch on ``sys.modules`` misses the code under test."""
+    import importlib
+
+    return importlib.import_module("services.network_share")
+
+
+ns = None
+
+
+@pytest.fixture(autouse=True)
+def _current_network_share():
+    """Every test sees the module the code under test actually runs."""
+    global ns
+    ns = _ns()
+    yield
 
 
 def _addr(ip):
@@ -19,9 +40,9 @@ def _addr(ip):
 
 
 def _lan(fake, stats=None, primary=None):
-    with patch("services.network_share.psutil.net_if_addrs", return_value=fake), patch(
-        "services.network_share.psutil.net_if_stats", return_value=stats or {}
-    ), patch("services.network_share._default_route_ipv4", return_value=primary):
+    with patch.object(ns.psutil, "net_if_addrs", return_value=fake), patch.object(
+        ns.psutil, "net_if_stats", return_value=stats or {}
+    ), patch.object(ns, "_default_route_ipv4", return_value=primary):
         return ns.lan_ipv4_addresses()
 
 
@@ -91,9 +112,9 @@ def test_adapters_that_are_down_are_not_listed():
 
 def test_unreadable_interface_stats_never_hide_addresses():
     fake = {"en0": [_addr("192.168.1.42")]}
-    with patch("services.network_share.psutil.net_if_addrs", return_value=fake), patch(
-        "services.network_share.psutil.net_if_stats", side_effect=OSError("denied")
-    ), patch("services.network_share._default_route_ipv4", return_value=None):
+    with patch.object(ns.psutil, "net_if_addrs", return_value=fake), patch.object(
+        ns.psutil, "net_if_stats", side_effect=OSError("denied")
+    ), patch.object(ns, "_default_route_ipv4", return_value=None):
         assert ns.lan_ipv4_addresses() == ["192.168.1.42"]
 
 
@@ -111,7 +132,7 @@ def test_default_route_probe_returns_none_offline():
         def connect(self, _target):
             raise OSError("Network is unreachable")
 
-    with patch("services.network_share.socket.socket", Offline):
+    with patch.object(ns.socket, "socket", Offline):
         assert ns._default_route_ipv4() is None
 
 

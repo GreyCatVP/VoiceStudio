@@ -218,9 +218,13 @@ def test_migration_0004_downgrade_drops_table(tmp_path):
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("OMNIVOICE_DATA_DIR", str(tmp_path))
     import importlib
-    for m in ("core.config", "core.db", "services.mcp_bindings"):
-        if m in sys.modules:
-            importlib.reload(importlib.import_module(m))
+
+    from backend_module_state import restore, snapshot
+
+    before = snapshot()
+    reloaded = [m for m in ("core.config", "core.db", "services.mcp_bindings") if m in sys.modules]
+    for m in reloaded:
+        importlib.reload(importlib.import_module(m))
     import core.db as _db
     _db.init_db()
     import main as _main
@@ -241,13 +245,21 @@ def client(tmp_path, monkeypatch):
         # VOICES_DIR`) that an in-place reload of core.config alone cannot
         # heal — later personas/profiles requests then wrote voice files
         # into this test's dead tmp_path in combined full-suite runs.
+        # Purging alone left fresh twins in sys.modules while modules
+        # collected earlier kept the originals, so a later test patched one
+        # copy while code ran through the other (the CI-only
+        # test_network_share_self_check failure on #3466). Restore the
+        # pre-test module objects instead (tests/backend_module_state.py),
+        # re-running the in-place reloads under the restored env.
         monkeypatch.undo()
-        importlib.reload(importlib.import_module("core.config"))
-        importlib.reload(importlib.import_module("core.db"))
-        for m in list(sys.modules):
-            if m in ("api", "services") or m.startswith(("api.", "services.")):
-                sys.modules.pop(m, None)
-        importlib.reload(_main)
+        restore(before)
+        for m in reloaded:
+            importlib.reload(sys.modules[m])
+        # A main first imported by this test was dropped by restore(); the
+        # next consumer imports it fresh. A pre-existing one was reloaded in
+        # place above, so heal it under the restored env.
+        if "main" in sys.modules:
+            importlib.reload(sys.modules["main"])
 
 
 def test_rest_crud_roundtrip(client):
