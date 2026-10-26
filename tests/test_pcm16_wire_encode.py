@@ -6,11 +6,17 @@ chunk down instead, and every streaming encoder goes through it.
 """
 from pathlib import Path
 
+import importlib
+
 import torch
 
-from services.audio_io import pcm16_mono
-
 _ROOT = Path(__file__).resolve().parents[1]
+
+
+def pcm16_mono(wav):
+    # Resolved per call: other tests swap ``services.*`` in sys.modules, and a
+    # module-level import would keep exercising a stale copy of the helper.
+    return importlib.import_module("services.audio_io").pcm16_mono(wav)
 
 
 def test_in_range_audio_is_a_plain_cast():
