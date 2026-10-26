@@ -10,6 +10,10 @@ macOS, Windows and Linux.
 
 ## Mobile: native iOS and Android (owner-set 2026-10-17)
 
+Every release builds desktop, iOS, Android and Docker from the same release tag
+and version (owner-set 2026-10-26). Phone downloads belong on the same GitHub
+Release; a missing channel is a release bug.
+
 `mobile/ios/` (Swift/SwiftUI) and `mobile/android/` (Kotlin/Compose) are native
 apps that run models **on the phone** (TTS, dictation, voice cloning, dub
 translation; owner-set 2026-10-18) and can also drive a user's own VoiceStudio
