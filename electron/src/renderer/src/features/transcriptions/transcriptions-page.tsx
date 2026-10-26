@@ -14,7 +14,6 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
-  AlertCircleIcon,
   Clock3Icon,
   KeyboardIcon,
   LanguagesIcon,
@@ -42,6 +41,11 @@ import { useRecording } from '@/hooks/use-recording';
 import { useDictationSelection } from '@/hooks/use-dictation-selection';
 import { useEngines } from '@/hooks/use-engines';
 import { apiJson, describeError } from '@/lib/api/client';
+import {
+  TranscriptionFailure,
+  transcriptionFailureFrom,
+  type TranscriptionFailureState,
+} from './transcription-failure';
 import { setCloneSetting } from '@/lib/store/clone-settings';
 import { cn } from '@/lib/utils';
 import {
@@ -86,7 +90,7 @@ export function TranscriptionsPage() {
   const [url, setUrl] = useState<string | null>(null);
   const [mode, setMode] = useState<TranscriptionMode>(initialTranscriptionMode);
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState<string | null>(null);
+  const [failed, setFailed] = useState<TranscriptionFailureState | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
   const request = useRef<AbortController | null>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -164,7 +168,7 @@ export function TranscriptionsPage() {
       recordActionBreadcrumb(
         `transcribe:${reportMode}:${controller.signal.aborted ? 'cancel' : 'error'}`,
       );
-      if (!controller.signal.aborted) setFailed(describeError(error));
+      if (!controller.signal.aborted) setFailed(transcriptionFailureFrom(error));
     } finally {
       finishActivity();
       if (request.current === controller) {
@@ -618,40 +622,12 @@ export function TranscriptionsPage() {
             </div>
           )}
           {failed && (
-            <div className="mx-6 mt-4 rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-sm">
-              <div className="flex items-center gap-3">
-                <AlertCircleIcon className="size-4 shrink-0 text-destructive" />
-                <span role="alert" className="min-w-0 flex-1 font-medium">
-                  {t('transcriptions.failed')}
-                </span>
-                <Button
-                  variant="ghost"
-                  disabled={!file || busy}
-                  onClick={() => file && void transcribe(file)}
-                >
-                  {t('backend.retry')}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label={t('common.dismiss')}
-                  onClick={() => setFailed(null)}
-                >
-                  <XIcon />
-                </Button>
-              </div>
-              <details className="mt-1 pl-7 text-xs text-muted-foreground">
-                <summary className="cursor-pointer rounded py-1 focus-visible:outline-ring">
-                  {t('profileIdentity.details')}
-                </summary>
-                <pre className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted/40 p-3 font-mono text-xs">
-                  {failed}
-                </pre>
-                <Link to="/settings/logs" className="mt-2 inline-block underline">
-                  {t('settings.logs')}
-                </Link>
-              </details>
-            </div>
+            <TranscriptionFailure
+              failure={failed}
+              retryDisabled={!file || busy}
+              onRetry={() => file && void transcribe(file)}
+              onDismiss={() => setFailed(null)}
+            />
           )}
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
             {selected ? (

@@ -131,6 +131,16 @@ def stream_failure(code: str, *, device: str | None = None) -> dict[str, object]
             ),
             "retryable": True,
         },
+        "transcription_disk_full": {
+            "code": "transcription_disk_full",
+            "detail": (
+                "Transcription stopped because the disk is full. Free space on "
+                "the drive that holds VoiceStudio's data, model cache or temp "
+                "folder (Settings → Storage shows disk usage and clears "
+                "temporary files), then try again."
+            ),
+            "retryable": True,
+        },
         "transcription_pipe_lost": {
             "code": "transcription_pipe_lost",
             "detail": (
@@ -170,6 +180,16 @@ def transcription_failure_code(error: object) -> str:
 
     from services.ffmpeg_utils import MediaToolUnavailableError
 
+    try:
+        from core.failure import is_disk_full_error
+
+        # Every chunk write (temp WAV, model cache) fails the same way until
+        # space is freed; "check the selected ASR engine" sends the user to the
+        # wrong place.
+        if is_disk_full_error(error if isinstance(error, BaseException) else str(error)):
+            return "transcription_disk_full"
+    except Exception:  # noqa: BLE001 — classification must never raise
+        pass
     pipe = False
     for exc in _exception_chain(error):
         if isinstance(exc, MediaToolUnavailableError):
