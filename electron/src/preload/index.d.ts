@@ -311,6 +311,7 @@ export interface UninstallTarget {
   size_bytes: number;
   exists: boolean;
   shared: boolean;
+  covered_by?: string[];
 }
 
 export interface AccountPublicState {

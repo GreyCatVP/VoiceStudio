@@ -1,5 +1,7 @@
-import { lstat, readdir, rm } from 'node:fs/promises';
-import { basename, dirname, isAbsolute, join, parse, relative, resolve } from 'node:path';
+import { lstat, readdir, realpath, rm } from 'node:fs/promises';
+import { lstatSync, readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { basename, dirname, isAbsolute, join, parse, relative, resolve, sep } from 'node:path';
 
 export const FRONTEND_RESET_SCOPES = ['ui_prefs', 'history'] as const;
 export const DISK_RESET_SCOPES = [
@@ -86,15 +88,31 @@ export function normalized(path: string): string {
   return process.platform === 'win32' ? value.toLocaleLowerCase('en-US') : value;
 }
 
-export function within(path: string, root: string): boolean {
-  const rel = relative(normalized(root), normalized(path));
-  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+export async function physicalPath(path: string): Promise<string | null> {
+  if (!isAbsolute(path)) return null;
+  try {
+    return normalized(await realpath(path));
+  } catch {
+    return null;
+  }
 }
 
-async function hasAppSignature(path: string): Promise<boolean> {
+export function within(path: string, root: string): boolean {
+  const rel = relative(normalized(root), normalized(path));
+  return rel === '' || (rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel));
+}
+
+async function hasAppSignature(path: string, includeCacheMarkers = true): Promise<boolean> {
+  if (
+    hasRuntimeProjectSignature(path) ||
+    hasRuntimeProjectSignature(join(path, 'project')) ||
+    hasRuntimeProjectSignature(join(path, 'runtime', 'project'))
+  )
+    return true;
   for (const marker of ['omnivoice.db', 'prefs.json', 'voices', 'outputs', 'engines']) {
     if (await stat(join(path, marker))) return true;
   }
+  if (!includeCacheMarkers) return false;
   const hub = await stat(join(path, 'hub'));
   if (hub?.isDirectory()) return true;
   try {
@@ -104,24 +122,121 @@ async function hasAppSignature(path: string): Promise<boolean> {
   }
 }
 
-export async function isValidVoiceStudioRoot(path: string, home: string | null): Promise<boolean> {
-  if (!isAbsolute(path) || dirname(path) === path || components(path).length < 2) return false;
-  if (home && normalized(path) === normalized(home)) return false;
-  const owned = new Set([
+function hasRuntimeProjectSignature(project: string): boolean {
+  try {
+    if (
+      !lstatSync(project).isDirectory() ||
+      !lstatSync(join(project, 'backend')).isDirectory() ||
+      !lstatSync(join(project, 'backend', 'main.py')).isFile() ||
+      !lstatSync(join(project, 'uv.lock')).isFile()
+    )
+      return false;
+    const ready = join(project, '.runtime-ready');
+    const metadata = join(project, 'pyproject.toml');
+    const readyInfo = lstatSync(ready);
+    const metadataInfo = lstatSync(metadata);
+    if (
+      !readyInfo.isFile() ||
+      readyInfo.size > 128 ||
+      !metadataInfo.isFile() ||
+      metadataInfo.size > 65536
+    )
+      return false;
+    if (!/^[a-f0-9]{64}$/.test(readFileSync(ready, 'utf8').trim())) return false;
+    let inProject = false;
+    for (const raw of readFileSync(metadata, 'utf8').split(/\r?\n/)) {
+      const line = raw.split('#', 1)[0].trim();
+      if (line.startsWith('[')) inProject = line === '[project]';
+      else if (inProject && /^name\s*=\s*(["'])omnivoice\1$/.test(line)) return true;
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+function isAppRoot(path: string): boolean {
+  return [
     'omnivoice',
     '.omnivoice',
     'voicestudio',
     'com.debpalash.omnivoice-studio',
-    'huggingface',
-  ]);
-  if (components(path).some((part) => owned.has(part.toLocaleLowerCase('en-US')))) return true;
-  return hasAppSignature(path);
+    'omnivoicestudio-data',
+  ].includes(basename(path).toLocaleLowerCase('en-US'));
 }
 
-export function modelsAreShared(models: string, data: string): boolean {
-  if (within(models, data)) return false;
-  const appPrivate = new Set(['omnivoice', '.omnivoice', 'voicestudio']);
-  return !components(models).some((part) => appPrivate.has(part.toLocaleLowerCase('en-US')));
+function isPrivateCacheRoot(path: string): boolean {
+  return (
+    ['models', 'hf_cache'].includes(basename(path).toLocaleLowerCase('en-US')) &&
+    (isAppRoot(dirname(path)) || hasRuntimeProjectSignature(join(dirname(path), 'project')))
+  );
+}
+
+function isManagedLayout(path: string, includeSharedCaches = true): boolean {
+  const name = basename(path).toLocaleLowerCase('en-US');
+  const parent = dirname(path);
+  const parentName = basename(parent).toLocaleLowerCase('en-US');
+  if (name === 'hub')
+    return (includeSharedCaches && parentName === 'huggingface') || isPrivateCacheRoot(parent);
+  const runtimeChildren = ['project', '.uv-cache', '.python', '.tmp', 'tmp'];
+  if (runtimeChildren.includes(name) && parentName === 'runtime' && isAppRoot(dirname(parent)))
+    return true;
+  return (
+    ['data', 'logs', 'runtime', 'models', 'hf_cache', ...runtimeChildren].includes(name) &&
+    (isAppRoot(parent) || hasRuntimeProjectSignature(join(parent, 'project')))
+  );
+}
+
+export async function isValidVoiceStudioRoot(path: string, home: string | null): Promise<boolean> {
+  if (!isAbsolute(path)) return false;
+  const [candidate, physicalHome] = await Promise.all([
+    physicalPath(path),
+    home ? physicalPath(home) : null,
+  ]);
+  if (!candidate || (home && !physicalHome)) return false;
+  if (dirname(candidate) === candidate || components(candidate).length < 2) return false;
+  if (physicalHome && candidate === physicalHome) return false;
+  return (
+    isAppRoot(candidate) ||
+    basename(candidate).toLocaleLowerCase('en-US') === 'huggingface' ||
+    isManagedLayout(candidate) ||
+    hasAppSignature(candidate)
+  );
+}
+
+export async function modelsAreShared(
+  models: string,
+  data: string,
+  home: string | null = homedir(),
+): Promise<boolean> {
+  const [candidate, physicalData, physicalHome] = await Promise.all([
+    physicalPath(models),
+    physicalPath(data),
+    home ? physicalPath(home) : null,
+  ]);
+  if (!candidate || (home && !physicalHome) || candidate === physicalHome) return true;
+  if (
+    physicalData &&
+    within(candidate, physicalData) &&
+    (await isAppOwnedRoot(physicalData, physicalHome))
+  )
+    return false;
+  return !(
+    isPrivateCacheRoot(candidate) ||
+    (basename(candidate).toLocaleLowerCase('en-US') === 'hub' &&
+      isPrivateCacheRoot(dirname(candidate)))
+  );
+}
+
+export async function isAppOwnedRoot(path: string, home: string | null): Promise<boolean> {
+  const candidate = await physicalPath(path);
+  return Boolean(
+    candidate &&
+    (await isValidVoiceStudioRoot(candidate, home)) &&
+    (isAppRoot(candidate) ||
+      isManagedLayout(candidate, false) ||
+      (await hasAppSignature(candidate, false))),
+  );
 }
 
 async function scopeTargets(key: DiskResetScope, roots: ResetRoots): Promise<string[]> {
@@ -178,7 +293,10 @@ async function allowedTarget(
   return false;
 }
 
-export async function scanResetScopes(roots: ResetRoots): Promise<ResetScope[]> {
+export async function scanResetScopes(
+  roots: ResetRoots,
+  home: string | null = homedir(),
+): Promise<ResetScope[]> {
   const scopes: ResetScope[] = FRONTEND_RESET_SCOPES.map((key) => ({
     key,
     paths: [],
@@ -197,7 +315,7 @@ export async function scanResetScopes(roots: ResetRoots): Promise<ResetScope[]> 
       paths: present,
       size_bytes: sizes.reduce((sum, size) => sum + size, 0),
       exists: present.length > 0,
-      shared: key === 'models' && modelsAreShared(roots.models, roots.data),
+      shared: key === 'models' && (await modelsAreShared(roots.models, roots.data, home)),
       needs_restart: true,
     });
   }
@@ -217,6 +335,7 @@ export async function purgeResetScopes(
     restarted: false,
   };
   const wanted = DISK_RESET_SCOPES.filter((key) => requested.includes(key));
+  const targets: string[] = [];
   for (const key of wanted) {
     for (const target of await scopeTargets(key, roots)) {
       if (!(await stat(target))) continue;
@@ -224,14 +343,17 @@ export async function purgeResetScopes(
         report.refused.push(target);
         continue;
       }
-      const size = await directorySize(target);
-      try {
-        await rm(target, { recursive: true, force: true, maxRetries: 2, retryDelay: 100 });
-        report.removed.push(target);
-        report.freed_bytes += size;
-      } catch {
-        report.failed.push(target);
-      }
+      targets.push(target);
+    }
+  }
+  for (const target of targets) {
+    const size = await directorySize(target);
+    try {
+      await rm(target, { recursive: true, force: true, maxRetries: 2, retryDelay: 100 });
+      report.removed.push(target);
+      report.freed_bytes += size;
+    } catch {
+      report.failed.push(target);
     }
   }
   return report;
