@@ -85,6 +85,7 @@ def test_stray_files_in_the_fragment_directory_are_named_correctly():
 
 
 def test_repo_fragments_fold_into_a_changelog_that_passes_the_style_lint():
+    """Keep repository fragments compatible with the changelog style gate."""
     with open(os.path.join(ROOT, "CHANGELOG.md"), encoding="utf-8") as fh:
         folded = cf.apply_fragments(fh.read(), cf.read_fragments())
     assert not lint_changelog(folded)
@@ -137,11 +138,13 @@ def test_a_bullet_elsewhere_does_not_hide_a_fragment(tmp_path):
 
 
 def test_suffixed_fragment_names_keep_their_pr_number():
+    """Preserve the numeric PR reference in suffixed fragment filenames."""
     assert re.match(r"\d*", cf.NAME.match("3263-b.docs.md").group("id")).group() == "3263"
 
 
 @pytest.mark.parametrize("count", [1, 2, 3, 5])
 def test_empty_unreleased_seeds_up_to_three_newest_fragment_highlights(tmp_path, count):
+    """Seed newest Highlights while preserving releases and fold idempotency."""
     entries = [f"Fix number {number} (#{number})" for number in range(1, count + 1)]
     for number, entry in enumerate(entries, start=1):
         _write(tmp_path, f"{number}.fixed.md", entry + "\n")
@@ -161,6 +164,7 @@ def test_empty_unreleased_seeds_up_to_three_newest_fragment_highlights(tmp_path,
 
 
 def test_generated_highlights_deduplicate_entries_across_sections():
+    """List an incoming entry once in Highlights even when sections repeat it."""
     fragments = [
         ("Docs", "Same entry (#10)"),
         ("Fixed", "Same entry (#10)"),
@@ -174,6 +178,7 @@ def test_generated_highlights_deduplicate_entries_across_sections():
 
 @pytest.mark.parametrize("marker", ["**Highlights**", "  **Highlights**  "])
 def test_existing_owner_highlights_are_preserved_verbatim(marker):
+    """Preserve owner-written Highlights and their surrounding preamble verbatim."""
     text = SAMPLE.replace("**Highlights**", marker, 1)
     before = text.split("## [Unreleased]\n", 1)[1].split("### Changed", 1)[0]
 
@@ -186,10 +191,12 @@ def test_existing_owner_highlights_are_preserved_verbatim(marker):
 
 @pytest.mark.parametrize("text", [EMPTY_UNRELEASED, SAMPLE, SAMPLE.replace("**Highlights**", "")])
 def test_no_fragments_leave_the_entire_changelog_unchanged(text):
+    """Leave the complete changelog untouched when no fragments are supplied."""
     assert cf.apply_fragments(text, []) == text
 
 
 def test_missing_highlights_follow_existing_preamble_before_subsections():
+    """Place generated Highlights after the owner preamble and before entry sections."""
     text = EMPTY_UNRELEASED.replace(
         "## [Unreleased]\n\n", "## [Unreleased]\n\nOwner preamble stays as written.\n\n",
     )
@@ -199,6 +206,7 @@ def test_missing_highlights_follow_existing_preamble_before_subsections():
 
 
 def test_existing_folded_entry_can_seed_missing_highlights_without_duplication():
+    """Reuse an existing entry as a highlight without duplicating its section bullet."""
     text = EMPTY_UNRELEASED.replace(
         "## [Unreleased]\n\n", "## [Unreleased]\n\n### Fixed\n\n- Existing fix (#7)\n\n",
     )
@@ -209,12 +217,14 @@ def test_existing_folded_entry_can_seed_missing_highlights_without_duplication()
 
 
 def test_generated_highlights_preserve_literal_fragment_text():
+    """Copy fragment text literally, including Windows path backslashes."""
     entry = r"Keep C:\models\1 intact (#42)"
     folded = cf.apply_fragments(EMPTY_UNRELEASED, [("Fixed", entry)])
     assert f"**Highlights**\n\n- {entry}\n\n" in folded.split("### Fixed", 1)[0]
 
 
 def test_generated_highlights_use_only_incoming_fragment_entries():
+    """Choose Highlights from incoming fragments rather than older folded entries."""
     text = EMPTY_UNRELEASED.replace(
         "## [Unreleased]\n\n", "## [Unreleased]\n\n### Fixed\n\n- Earlier entry (#1)\n\n",
     )
