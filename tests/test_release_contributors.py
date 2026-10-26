@@ -45,12 +45,12 @@ class FakeGh:
         raise AssertionError(f"unexpected gh call: {args}")
 
 
-def test_authors_are_ranked_by_commits_and_include_maintainers(release):
-    gh = FakeGh(authors=["debpalash"] * 5 + ["velixio"] * 3 + ["rudycelekli"] * 3 + ["zed"])
+def test_core_team_is_pinned_above_everyone_ranked_by_contributions(release):
+    gh = FakeGh(authors=["rudycelekli"] * 9 + ["debpalash"] * 5 + ["velixio"] * 3 + ["alice"] * 3 + ["zed"])
     block = release.contributors_section("o/r", "v0.5.7", gh)
-    assert block.startswith("### Contributors\n")
-    # most commits first; a tie (velixio and rudycelekli, 3 each) is alphabetical
-    assert "@debpalash, @rudycelekli, @velixio, @zed" in block
+    assert block.startswith("### Contributors\n\n**Core team:** @debpalash, @velixio\n")
+    # most contributions first; a tie (alice and nobody else at 3) is alphabetical
+    assert block.endswith("most contributions first: @rudycelekli, @alice, @zed\n")
 
 
 def test_bots_agents_and_unlinked_placeholders_are_never_credited(release):
@@ -58,14 +58,17 @@ def test_bots_agents_and_unlinked_placeholders_are_never_credited(release):
     noise = ["dependabot[bot]", "github-actions[bot]", "claude", "Claude", "copilot",
              "invalid-email-address", "app/dependabot", "coderabbitai"]
     gh = FakeGh(authors=noise + ["velixio"], pr_authors=noise)
-    assert release.contributors_section("o/r", "v0.5.7", gh).endswith("@velixio\n")
+    assert release.contributors_section("o/r", "v0.5.7", gh).endswith("**Core team:** @velixio\n")
     assert release.contributors_section("o/r", "v0.5.7", FakeGh(authors=noise, pr_authors=noise)) == ""
 
 
-def test_pr_authors_with_unlinked_commits_are_still_credited_after_the_committers(release):
-    gh = FakeGh(authors=["debpalash", "velixio", "velixio"], pr_authors=["JoshuaWIls", "velixio", "alice"])
+def test_pr_authors_with_unlinked_commits_are_ranked_by_their_merged_prs(release):
+    """Their commits are not linked to an account, so merged PRs count instead."""
+    gh = FakeGh(authors=["Bob", "bob", "carol"],
+                pr_authors=["JoshuaWIls"] * 3 + ["bob", "alice", "velixio"])
     block = release.contributors_section("o/r", "v0.5.7", gh)
-    assert block.endswith("@velixio, @debpalash, @alice, @JoshuaWIls\n")
+    assert "**Core team:** @velixio" in block
+    assert block.endswith("most contributions first: @JoshuaWIls, @Bob, @alice, @carol\n")
 
 
 def test_the_range_starts_at_the_latest_stable_release_for_betas_and_stables(release):
@@ -98,7 +101,7 @@ def test_release_notes_get_the_contributors_block_appended(release, monkeypatch,
     notes = _prepare(release, monkeypatch, tmp_path, CHANGELOG, repo="o/r",
                      gh=FakeGh(authors=["velixio", "debpalash", "debpalash"]))
     assert notes.startswith("- A fix (#1)\n\n### Contributors\n")
-    assert notes.endswith("@debpalash, @velixio\n")
+    assert notes.endswith("**Core team:** @debpalash, @velixio\n")
 
 
 def test_a_hand_written_contributors_section_is_never_duplicated(release, monkeypatch, tmp_path):

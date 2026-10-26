@@ -107,8 +107,11 @@ version only after validation.
    contributors and bug reporters from the tag comparison and included PRs. The
    release workflow adds a `### Contributors` block to the GitHub Release notes
    by itself: everyone who committed since the latest stable release, plus the
-   authors of PRs merged in that span (ranked by commits; bots, AI agents and
-   unlinked placeholders are never listed). It does **not** find bug reporters,
+   authors of PRs merged in that span. The core team (`CORE_TEAM` in
+   `scripts/prepare_electron_release.py`) is pinned on its own line on top;
+   everyone else is ranked by contributions, most first (commits, or merged PRs
+   when their commits are not linked to an account). Bots, AI agents and
+   unlinked placeholders are never listed. It does **not** find bug reporters,
    and it skips the block when the changelog section already has a
    `### Contributors` heading, so write one by hand when you want roles or
    reporters credited.

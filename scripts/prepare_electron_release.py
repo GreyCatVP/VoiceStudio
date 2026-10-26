@@ -54,12 +54,18 @@ def is_credit_worthy(login):
                 or name in agents.AGENT_LOGINS or name == UNLINKED_LOGIN)
 
 
+# Pinned above the ranked list in every release's Contributors block, in this
+# order; keep in step with the README's Team section.
+CORE_TEAM = ("debpalash", "velixio")
+
+
 def contributors_section(repo, tag, gh=_gh):
     """A `### Contributors` block for everyone who contributed since the last stable release.
 
     Two sources, because either alone misses people: commit authors in the tag
-    comparison (ranked by commit count), then authors of PRs merged since that
-    release whose commits are not linked to their GitHub account. The base is the
+    comparison, and authors of PRs merged since that release (whose commits may
+    not be linked to their GitHub account). The core team is pinned on its own
+    line; everyone else is ranked by contributions, most first. The base is the
     latest published stable release, so a beta and a stable release both cover the
     whole span since the previous stable. Bots, AI agents and unlinked placeholders
     are left out. Returns "" when there is nobody to thank.
@@ -70,17 +76,31 @@ def contributors_section(repo, tag, gh=_gh):
                         "--jq", ".commits[].author.login // empty").split()
     pr_authors = gh("pr", "list", "--repo", repo, "--state", "merged", "--search", f"merged:>={since}",
                     "--limit", "1000", "--json", "author", "--jq", ".[].author.login").split()
-    counts = Counter(login for login in commit_authors if is_credit_worthy(login))
-    ordered = sorted(counts, key=lambda login: (-counts[login], login.lower()))
-    seen = {login.lower() for login in ordered}
-    for login in sorted({p for p in pr_authors if is_credit_worthy(p)}, key=str.lower):
-        if login.lower() not in seen:
-            ordered.append(login)
-            seen.add(login.lower())
-    if not ordered:
+    commits = Counter(login for login in commit_authors if is_credit_worthy(login))
+    prs = Counter(login for login in pr_authors if is_credit_worthy(login))
+    # Contributions: linked commits, or merged PRs for an author whose commits
+    # are not linked to their account. Case differences are one person.
+    score: dict[str, int] = {}
+    names: dict[str, str] = {}
+    for login, n in commits.items():
+        score[login.lower()] = score.get(login.lower(), 0) + n
+        names.setdefault(login.lower(), login)
+    for login, n in prs.items():
+        if login.lower() not in score:
+            score[login.lower()] = n
+            names[login.lower()] = login
+    core = [login for login in CORE_TEAM if login in score]
+    ranked = sorted((k for k in score if k not in CORE_TEAM), key=lambda k: (-score[k], k))
+    if not core and not ranked:
         return ""
-    mentions = ", ".join(f"@{login}" for login in ordered)
-    return f"### Contributors\n\nThanks to everyone who contributed to this release: {mentions}\n"
+    lines = ["### Contributors", ""]
+    if core:
+        lines += ["**Core team:** " + ", ".join(f"@{login}" for login in core), ""]
+    if ranked:
+        lines.append("Thanks to everyone who contributed to this release, most contributions first: "
+                     + ", ".join(f"@{names[k]}" for k in ranked))
+    return "\n".join(lines).rstrip("\n") + "\n"
+
 
 
 def prepare(assets, tag, sunset_tag=None, repo=None, gh=_gh):
