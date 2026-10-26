@@ -51,5 +51,14 @@ export function publicFailureFromEvent(
  */
 export function apiFailureGuidance(error: unknown): string | undefined {
   if (!(error instanceof ApiError) || !error.payload) return undefined;
-  return generationFailureMessage(error.payload, i18next.t) || text(error.payload.hint);
+  // A classified HTTPException carries its diagnosis under `detail` (/generate 400).
+  const { detail } = error.payload;
+  const nested =
+    detail && typeof detail === 'object' ? (detail as Record<string, unknown>) : undefined;
+  return (
+    generationFailureMessage(error.payload, i18next.t) ||
+    generationFailureMessage(nested, i18next.t) ||
+    text(error.payload.hint) ||
+    text(nested?.hint)
+  );
 }

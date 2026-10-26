@@ -44,7 +44,7 @@ double-click to mount it, and drag **VoiceStudio.app** into `/Applications`.
 
 | Mac | DMG to download |
 |-----|-----------------|
-| Apple Silicon (M1/M2/M3/M4…) | `VoiceStudio-<version>-mac-arm64.dmg` |
+| Apple Silicon (M1–M5) | `VoiceStudio-<version>-mac-arm64.dmg` |
 | Intel | `VoiceStudio-<version>-mac-x64.dmg` — **UI only**: the local backend cannot run on Intel ([#889](https://github.com/debpalash/VoiceStudio/issues/889)) |
 
 The architectures are **not** interchangeable: an Intel Mac cannot run the

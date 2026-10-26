@@ -22,7 +22,7 @@ Design rules (load-bearing):
     display name from electron/src/shared/languages.json or an ISO-ish code — both
     resolve via :func:`_num2words_lang`), or through a hand-written native
     verbalizer for languages num2words lacks (``_NATIVE_VERBALIZERS``, e.g.
-    Malayalam). Everything else keeps its digits.
+    Malayalam, Urdu). Everything else keeps its digits.
     Clock times / ordinals / currency are English-only (their spoken form is
     language-specific); decimals only for locales whose num2words rendering
     was vetted. CJK scripts pass through the safety filters untouched — no
@@ -81,6 +81,7 @@ ENV_VAR = "OMNIVOICE_TEXT_NORMALIZATION"
 _FULL_NAME_TO_CODE = {
     "english": "en",
     "malayalam": "ml",
+    "urdu": "ur",
     "german": "de",
     "spanish": "es",
     "french": "fr",
@@ -542,6 +543,24 @@ _DATE_MONTH_RE = {
     code: re.compile(r"\.\s+(?:" + months + r")(?![^\W_])", re.IGNORECASE)
     for code, months in _DATE_MONTHS.items()
 }
+# Space-grouped thousands ("1 234", "10 000", "1 234,5", "12 500 %") in the
+# locales that also group with a period. The run is kept as written, like
+# "1,000" in English; without this the percent and integer rules read the
+# trailing or leading group on its own. A leading minus ("-1 234 %") belongs
+# to the run; the lookbehind still rejects it after a word ("a-1 234").
+_SPACE_GROUP_RE = re.compile(
+    r"(?<![\w.,:/$%-])-?\d{1,3}(?: \d{3})+(?:,\d+)?(?:\s?%)?(?![\w:/%-])(?![.,]\d)"
+)
+
+
+def _grouped_spans(text: str, lang: str) -> list[tuple[int, int]]:
+    if lang not in _COMMA_DECIMAL_LANGS:
+        return []
+    return [g.span() for g in _SPACE_GROUP_RE.finditer(text)]
+
+
+def _in_span(m: re.Match, spans: list[tuple[int, int]]) -> bool:
+    return any(start <= m.start() < end for start, end in spans)
 
 _ORDINAL_SUFFIX = {1: "st", 2: "nd", 3: "rd"}
 
@@ -634,7 +653,11 @@ def _numbers_to_words(text: str, lang: str, locale: Optional[str] = None) -> str
 
     percent_word = _PERCENT_WORD.get(lang)
     if percent_word:
+        grouped = _grouped_spans(text, lang)
+
         def _percent(m: re.Match) -> str:
+            if _in_span(m, grouped):
+                return m.group(0)
             raw = m.group(1)
             if "." in raw:
                 fraction = raw.split(".", 1)[1]
@@ -672,10 +695,13 @@ def _numbers_to_words(text: str, lang: str, locale: Optional[str] = None) -> str
         text = _DECIMAL_RE.sub(lambda m: _safe(m, _decimal), text)
 
     month_re = _DATE_MONTH_RE.get(lang)
+    grouped = _grouped_spans(text, lang)
 
     def _integer(m: re.Match) -> str:
         raw = m.group(1)
         if _leading_zero(raw):
+            return m.group(0)
+        if _in_span(m, grouped):
             return m.group(0)
         n = int(raw)
         if month_re and 1 <= n <= 31 and month_re.match(text, m.end()):
@@ -699,9 +725,14 @@ def _numbers_to_words(text: str, lang: str, locale: Optional[str] = None) -> str
 # rendering is a hand-written module. Malayalam (ml) is the first: num2words
 # ships bn/kn/te but no ml, so Malayalam dubs reached the engine with raw
 # digits. Each module exposes ``cardinal(int)``, ``decimal(int, str)`` and
-# ``percent(str)``; any exception leaves that occurrence untouched.
+# ``percent(str)``; any exception leaves that occurrence untouched. Urdu (ur)
+# followed for the same reason: OmniVoice read "1956" as "انیس سو سپنس", while
+# the sentence spelled out in Urdu words came back with 0% CER.
 
-_NATIVE_VERBALIZERS = {"ml": "services.number_words_ml"}
+_NATIVE_VERBALIZERS = {
+    "ml": "services.number_words_ml",
+    "ur": "services.number_words_ur",
+}
 
 
 def _native_lang(language: Optional[str]) -> Optional[str]:

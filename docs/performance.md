@@ -402,6 +402,11 @@ so a slow client cannot inflate it. The backend log records the same values, so 
 - **Killing the backend between generations** makes everything slower — you
   pay the model load every time. The idle timeout already frees memory when
   it's genuinely idle.
+- **Reloading speech-to-text per request** isn't needed either: accurate
+  dictation, voice-clone reference transcripts, `/v1/audio/transcriptions` and
+  voice conversion share one loaded model between requests. It is released
+  after the idle timeout, before a TTS model loads or generates, or from the
+  loaded-models **Unload** control (listed as *transcription*).
 - **`OMNIVOICE_PRELOAD_TTS_ASR`** exists for a legacy in-process Whisper
   fallback; enabling it costs memory on every start and speeds up nothing on
   a default install.
