@@ -48,15 +48,23 @@ export function WorkspaceHeader({ children }: { children: ReactNode }) {
       data-title={paneTitled ? 'pane' : 'shell'}
       className={cn(
         'workspace-titlebar flex shrink-0 items-center gap-3 border-b border-border/50 px-5',
-        // One title style on every page; the h1 stays for assistive tech when the pane shows it.
-        '[&>h1]:min-w-0 [&>h1]:truncate [&>h1]:text-[13px] [&>h1]:font-medium [&>h1]:text-foreground/90',
-        paneTitled && '[&>h1]:sr-only',
         !isMac() && 'native-controls-right',
       )}
     >
       {!isMac() && <SidebarToggle />}
-      {children}
-      <div className="ml-auto flex shrink-0 items-center gap-0.5">
+      {/* The page's own items fill the bar, so one pushed right with ms-auto sits beside
+          search instead of splitting the free space with it. */}
+      <div
+        className={cn(
+          'flex min-w-0 flex-1 items-center gap-3',
+          // One title style on every page; the h1 stays for assistive tech when the pane shows it.
+          '[&>h1]:min-w-0 [&>h1]:truncate [&>h1]:text-[13px] [&>h1]:font-medium [&>h1]:text-foreground/90',
+          paneTitled && '[&>h1]:sr-only',
+        )}
+      >
+        {children}
+      </div>
+      <div className="flex shrink-0 items-center gap-0.5">
         <SupportShortcut />
         <Button
           variant="ghost"
