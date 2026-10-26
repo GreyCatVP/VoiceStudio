@@ -1412,13 +1412,14 @@ def get_changelog(limit_versions: int = Query(5, ge=1, le=50)):
     frontend renders them safely without HTML. `available: false` when this
     install has no changelog (never an error: the viewer just hides)."""
     from core import changelog
+    from core.version import APP_VERSION
 
     path = changelog.changelog_path()
     if not path:
         return {"available": False, "releases": []}
     try:
         with open(path, encoding="utf-8") as fh:
-            releases = changelog.parse_changelog(fh.read(), limit_versions)
+            releases = changelog.parse_changelog(fh.read(), limit_versions, APP_VERSION)
     except Exception:
         logger.exception("changelog parse failed")
         return {"available": False, "releases": []}
