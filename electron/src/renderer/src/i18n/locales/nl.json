@@ -270,9 +270,9 @@
     "title": "Uitspraakwoordenboek",
     "help": "Leer de motor hoe hij lastige woorden moet zeggen. Elke invoer vervangt een woord door een herspelling vóór de synthese, dus het is van toepassing op elke engine. Beperk een item tot één taal of laat het globaal. Inline overschrijft [[woord|respelling]] het woordenboek één keer.",
     "term": "Termijn",
-    "term_placeholder": "woord of zin (bijvoorbeeld GIF)",
+    "term_placeholder": "bijv. GIF",
     "replacement": "Vervanging",
-    "replacement_placeholder": "respelling (bijvoorbeeld jiff)",
+    "replacement_placeholder": "bijv. jiff",
     "scope": "Reikwijdte",
     "global": "Globaal",
     "type": "Typ",
@@ -284,14 +284,14 @@
     "remove": "Verwijder {{term}}",
     "empty": "Nog geen vermeldingen. Voeg er hieronder één toe om een verkeerd uitgesproken woord te corrigeren.",
     "test_label": "Test een zin",
-    "test_placeholder": "Typ een zin om een voorbeeld van de vervanging te bekijken...",
+    "test_placeholder": "Typ een zin…",
     "test_result": "Zal worden uitgesproken als:",
     "test_nochange": "Er komen geen overeenkomende vermeldingen overeen - gesproken zoals geschreven.",
     "load_error": "Kan het uitspraakwoordenboek niet laden.",
     "save_error": "Kan die invoer niet opslaan.",
     "lang_label": "Taalcode (bijvoorbeeld en, de) of laat leeg voor Globaal",
     "enable_entry": "{{term}} inschakelen",
-    "lang_placeholder": "en, de… (leeg = Globaal)",
+    "lang_placeholder": "bijv. en",
     "test_language": "Voorbeeldtaal",
     "test_global_hint": "Voorbeeld met alleen globale vermeldingen — kies een taal om taalspecifieke vermeldingen mee te nemen.",
     "test_error": "Voorbeeld niet beschikbaar — de backend was niet bereikbaar.",
@@ -299,10 +299,14 @@
     "backup_hint": "Download het woordenboek als JSON-bestand, of importeer vermeldingen uit een eerdere export.",
     "export": "JSON exporteren",
     "import": "JSON importeren",
-    "import_replace_prompt": "De {{count}} bestaande vermeldingen vervangen door het geïmporteerde bestand? Kies Nee om de geïmporteerde vermeldingen ernaast toe te voegen.",
-    "import_done": "{{count}} vermeldingen geïmporteerd.",
+    "import_replace_prompt_one": "Het {{count}} bestaande item vervangen door het geïmporteerde bestand? Kies Nee om de geïmporteerde items ernaast toe te voegen.",
+    "import_replace_prompt_other": "De {{count}} bestaande items vervangen door het geïmporteerde bestand? Kies Nee om de geïmporteerde items ernaast toe te voegen.",
+    "import_done_one": "{{count}} item geïmporteerd.",
+    "import_done_other": "{{count}} items geïmporteerd.",
     "import_error": "Kan dat bestand niet importeren — JSON van een uitspraak-export verwacht.",
-    "export_error": "Kan het woordenboek niet exporteren."
+    "export_error": "Kan het woordenboek niet exporteren.",
+    "entries_count_one": "{{count}} item",
+    "entries_count_other": "{{count}} items"
   },
   "preferences": {
     "title": "Instellingen",
@@ -404,7 +408,8 @@
     "change": "Engine wijzigen",
     "failed": "De engine kon niet worden gewijzigd. Probeer opnieuw.",
     "empty": "Nog geen engines of modellen voor deze categorie.",
-    "modelsInstalled": "{{installed}} van {{count}} geïnstalleerd"
+    "modelsInstalled": "{{installed}} van {{count}} geïnstalleerd",
+    "dictation_enabled": "Dicteren inschakelen"
   },
   "modelMaintenance": {
     "download": "Downloaden",
@@ -447,7 +452,7 @@
     "mode_fast": "Snel",
     "mode_fast_desc": "Gebruikt het geselecteerde dicteermodel met lage latentie.",
     "mode_accurate": "Nauwkeurig",
-    "mode_accurate_desc": "Gebruikt het geselecteerde ASR-model met gedetailleerde tijdstempels.",
+    "mode_accurate_desc": "Gebruikt het gekozen spraak-naar-tekstmodel met gedetailleerde tijdstempels.",
     "title": "Transcripties",
     "entries": "{{count}} vermeldingen",
     "search_placeholder": "Transcripties zoeken…",
@@ -474,7 +479,8 @@
     "identify_speakers": "Sprekers herkennen",
     "speakers_unavailable": "Sprekerherkenning is niet beschikbaar. Het transcript is opgeslagen zonder sprekerlabels.",
     "missing_model": "Er is geen spraak-naar-tekstmodel geïnstalleerd — deze functie heeft er een nodig om audio te transcriberen.",
-    "original_transcript": "Oorspronkelijk transcript"
+    "original_transcript": "Oorspronkelijk transcript",
+    "active_model": "Model: {{model}}"
   },
   "engineRuntime": {
     "ready": "Klaar",
@@ -803,7 +809,6 @@
     "install_disabled_title": "Installaties zijn uitgeschakeld in verpakte builds",
     "needs_install_suffix": "- moet worden geïnstalleerd",
     "glossary_title": "Pinvertalingen voor terugkerende termen (namen, merkwoorden, jargon)",
-    "glossary_btn": "+ Woordenlijst ({{count}})",
     "selected_count": "{{count}} geselecteerd",
     "set_voice": "Stem instellen…",
     "clear_voice": "⊘ Standaard",
@@ -926,7 +931,12 @@
     "input_issue_unsupported": "Bestandstype niet ondersteund — kies een video- of audiobestand",
     "input_issue_empty": "Dit bestand is leeg — kies een ander bestand",
     "file_actions": "Bestandsacties",
-    "translator_agent": "Agent"
+    "translator_agent": "Agent",
+    "segment_count_one": "{{count}} segment",
+    "segment_count_other": "{{count}} segmenten",
+    "glossary_terms_one": "Woordenlijst · {{count}} term",
+    "glossary_terms_other": "Woordenlijst · {{count}} termen",
+    "glossary_label": "Woordenlijst"
   },
   "dub_workflow": {
     "preparing_audio": "Audio voorbereiden…",
@@ -1116,7 +1126,7 @@
     "engine_switched": "{{family}} overgeschakeld naar {{engine}}",
     "usage": "Gebruik",
     "usage_desc": "Wat je met VoiceStudio hebt gemaakt, geteld op je eigen apparaat.",
-    "usage_privacy": "Deze cijfers worden berekend uit je geschiedenis op dit apparaat en worden nooit verzonden. VoiceStudio gebruikt geen analysedienst — niets hiervan verlaat je computer.",
+    "usage_privacy": "Deze cijfers worden geteld uit uw eigen geschiedenis en blijven op deze computer. Optionele analyse regelt u apart onder Privacy.",
     "usage_empty": "Je hebt nog niets gegenereerd. Maak iets en het verschijnt hier.",
     "usage_takes": "Gegenereerde takes",
     "usage_since": "sinds {{date}}",
@@ -1251,7 +1261,7 @@
     "hf_token_test_now": "Nu testen",
     "hf_source_env_label": "Omgevingsvariabele",
     "hf_token_not_checked": "Niet getest",
-    "translation_providers_desc": "API-sleutels voor online vertalers, ingesteld voor deze sessie.",
+    "translation_providers_desc": "Sleutels voor de online vertalers Google Cloud, DeepL, Microsoft Azure en AWS. Opgeslagen op deze computer en bewaard na herstarten.",
     "hf_token_verified": "Geverifieerd",
     "ffmpeg": "FFmpeg",
     "hf_token_not_set": "Niet ingesteld",
@@ -1315,6 +1325,7 @@
     "storage_cat_data": "Appgegevens",
     "storage_child_preview": "Voorbeelden",
     "storage_desc": "Waar VoiceStudio uw gegevens en output bewaart.",
+    "models_dir_desc": "Gedownloade modellen worden hier opgeslagen. Kies een schijf met meer vrije ruimte als deze volraakt.",
     "storage_child_batch": "Batchtaken",
     "storage_top_models": "Grootste modellen",
     "storage_refresh": "Vernieuwen",
@@ -1398,7 +1409,7 @@
     "uninstall_models_warning": "Dit omvat de gedeelde Hugging Face cache ({{size}}) - modellen die andere gedownloade AI-tools kunnen gebruiken.",
     "uninstall_total": "{{count}} locaties · {{size}} wordt vrijgegeven",
     "llmp_saved_not_active": "Opgeslagen — nog niet gebruikt voor vertaling. Klik op 'Opslaan en gebruiken voor vertaling' om te schakelen.",
-    "llmp_active_env_pin": "De LLM-keuze is vastgezet door LLM_DEFAULT_PROVIDER of OMNIVOICE_LLM_BACKEND.",
+    "llmp_active_env_pin": "Het taalmodel wordt ingesteld door een omgevingsvariabele op deze computer en kan hier niet worden gewijzigd.",
     "llmp_models_truncated": "eerste {{count}} getoond: typ om de modelnaam te beperken",
     "llm_skills": "LLM vaardigheden",
     "llmskills_desc": "Leid elke AI-aangedreven functie naar zijn eigen LLM. Houd gevoelig werk op een lokaal model (Ollama/LM Studio), terwijl voor zwaardere taken een externe provider wordt gebruikt. Of schakel een functie helemaal uit. Uit gedraagt ​​zich precies alsof er geen LLM is geconfigureerd: de functie valt terug op het pad dat niet LLM is.",
@@ -1441,7 +1452,7 @@
     "remote_backend_desc": "Voer gevolgtrekking uit op een andere machine; laat de URL leeg voor de lokale backend. Door op te slaan wordt de app opnieuw geladen om toe te passen.",
     "remote_backend_hint": "Start de backend op de andere machine met <1>OMNIVOICE_API_KEY</1> ingesteld, bereik deze via uw staartnet en richt deze app erop.",
     "remote_backend_url": "Backend-URL",
-    "remote_backend_key_placeholder": "waarde van OMNIVOICE_API_KEY op de server",
+    "remote_backend_key_placeholder": "API-sleutel van de andere computer",
     "remote_backend_probe_ok": "OK — {{detail}}",
     "remote_backend_probe_fail": "Mislukt: {{detail}}",
     "remote_backend_unreachable": "onbereikbaar",
@@ -1527,7 +1538,7 @@
     "more_actions": "Meer acties",
     "use_in_stories": "In Verhalen gebruiken",
     "set_audiobook_default": "Instellen als standaardstem voor Audioboek",
-    "open_designer": "Openen in Ontwerper",
+    "open_designer": "Openen in Ontwerpen",
     "no_matches": "Er zijn geen stemmen die overeenkomen met deze filters.",
     "load_more": "Laad meer",
     "saved_as_profile": "\"{{name}}\" toegevoegd aan je stemmen.",
@@ -1549,7 +1560,7 @@
     "trim_load_failed": "Kan audio voor bijsnijden niet laden: {{message}}",
     "delete": "Verwijderen",
     "community_empty": "Nog geen community-stemmen geladen — maak verbinding met internet en open opnieuw, of wees de eerste die er een indient.",
-    "community_explainer": "Ontworpen presets en opgenomen stemmen gedeeld door de community, geladen vanuit de omnivoice-gallery.",
+    "community_explainer": "Ontworpen presets en opgenomen stemmen gedeeld door de community.",
     "no_designer": "Opgenomen stem — gebruik in plaats daarvan \"Gebruik stem\".",
     "no_preview": "Geen voorbeeld — voeg de stem toe met \"Gebruik stem\" om hem te horen.",
     "submit_failed": "Het indieningsformulier kon niet worden geopend.",
@@ -1675,7 +1686,9 @@
     "probe_placeholder": "/Gebruikers/jij/Films/sample.mp4",
     "probe_failed": "Sonde mislukt: {{message}}",
     "parse_failed": "Parseren mislukt: {{message}}",
-    "fit_failed": "Passen mislukt: {{message}}"
+    "fit_failed": "Passen mislukt: {{message}}",
+    "placeholder_direction": "bijv. Fluister het als een geheim en laat de opwinding dan groeien.",
+    "placeholder_rate_fit": "Plak de vertaalde regel om hem met zijn tijdsvak te vergelijken."
   },
   "projects": {
     "title": "Projecten",
@@ -1721,7 +1734,9 @@
     "delete_selected": "Selectie verwijderen ({{count}})",
     "deleted_count": "Verwijderd: {{count}}",
     "delete_warning": "Dit kan niet ongedaan worden gemaakt. Projecten en transcripties worden verwijderd. Bij het verwijderen van stemmen of opnamen wordt ook hun opgeslagen audio verwijderd. Geëxporteerde bestanden en voltooide audiorenders blijven bewaard.",
-    "draft_changed": "Je concept is gewijzigd tijdens het laden van dit project. Bevestig opnieuw om het te vervangen."
+    "draft_changed": "Je concept is gewijzigd tijdens het laden van dit project. Bevestig opnieuw om het te vervangen.",
+    "all_projects": "Alle projecten",
+    "library_group": "Bibliotheek"
   },
   "projectActions": {
     "delete": "‘{{name}}’ verwijderen? Dit kan niet ongedaan worden gemaakt.",
@@ -1746,7 +1761,9 @@
     "tagline": "Lokaal stemklonen. Niets verlaat uw machine.",
     "coming_soon": "Binnenkort beschikbaar",
     "switch_to_light": "Schakel over naar het lichtthema",
-    "switch_to_dark": "Schakel over naar een donker thema"
+    "switch_to_dark": "Schakel over naar een donker thema",
+    "not_found_title": "Pagina niet gevonden",
+    "not_found_body": "Dit adres hoort bij geen enkele pagina in VoiceStudio."
   },
   "stories": {
     "title": "Verhalen-editor",
@@ -1763,7 +1780,8 @@
     "autocast": "Automatisch casten",
     "autocastHint": "Detecteer wie er spreekt en wijs automatisch stemmen toe",
     "autocastEmpty": "Niets om automatisch te casten. Plak of importeer eerst een verhaal.",
-    "autocastDone": "Automatisch casten van {{lines}} lijnen over {{voices}} stem(men)",
+    "autocastDone_one": "{{lines}} regels toegewezen aan {{count}} stem",
+    "autocastDone_other": "{{lines}} regels verdeeld over {{count}} stemmen",
     "importFailed": "Kan dat bestand niet lezen.",
     "addLine": "Lijn toevoegen",
     "addChapter": "Hoofdstuk toevoegen",
@@ -1798,13 +1816,13 @@
     "splitModeHint": "Elke regel wordt als een eigen opname gelezen. Voor één verteller lopen alinea's of hele hoofdstukken beter dan zinnen.",
     "emptyText": "Begin je verhaal door dialoog- en verhaallijnen toe te voegen. Geef elk personage een stem in de cast.",
     "addFirst": "Eerste regel toevoegen",
-    "linePlaceholder": "Voer een dialoog of verhaal in... gebruik [pauze 0,5s] voor een stille pauze",
+    "linePlaceholder": "Voer een dialoog of verhaal in... gebruik [pause 0.5s] voor een stille pauze",
     "text": "tekst",
     "defaultVoice": "Standaard",
     "inlineVoice": "Inline stem instellen",
     "inlineVoiceHint": "Wissel van stem voor de gemarkeerde tekst (of plaats een schakelaar bij de cursor)",
     "resetInlineVoice": "Terugzetten naar lijnstem",
-    "insertPause": "Voeg een pauze van [pauze 0,5s] in",
+    "insertPause": "Voeg een pauze van [pause 0.5s] in",
     "preview": "Bekijk een voorbeeld van deze regel",
     "removeLine": "Lijn verwijderen",
     "tune": "Toon en snelheid",
@@ -1842,7 +1860,8 @@
     "toneChip": "Toon en snelheid: {{speed}}",
     "lineVoice": "Regelstem",
     "chapterHeading": "Hoofdstuktitel",
-    "lineActions": "Regelacties"
+    "lineActions": "Regelacties",
+    "recovery_title": "Onderbroken verhaal"
   },
   "audiobook": {
     "cast": "Cast",
@@ -1866,7 +1885,6 @@
     "stats_one": "{{count}} hoofdstuk · {{words}} woorden · {{runtime}} geschatte speelduur",
     "stats_other": "{{count}} hoofdstukken · {{words}} woorden · {{runtime}} geschatte speelduur",
     "warnings_title": "Voordat je aanmaakt",
-    "warn_unknown_voice": "Onbekende stem ‘{{name}}’ — de standaardstem wordt gebruikt",
     "warn_empty_chapter": "Hoofdstuk “{{title}}” bevat geen gesproken tekst",
     "warn_unknown_tag": "Onbekende tag {{tag}} — deze wordt voorgelezen",
     "untitled": "Luisterboek zonder titel",
@@ -1878,7 +1896,7 @@
     "tab_book": "Boek",
     "subtitle": "Schrijf of importeer je verhaal, wijs elke stem toe en exporteer een verzorgd luisterboek met echte hoofdstukken.",
     "script": "Script",
-    "script_placeholder": "# Hoofdstuk één\nEr was eens… [pauze 500 ms] het einde.\n\n# Hoofdstuk twee\n[stem:verteller] En zo ging het verder.",
+    "script_placeholder": "# Hoofdstuk één\nEr was eens… [pause 0.5s] het einde.\n\n# Hoofdstuk twee\n[voice:verteller] En zo ging het verder.",
     "default_voice": "Standaardstem",
     "engine_default": "Standaard motor",
     "preview_plan": "Voorbeeldplan",
@@ -1888,7 +1906,7 @@
       "busy": "Er wordt al een ander boek gerenderd. Wacht daarop of stop het eerst.",
       "importing": "Bezig met importeren… Genereren komt daarna beschikbaar.",
       "engine_loading": "Spraakengine wordt gecontroleerd…",
-      "engine": "De spraakengine is niet gereed. Controleer Instellingen → Engines.",
+      "engine": "De spraakengine is niet gereed. Controleer Instellingen → Modellen.",
       "no_lines": "Voeg minstens één gesproken regel toe om te genereren.",
       "no_script": "Schrijf of importeer een script om te genereren.",
       "voice": "Kies een standaardstem of geef elke regel een stem.",
@@ -1954,7 +1972,7 @@
     "lex_add": "Woord toevoegen",
     "lex_remove": "Verwijderen",
     "markup_help": "Opmaakreferentie",
-    "markup_hint": "# Hoofdstuktitel · [voice:NAME] wisselstem · [pause 500ms] / [pause 1s] · [slow]…[/slow] · [fast]…[/fast] · [emphasis]…[/emphasis] · [spell]…[/spell] · Reacties (VoiceStudio): [laughter] [sigh] [confirmation-en] [question-en] [question-ah] [question-oh] [question-ei] [question-yi] [surprise-ah] [surprise-oh] [surprise-wa] [surprise-yo] [dissatisfaction-hnn]",
+    "markup_hint": "# Hoofdstuktitel · [voice:NAME] wisselstem · [pause 0.5s] · [slow]…[/slow] · [fast]…[/fast] · [emphasis]…[/emphasis] · [spell]…[/spell] · Reacties (VoiceStudio): [laughter] [sigh] [confirmation-en] [question-en] [question-ah] [question-oh] [question-ei] [question-yi] [surprise-ah] [surprise-oh] [surprise-wa] [surprise-yo] [dissatisfaction-hnn]",
     "language": "Taal",
     "expressive": "Productie-overrides",
     "reset": "Opnieuw instellen",
@@ -1971,7 +1989,10 @@
     "emotion_text": "Emotie beschrijving",
     "emotion_text_ph": "bijv. klinkt uitgeput en verdrietig",
     "emotion_alpha": "Emotie sterkte",
-    "lex_duplicate": "Gebruik één uitspraak per woord."
+    "lex_duplicate": "Gebruik één uitspraak per woord.",
+    "recovery_busy": "Er loopt al een andere render. Hervat zodra die klaar is.",
+    "cast_note_one": "{{names}} heeft nog geen stem en wordt met de hoofdstem gelezen. Kies er een onder Cast.",
+    "cast_note_other": "{{names}} hebben nog geen stem en worden met de hoofdstem gelezen. Kies stemmen onder Cast."
   },
   "credentials": {
     "microsoft_key": "Microsoft Translator-sleutel",
@@ -1982,6 +2003,7 @@
     "deepl_base_url_help": "Aangepast DeepL API-eindpunt (standaard: https://api.deepl.com/v2). Wijzigen voor proxy/zelf-gehost.",
     "microsoft_base_url_help": "Aangepast Azure Translator-eindpunt (standaard: https://api.cognitive.microsofttranslator.com).",
     "region": "Regio",
+    "base_url": "Basis-URL",
     "aws_profile": "AWS-profiel",
     "deepl_key_placeholder": "DeepL API-sleutel",
     "microsoft_key_placeholder": "Microsoft API-sleutel"
@@ -2006,11 +2028,12 @@
     "self_check_warn": "Waarschuwing",
     "self_check_fail": "Mislukt",
     "self_check_healthy": "Alle controles geslaagd — deze installatie ziet er gezond uit.",
-    "self_check_attention": "{{count}} controle(s) mislukt — zie de hints hierboven.",
+    "self_check_attention_one": "{{count}} controle mislukt — zie de tips hierboven.",
+    "self_check_attention_other": "{{count}} controles mislukt — zie de tips hierboven.",
     "save_bundle": "Diagnosepakket opslaan",
     "bundle_saved": "Diagnosepakket opgeslagen: {{filename}}",
     "title": "Over",
-    "diagnostics": "Systeem preflight",
+    "diagnostics": "Diagnose",
     "model_credits": "Modelvermeldingen",
     "model_credits_hint": "Vermeldingen voor ondersteunde modellen. Voor modellen en componenten gelden afzonderlijke voorwaarden; deze vermeldingen verlenen geen commerciële gebruiksrechten.",
     "model_terms": "Modelvoorwaarden",
@@ -2019,7 +2042,8 @@
   "privacy": {
     "translator_online": "Vertaler is online: {{provider}}",
     "analytics_title": "Help VoiceStudio verbeteren",
-    "translator_offline": "Offline vertaler",
+    "translator_offline": "Alleen offline",
+    "change_translator": "Vertaler wijzigen",
     "translator_unknown": "Onbekend",
     "watermark_subtitle": "Standaard aan. Markeert gegenereerde audio als AI-gemaakt zodat het later herkend kan worden. Geldt alleen voor audio die vanaf nu wordt gegenereerd.",
     "analytics_subtitle": "Standaard uit. Anonieme gegevens over engine, taal, duur, aantal tekens en fouttypen. Nooit uw tekst of audio.",
@@ -2364,7 +2388,8 @@
     "generating_voice_a": "Stem genereren...",
     "generating_voice_b": "Stem B genereren...",
     "comparison_complete": "Vergelijking voltooid!",
-    "play_failed": "Afspelen mislukt: {{message}}"
+    "play_failed": "Afspelen mislukt: {{message}}",
+    "test_phrase_placeholder": "Typ een zin die beide stemmen voorlezen."
   },
   "demo": {
     "clone_coachmark": "Dit is een begeleide demo. Probeer de voorgestelde prompt of schrijf er zelf een.",
@@ -2574,7 +2599,8 @@
       "aria": "{{raised}} van {{goal}} maanddoel",
       "remaining": "{{amount}} te gaan",
       "met": "🎉 Doel behaald — {{raised}} verhoogd. Bedankt!",
-      "social_proof": "Sluit u aan bij {{count}} supporters die lokale AI financieren"
+      "social_proof_one": "Sluit je aan bij {{count}} supporter van lokale AI",
+      "social_proof_other": "Sluit je aan bij {{count}} supporters van lokale AI"
     },
     "postcard": {
       "title": "Steun de ontwikkeling van VoiceStudio",
@@ -2686,14 +2712,14 @@
     "openDocs": "Open documenten voor deze fout",
     "crash_port_in_use": "De backend kon niet starten omdat poort 3900 al in gebruik is — een andere kopie van VoiceStudio (of een app die die poort claimde) houdt hem bezet. Sluit de andere instantie en start opnieuw; als er niets zichtbaar draait, houdt een verweesde backend uit een eerdere sessie de poort nog vast.",
     "crash_oom_kill": "Het proces werd geforceerd afgesloten (signaal 9), wat meestal betekent dat het besturingssysteem geen geheugen (RAM) meer had. Sluit geheugenintensieve apps, kies een kleiner ASR-model bij Instellingen → Modellen, of ontlaad het TTS-model vóór het transcriberen.",
-    "crash_native_fault": "Het crashte binnen de compute-stack in plaats van door geheugengebrek — dat wijst op een GPU-stuurprogramma dat niet overeenkomt met de meegeleverde CUDA-runtime, of op een modelbestand dat onvolledig is gedownload. Werk uw GPU-stuurprogramma bij en download het model opnieuw via Instellingen → Modellen (een gedeeltelijke download wordt ter plekke hersteld). Blijft het gebeuren, schakel dan in Instellingen → Engines over op een crash-geïsoleerde engine — \"VoiceStudio (subprocess)\" voor synthese, \"Faster-Whisper (crash-isolated subprocess)\" voor transcriptie. Die draaien het model in een apart proces, zodat zo'n crash dat proces neerhaalt in plaats van de hele backend.",
+    "crash_native_fault": "Het crashte binnen de compute-stack in plaats van door geheugengebrek — dat wijst op een GPU-stuurprogramma dat niet overeenkomt met de meegeleverde CUDA-runtime, of op een modelbestand dat onvolledig is gedownload. Werk uw GPU-stuurprogramma bij en download het model opnieuw via Instellingen → Modellen (een gedeeltelijke download wordt ter plekke hersteld). Blijft het gebeuren, schakel dan in Instellingen → Modellen over op een crash-geïsoleerde engine — \"VoiceStudio (subprocess)\" voor synthese, \"Faster-Whisper (crash-isolated subprocess)\" voor transcriptie. Die draaien het model in een apart proces, zodat zo'n crash dat proces neerhaalt in plaats van de hele backend.",
     "report": "Deze bug melden",
     "report_failed": "Kon het bugrapport niet openen. Probeer het opnieuw of kopieer de details hierboven naar een nieuwe issue.",
     "searchIssues": "Vergelijkbare problemen zoeken",
     "unexpected": "Onverwachte fout: {{message}}",
     "backend_shutting_down": "VoiceStudio wordt afgesloten. Open de app opnieuw en probeer het nog eens.",
     "crash_broken_env": "Hij stierf tijdens het laden van zijn eigen Python-afhankelijkheden, dus dit gaat niet over geheugen of je GPU — de omgeving is onvolledig of half bijgewerkt blijven staan. Gebruik \"Wissen & Opnieuw proberen\" bij Instellingen → Logs → Backend: dat bouwt hem helemaal opnieuw op en repareert hem ter plekke, zonder je stemmen of projecten aan te raken. Blijft het misgaan, dan noemen de crashdetails het pakket dat niet te importeren was.",
-    "crash_vram_default": "Op kleinere GPU's is de gebruikelijke oorzaak dat het VRAM-geheugen opraakt bij het laden van het ASR-model bovenop het TTS-model: ontlaad eerst het TTS-model, of kies een kleiner ASR-model in Modelcatalogus → Modellen.",
+    "crash_vram_default": "Op kleinere GPU's is de gebruikelijke oorzaak dat het VRAM-geheugen opraakt bij het laden van het ASR-model bovenop het TTS-model: ontlaad eerst het TTS-model, of kies een kleiner ASR-model in Instellingen → Modellen.",
     "stream_cut_backend_alive": "De stream stopte te vroeg, maar de backend draait nog — hij is dus niet gecrasht. In een server- of containeropstelling is dit meestal een reverse proxy of load balancer die de verbinding buffert of door een time-out afbreekt: schakel responsbuffering voor deze route uit (nginx: proxy_buffering off; X-Accel-Buffering: no) en verhoog de leestime-out ervan. Draai je de desktopapp direct, of op localhost zonder proxy, dan bevestigt dat het."
   },
   "segmentEditing": {
@@ -2870,7 +2896,8 @@
     "plan_impossible": "Past niet +{{seconds}}s",
     "plan_impossible_title": "Verwachte spraak ≈{{est}}s bij {{avail}}s beschikbare tijd. Ongeveer {{seconds}}s kan niet worden opgevangen; de audio zou worden afgekapt. Kort de tekst in vóór het genereren.",
     "plan_tight": "Past maar net",
-    "plan_tight_title": "Verwachte spraak ≈{{est}}s bij {{avail}}s beschikbare tijd. Slim passend maken kan dit opvangen door hoorbaar snellere spraak of tragere video. Kort de tekst in voor een beter resultaat."
+    "plan_tight_title": "Verwachte spraak ≈{{est}}s bij {{avail}}s beschikbare tijd. Slim passend maken kan dit opvangen door hoorbaar snellere spraak of tragere video. Kort de tekst in voor een beter resultaat.",
+    "replace_toggle": "Zoeken en vervangen"
   },
   "update": {
     "checking": "Controleren op updates…",
@@ -2948,8 +2975,6 @@
     "translate_hint": "Blader door de doeltekst. Lijnen die te lang zijn, krijgen een snelheidsboost; u kunt ook rechtstreeks bewerken.",
     "done_title": "Dubben voltooid",
     "done_hint": "Controleer de timing en synchronisatieverhoudingen. Pas een willekeurige regel aan en druk op \"Regen gewijzigd\" voor een snelle gedeeltelijke herhaling.",
-    "segment_one": "{{count}} segment",
-    "segment_other": "{{count}} segmenten",
     "dismiss_title": "Afsluiten — verschijnt pas opnieuw in deze fase als u opnieuw laadt",
     "timing_review_one": "{{count}} segment moet op timing worden gecontroleerd",
     "timing_review_other": "{{count}} segmenten vereisen controle van de timing",
@@ -3021,7 +3046,7 @@
     "fast": "Snel",
     "balanced": "Gebalanceerd",
     "quality": "Kwaliteit",
-    "hint": "Geldt voor OmniVoice-sampling en Faster-Whisper / NLLB-decodering. Andere engines behouden hun instellingen.",
+    "hint": "Bepaalt snelheid en kwaliteit van spraakgeneratie, transcriptie en vertaling. Engines zonder deze instellingen houden hun eigen instellingen.",
     "auto": "Auto",
     "autoHint": "Kiest het beste niveau voor deze computer."
   },
@@ -3056,7 +3081,7 @@
     "timeout": "Er is een time-out voor het genereren opgetreden. Mogelijk wordt het model nog gedownload. Controleer Instellingen → Logboeken en probeer het opnieuw.",
     "ignored_unsupported": "Genegeerde niet-ondersteunde instructie: {{items}}",
     "too_long": "De clip is {{duration}}s. De engine accepteert maximaal {{max}}'s zonder transcript.",
-    "model_not_downloaded": "Het model is nog niet gedownload. Open Instellingen → Engines van de hoofdapp om deze te installeren.",
+    "model_not_downloaded": "Het model is nog niet gedownload. Open Instellingen → Modellen om het te installeren.",
     "backend_unreachable": "De lokale motor is niet bereikbaar.",
     "gpu_arch_unsupported": "Deze PyTorch-versie ondersteunt je GPU niet. Kies CPU bij Instellingen → Prestaties en apparaat of installeer een compatibele PyTorch-versie.",
     "windows_app_control_blocked": "Windows-toepassingsbeheer heeft een vereist bestand geblokkeerd. Vraag je beheerder de vertrouwde VoiceStudio-runtime toe te staan en start de app opnieuw.",
@@ -3068,8 +3093,8 @@
     "gpu_oom": "De GPU heeft geen geheugen meer. Sluit andere GPU-intensieve apps of ontlaad modellen en probeer het opnieuw. Je kunt ook CPU kiezen in Instellingen → Prestaties en apparaat of een kleinere TTS-engine selecteren.",
     "host_memory_exhausted": "De computer heeft geen geheugen meer. Sluit andere geheugenintensieve apps en browsertabs, ontlaad ongebruikte modellen, genereer een kortere passage of kies een lichtere TTS-engine.",
     "disk_full": "De schijf is vol. Maak ruimte vrij op het station met de gegevens, modelcache of tijdelijke map van VoiceStudio en probeer het opnieuw. Instellingen → Opslag toont het schijfgebruik en kan tijdelijke bestanden wissen.",
-    "engine_dependency_missing": "Een Python-pakket dat deze engine nodig heeft is niet geïnstalleerd, dus de engine kon niet starten. Open de Modelcatalogus, selecteer de engine en gebruik Installeren / Repareren en start VoiceStudio daarna opnieuw.",
-    "reference_stt_missing": "Deze stem heeft geen transcriptie en er is geen spraak-naar-tekstmodel geïnstalleerd om er een te maken. Typ wat de referentieclip zegt in het transcriptievak (clips tot 20 seconden) of installeer een spraak-naar-tekstmodel in de Modelcatalogus, selecteer het en genereer opnieuw.",
+    "engine_dependency_missing": "Een Python-pakket dat deze engine nodig heeft is niet geïnstalleerd, dus de engine kon niet starten. Open Instellingen → Modellen, selecteer de engine en gebruik Installeren / Repareren en start VoiceStudio daarna opnieuw.",
+    "reference_stt_missing": "Deze stem heeft geen transcriptie en er is geen spraak-naar-tekstmodel geïnstalleerd om er een te maken. Typ wat de referentieclip zegt in het transcriptievak (clips tot 20 seconden) of installeer een spraak-naar-tekstmodel in Instellingen → Modellen, selecteer het en genereer opnieuw.",
     "install_speech_model": "Spraakherkenningsmodel installeren",
     "proxy_gateway_error": "Een proxy of gateway tussen jou en VoiceStudio antwoordde met HTTP {{status}} in plaats van de backend. De backend is mogelijk nog bezig. Verhoog de lees-timeout van de proxy (bij nginx proxy_read_timeout) voor lange generaties en controleer daarna Instellingen → Logboeken → Backend.",
     "route_not_found": "De draaiende VoiceStudio-backend heeft geen {{route}}-endpoint. Start VoiceStudio opnieuw zodat app en backend overeenkomen; blijft het probleem, werk dan beide bij naar dezelfde versie."
@@ -3644,6 +3669,10 @@
     "categoryConditions": "Commercieel gebruik onder voorwaarden",
     "categoryNoncommercial": "Alleen persoonlijk en onderzoeksgebruik",
     "categoryUnknown": "Licentie niet vastgesteld",
+    "shortCommercial": "Commercieel OK",
+    "shortConditions": "Met voorwaarden",
+    "shortNoncommercial": "Niet-commercieel",
+    "shortUnknown": "Onbekend",
     "categoryHint": "Gebaseerd op de opgegeven licentietekst, niet gecontroleerd door VoiceStudio. Geen juridisch advies.",
     "reviewed": "Gecontroleerd",
     "notReviewed": "Niet gecontroleerd",
@@ -4323,7 +4352,7 @@
     },
     "model_missing": {
       "title": "Het model is niet gedownload",
-      "fix1": "Download het in de Modelcatalogus",
+      "fix1": "Download het via Instellingen → Modellen",
       "fix2": "Gebruik Herstel om het te installeren"
     },
     "busy": {
@@ -4405,5 +4434,20 @@
     "nextMemory": "Dit apparaat heeft te weinig geheugen. Kies een lichter profiel via Instellingen → Prestaties en probeer het opnieuw.",
     "downloads": "Downloads",
     "activeCount": "Lopende downloads: {{count}}"
+  },
+  "disabledReason": {
+    "files_required": "Voeg eerst minstens één video toe.",
+    "languages_required": "Kies minstens één doeltaal.",
+    "language_required": "Kies eerst een doeltaal.",
+    "translation_not_ready": "Stel eerst een vertaalengine in.",
+    "recovery_pending": "Hervat of annuleer eerst de onderbroken stap.",
+    "segments_required": "Transcribeer eerst de video.",
+    "text_required": "Voer eerst tekst in.",
+    "path_required": "Voer eerst het volledige pad naar een bestand in.",
+    "slot_required": "Voer een tijdsvak langer dan 0 seconden in.",
+    "voices_required": "Kies eerst beide stemmen.",
+    "generating": "Wacht tot de huidige opname klaar is.",
+    "name_required": "Voer eerst een naam in.",
+    "audio_missing": "Deze opname heeft geen audiobestand om op te slaan."
   }
 }

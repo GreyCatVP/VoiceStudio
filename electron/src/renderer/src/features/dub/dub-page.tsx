@@ -5,6 +5,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { SecondarySidebar } from '@/components/workspace-sidebar';
 import { PipelineFailure } from '@/components/pipeline-failure';
 import { EngineNotice } from '@/components/engine-notice';
+import { DisabledReason, firstReason } from '@/components/disabled-reason';
 import { AgentFixButton } from '@/components/agent-fix-button';
 import { getBridge } from '@/components/bridge';
 import { WorkspaceHeader } from '@/components/app-shell/workspace-header';
@@ -222,6 +223,9 @@ export function DubPage() {
   const [pasteTranslationOpen, setPasteTranslationOpen] = useState(false);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
   const [glossaryCount, setGlossaryCount] = useState(0);
+  const glossaryLabel = glossaryCount
+    ? t('dub.glossary_terms', { count: glossaryCount })
+    : t('dub.glossary_label');
   const [recoveringAsr, setRecoveringAsr] = useState(false);
   const [installingArgosPacks, setInstallingArgosPacks] = useState(false);
   const [translationAgents, setTranslationAgents] = useState<RepairAgentInfo[]>([]);
@@ -1221,7 +1225,7 @@ export function DubPage() {
             >
               <div className="col-start-1 row-start-1 flex min-w-0 items-center gap-1.5">
                 <span className="shrink-0 rounded-md bg-muted/35 px-2 py-1 text-xs font-medium tabular-nums text-muted-foreground">
-                  {session.segments.length} {t('dub.segments')}
+                  {t('dub.segment_count', { count: session.segments.length })}
                 </span>
                 <Button
                   data-slot="dub-live-preview-toggle"
@@ -1347,19 +1351,15 @@ export function DubPage() {
                   variant={glossaryOpen ? 'secondary' : 'ghost'}
                   disabled={busy || Boolean(session.recovery) || !code || !session.jobId}
                   aria-expanded={glossaryOpen}
-                  aria-label={t('dub.glossary_btn', {
-                    count: glossaryCount,
-                  })}
-                  title={t('dub.glossary_btn', { count: glossaryCount })}
+                  aria-label={glossaryLabel}
+                  title={glossaryLabel}
                   onClick={() => {
                     setGlossaryOpen((open) => !open);
                     setPasteTranslationOpen(false);
                   }}
                 >
                   <BookOpenIcon />
-                  <span className="hidden @6xl:inline">
-                    {t('dub.glossary_btn', { count: glossaryCount })}
-                  </span>
+                  <span className="hidden @6xl:inline">{glossaryLabel}</span>
                 </Button>
                 <Menu.Root>
                   <Menu.Trigger
@@ -1523,7 +1523,8 @@ export function DubPage() {
             ref={mainScroll}
             data-slot="dub-transcript-scroll"
             className={cn(
-              'studio-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain pb-5 pl-6 pr-16',
+              // A floor for the segment list: toolbar, timeline and footer never squeeze it away.
+              'studio-scrollbar min-h-40 flex-1 overflow-y-auto overscroll-contain pb-5 pl-6 pr-16',
               session.segments.length > 0 ? 'pt-3' : 'pt-5',
             )}
           >
@@ -1647,41 +1648,53 @@ export function DubPage() {
                 />
               )}
               <div className="w-full space-y-4">
-                {session.segments.length > 0 && (
-                  <SegmentFindBar
-                    {...find.bar}
-                    canReplace={find.bar.canReplace && !busy && !session.recovery}
-                    canReplaceAll={find.bar.canReplaceAll && !busy && !session.recovery}
-                    disabled={busy || Boolean(session.recovery)}
+                {/* Find, the stage checkpoint and readiness share one slim strip, so the
+                    segment rows below stay on screen in a short window. */}
+                <div
+                  data-slot="dub-transcript-strip"
+                  className="divide-y divide-border/50 overflow-hidden rounded-lg border border-border/60 bg-muted/15 empty:hidden"
+                >
+                  {session.segments.length > 0 && (
+                    <SegmentFindBar
+                      {...find.bar}
+                      canReplace={find.bar.canReplace && !busy && !session.recovery}
+                      canReplaceAll={find.bar.canReplaceAll && !busy && !session.recovery}
+                      disabled={busy || Boolean(session.recovery)}
+                    />
+                  )}
+                  {showCheckpoint && checkpointStage && (
+                    <CheckpointBanner
+                      stage={checkpointStage}
+                      timingWarnings={
+                        session.segments.filter(
+                          (segment) => segment.fit_status?.status === 'overflows',
+                        ).length
+                      }
+                      disabled={
+                        checkpointStage === 'asr'
+                          ? !code || !translationReady
+                          : checkpointStage === 'translate'
+                            ? !code || ttsBlocker !== null
+                            : false
+                      }
+                      onContinue={
+                        checkpointStage === 'asr'
+                          ? () => void translateTargets()
+                          : checkpointStage === 'translate'
+                            ? () => void generateTargets()
+                            : undefined
+                      }
+                      onDismiss={() =>
+                        setDismissedCheckpoints((current) => new Set(current).add(checkpointId))
+                      }
+                    />
+                  )}
+                  <EngineNotice
+                    operation="dub"
+                    compact
+                    className="rounded-none border-0 bg-transparent"
                   />
-                )}
-                {showCheckpoint && checkpointStage && (
-                  <CheckpointBanner
-                    stage={checkpointStage}
-                    timingWarnings={
-                      session.segments.filter(
-                        (segment) => segment.fit_status?.status === 'overflows',
-                      ).length
-                    }
-                    disabled={
-                      checkpointStage === 'asr'
-                        ? !code || !translationReady
-                        : checkpointStage === 'translate'
-                          ? !code || ttsBlocker !== null
-                          : false
-                    }
-                    onContinue={
-                      checkpointStage === 'asr'
-                        ? () => void translateTargets()
-                        : checkpointStage === 'translate'
-                          ? () => void generateTargets()
-                          : undefined
-                    }
-                    onDismiss={() =>
-                      setDismissedCheckpoints((current) => new Set(current).add(checkpointId))
-                    }
-                  />
-                )}
+                </div>
                 {pasteTranslationOpen && code && session.segments.length > 0 && (
                   <PasteTranslation
                     segments={session.segments}
@@ -2354,7 +2367,6 @@ export function DubPage() {
               </div>
             </div>
           </div>
-          <EngineNotice operation="dub" />
           {(busy || session.segments.length > 0) && (
             <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border/50 px-6 py-4">
               {busy ? (
@@ -2390,19 +2402,31 @@ export function DubPage() {
                     </span>
                   )}
                   {session.quality !== 'agent' && (
-                    <Button
-                      variant="outline"
-                      disabled={
-                        Boolean(session.recovery) ||
-                        !session.segments.length ||
-                        !code ||
-                        !translationReady
-                      }
-                      onClick={() => void translateTargets()}
+                    <DisabledReason
+                      reason={firstReason([
+                        [Boolean(session.recovery), t('disabledReason.recovery_pending')],
+                        [!session.segments.length, t('disabledReason.segments_required')],
+                        [!code, t('disabledReason.language_required')],
+                        [!translationReady, t('disabledReason.translation_not_ready')],
+                      ])}
                     >
-                      <LanguagesIcon />
-                      {t('dub.translate_all')}
-                    </Button>
+                      {(describedBy) => (
+                        <Button
+                          variant="outline"
+                          disabled={
+                            Boolean(session.recovery) ||
+                            !session.segments.length ||
+                            !code ||
+                            !translationReady
+                          }
+                          aria-describedby={describedBy}
+                          onClick={() => void translateTargets()}
+                        >
+                          <LanguagesIcon />
+                          {t('dub.translate_all')}
+                        </Button>
+                      )}
+                    </DisabledReason>
                   )}
                   {selectedTranslationAgent ? (
                     <div className="flex items-center">

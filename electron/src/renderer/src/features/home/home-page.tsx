@@ -61,7 +61,7 @@ const iconTones: Record<string, string> = {
     'bg-fuchsia-100 text-fuchsia-700 ring-fuchsia-300/60 dark:bg-fuchsia-400/15 dark:text-fuchsia-300 dark:ring-fuchsia-300/30',
   '/transcriptions':
     'bg-cyan-100 text-cyan-700 ring-cyan-300/60 dark:bg-cyan-400/15 dark:text-cyan-200 dark:ring-cyan-300/30',
-  '/calls':
+  '/workflows':
     'bg-indigo-100 text-indigo-700 ring-indigo-300/60 dark:bg-indigo-400/15 dark:text-indigo-300 dark:ring-indigo-300/30',
   '/tools':
     'bg-slate-100 text-slate-700 ring-slate-300/60 dark:bg-slate-300/15 dark:text-slate-200 dark:ring-slate-300/30',
@@ -121,7 +121,7 @@ export function HomePage() {
       description: t('homeUi.transcribe'),
     },
     {
-      to: '/calls',
+      to: '/workflows',
       label: t('workflows.title'),
       description: t('workflows.description'),
     },

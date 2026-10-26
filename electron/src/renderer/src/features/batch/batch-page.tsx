@@ -20,6 +20,7 @@ import { SecondarySidebar } from '@/components/workspace-sidebar';
 import { WorkspaceHeader } from '@/components/app-shell/workspace-header';
 import { PipelineFailure } from '@/components/pipeline-failure';
 import { EngineNotice } from '@/components/engine-notice';
+import { DisabledReason, firstReason } from '@/components/disabled-reason';
 import { WatchFolder } from './watch-folder';
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -361,22 +362,41 @@ export function BatchPage() {
               />
             </div>
           </section>
-          <Button
+          <DisabledReason
             className="w-full"
-            disabled={
-              busy ||
-              ttsBlocker !== null ||
-              !files.length ||
-              !langs.length ||
-              Boolean(
-                translationEngines.data &&
-                !(translationEngine?.ready ?? translationEngine?.installed),
-              )
-            }
-            onClick={() => void submit()}
+            reason={firstReason([
+              [ttsBlocker !== null, t('engines.none_ready_title')],
+              [!files.length, t('disabledReason.files_required')],
+              [!langs.length, t('disabledReason.languages_required')],
+              [
+                Boolean(
+                  translationEngines.data &&
+                  !(translationEngine?.ready ?? translationEngine?.installed),
+                ),
+                t('disabledReason.translation_not_ready'),
+              ],
+            ])}
           >
-            {t(busy ? 'common.loading' : 'batch.add_to_queue')}
-          </Button>
+            {(describedBy) => (
+              <Button
+                className="w-full"
+                disabled={
+                  busy ||
+                  ttsBlocker !== null ||
+                  !files.length ||
+                  !langs.length ||
+                  Boolean(
+                    translationEngines.data &&
+                    !(translationEngine?.ready ?? translationEngine?.installed),
+                  )
+                }
+                aria-describedby={describedBy}
+                onClick={() => void submit()}
+              >
+                {t(busy ? 'common.loading' : 'batch.add_to_queue')}
+              </Button>
+            )}
+          </DisabledReason>
           <EngineNotice operation="batch" />
           <WatchFolder
             langs={langs.map((label) => translationTargetCode(label)!)}

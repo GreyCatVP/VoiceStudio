@@ -261,9 +261,9 @@
     "title": "Pronunciation dictionary",
     "help": "Teach the engine how to say tricky words. Each entry replaces a word with a respelling before synthesis, so it applies on every engine. Scope an entry to one language or leave it Global. Inline, [[word|respelling]] overrides the dictionary once.",
     "term": "Term",
-    "term_placeholder": "word or phrase (e.g. GIF)",
+    "term_placeholder": "e.g. GIF",
     "replacement": "Replacement",
-    "replacement_placeholder": "respelling (e.g. jiff)",
+    "replacement_placeholder": "e.g. jiff",
     "scope": "Scope",
     "global": "Global",
     "type": "Type",
@@ -275,14 +275,14 @@
     "remove": "Remove {{term}}",
     "empty": "No entries yet. Add one below to fix a mispronounced word.",
     "test_label": "Test a sentence",
-    "test_placeholder": "Type a sentence to preview the substitution…",
+    "test_placeholder": "Type a sentence…",
     "test_result": "Will be spoken as:",
     "test_nochange": "No entries match — spoken as written.",
     "load_error": "Couldn't load the pronunciation dictionary.",
     "save_error": "Couldn't save that entry.",
     "lang_label": "Language code (e.g. en, de) or leave blank for Global",
     "enable_entry": "Enable {{term}}",
-    "lang_placeholder": "en, de… (blank = Global)",
+    "lang_placeholder": "e.g. en",
     "test_language": "Preview language",
     "test_global_hint": "Previewing Global entries only — pick a language to include language-scoped entries.",
     "test_error": "Preview unavailable — couldn't reach the backend.",
@@ -290,10 +290,14 @@
     "backup_hint": "Download the dictionary as a JSON file, or import entries from a previous export.",
     "export": "Export JSON",
     "import": "Import JSON",
-    "import_replace_prompt": "Replace the {{count}} existing entries with the imported file? Choose No to add the imported entries alongside them.",
-    "import_done": "Imported {{count}} entries.",
+    "import_replace_prompt_one": "Replace the {{count}} existing entry with the imported file? Choose No to add the imported entries alongside it.",
+    "import_replace_prompt_other": "Replace the {{count}} existing entries with the imported file? Choose No to add the imported entries alongside them.",
+    "import_done_one": "Imported {{count}} entry.",
+    "import_done_other": "Imported {{count}} entries.",
     "import_error": "Couldn't import that file — expected JSON from a pronunciation export.",
-    "export_error": "Couldn't export the dictionary."
+    "export_error": "Couldn't export the dictionary.",
+    "entries_count_one": "{{count}} entry",
+    "entries_count_other": "{{count}} entries"
   },
   "app": {
     "name": "VoiceStudio",
@@ -306,7 +310,9 @@
     "toast_project_saved": "Project saved",
     "toast_flushed": "Flushed — RAM {{ram}}G · VRAM {{vram}}G{{unloaded}}",
     "toast_model_unloaded": " · model unloaded",
-    "toast_flush_failed": "Flush failed: {{message}}"
+    "toast_flush_failed": "Flush failed: {{message}}",
+    "not_found_title": "Page not found",
+    "not_found_body": "This address doesn't match any page in VoiceStudio."
   },
   "nav": {
     "home": "Home",
@@ -618,7 +624,7 @@
     "ignored_unsupported": "Ignored unsupported style: {{items}}",
     "ignored_duplicate": "Ignored (category already set): {{items}}",
     "ignored_conflict": "Ignored {{items}} — a Chinese dialect and an English accent can't be combined.",
-    "model_not_downloaded": "The model is not downloaded yet. Open the main app's Settings → Engines to install it.",
+    "model_not_downloaded": "The model is not downloaded yet. Open Settings → Models to install it.",
     "backend_unreachable": "The local engine is not reachable.",
     "gpu_arch_unsupported": "This PyTorch build does not support your GPU. Choose CPU in Settings → Performance & Device, or install a compatible PyTorch build.",
     "windows_app_control_blocked": "Windows application control blocked a required file. Ask your administrator to allow the trusted VoiceStudio runtime, then restart the app.",
@@ -630,8 +636,8 @@
     "gpu_oom": "The GPU ran out of memory. Close other GPU-heavy apps or unload models, then retry. You can also choose CPU in Settings → Performance & Device or select a smaller TTS engine.",
     "host_memory_exhausted": "The computer ran out of memory. Close other memory-heavy apps and browser tabs, flush models you are not using, render a shorter passage, or select a lighter TTS engine.",
     "disk_full": "The disk is full. Free space on the drive that holds VoiceStudio's data, model cache or temp folder, then try again. Settings → Storage shows disk usage and can clear temporary files.",
-    "engine_dependency_missing": "A Python package this engine needs is not installed, so the engine could not start. Open Model Catalogue, select the engine and use Install / Repair, then restart VoiceStudio.",
-    "reference_stt_missing": "This voice has no transcript and no speech-to-text model is installed to write one. Type what the reference clip says into the transcript box (clips up to 20 seconds), or install a speech-to-text model in Model Catalogue, select it, then generate again.",
+    "engine_dependency_missing": "A Python package this engine needs is not installed, so the engine could not start. Open Settings → Models, select the engine and use Install / Repair, then restart VoiceStudio.",
+    "reference_stt_missing": "This voice has no transcript and no speech-to-text model is installed to write one. Type what the reference clip says into the transcript box (clips up to 20 seconds), or install a speech-to-text model in Settings → Models, select it, then generate again.",
     "install_speech_model": "Install speech-to-text model",
     "proxy_gateway_error": "A proxy or gateway between you and VoiceStudio answered HTTP {{status}} instead of the backend. The backend may still be working. Raise the proxy's read timeout (for nginx, proxy_read_timeout) for long generations, then check Settings → Logs → Backend.",
     "route_not_found": "The running VoiceStudio backend has no {{route}} endpoint. Restart VoiceStudio so the app and backend match; if it persists, update both to the same version."
@@ -804,7 +810,8 @@
     "change": "Change engine",
     "failed": "Could not change the engine. Try again.",
     "empty": "No engines or models for this family yet.",
-    "modelsInstalled": "{{installed}} of {{count}} installed"
+    "modelsInstalled": "{{installed}} of {{count}} installed",
+    "dictation_enabled": "Enable dictation"
   },
   "modelMaintenance": {
     "download": "Download",
@@ -847,7 +854,7 @@
     "mode_fast": "Fast",
     "mode_fast_desc": "Uses the selected low-latency dictation model.",
     "mode_accurate": "Accurate",
-    "mode_accurate_desc": "Uses the selected ASR model with detailed timestamps.",
+    "mode_accurate_desc": "Uses the selected speech-to-text model with detailed timestamps.",
     "title": "Transcriptions",
     "entries": "{{count}} entries",
     "search_placeholder": "Search transcriptions…",
@@ -874,7 +881,8 @@
     "identify_speakers": "Identify speakers",
     "speakers_unavailable": "Speaker identification isn't available. The transcript was saved without speaker labels.",
     "missing_model": "No speech-to-text model is installed — this feature needs one to transcribe audio.",
-    "original_transcript": "Original transcript"
+    "original_transcript": "Original transcript",
+    "active_model": "Model: {{model}}"
   },
   "engineRuntime": {
     "ready": "Ready",
@@ -1025,7 +1033,6 @@
     "install_disabled_title": "Installs are disabled in packaged builds",
     "needs_install_suffix": " — needs install",
     "glossary_title": "Pin translations for recurring terms (names, brand words, jargon)",
-    "glossary_btn": "+ Glossary ({{count}})",
     "selected_count": "{{count}} selected",
     "set_voice": "Set voice…",
     "clear_voice": "⊘ Default",
@@ -1137,7 +1144,12 @@
     "input_issue_unsupported": "Unsupported file type — choose a video or audio file",
     "input_issue_empty": "This file is empty — choose another file",
     "file_actions": "File actions",
-    "translator_agent": "Agent"
+    "translator_agent": "Agent",
+    "segment_count_one": "{{count}} segment",
+    "segment_count_other": "{{count}} segments",
+    "glossary_terms_one": "Glossary · {{count}} term",
+    "glossary_terms_other": "Glossary · {{count}} terms",
+    "glossary_label": "Glossary"
   },
   "dub_workflow": {
     "preparing_audio": "Preparing audio…",
@@ -1268,7 +1280,7 @@
     "engine_switched": "Switched {{family}} to {{engine}}",
     "usage": "Usage",
     "usage_desc": "What you have made with VoiceStudio — counted on your own machine.",
-    "usage_privacy": "These numbers are counted from your own history, on this machine, and are never sent anywhere. VoiceStudio has no analytics service — nothing here leaves your computer.",
+    "usage_privacy": "These numbers are counted from your own history and stay on this computer. Optional analytics is controlled separately in Privacy.",
     "usage_empty": "You haven't generated anything yet — make something and it'll show up here.",
     "usage_takes": "Takes generated",
     "usage_since": "since {{date}}",
@@ -1402,7 +1414,7 @@
     "llmp_load_failed": "Failed to load providers",
     "llmp_save_failed": "Failed to save",
     "llmp_env_override": "set via an environment variable — overrides this field",
-    "llmp_active_env_pin": "LLM selection is pinned by LLM_DEFAULT_PROVIDER or OMNIVOICE_LLM_BACKEND.",
+    "llmp_active_env_pin": "The language model is set by an environment variable on this computer, so it can't be changed here.",
     "llmp_models_truncated": "first {{count}} shown — type to narrow the model name",
     "llm_skills": "LLM Skills",
     "llmskills_desc": "Route each AI-powered feature to its own LLM — keep sensitive work on a local model (Ollama/LM Studio) while heavier jobs use a remote provider — or switch a feature off entirely. Off behaves exactly like having no LLM configured: the feature falls back to its non-LLM path.",
@@ -1468,7 +1480,7 @@
     "hf_token_test_now": "Test now",
     "hf_source_env_label": "Environment variable",
     "hf_token_not_checked": "Not tested",
-    "translation_providers_desc": "API keys for the DeepL and Microsoft online translators. Saved and restored across restarts.",
+    "translation_providers_desc": "Keys for the online translators: Google Cloud, DeepL, Microsoft Azure and AWS. Saved on this computer and kept across restarts.",
     "hf_token_verified": "Verified",
     "ffmpeg": "FFmpeg",
     "hf_token_not_set": "Not set",
@@ -1482,7 +1494,7 @@
     "remote_backend_hint": "Start the backend on the other machine with <1>OMNIVOICE_API_KEY</1> set, reach it over your tailnet, and point this app at it.",
     "remote_backend_url": "Backend URL",
     "remote_backend_key": "API key",
-    "remote_backend_key_placeholder": "value of OMNIVOICE_API_KEY on the server",
+    "remote_backend_key_placeholder": "API key set on the other computer",
     "remote_backend_test": "Test connection",
     "remote_backend_save": "Save & reload",
     "remote_backend_probe_ok": "OK — {{detail}}",
@@ -1544,6 +1556,7 @@
     "storage_cat_data": "App data",
     "storage_child_preview": "Previews",
     "storage_desc": "Where VoiceStudio keeps your data and outputs.",
+    "models_dir_desc": "Downloaded models are stored here. Choose a drive with more free space if this one fills up.",
     "storage_child_batch": "Batch jobs",
     "storage_top_models": "Largest models",
     "storage_refresh": "Refresh",
@@ -1684,7 +1697,7 @@
     "more_actions": "More actions",
     "use_in_stories": "Use in Stories",
     "set_audiobook_default": "Set as Audiobook default",
-    "open_designer": "Open in Designer",
+    "open_designer": "Open in Design",
     "no_matches": "No voices match these filters.",
     "load_more": "Load more",
     "saved_as_profile": "Added \"{{name}}\" to your voices.",
@@ -1707,7 +1720,7 @@
     "trim_load_failed": "Could not load audio for trimming: {{message}}",
     "delete": "Delete",
     "community_empty": "No community voices loaded yet — connect to the internet and reopen, or be the first to submit one.",
-    "community_explainer": "Designed presets and recorded voices shared by the community, loaded from the omnivoice-gallery.",
+    "community_explainer": "Designed presets and recorded voices shared by the community.",
     "no_designer": "Recorded voice — use \"Use voice\" instead.",
     "no_preview": "No preview — add it with \"Use voice\" to hear it.",
     "submit_failed": "Could not open the submission form.",
@@ -1827,7 +1840,9 @@
     "probe_placeholder": "/Users/you/Movies/sample.mp4",
     "probe_failed": "Probe failed: {{message}}",
     "parse_failed": "Parse failed: {{message}}",
-    "fit_failed": "Fit failed: {{message}}"
+    "fit_failed": "Fit failed: {{message}}",
+    "placeholder_direction": "e.g. Whisper it like a secret, then let the excitement build.",
+    "placeholder_rate_fit": "Paste the translated line to check against its time slot."
   },
   "projects": {
     "title": "Projects",
@@ -1873,7 +1888,9 @@
     "delete_selected": "Delete selected ({{count}})",
     "deleted_count": "Deleted: {{count}}",
     "delete_warning": "This cannot be undone. Projects and transcripts are removed. Deleting voices or takes also removes their stored audio. Exported files and finished render audio are kept.",
-    "draft_changed": "Your draft changed while this project was loading. Confirm again to replace it."
+    "draft_changed": "Your draft changed while this project was loading. Confirm again to replace it.",
+    "all_projects": "All projects",
+    "library_group": "Library"
   },
   "projectActions": {
     "delete": "Delete “{{name}}”? This cannot be undone.",
@@ -1902,7 +1919,8 @@
     "autocast": "Auto-cast",
     "autocastHint": "Detect who's speaking — tagged ([Name]), screenplay (NAME:), or quoted prose — and assign voices automatically",
     "autocastEmpty": "Nothing to auto-cast — paste or import a story first.",
-    "autocastDone": "Auto-cast {{lines}} lines across {{voices}} voice(s)",
+    "autocastDone_one": "Auto-cast {{lines}} lines with {{count}} voice",
+    "autocastDone_other": "Auto-cast {{lines}} lines across {{count}} voices",
     "importFailed": "Couldn't read that file.",
     "addLine": "Add Line",
     "addChapter": "Add Chapter",
@@ -1981,7 +1999,8 @@
     "toneChip": "Tone & speed: {{speed}}",
     "lineVoice": "Line voice",
     "chapterHeading": "Chapter title",
-    "lineActions": "Line actions"
+    "lineActions": "Line actions",
+    "recovery_title": "Interrupted story"
   },
   "audiobook": {
     "cast": "Cast",
@@ -2005,7 +2024,6 @@
     "stats_one": "{{count}} chapter · {{words}} words · {{runtime}} est. runtime",
     "stats_other": "{{count}} chapters · {{words}} words · {{runtime}} est. runtime",
     "warnings_title": "Before you create",
-    "warn_unknown_voice": "Unknown voice ‘{{name}}’ — will use the default",
     "warn_empty_chapter": "Chapter “{{title}}” has no spoken text",
     "warn_unknown_tag": "Unrecognized tag {{tag}} — it will be read aloud",
     "untitled": "Untitled audiobook",
@@ -2017,7 +2035,7 @@
     "tab_book": "Book",
     "subtitle": "Write or import your story, cast every voice, then export a polished audiobook with real chapters.",
     "script": "Script",
-    "script_placeholder": "# Chapter One\nOnce upon a time… [pause 500ms] the end.\n\n# Chapter Two\n[voice:narrator] And so it continued.",
+    "script_placeholder": "# Chapter One\nOnce upon a time… [pause 0.5s] the end.\n\n# Chapter Two\n[voice:narrator] And so it continued.",
     "default_voice": "Default voice",
     "engine_default": "Engine default",
     "preview_plan": "Preview plan",
@@ -2032,7 +2050,7 @@
       "busy": "Another book is already rendering. Wait for it, or stop it first.",
       "importing": "Importing… Generate unlocks when it finishes.",
       "engine_loading": "Checking the voice engine…",
-      "engine": "The voice engine is not ready. Check Settings → Engines.",
+      "engine": "The voice engine is not ready. Check Settings → Models.",
       "no_lines": "Add at least one spoken line to generate.",
       "no_script": "Write or import a script to generate.",
       "voice": "Choose a default voice, or give every line a voice.",
@@ -2093,7 +2111,7 @@
     "lex_add": "Add word",
     "lex_remove": "Remove",
     "markup_help": "Markup reference",
-    "markup_hint": "# Chapter title · [voice:NAME] switch voice · [pause 500ms] / [pause 1s] · [slow]…[/slow] · [fast]…[/fast] · [emphasis]…[/emphasis] · [spell]…[/spell] · Reactions (VoiceStudio): [laughter] [sigh] [confirmation-en] [question-en] [question-ah] [question-oh] [question-ei] [question-yi] [surprise-ah] [surprise-oh] [surprise-wa] [surprise-yo] [dissatisfaction-hnn]",
+    "markup_hint": "# Chapter title · [voice:NAME] switch voice · [pause 0.5s] · [slow]…[/slow] · [fast]…[/fast] · [emphasis]…[/emphasis] · [spell]…[/spell] · Reactions (VoiceStudio): [laughter] [sigh] [confirmation-en] [question-en] [question-ah] [question-oh] [question-ei] [question-yi] [surprise-ah] [surprise-oh] [surprise-wa] [surprise-yo] [dissatisfaction-hnn]",
     "language": "Language",
     "expressive": "Production overrides",
     "reset": "Reset",
@@ -2110,7 +2128,10 @@
     "emotion_text": "Emotion description",
     "emotion_text_ph": "e.g. sounds exhausted and sad",
     "emotion_alpha": "Emotion strength",
-    "lex_duplicate": "Keep one pronunciation per word."
+    "lex_duplicate": "Keep one pronunciation per word.",
+    "recovery_busy": "Another render is running. Resume when it finishes.",
+    "cast_note_one": "{{names}} isn’t cast yet, so it reads in the main voice. Pick a voice for it under Cast.",
+    "cast_note_other": "{{names}} aren’t cast yet, so they read in the main voice. Pick voices for them under Cast."
   },
   "credentials": {
     "microsoft_key": "Microsoft Translator Key",
@@ -2121,6 +2142,7 @@
     "deepl_base_url_help": "Custom DeepL API endpoint (default: https://api.deepl.com/v2). Change for proxy/self-hosted.",
     "microsoft_base_url_help": "Custom Azure Translator endpoint (default: https://api.cognitive.microsofttranslator.com).",
     "region": "Region",
+    "base_url": "Base URL",
     "aws_profile": "AWS profile",
     "deepl_key_placeholder": "DeepL API key",
     "microsoft_key_placeholder": "Microsoft API key"
@@ -2145,11 +2167,12 @@
     "self_check_warn": "Warning",
     "self_check_fail": "Failed",
     "self_check_healthy": "All checks passed — this install looks healthy.",
-    "self_check_attention": "{{count}} check(s) failed — see the hints above.",
+    "self_check_attention_one": "{{count}} check failed — see the hints above.",
+    "self_check_attention_other": "{{count}} checks failed — see the hints above.",
     "save_bundle": "Save diagnostic bundle",
     "bundle_saved": "Diagnostic bundle saved: {{filename}}",
     "title": "About",
-    "diagnostics": "System preflight",
+    "diagnostics": "Diagnostics",
     "model_credits": "Model credits",
     "model_credits_hint": "Credits for supported models. Model and component terms apply separately; these credits do not grant commercial rights.",
     "model_terms": "Model terms",
@@ -2158,7 +2181,8 @@
   "privacy": {
     "translator_online": "Translator is online: {{provider}}",
     "analytics_title": "Help improve VoiceStudio",
-    "translator_offline": "Offline translator",
+    "translator_offline": "Offline only",
+    "change_translator": "Change translator",
     "translator_unknown": "Unknown",
     "watermark_subtitle": "On by default. Marks generated audio as AI-made so it can be identified later. Only affects audio generated from now on.",
     "analytics_subtitle": "Off by default. Anonymous engine, language, duration, character counts and error types. Never your text or audio.",
@@ -2431,7 +2455,8 @@
     "generating_voice_a": "Generating Voice A...",
     "generating_voice_b": "Generating Voice B...",
     "comparison_complete": "Comparison complete!",
-    "play_failed": "Play failed: {{message}}"
+    "play_failed": "Play failed: {{message}}",
+    "test_phrase_placeholder": "Type a sentence both voices will read."
   },
   "demo": {
     "clone_coachmark": "This is a guided demo — try the suggested prompt or write your own.",
@@ -2641,7 +2666,8 @@
       "aria": "{{raised}} of {{goal}} monthly goal",
       "remaining": "{{amount}} to go",
       "met": "🎉 Goal met — {{raised}} raised. Thank you!",
-      "social_proof": "Join {{count}} supporters funding local AI"
+      "social_proof_one": "Join {{count}} supporter funding local AI",
+      "social_proof_other": "Join {{count}} supporters funding local AI"
     },
     "postcard": {
       "title": "Support VoiceStudio development",
@@ -2753,14 +2779,14 @@
     "openDocs": "Open docs for this error",
     "crash_port_in_use": "The backend could not start because port 3900 is already in use — another copy of VoiceStudio (or an app that claimed that port) is holding it. Quit the other instance and relaunch; if nothing is visibly running, an orphaned backend from a previous session is still holding the port.",
     "crash_oom_kill": "It was force-killed (signal 9), which usually means the operating system ran out of memory (RAM) and stopped it. Close memory-heavy apps, pick a smaller ASR model in Settings → Models, or flush the TTS model before transcribing.",
-    "crash_native_fault": "It crashed inside the compute stack rather than running out of memory — that points at a GPU driver that does not match the bundled CUDA runtime, or a model file that downloaded incompletely. Update your GPU driver, then re-download the model from Settings → Models (it repairs a partial download in place). If it keeps happening, switch to a crash-isolated engine in Settings → Engines — \"VoiceStudio (subprocess)\" for synthesis, \"Faster-Whisper (crash-isolated subprocess)\" for transcription. Those run the model in a separate process, so a crash like this takes down that process instead of the whole backend.",
+    "crash_native_fault": "It crashed inside the compute stack rather than running out of memory — that points at a GPU driver that does not match the bundled CUDA runtime, or a model file that downloaded incompletely. Update your GPU driver, then re-download the model from Settings → Models (it repairs a partial download in place). If it keeps happening, switch to a crash-isolated engine in Settings → Models — \"VoiceStudio (subprocess)\" for synthesis, \"Faster-Whisper (crash-isolated subprocess)\" for transcription. Those run the model in a separate process, so a crash like this takes down that process instead of the whole backend.",
     "report": "Report this bug",
     "report_failed": "Couldn't open the bug report. Please try again, or copy the details above into a new issue.",
     "searchIssues": "Search similar issues",
     "unexpected": "Unexpected error: {{message}}",
     "backend_shutting_down": "VoiceStudio is shutting down. Reopen the app and try again.",
     "crash_broken_env": "It died while loading its own Python dependencies, so this is not about memory or your GPU — the environment is incomplete or was left half-updated. Use \"Clean & Retry\" in Settings → Logs → Backend, which rebuilds it from scratch; that repairs it in place, without touching your voices or projects. If it still fails afterwards, the crash details name the exact package that would not import.",
-    "crash_vram_default": "On smaller GPUs the usual cause is running out of VRAM while loading the ASR model on top of the TTS model: flush the TTS model first, or pick a smaller ASR model in Model Catalogue → Models.",
+    "crash_vram_default": "On smaller GPUs the usual cause is running out of VRAM while loading the ASR model on top of the TTS model: flush the TTS model first, or pick a smaller ASR model in Settings → Models.",
     "stream_cut_backend_alive": "The stream ended early, but the backend is still running — so it did not crash. In a served or containerised setup this is usually a reverse proxy or load balancer buffering or timing out the connection: disable response buffering for this route (nginx: proxy_buffering off; X-Accel-Buffering: no) and raise its read timeout. Running the desktop app directly, or on localhost without a proxy, will confirm it."
   },
   "segmentEditing": {
@@ -2937,7 +2963,8 @@
     "plan_apply": "Use shorter rewrite",
     "plan_apply_title": "Replace this line with the suggested shorter rewrite: \"{{text}}\"",
     "live_play_title": "Stream this line now (live preview)",
-    "live_stop_title": "Stop the live preview"
+    "live_stop_title": "Stop the live preview",
+    "replace_toggle": "Find and replace"
   },
   "update": {
     "checking": "Checking for updates…",
@@ -3015,8 +3042,6 @@
     "translate_hint": "Skim the target text. Over-length lines get speed-boosted; you can also edit directly.",
     "done_title": "Dub complete",
     "done_hint": "Review timing and sync ratios. Tweak any line and hit \"Regen changed\" for a fast partial redo.",
-    "segment_one": "{{count}} segment",
-    "segment_other": "{{count}} segments",
     "dismiss_title": "Dismiss — won't reappear for this stage until reload",
     "timing_review_one": "{{count}} segment needs timing review",
     "timing_review_other": "{{count}} segments need timing review",
@@ -3070,7 +3095,7 @@
     "fast": "Fast",
     "balanced": "Balanced",
     "quality": "Quality",
-    "hint": "Applies to OmniVoice sampling and Faster-Whisper / NLLB decoding. Other engines keep their current settings.",
+    "hint": "Sets the speed and quality of voice generation, transcription and translation. Engines without these controls keep their own settings.",
     "auto": "Auto",
     "autoHint": "Picks the best level for this computer."
   },
@@ -3644,6 +3669,10 @@
     "categoryConditions": "Commercial use with conditions",
     "categoryNoncommercial": "Personal and research use only",
     "categoryUnknown": "Licence not identified",
+    "shortCommercial": "Commercial OK",
+    "shortConditions": "Conditions apply",
+    "shortNoncommercial": "Non-commercial",
+    "shortUnknown": "Unknown",
     "categoryHint": "Based on the declared licence text, not verified by VoiceStudio. Not legal advice.",
     "reviewed": "Reviewed",
     "notReviewed": "Not reviewed",
@@ -4323,7 +4352,7 @@
     },
     "model_missing": {
       "title": "The model is not downloaded",
-      "fix1": "Download it in Model Catalogue",
+      "fix1": "Download it in Settings → Models",
       "fix2": "Use Fix to install it"
     },
     "busy": {
@@ -4405,5 +4434,20 @@
     "nextMemory": "This device ran out of memory. Choose a lighter profile in Settings → Performance, then retry.",
     "downloads": "Downloads",
     "activeCount": "Downloads in progress: {{count}}"
+  },
+  "disabledReason": {
+    "files_required": "Add at least one video first.",
+    "languages_required": "Pick at least one target language.",
+    "language_required": "Choose a target language first.",
+    "translation_not_ready": "Set up a translation engine first.",
+    "recovery_pending": "Resume or cancel the interrupted step first.",
+    "segments_required": "Transcribe the video first.",
+    "text_required": "Enter some text first.",
+    "path_required": "Enter the full path to a file first.",
+    "slot_required": "Enter a slot longer than 0 seconds.",
+    "voices_required": "Choose both voices first.",
+    "generating": "Wait until the current take finishes.",
+    "name_required": "Enter a name first.",
+    "audio_missing": "This take has no audio file to save."
   }
 }

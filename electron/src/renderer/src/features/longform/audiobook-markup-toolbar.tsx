@@ -84,7 +84,7 @@ export function AudiobookMarkupToolbar({
         <HashIcon />
         {t('audiobook.insert_chapter')}
       </Button>
-      <Button size="xs" variant="ghost" disabled={disabled} onClick={() => insert('[pause 500ms]')}>
+      <Button size="xs" variant="ghost" disabled={disabled} onClick={() => insert('[pause 0.5s]')}>
         <PauseIcon />
         {t('audiobook.insert_pause')}
       </Button>
