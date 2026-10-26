@@ -48,6 +48,54 @@ it('watches main and preload changes so renderer updates cannot leave stale brow
   }
 });
 
+describe('built-app launches (bun run start / preview)', () => {
+  it('runs every Electron-launching package script through the resolving launcher', () => {
+    // electron-vite reads node_modules/electron/path.txt itself and throws
+    // "Electron uninstall" until the lazily downloaded binary is resolved.
+    const { scripts } = JSON.parse(
+      readFileSync(resolve(__dirname, '../../package.json'), 'utf8'),
+    ) as { scripts: Record<string, string> };
+    for (const [name, command] of Object.entries(scripts)) {
+      expect(command, name).not.toMatch(/electron-vite\s+(dev|preview)\b/);
+    }
+    expect(scripts.start).toBe('node scripts/dev.mjs preview');
+    expect(scripts.preview).toBe('node scripts/dev.mjs preview');
+  });
+
+  it('previews the built app with a resolved binary and without watching', () => {
+    const spawn = vi.fn(() => ({ on: vi.fn() }));
+    const platform = Object.getOwnPropertyDescriptor(process, 'platform')!;
+    const previousExecutable = process.env.ELECTRON_EXEC_PATH;
+    const previousRunAsNode = process.env.ELECTRON_RUN_AS_NODE;
+    delete process.env.ELECTRON_EXEC_PATH;
+    process.env.ELECTRON_RUN_AS_NODE = '1';
+    Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+    try {
+      launchElectronVite(
+        ['preview', '--', '--disable-gpu'],
+        spawn,
+        () => '/electron/dist/electron',
+      );
+      const [, args, options] = spawn.mock.calls[0] as unknown as [
+        string,
+        string[],
+        { env: NodeJS.ProcessEnv },
+      ];
+      expect(args.slice(1)).toEqual(['preview', '--', '--disable-gpu']);
+      expect(options.env.ELECTRON_EXEC_PATH).toBe('/electron/dist/electron');
+      // An inherited ELECTRON_RUN_AS_NODE would start the app as plain Node.
+      expect(options.env).not.toHaveProperty('ELECTRON_RUN_AS_NODE');
+      expect(process.env.ELECTRON_RUN_AS_NODE).toBe('1');
+    } finally {
+      Object.defineProperty(process, 'platform', platform);
+      if (previousExecutable === undefined) delete process.env.ELECTRON_EXEC_PATH;
+      else process.env.ELECTRON_EXEC_PATH = previousExecutable;
+      if (previousRunAsNode === undefined) delete process.env.ELECTRON_RUN_AS_NODE;
+      else process.env.ELECTRON_RUN_AS_NODE = previousRunAsNode;
+    }
+  });
+});
+
 describe('Electron binary resolution', () => {
   it.each(['linux', 'win32'])('resolves Electron before launching on %s', (platformName) => {
     const events: string[] = [];

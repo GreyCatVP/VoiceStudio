@@ -160,7 +160,7 @@ There is no native ChromeOS or iPadOS app, and VoiceStudio does not run
 inside the browser alone: the models need a real backend.
 
 - **Chromebook with Linux development environment on x86-64:** install the
-  AppImage or `.deb` ([Install](#install-appimage-or-deb)). Expect CPU-only
+  AppImage or `.deb` ([Install](#install-snap-appimage-or-deb)). Expect CPU-only
   generation (the container has no GPU access on most devices) and enough RAM
   for the model you pick. ARM Chromebooks are not supported: the Linux builds
   are x86-64 only.
