@@ -140,9 +140,57 @@ inference are reported as different scopes.
 | --- | --- |
 | Main Torch TTS and voice-cloning audio input | Uses the matched main environment; local soundfile compatibility preserves explicit soundfile input on torchaudio 2.9. Model/engine kernels still need real hardware testing. |
 | Faster-whisper, including the crash-isolated worker | GPU is admitted only for the pinned HIP binary plus bounded local verification; CPU overrides remain effective. Auto selection can prefer this verified basic-ASR path. |
-| WhisperX, pyannote speaker detection, wav2vec2 GPU alignment | GPU execution is gated before imports/cached pipelines: MIOpen Unicode-path and SDK-header compatibility is unverified. Choose CPU in Settings → Performance (`OMNIVOICE_DEVICE=cpu`) to use these pipelines. |
+| WhisperX ASR and wav2vec2 GPU alignment | Only the registered profile below is admitted, before imports or warm-cache reuse. Runtime GPU reporting uses the same qualifier. |
+| Pyannote speaker detection and unknown heavy pipelines | GPU execution remains gated before token resolution and cached pipeline reuse. Choose CPU in Settings → Performance to use these pipelines. |
 | Unavailable forced alignment | Keeps the transcript and native word timestamps; alignment precision can be lower. It does not discard requested speech or translation content. |
 | Optional engine sidecars | Separate environments and compatibility. Main readiness never certifies them. |
+
+### Qualified WhisperX and alignment
+
+Choose **WhisperX** in **Model Catalogue > ASR > Use** on an already configured
+AMD runtime. Qualification is automatic; there is no additional terminal switch.
+Auto selection continues to prefer verified faster-whisper on Windows HIP.
+Both ASR and alignment use one current qualifier, also used by runtime compute
+reporting. A qualified host reports ROCm acceleration instead of CPU fallback.
+
+The registered profile requires all of the following:
+
+- Windows x64 Python 3.12 and the unchanged checked-in 7.2.1 recipe: exact
+  Torch/audio 2.9.1+rocm7.2.1, vision 0.24.1+rocm7.2.1, ROCm and SDK
+  core/devel/libraries 7.2.1, and the pinned HIP CT2 4.8.2 DLL. WhisperX must be
+  3.4.5 and pyannote.audio 3.4.0. A recipe change requires renewed registration.
+- An available native HIP device 0 with architecture **gfx1201**, plus the
+  existing bounded, model-free CT2 readiness check. Other recipe-supported GPUs
+  are not thereby qualified for WhisperX.
+- Physical ASCII SDK core/devel directories belonging to this interpreter.
+  Expanded HIP runtime, MIOpen, rocRAND (including `rocrand_xorwow.h`) and
+  rocPRIM headers must already exist. An explicit `ROCM_PATH` must match that
+  managed development root. Catalogue checks never unpack or download them.
+- Existing physical ASCII `TEMP` and `TMP`, compatible `TMPDIR` and Python's
+  cached temporary directory, and physical ASCII effective cache roots.
+  Unicode, redirected, relative and network paths do not qualify. This includes
+  custom MIOpen/XDG cache roots and the home/profile roots used for default caches.
+- No SDK-home, architecture-remap or visible-device overrides, and no unqualified
+  MIOpen overrides. The existing application `FAST` search mode is permitted.
+  Disabling MIOpen's disk cache does not qualify an unsupported SDK or TEMP path.
+
+Versions, paths, headers, device metadata and CT2 integrity/readiness are checked
+before every ASR/alignment cache reuse. Rejections remain retryable compatibility
+errors, not broken-import entries. CPU and ordinary native CUDA/non-Windows
+behavior are unchanged. No ASR model or default selection is changed.
+
+The real backend was exercised on an RX 9070 XT under a scoped diagnostic
+exception: cached small, internally constructed default pyannote VAD, real
+ffmpeg 24-to-16 kHz decoding, CT2 HIP, GPU alignment, and restored-gate/warm-cache
+rejection. The 4.8-second and repeated 39.6-second inputs had 12/12 and 48/48
+recognized words timed; the long input detected French automatically. The actual
+default batch was 1. Both owned process trees closed normally, with no external
+network or token-resolution attempt. This is recognized-word coverage, not a
+claim that every spoken word or every model/language was validated. The new
+production qualifier still requires a natural-path hardware run and packaged
+acceptance; pyannote speaker diarization remains closed.
+
+See also the [Polish guide](windows-rocm.pl.md).
 
 IndexTTS keeps its Python 3.10/3.11 requirement; CosyVoice keeps Torch 2.7.
 Default VoxCPM2 installs keep Torch 2.11. A new explicitly opted-in Windows
@@ -181,7 +229,8 @@ Either `HF_HUB_OFFLINE` or `TRANSFORMERS_OFFLINE` also prevents optional alignme
 from downloading missing TorchAudio checkpoints, Hugging Face models or Punkt
 data on allowed CPU/CUDA/MPS routes. An unavailable optional aligner preserves
 native word timings; retry after installing assets or leaving offline mode does
-not require restarting. The Windows HIP heavy-pipeline gate remains unchanged.
+not require restarting. Windows HIP alignment additionally requires the registered
+profile above; speaker diarization retains its separate closed gate.
 
 To return to CPU in Electron, choose **CPU only** in the same setup control or
 save it from Performance and reopen the app, then explicitly install. For a
@@ -273,7 +322,8 @@ complete SDK installation under a Polish Unicode path passed model-free GPU
 readiness but failed actual VAD kernel compilation: HIPRTC could not find the
 rocRAND header. The same interpreter completed GPU VAD when pointed at the
 existing ASCII SDK header root. Unicode SDK paths therefore remain a known
-limitation, distinct from the disk-cache workaround. Full WhisperX/VAD/diarization gates remain:
+limitation, distinct from the disk-cache workaround. These roots remain outside
+the registered WhisperX profile; speaker diarization remains gated:
 direct cached wav2vec2 library alignment completed with 18 timed words and an
 observed GPU forward, but does not certify the gated application pipeline.
 Clean Windows, packaged GUI execution and upstream CI remain separate gates.
@@ -289,7 +339,8 @@ then discovers the expanded rocRAND headers and sets the process-local
 verification does not unpack SDK files. Both GPU VAD parameters and actual
 forward inputs were verified on the RX 9070 XT with fresh ASCII and Polish/space
 cache paths after this automatic preparation. The SDK installation root was
-ASCII; full application WhisperX gates are retained pending broader validation.
+ASCII. Only the registered WhisperX ASR/alignment profile above now qualifies;
+unsupported roots and pyannote speaker diarization remain gated.
 
 Setup repairs only confirmed missing, mismatched or damaged packages, including
 native audio, vision and CTranslate2 imports with missing or corrupted wheel files.
@@ -324,7 +375,7 @@ constraints, trusted package discovery or failed-probe memoization.
 | Desktop runtime choice | Electron runtime, supervisor, IPC and renderer; explicit installation and next-start persistence | `runtime-*.test.ts`, `backend*.test.ts`, `ipc*.test.ts`, runtime selector and Performance component tests; all locale checks |
 | Verified HIP VoxCPM2 | `windows_rocm/voxcpm2.py`, managed sidecar installation and VoxCPM2 adapter | `test_voxcpm2_windows_rocm.py`, `test_windows_rocm_voxcpm2_hashes.py`, sidecar installation and marker tests; cached real GPU synthesis |
 | SDK/header preparation | `windows_rocm/runtime.py` and explicit setup/reuse | SDK/header, MIOpen-cache and strict readiness tests; actual VAD on supported hardware |
-| Optional alignment offline | ASR backend asset checks and failure/retry cache | Offline alignment tests plus unchanged Windows HIP heavy-pipeline gates |
+| Optional alignment offline | ASR backend asset checks and failure/retry cache | Offline alignment tests plus registered Windows HIP capability checks before warm-cache reuse |
 | Portable execution and recovery | Media helpers, atomic markers, backup handling and native fixture isolation | The corresponding media, sidecar, backup and fixture regression groups, then normal backend/frontend CI |
 
 Keep source tests with the code and repeat the normal CI matrix after integration.

@@ -660,9 +660,9 @@ def load_align_model(language_code: str, device: str):
     language — WhisperX bundles them for ~20 major languages only — or it
     cannot be loaded on ``device``. The caller then keeps Whisper's own
     (looser) word timestamps, after trying any fallback device."""
-    from core.windows_rocm.pipelines import pipeline_error, prepare_audio_imports
+    from core.windows_rocm.pipelines import WHISPERX_ALIGNMENT, pipeline_error, prepare_audio_imports
 
-    if reason := pipeline_error(device):
+    if reason := pipeline_error(device, capability=WHISPERX_ALIGNMENT):
         logger.info("%s Keeping native word timestamps.", reason)
         return None
     key = (language_code, device)
@@ -732,9 +732,9 @@ def forced_align(segments: list, audio, language_code: str, device: str | None =
             continue
         model_a, metadata = align
         try:
-            from core.windows_rocm.pipelines import pipeline_error, prepare_audio_imports
+            from core.windows_rocm.pipelines import WHISPERX_ALIGNMENT, pipeline_error, prepare_audio_imports
 
-            if pipeline_error(dev):
+            if pipeline_error(dev, capability=WHISPERX_ALIGNMENT):
                 return segments
             prepare_audio_imports()
             import whisperx
@@ -756,9 +756,17 @@ def forced_align(segments: list, audio, language_code: str, device: str | None =
 class WhisperXBackend(ASRBackend):
     id = "whisperx"
     display_name = "WhisperX (faster-whisper + wav2vec2 forced alignment)"
-    # Windows HIP heavy pipelines remain gated pending MIOpen validation.
-    # CPU execution remains available independently of basic HIP CT2 support.
     gpu_compat = ("cuda", "cpu")
+
+    @classmethod
+    def runtime_gpu_compat(cls):
+        from core.device_caps import detect_host_caps
+        from core.windows_rocm.pipelines import WHISPERX_ASR, pipeline_error, windows_hip_installed
+
+        if (windows_hip_installed() and detect_host_caps().family == "rocm"
+                and pipeline_error("cuda", capability=WHISPERX_ASR) is None):
+            return ("cuda", "rocm", "cpu")
+        return cls.gpu_compat
 
     def __init__(self):
         self._model_name = os.environ.get("ASR_MODEL_WHISPERX", "large-v3")
@@ -847,9 +855,9 @@ class WhisperXBackend(ASRBackend):
 
     @classmethod
     def is_available(cls) -> tuple[bool, str]:
-        from core.windows_rocm.pipelines import pipeline_error, prepare_audio_imports
+        from core.windows_rocm.pipelines import WHISPERX_ASR, pipeline_error, prepare_audio_imports
 
-        if reason := pipeline_error():
+        if reason := pipeline_error(capability=WHISPERX_ASR):
             return False, reason
         ct2_ok, ct2_detail = _ctranslate2_execstack_ok()
         if not ct2_ok:
@@ -876,9 +884,9 @@ class WhisperXBackend(ASRBackend):
         self._ensure_asr()
 
     def _ensure_asr(self):
-        from core.windows_rocm.pipelines import PipelineCompatibilityError, pipeline_error, prepare_audio_imports
+        from core.windows_rocm.pipelines import WHISPERX_ASR, PipelineCompatibilityError, pipeline_error, prepare_audio_imports
 
-        if reason := pipeline_error(self._device):
+        if reason := pipeline_error(self._device, capability=WHISPERX_ASR):
             raise PipelineCompatibilityError(reason)
         if self._asr is not None:
             return
@@ -931,8 +939,6 @@ class WhisperXBackend(ASRBackend):
                 _local_model_source(self._model_name),
                 device=self._device,
                 compute_type=self._compute_type,
-                # vad_method="silero" is the default; keep it so short gaps
-                # get cleaned up before transcription.
             )
         except (ValueError, RuntimeError) as e:
             # #551: GPUs without efficient fp16 (older Maxwell/Pascal, GTX 16xx)
