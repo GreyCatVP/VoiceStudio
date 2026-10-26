@@ -37,8 +37,8 @@ Download the installer matching your PC from the
 
 | PC | Installer |
 |---|---|
-| Intel / AMD (x64) | `VoiceStudio-Electron-<version>-win-x64.exe` |
-| Windows on ARM (Snapdragon X etc., experimental) | `VoiceStudio-Electron-<version>-win-arm64.exe` (releases without it: the x64 installer also works, under emulation) |
+| Intel / AMD (x64) | `VoiceStudio-<version>-win-x64.exe` |
+| Windows on ARM (Snapdragon X etc., experimental) | `VoiceStudio-<version>-win-arm64.exe` (releases without it: the x64 installer also works, under emulation) |
 
 The setup wizard installs for the current user by default (no administrator
 rights needed) and lets you choose the installation folder. Compare the download with the

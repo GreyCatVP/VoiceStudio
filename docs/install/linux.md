@@ -27,16 +27,16 @@ override them or update yt-dlp.
 Download a package from the
 [Releases page](https://github.com/debpalash/VoiceStudio/releases/latest):
 
-| Package | File |
-|---|---|
-| AppImage (any distribution) | `VoiceStudio-Electron-<version>-linux-x64.AppImage` |
-| Debian / Ubuntu package | `VoiceStudio-Electron-<version>-linux-x64.deb` |
+| Package                     | File                                       |
+| --------------------------- | ------------------------------------------ |
+| AppImage (any distribution) | `VoiceStudio-<version>-linux-x64.AppImage` |
+| Debian / Ubuntu package     | `VoiceStudio-<version>-linux-x64.deb`      |
 
 **AppImage:**
 
 ```bash
-chmod +x VoiceStudio-Electron-*-linux-x64.AppImage
-./VoiceStudio-Electron-*-linux-x64.AppImage
+chmod +x VoiceStudio-*-linux-x64.AppImage
+./VoiceStudio-*-linux-x64.AppImage
 ```
 
 The AppImage uses the static AppImage runtime, so it does not need `libfuse2`.
@@ -47,7 +47,7 @@ downloads the latest AppImage, verifies it against the release's
 **.deb:**
 
 ```bash
-sudo apt install ./VoiceStudio-Electron-<version>-linux-x64.deb
+sudo apt install ./VoiceStudio-<version>-linux-x64.deb
 ```
 
 The in-app updater's Linux feed carries the AppImage. Update a `.deb`
@@ -120,11 +120,11 @@ bun run dev         # Electron with hot reload; it starts and supervises the bac
 Do not start the backend in a second terminal; Electron attaches to a backend
 already listening on port 3900, otherwise it starts its own. Other commands:
 
-| Command | What it does |
-|---|---|
-| `bun run desktop-prod` | Build Electron and launch the production bundle |
-| `bun run dist` | Build local installers (AppImage and `.deb`) in `electron/release/` without publishing |
-| `bun run smoke-test` | Build and launch an isolated packaged app |
+| Command                | What it does                                                                           |
+| ---------------------- | -------------------------------------------------------------------------------------- |
+| `bun run desktop-prod` | Build Electron and launch the production bundle                                        |
+| `bun run dist`         | Build local installers (AppImage and `.deb`) in `electron/release/` without publishing |
+| `bun run smoke-test`   | Build and launch an isolated packaged app                                              |
 
 See [Electron setup](../../electron/README.md) for backend configuration and
 quality gates. The first launch downloads model weights only when you install
@@ -210,7 +210,7 @@ AppImage no longer apply. If the window stays blank or the terminal shows GPU
 process errors, start the app once with Chromium's GPU acceleration disabled:
 
 ```bash
-./VoiceStudio-Electron-*-linux-x64.AppImage --disable-gpu
+./VoiceStudio-*-linux-x64.AppImage --disable-gpu
 ```
 
 On Wayland sessions you can also try forcing X11 (XWayland) with
@@ -301,7 +301,7 @@ variants are unavailable there.
 A valid inherited `OMNIVOICE_TORCH_VARIANT` takes precedence over the saved GUI
 choice and pins the selector. To use that optional environment-variable route,
 fully quit the app and launch it with `OMNIVOICE_TORCH_VARIANT=rocm`, for example
-`OMNIVOICE_TORCH_VARIANT=rocm ./VoiceStudio-Electron-*-linux-x64.AppImage`.
+`OMNIVOICE_TORCH_VARIANT=rocm ./VoiceStudio-*-linux-x64.AppImage`.
 Keep using that launch method while the override is wanted; removing the
 override makes the saved GUI choice available again.
 Runtime setup then reinstalls `torch`/`torchaudio` from the ROCm wheel index
@@ -320,10 +320,12 @@ dependency sync without the ROCm opt-in. `OMNIVOICE_TORCH_INDEX=<url>` overrides
 index when you need a different ROCm version — e.g. AMD publishes newer
 driver-matched builds (7.2.x) at `repo.radeon.com` as a `--find-links` page
 rather than a PyPI-style index:
+
 ```bash
 uv pip install --reinstall torch==2.8.0 torchaudio==2.8.0 \
   --find-links https://repo.radeon.com/rocm/manylinux/rocm-rel-7.2.4/
 ```
+
 run that manually if you want a specific ROCm point release; the
 `OMNIVOICE_TORCH_INDEX` env var only accepts a PEP 503 index URL, not a
 find-links page. If the reinstall fails (network, unsupported card), VoiceStudio
@@ -352,6 +354,7 @@ uv run python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_
 ```
 
 Notes:
+
 - ROCm is exercised far less than the default CUDA/MPS/CPU paths — it works,
   but expect rough edges on consumer cards and report what you hit.
 - Unsupported GFX (e.g. some consumer RDNA cards): if it still won't run, set

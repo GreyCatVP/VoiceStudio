@@ -162,7 +162,8 @@ const RUNTIME_SCHEMA = 'electron-runtime-v2-cudnn8';
 const CUDNN8_PROBE_PREFIX = 'VOICESTUDIO_CUDNN8_PROBE=';
 const REQUIRED_ENV_BYTES = 9 * 1024 ** 3;
 // No CUDA wheels: torch itself is ~0.2 GB; the rest is ordinary dependencies plus
-// the uv cache copy that cannot hardlink across volumes.
+// the uv cache copy that cannot hardlink across volumes. macOS wheels never carry
+// CUDA either (an Apple Silicon runtime measured 1.9 GB plus a 1.8 GB uv cache).
 const REQUIRED_CPU_ENV_BYTES = 5 * 1024 ** 3;
 export type RuntimePhase = 'checking' | 'downloading_uv' | 'installing_deps' | 'verifying';
 export type RuntimeRegion = 'auto' | 'global' | 'china' | 'russia' | 'restricted';
@@ -885,7 +886,10 @@ export async function installRuntime(
   await pruneInterruptedUvDownloads(runtimeUvCache(project));
   const torch = choice ?? resolveTorchVariant();
   const windowsRocm = windowsRocmSelected(torch.variant);
-  const requiredBytes = torch.variant === 'cpu' ? REQUIRED_CPU_ENV_BYTES : REQUIRED_ENV_BYTES;
+  const requiredBytes =
+    torch.variant === 'cpu' || process.platform === 'darwin'
+      ? REQUIRED_CPU_ENV_BYTES
+      : REQUIRED_ENV_BYTES;
   const disk = await statfs(project);
   if (disk.bavail * disk.bsize < requiredBytes) {
     throw Object.assign(

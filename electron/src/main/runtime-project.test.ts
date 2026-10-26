@@ -754,7 +754,7 @@ describe('packaged runtime setup', () => {
     const run = vi.fn();
     await expect(
       installRuntime(bundle, project, null, run, new AbortController().signal),
-    ).rejects.toThrow('9 GiB');
+    ).rejects.toThrow(/needs at least \d+ GiB/);
     expect(fetch).not.toHaveBeenCalled();
     expect(run).not.toHaveBeenCalled();
   });
