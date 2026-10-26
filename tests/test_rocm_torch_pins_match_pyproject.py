@@ -191,3 +191,16 @@ def test_the_whole_stack_is_reinstalled_together():
         f"the ROCm reinstall does not cover {missing}; those stay on the CUDA "
         f"wheels while the rest switch to ROCm"
     )
+
+
+def test_rocm_index_keeps_rdna4_kernels():
+    """#3418: RX 9060/9070 (gfx1200/gfx1201) only run on ROCm wheels built with
+    gfx12 kernels; no HSA override can substitute them. torch 2.8.0's rocm6.4
+    wheels ship both. Moving the index or the torch pin below that floor would
+    silently put every RDNA4 owner back on the CPU."""
+    _, index = _backend_rocm_pins_and_index()
+    m = re.search(r"/whl/rocm(\d+)\.(\d+)$", index)
+    assert m, f"unexpected ROCm index shape: {index}"
+    assert (int(m.group(1)), int(m.group(2))) >= (6, 4), index
+    torch_version = _constraint_pins()["torch"].split("+", 1)[0]
+    assert tuple(int(p) for p in torch_version.split(".")[:2]) >= (2, 8), torch_version

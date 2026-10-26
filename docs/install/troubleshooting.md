@@ -683,13 +683,15 @@ PyTorch build and, for every engine, whether it uses the GPU.
 
 **Fix, by platform:**
 
-- **Windows:** PyTorch engines stay on the CPU (no ROCm wheels exist for the
-  PyTorch version VoiceStudio ships). Engines with their own GPU runtime — today
-  audio.cpp (Vulkan) — do use a Radeon: install its runtime from **Settings →
-  Models**. Details and the advanced, unsupported AMD-wheels route:
-  [windows.md — GPU support](windows.md#gpu-support).
+- **Windows:** supported Windows 11 Radeon cards, including the RX 9070 /
+  9070 XT (RDNA4), can opt into VoiceStudio's ROCm 7.2.1 setup — see the
+  [Windows ROCm guide](windows-rocm.md). Otherwise PyTorch engines stay on the
+  CPU; engines with their own GPU runtime — today audio.cpp (Vulkan) — still use
+  a Radeon: install its runtime from **Settings → Models**.
 - **Linux:** set `OMNIVOICE_TORCH_VARIANT=rocm` and run setup again, or use the
-  ROCm Docker image — [linux.md — AMD GPU (ROCm)](linux.md#amd-gpu-rocm). If the
+  ROCm Docker image — [linux.md — AMD GPU (ROCm)](linux.md#amd-gpu-rocm). The
+  ROCm build supports RX 9000 (RDNA4) cards natively; do not set
+  `HSA_OVERRIDE_GFX_VERSION=11.0.0` for them. If the
   panel says PyTorch has ROCm but cannot open the device, check that the `amdgpu`
   driver is loaded and your user can open `/dev/kfd` (`render` and `video`
   groups).
