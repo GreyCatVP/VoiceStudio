@@ -844,6 +844,20 @@ def resplit_segments_by_diarization(
     return _resplit_core(segments, words, turns)
 
 
+def label_segments_by_diarization(
+    segments: List[dict], words: Sequence["Word"], diarization,
+) -> List[dict]:
+    """Label segments from a diarization result, then split any segment whose
+    words span more than one speaker (#486, #3419).
+
+    The single entry point every transcription path uses, so no path can label
+    a two-speaker segment with its majority speaker and stop there — that left
+    the second speaker's turn merged into the first one's line.
+    """
+    assigned = assign_speakers_from_diarization(segments, diarization)
+    return resplit_segments_by_diarization(assigned, words, diarization)
+
+
 def resplit_segments_by_turns(
     segments: List[dict], words: Sequence["Word"], turns: Sequence[dict],
 ) -> List[dict]:

@@ -20,6 +20,12 @@ struct PhoneDubView: View {
     @State private var consent = false
     @State private var audioOnly = false
     @State private var editing: PhoneDubRecord?
+    private struct ExportSelection: Identifiable {
+        let record: PhoneDubRecord
+        let language: String
+        var id: String { record.id.uuidString + ":" + language }
+    }
+    @State private var exporting: ExportSelection?
     @State private var shared: SharedFile?
     @State private var saved: SharedFile?
     @State private var playing: SharedFile?
@@ -84,6 +90,7 @@ struct PhoneDubView: View {
                                 Button(model.t("mobile.speak.share"),systemImage: "square.and.arrow.up") { open(record,output,action: .share) }
                                 Button(model.t("common.save"),systemImage: "arrow.down.to.line") { open(record,output,action: .save) }
                                 ReportButton(subject: reportSubject(record,output), reporting: $reporting, context: record.request.title + " " + output.name)
+                                if record.checkpoint.done { Button(model.t("mobile.dub_advanced.exports"),systemImage: "square.and.arrow.up.on.square") { exporting = ExportSelection(record: record,language: output.language) } }
                                 if record.checkpoint.done { Button(model.t("clone.edit"),systemImage: "pencil") { editing = record } }
                                 if record.checkpoint.done { Button(model.t("mobile.simple.remove_job"),systemImage: "trash",role: .destructive) { remove(record) } }
                             }.labelStyle(.iconOnly).studioButton(.tertiary)
@@ -112,6 +119,7 @@ struct PhoneDubView: View {
         }
         .contentReportSheet($reporting)
         .sheet(item: $editing) { record in NavigationStack { DubEditorView(record: record) } }
+        .sheet(item: $exporting) { selection in NavigationStack { PhoneDubExportView(record: selection.record,initialTarget: selection.language) } }
         .sheet(item: $shared) { file in ShareSheet(items: [file.url]) }
         .sheet(item: $saved) { file in SaveFileSheet(url: file.url) }
         .sheet(item: $playing) { file in PhoneDubPlayback(url: file.url) }

@@ -5,6 +5,16 @@ VoiceStudio marks the selected dubbed language as the default so ordinary video
 players and messaging apps play the dub immediately. Choose **Original** in the
 Default Track control when the source audio should play first instead.
 
+## Background volume
+
+With **Background audio** on, video, WAV and MP3 exports mix the separated
+background (music and ambience) under the dub. **Background volume** sets its
+level from 0% to 400%; 100% keeps the original level, as earlier releases did.
+A limiter stops a raised background from clipping. API clients pass
+`bed_level` (0.0 to 4.0, default 1.0) to `/dub/download`, `/dub/download-audio`,
+`/dub/download-mp3` and `/dub/preview-video`. The setting is desktop-only for now;
+the phone apps export at the original level.
+
 ## Hardsub captions
 
 Turning on **Burn subtitles into picture (hardsub)** re-encodes the video with

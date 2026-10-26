@@ -113,6 +113,7 @@ export function CompareVoices() {
     <div className="mx-auto max-w-4xl space-y-5">
       <h2 className="text-lg font-semibold">{t('compare.title')}</h2>
       <textarea
+        dir="auto"
         aria-label={t('compare.test_phrase')}
         value={text}
         disabled={busy}

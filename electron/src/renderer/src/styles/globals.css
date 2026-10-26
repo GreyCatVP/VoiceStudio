@@ -4,7 +4,6 @@
 @import './t3-theme.css';
 
 @source '../../../shared/components/SearchableSelect.jsx';
-@source '../../../shared/components/VirtualSearchableSelect.tsx';
 @source '../../../shared/components/LanguageFlag.jsx';
 @source '../../../shared/components/VoiceSelector.jsx';
 
@@ -216,19 +215,6 @@
 .workspace-pane {
   color: color-mix(in srgb, var(--foreground) 94%, var(--muted-foreground));
 }
-.secondary-sidebar::after,
-.workspace-pane::after {
-  position: absolute;
-  z-index: 0;
-  pointer-events: none;
-  content: '';
-  inset: 0;
-  background: linear-gradient(
-    155deg,
-    color-mix(in srgb, var(--primary) 3.5%, transparent),
-    transparent 28%
-  );
-}
 .secondary-sidebar > *,
 .workspace-pane > * {
   z-index: 1;
@@ -357,13 +343,12 @@
 .secondary-sidebar[data-variant='controls']
   [data-slot='secondary-sidebar-content']
   > :is(section, form, details, div.rounded-xl) {
+  /* Sections are outlined, not filled: one flat pane colour throughout. */
   overflow: clip;
-  border-color: color-mix(in srgb, var(--border) 88%, transparent);
-  background: color-mix(in srgb, var(--card) 54%, transparent);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--foreground) 3%, transparent),
-    0 1px 2px color-mix(in srgb, var(--background) 45%, transparent);
-  transition-property: border-color, background-color, box-shadow;
+  border-color: color-mix(in srgb, var(--border) 70%, transparent);
+  background: transparent;
+  box-shadow: none;
+  transition-property: border-color;
   transition-duration: 150ms;
 }
 .secondary-sidebar[data-variant='controls']
@@ -407,7 +392,6 @@
   [data-slot='secondary-sidebar-content']
   > :is(section, form, details, div.rounded-xl):hover {
   border-color: color-mix(in srgb, var(--border) 76%, var(--foreground));
-  background-color: color-mix(in srgb, var(--card) 60%, transparent);
 }
 .secondary-sidebar[data-variant='controls']
   [data-slot='secondary-sidebar-content']

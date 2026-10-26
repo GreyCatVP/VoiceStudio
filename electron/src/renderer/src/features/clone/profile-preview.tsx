@@ -92,6 +92,7 @@ export function ProfilePreview({
         {t('voice_profile.test_phrase')}
       </label>
       <textarea
+        dir="auto"
         id={id}
         rows={3}
         value={text}

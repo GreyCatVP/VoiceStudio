@@ -15,7 +15,7 @@ import java.util.UUID
 @Serializable data class DubModelPin(val id: String,val identity: String)
 @Serializable data class PhoneDubRequest(val id: String,val title: String,val sourceFile: String,val targets: List<DubTarget>,
     val models: List<DubModelPin>,val createdAt: Long,val consentAt: Long,val referenceText: String? = null,val audioOnly: Boolean = false,val sourceHash: String? = null)
-@Serializable data class DubSegmentState(val speech: SpeechSegment,val referenceText: String? = null,val translations: Map<String,String> = emptyMap(),val referenceFile: String? = null,val id: String? = null,val referenceNeedsTranscription: Boolean = false,val gain: Double = 1.0,val muted: Boolean = false)
+@Serializable data class DubSegmentState(val speech: SpeechSegment,val referenceText: String? = null,val translations: Map<String,String> = emptyMap(),val referenceFile: String? = null,val id: String? = null,val referenceNeedsTranscription: Boolean = false,val gain: Double = 1.0,val muted: Boolean = false,val speaker: String? = null,val referenceOrigin: String? = null,val voiceID: String? = null)
 @Serializable data class DubRender(val index: Int,val sha256: String,val frames: Long,val target: String? = null,val fingerprint: String? = null,val file: String? = null,val segmentID: String? = null,val scope: String? = null,val originalHash: String? = null,val referenceHash: String? = null,val clonePin: String? = null)
 @Serializable internal data class DubCachedAudio(val sha256: String,val frames: Long)
 @Serializable data class PhoneDubOutput(val language: String,val name: String,val file: String,val sha256: String,val duration: Double,val fingerprint: String? = null)
@@ -99,12 +99,17 @@ class PhoneDubStore(private val root: File) {
         val request=request(id);val current=checkpoint(id);val duration=current.frames/24000.0
         require(file(id,"original.pcm").isFile&&segments.isNotEmpty()&&segments.size<=10000&&segments.mapNotNull {it.id}.distinct().size==segments.size)
         require(segments.all {s ->s.speech.start.isFinite()&&s.speech.end.isFinite()&&s.speech.start>=0&&s.speech.end>s.speech.start&&s.speech.end<=duration&&s.speech.end-s.speech.start<=30&&s.speech.text.isNotBlank()&&s.speech.text.length<=4000&&s.gain.isFinite()&&s.gain in 0.0..2.0&&s.translations.all {(key,value)->request.targets.any {it.code==key}&&value.isNotBlank()&&value.length<=4000}})
-        val updated=segments.toMutableList();val created=mutableListOf<File>()
+        require(segments.all(PhoneDubCast::valid))
+        val updated=segments.map {it.copy(speaker=it.speaker?.trim()?.takeIf(String::isNotEmpty))}.toMutableList();val created=mutableListOf<File>();val sharedReferences=mutableMapOf<String,String>()
+        val referenceFingerprints=java.util.IdentityHashMap<FloatArray,MutableMap<String,String>>()
         try {
             references.forEach {(index,reference) ->
                 require(index in updated.indices&&reference.second.isNotBlank()&&reference.first.sampleRate==24000&&reference.first.samples.size in 2400..720000)
-                val name="edited-reference-${UUID.randomUUID()}.pcm";val output=file(id,name)
-                writePcm(reference.first,output);created+=output
+                val byText=referenceFingerprints.getOrPut(reference.first.samples) {mutableMapOf()}
+                val fingerprint=byText.getOrPut(reference.second) {dubFingerprint(listOf(dubAudioHash(reference.first),reference.second))}
+                val name=sharedReferences.getOrPut(fingerprint) {
+                    "edited-reference-${UUID.randomUUID()}.pcm".also {name ->val output=file(id,name);writePcm(reference.first,output);created+=output}
+                }
                 updated[index]=updated[index].copy(referenceFile=name,referenceText=reference.second)
             }
             val previous=current.segments.associateBy {it.id}

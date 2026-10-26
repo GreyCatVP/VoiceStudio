@@ -358,7 +358,9 @@ try {
   const agentRequest = await page.evaluate(() => globalThis.__dubAgentRequests.at(-1));
   assert.equal(agentRequest.agent, 'codex');
   assert.equal(agentRequest.purpose, 'translate');
-  assert.equal(agentRequest.sourceLanguage, 'en');
+  // The user picked French under Spoken language before transcribing, and a
+  // deliberate choice wins over the transcript's detected 'en' (#3442).
+  assert.equal(agentRequest.sourceLanguage, 'fr');
   assert.equal(agentRequest.targetLanguage, 'Spanish');
   assert.deepEqual(agentRequest.glossary, [{ source: 'VoiceStudio', target: 'VoiceStudio' }]);
   assert.deepEqual(agentRequest.segments, [
@@ -494,11 +496,19 @@ try {
   await page.route('**/api/export/record', (route) => route.fulfill({ json: { ok: true } }));
   await page.getByRole('button', { name: 'MP3 (compressed)', exact: true }).click();
   await page.getByRole('button', { name: '320 kbps', exact: true }).click();
-  await page.getByRole('switch', { name: 'Background audio', exact: true }).click();
+  // #2964: the background bed level reaches the export while the background is mixed in.
+  const bedLevel = page.getByRole('slider', { name: 'Background volume', exact: true });
+  await bedLevel.focus();
+  await bedLevel.press('ArrowRight');
+  await page.getByText('110%', { exact: true }).waitFor();
   rejectExport = true;
   await page.getByRole('button', { name: 'Export', exact: true }).click();
   await page.getByRole('alert').waitFor();
   assert.equal(await page.getByText('private backend trace').count(), 0);
+  assert.equal(exportRequests.at(-1).searchParams.get('preserve_bg'), 'true');
+  assert.equal(exportRequests.at(-1).searchParams.get('bed_level'), '1.1');
+  await page.getByRole('switch', { name: 'Background audio', exact: true }).click();
+  await bedLevel.waitFor({ state: 'hidden' });
   rejectExport = false;
   await page.getByRole('button', { name: 'Export', exact: true }).click();
   await page.waitForFunction(() => globalThis.__nativeSaveRequests.length === 1);
@@ -507,6 +517,7 @@ try {
   assert.equal(exportRequests.at(-1).searchParams.get('lang'), 'es');
   assert.equal(exportRequests.at(-1).searchParams.get('bitrate'), '320k');
   assert.equal(exportRequests.at(-1).searchParams.get('preserve_bg'), 'false');
+  assert.equal(exportRequests.at(-1).searchParams.get('bed_level'), null);
   let subtitleRequest;
   await page.route('**/api/dub/srt/fixture?*', (route) => {
     subtitleRequest = new URL(route.request().url());

@@ -50,7 +50,6 @@
     "src/shared/api/dialects.ts",
     "src/shared/repair-request.ts",
     "src/shared/download-failure.ts",
-    "src/shared/components/VirtualSearchableSelect.tsx",
     "src/shared/web-api-routing.ts"
   ]
 }
