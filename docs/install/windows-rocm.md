@@ -228,8 +228,21 @@ processes closed normally. No terminal action was needed for the saved choice.
 This used an explicitly prepared pointer to the existing test runtime, not a
 fresh NSIS installation. Full Polish keyboard, physical NVDA and listening
 acceptance remain open. Ordinary audio preprocessing remains CPU work as in the
-CUDA path. The default OmniVoice model was not rerun because the new upstream
-model-licence acknowledgement was not accepted in the test profile.
+CUDA path.
+
+After the test owner accepted the upstream model terms in that isolated profile,
+the production default OmniVoice adapter also generated ordinary speech and a
+transcript-free reference clone at 24 kHz. All model parameters were on Radeon
+with FP16; hooks observed 12 language-model forwards and 25 forwards of the
+already cached model-owned PyTorch Whisper reference recognizer, all with GPU
+inputs. The generated clips were 2.28 and 2.52 seconds, with nonzero finite audio;
+peak allocated GPU memory was 4.04 GB. This reference test used the cached
+PyTorch Whisper fallback, not CTranslate2. No external socket/DNS attempt was
+observed; a loopback connection was Windows asyncio's own local socketpair.
+Only the tokenizer already bundled with the pinned OmniVoice checkpoint was
+used. The separate tokenizer registry entry still has unresolved licence
+metadata; local test acknowledgement does not reclassify or resolve that audit.
+The production licence prompts apply to ordinary users on CUDA and ROCm alike.
 
 For the pinned Torch `2.9.1+rocm7.2.1` Windows build, a non-ASCII
 `MIOPEN_CUSTOM_CACHE_DIR` can make MIOpen's SQLite kernel cache fail with
