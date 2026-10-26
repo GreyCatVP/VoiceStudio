@@ -108,7 +108,11 @@ export DEBIAN_FRONTEND=noninteractive
 
 ROCM_VER=7.2.4
 ROCM_DEB=amdgpu-install_7.2.4.70204-1_all.deb
+# SHA-256 of the file used in the tested build (repo.radeon.com publishes no digest for it).
+ROCM_DEB_SHA256=53c7ec5cace439f1ea97efebd59a3b32aa288c5c0bf76f57ab3cd7159dd98fad
 ROCDXG_VER=1.2.0
+# GitHub's published digest for the release asset; a mismatch stops before dpkg runs.
+ROCDXG_SHA256=3ed9526719290cd8f590150dad8ea0f234fa779bea6a4c9a8449d7ae6b8cfb6e
 USER_NAME=vs
 
 apt-get update
@@ -137,6 +141,7 @@ EOF
 # ROCm apt repo (no DKMS: WSL uses the Windows driver through /dev/dxg).
 cd /tmp
 wget -q "https://repo.radeon.com/amdgpu-install/${ROCM_VER}/ubuntu/noble/${ROCM_DEB}"
+echo "${ROCM_DEB_SHA256}  ${ROCM_DEB}" | sha256sum -c -
 apt-get install -y "./${ROCM_DEB}"
 apt-get update
 # Ubuntu's own old ROCm runtime packages shadow /opt/rocm if present.
@@ -151,6 +156,7 @@ usermod -a -G render,video "$USER_NAME"
 
 # librocdxg: the WSL bridge between ROCr and the Windows driver.
 wget -q "https://github.com/ROCm/librocdxg/releases/download/v${ROCDXG_VER}/rocdxg-roct_${ROCDXG_VER}_amd64.deb"
+echo "${ROCDXG_SHA256}  rocdxg-roct_${ROCDXG_VER}_amd64.deb" | sha256sum -c -
 dpkg -i "rocdxg-roct_${ROCDXG_VER}_amd64.deb"
 
 # Make the ROCm libraries (incl. librocdxg) visible to every process.
@@ -180,6 +186,14 @@ wsl -d VSBase -- bash -lc "rocminfo | grep -E 'Marketing Name|Name: +gfx'"
 
 The last command must list your Radeon card (here `gfx1101` /
 `AMD Radeon RX 7800 XT`). **Do not continue until it does.**
+
+<a id="sparse-vhd-warning"></a>
+
+> **Sparse VHDX warning.** WSL only enables sparse mode with `--allow-unsafe`,
+> because Microsoft flags it as a possible cause of virtual disk corruption.
+> Use it only on distros you can rebuild, and keep a known-good exported image:
+> anything changed since your last export can be lost if the disk corrupts.
+> The layout here relies on that: the live distro is always a copy of an image.
 
 Export the image. Run `wsl --shutdown` first (see
 [error 3](#3-wsl---export-sharing-violation-even-with-the-distro-stopped)), and **only delete the build
@@ -290,6 +304,9 @@ EOF
 Create the working distro from the base, install, verify, and save the ready
 image:
 
+`--allow-unsafe` below carries the same
+[sparse VHDX warning](#sparse-vhd-warning).
+
 ```powershell
 wsl --import VoiceStudio G:\WSL\VoiceStudio G:\WSL\images\vs-rocm-base.vhdx --vhd
 wsl --manage VoiceStudio --set-sparse true --allow-unsafe
@@ -367,6 +384,7 @@ switch ($Action) {
         if (((wsl -l -q) -replace "`0", '') -contains $Distro) { wsl --unregister $Distro }
         wsl --import $Distro $Install $Images[$From] --vhd   # copies; the image stays untouched
         # Sparse VHDX gives freed space back to the host drive (run `sudo fstrim -av` inside after big deletes).
+        # WSL calls sparse mode unsafe (possible disk corruption): the images stay the known-good copy.
         wsl --manage $Distro --set-sparse true --allow-unsafe
         if ($From -eq 'base') {
             wsl -d $Distro -- bash -lc "sed 's/\r$//' $Scripts/provision-voicestudio.sh | bash"
@@ -493,7 +511,8 @@ uv's cache (the CUDA torch and `nvidia-*` wheels from `uv sync` are cached even
 after being uninstalled), and the build distro another 21 GB. Fix:
 
 - Turn on **sparse VHDX** for each distro:
-  `wsl --manage <distro> --set-sparse true --allow-unsafe`.
+  `wsl --manage <distro> --set-sparse true --allow-unsafe` (read the
+  [sparse VHDX warning](#sparse-vhd-warning) first).
 - Inside, run `uv cache clean`, remove the bun install cache, and run
   `sudo fstrim -av`.
 - Then `wsl --shutdown`.
