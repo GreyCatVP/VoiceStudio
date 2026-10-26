@@ -446,6 +446,11 @@ _CONTEXT_FREE_HINT_CLASSES = frozenset({
     # Left out when those two were added, so a blocked load reached a streaming
     # render with no way to learn an Application Control policy caused it.
     "WINDOWS_APP_CONTROL_BLOCKED",
+    # Matched on SOURCE_LANGUAGE_REQUIRED_MESSAGE, a sentence this app writes
+    # itself (SourceLanguageRequiredError), so no foreign text can claim it.
+    # It is terminal, and a terminal class without its hint would end a render
+    # while explaining nothing.
+    "SOURCE_LANGUAGE_REQUIRED",
     # Matched on the library name or ``audio_io.AUDIO_WRITE_FAILED_MARKER`` — a
     # marker chosen over generic wording precisely so an unrelated open cannot
     # claim the audio remedy. The desktop app already routes this topic to

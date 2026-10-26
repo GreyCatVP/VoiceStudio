@@ -423,13 +423,16 @@ def test_indextts_does_not_claim_rocm_when_its_venv_holds_a_cuda_torch(tmp_path,
     assert rocm["effective_device"] == "rocm"
 
 
-def test_indextts_keeps_its_claim_when_the_venv_cannot_be_inspected(tmp_path, monkeypatch):
+@pytest.mark.parametrize("platform,expected", [("win32", "cpu_fallback"), ("linux", "accelerated")])
+def test_indextts_unknown_venv_is_conservative_only_on_opted_windows(tmp_path, monkeypatch, platform, expected):
     from engines.indextts import IndexTTS2Backend, bootstrap
 
+    monkeypatch.setenv("OMNIVOICE_TORCH_VARIANT", "rocm")
     monkeypatch.setenv("OMNIVOICE_INDEXTTS_DIR", str(tmp_path))  # no .venv at all
     monkeypatch.setattr(bootstrap, "_resolved_python", None)
+    monkeypatch.setattr("sys.platform", platform)
     rocm_caps = HostCaps(family="rocm", available_families=("rocm", "cpu"))
-    assert IndexTTS2Backend.runtime_compute_profile(rocm_caps)["routing_status"] == "accelerated"
+    assert IndexTTS2Backend.runtime_compute_profile(rocm_caps)["routing_status"] == expected
     # Never narrowed off a ROCm host either.
     cuda_caps = HostCaps(family="cuda", available_families=("cuda", "cpu"))
     assert IndexTTS2Backend.runtime_compute_profile(cuda_caps)["routing_status"] == "accelerated"

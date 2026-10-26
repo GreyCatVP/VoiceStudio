@@ -663,12 +663,26 @@ def _phase_a_build_inner() -> None:
     # dlopen/LoadLibrary, and the one hard ordering invariant of this phase —
     # it must run before any ctranslate2/torch import (#1371).
     try:
+        from core.windows_rocm.runtime import initialize_dll_search
+
+        initialize_dll_search()
+    except Exception:  # noqa: BLE001 — the opt-in ROCm path must not cost CUDA its preload
+        pass
+    try:
         from core.cudnn8 import preload as _preload_cudnn8
         _preload_cudnn8()
     except Exception:  # noqa: BLE001 — never block startup on a preload
         pass
 
     _startup_progress.begin_step("ml_imports")
+    try:
+        # The opt-in Windows ROCm runtime must pin its DLL search path before
+        # torchaudio loads; a no-op on every other runtime.
+        from core.windows_rocm.pipelines import prepare_audio_imports
+
+        prepare_audio_imports()
+    except Exception:  # noqa: BLE001 — the torchaudio import below reports
+        pass
     try:
         import torchaudio  # noqa: F401
     except Exception as exc:  # noqa: BLE001

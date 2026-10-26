@@ -918,7 +918,13 @@
     "agent_cli_desc": "{{agent}} dịch từng đoạn theo ngữ cảnh và viết lại các đoạn lệch thời lượng sau khi đo giọng nói.",
     "choose_translation_agent": "Chọn tác nhân dịch",
     "no_local_agents": "Cài đặt Codex, Claude Code, OpenCode hoặc Pi để dịch bằng tác nhân cục bộ.",
-    "agent_translation_complete": "{{agent}} đã dịch xong các đoạn."
+    "agent_translation_complete": "{{agent}} đã dịch xong các đoạn.",
+    "input_issue_no_audio": "Không có rãnh âm thanh — hãy chọn tệp video hoặc âm thanh có tiếng",
+    "input_issue_invalid_media": "Không đọc được tệp này — hãy chọn tệp hoàn chỉnh, phát được",
+    "input_issue_unsupported": "Loại tệp không được hỗ trợ — hãy chọn tệp video hoặc âm thanh",
+    "input_issue_empty": "Tệp này trống — hãy chọn tệp khác",
+    "file_actions": "Thao tác tệp",
+    "translator_agent": "Tác tử"
   },
   "dub_workflow": {
     "preparing_audio": "Đang chuẩn bị âm thanh…",
@@ -1465,7 +1471,7 @@
     "gpu_report_state_intel_unsupported": "Đã tìm thấy {{gpu}}, nhưng không engine nào đã cài dùng được GPU Intel nên mọi thứ chạy trên CPU.",
     "gpu_report_state_unknown": "Không xác định được trạng thái GPU.",
     "gpu_report_option_vulkan_engines": "Dùng engine có runtime GPU riêng: audio.cpp chạy trên GPU AMD Radeon qua Vulkan (Cài đặt → Mô hình → cài runtime).",
-    "gpu_report_option_rocm_windows_manual": "VoiceStudio không cài PyTorch với ROCm trên Windows. AMD phát hành các gói wheel riêng cho card Radeon mới, nhưng chúng cần PyTorch mới hơn bản mà các engine ở đây được kiểm thử, và một số engine sẽ hỏng. Chỉ thử nếu bạn quen xử lý sự cố (xem hướng dẫn cài đặt Windows).",
+    "gpu_report_option_rocm_windows_manual": "Trên phần cứng AMD được hỗ trợ chạy Windows 11 x64, bật cài đặt ROCm 7.2.1 của VoiceStudio bằng OMNIVOICE_TORCH_VARIANT=rocm. Nếu đã cài, hãy chạy lại thiết lập và kiểm tra bảng tương thích trình điều khiển và phần cứng của AMD. Các engine tùy chọn có giới hạn riêng; xem hướng dẫn cài đặt Windows.",
     "gpu_report_option_rocm_variant_linux": "Đặt OMNIVOICE_TORCH_VARIANT=rocm rồi chạy lại phần thiết lập để cài bản dựng ROCm của PyTorch.",
     "gpu_report_option_rocm_device_access": "Kiểm tra trình điều khiển amdgpu đã được nạp và người dùng của bạn mở được /dev/kfd (nhóm render và video).",
     "gpu_report_option_reinstall_cuda_torch": "Cài lại runtime để nó cài bản dựng CUDA của PyTorch.",

@@ -918,7 +918,13 @@
     "agent_cli_desc": "{{agent}} हर सेगमेंट का संदर्भ सहित अनुवाद करता है और मापी गई वाणी के बाद समय-अंतर को दोबारा लिखता है।",
     "choose_translation_agent": "अनुवाद एजेंट चुनें",
     "no_local_agents": "स्थानीय एजेंट से अनुवाद करने के लिए Codex, Claude Code, OpenCode या Pi इंस्टॉल करें।",
-    "agent_translation_complete": "{{agent}} ने सेगमेंट का अनुवाद पूरा कर दिया।"
+    "agent_translation_complete": "{{agent}} ने सेगमेंट का अनुवाद पूरा कर दिया।",
+    "input_issue_no_audio": "कोई ऑडियो ट्रैक नहीं — आवाज़ वाली वीडियो या ऑडियो फ़ाइल चुनें",
+    "input_issue_invalid_media": "यह फ़ाइल पढ़ी नहीं जा सकती — पूरी, चलने योग्य फ़ाइल चुनें",
+    "input_issue_unsupported": "असमर्थित फ़ाइल प्रकार — वीडियो या ऑडियो फ़ाइल चुनें",
+    "input_issue_empty": "यह फ़ाइल खाली है — कोई दूसरी फ़ाइल चुनें",
+    "file_actions": "फ़ाइल क्रियाएँ",
+    "translator_agent": "एजेंट"
   },
   "dub_workflow": {
     "preparing_audio": "ऑडियो तैयार किया जा रहा है…",
@@ -1465,7 +1471,7 @@
     "gpu_report_state_intel_unsupported": "{{gpu}} मिला, लेकिन कोई इंस्टॉल किया हुआ इंजन Intel GPU का उपयोग नहीं कर सकता, इसलिए सब कुछ CPU पर चलता है।",
     "gpu_report_state_unknown": "GPU की स्थिति तय नहीं की जा सकी।",
     "gpu_report_option_vulkan_engines": "अपने GPU रनटाइम वाले इंजन का उपयोग करें: audio.cpp, Vulkan के ज़रिए AMD Radeon GPU पर चलता है (सेटिंग्स → मॉडल → रनटाइम इंस्टॉल करें)।",
-    "gpu_report_option_rocm_windows_manual": "VoiceStudio Windows पर ROCm वाला PyTorch इंस्टॉल नहीं करता। AMD नए Radeon कार्ड के लिए अलग wheel जारी करता है, लेकिन उन्हें यहाँ के इंजनों की जाँच वाले PyTorch से नया PyTorch चाहिए और कुछ इंजन टूट जाते हैं। केवल तभी आज़माएँ जब आप समस्याएँ खुद सुलझा सकते हों (Windows इंस्टॉल गाइड देखें)।",
+    "gpu_report_option_rocm_windows_manual": "समर्थित Windows 11 x64 AMD हार्डवेयर पर, OMNIVOICE_TORCH_VARIANT=rocm से VoiceStudio का ROCm 7.2.1 सेटअप चालू करें। यदि यह पहले से इंस्टॉल है, तो सेटअप दोबारा चलाएँ और AMD की ड्राइवर व हार्डवेयर संगतता तालिका जाँचें। वैकल्पिक इंजनों की अलग सीमाएँ हैं; Windows इंस्टॉल गाइड देखें।",
     "gpu_report_option_rocm_variant_linux": "PyTorch का ROCm बिल्ड इंस्टॉल करने के लिए OMNIVOICE_TORCH_VARIANT=rocm सेट करें और सेटअप फिर से चलाएँ।",
     "gpu_report_option_rocm_device_access": "जाँचें कि amdgpu ड्राइवर लोड है और आपका उपयोगकर्ता /dev/kfd खोल सकता है (render और video समूह)।",
     "gpu_report_option_reinstall_cuda_torch": "रनटाइम दोबारा इंस्टॉल करें ताकि वह PyTorch का CUDA बिल्ड इंस्टॉल करे।",
