@@ -136,14 +136,14 @@ inference are reported as different scopes.
 
 ## Engine boundaries
 
-| Path | Windows ROCm behavior |
-| --- | --- |
-| Main Torch TTS and voice-cloning audio input | Uses the matched main environment; local soundfile compatibility preserves explicit soundfile input on torchaudio 2.9. Model/engine kernels still need real hardware testing. |
-| Faster-whisper, including the crash-isolated worker | GPU is admitted only for the pinned HIP binary plus bounded local verification; CPU overrides remain effective. Auto selection can prefer this verified basic-ASR path. |
-| WhisperX ASR and wav2vec2 GPU alignment | Only the registered profile below is admitted, before imports or warm-cache reuse. Runtime GPU reporting uses the same qualifier. |
-| Pyannote speaker detection and unknown heavy pipelines | GPU execution remains gated before token resolution and cached pipeline reuse. Choose CPU in Settings → Performance to use these pipelines. |
-| Unavailable forced alignment | Keeps the transcript and native word timestamps; alignment precision can be lower. It does not discard requested speech or translation content. |
-| Optional engine sidecars | Separate environments and compatibility. Main readiness never certifies them. |
+| Path                                                   | Windows ROCm behavior                                                                                                                                                         |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Main Torch TTS and voice-cloning audio input           | Uses the matched main environment; local soundfile compatibility preserves explicit soundfile input on torchaudio 2.9. Model/engine kernels still need real hardware testing. |
+| Faster-whisper, including the crash-isolated worker    | GPU is admitted only for the pinned HIP binary plus bounded local verification; CPU overrides remain effective. Auto selection can prefer this verified basic-ASR path.       |
+| WhisperX ASR and wav2vec2 GPU alignment                | Only the registered profile below is admitted, before imports or warm-cache reuse. Runtime GPU reporting uses the same qualifier.                                             |
+| Pyannote speaker detection and unknown heavy pipelines | GPU execution remains gated before token resolution and cached pipeline reuse. Choose CPU in Settings → Performance to use these pipelines.                                   |
+| Unavailable forced alignment                           | Keeps the transcript and native word timestamps; alignment precision can be lower. It does not discard requested speech or translation content.                               |
+| Optional engine sidecars                               | Separate environments and compatibility. Main readiness never certifies them.                                                                                                 |
 
 ### Qualified WhisperX and alignment
 
@@ -179,15 +179,22 @@ before every ASR/alignment cache reuse. Rejections remain retryable compatibilit
 errors, not broken-import entries. CPU and ordinary native CUDA/non-Windows
 behavior are unchanged. No ASR model or default selection is changed.
 
-The real backend was exercised on an RX 9070 XT under a scoped diagnostic
-exception: cached small, internally constructed default pyannote VAD, real
-ffmpeg 24-to-16 kHz decoding, CT2 HIP, GPU alignment, and restored-gate/warm-cache
-rejection. The 4.8-second and repeated 39.6-second inputs had 12/12 and 48/48
-recognized words timed; the long input detected French automatically. The actual
-default batch was 1. Both owned process trees closed normally, with no external
-network or token-resolution attempt. This is recognized-word coverage, not a
-claim that every spoken word or every model/language was validated. The new
-production qualifier still requires a natural-path hardware run and packaged
+The production backend passed a natural-path RX 9070 XT test with the default
+`large-v3` and no model-selection override or diagnostic gate exception. WhisperX
+constructed its default pyannote VAD, real ffmpeg decoded 24-to-16 kHz audio,
+CT2 used HIP/float16, and wav2vec2 alignment ran on GPU. The 4.8-second and
+repeated 39.6-second inputs had 12/12 and 48/48 recognized words timed; the long
+input detected French automatically. The installed default batch was 1.
+Class and instance runtime reporting both identified ROCm acceleration.
+
+Supported warm models were reused. Unsupported SDK/TEMP/cache overrides were
+rejected before additional model execution and recovered after restoration.
+Speaker diarization remained gated with zero token-resolver calls. Both owned
+process trees exited 0 without forced termination; selected protected inputs
+remained unchanged and the Python audit recorded no external network, token-file
+or out-of-scope write attempts. Earlier cached-small library/backend controls
+remain separate diagnostic evidence. These tests establish recognized-word
+timing, not every spoken word, all models/languages or packaged/fresh-Windows
 acceptance; pyannote speaker diarization remains closed.
 
 See also the [Polish guide](windows-rocm.pl.md).
@@ -370,18 +377,24 @@ The accepted base implementation is upstream PR #3045. Review the additional
 changes in these units; do not replace the upstream hash checks, dependency
 constraints, trusted package discovery or failed-probe memoization.
 
-| Additional unit | Source boundary | Focused validation |
-| --- | --- | --- |
-| Desktop runtime choice | Electron runtime, supervisor, IPC and renderer; explicit installation and next-start persistence | `runtime-*.test.ts`, `backend*.test.ts`, `ipc*.test.ts`, runtime selector and Performance component tests; all locale checks |
-| Verified HIP VoxCPM2 | `windows_rocm/voxcpm2.py`, managed sidecar installation and VoxCPM2 adapter | `test_voxcpm2_windows_rocm.py`, `test_windows_rocm_voxcpm2_hashes.py`, sidecar installation and marker tests; cached real GPU synthesis |
-| SDK/header preparation | `windows_rocm/runtime.py` and explicit setup/reuse | SDK/header, MIOpen-cache and strict readiness tests; actual VAD on supported hardware |
-| Optional alignment offline | ASR backend asset checks and failure/retry cache | Offline alignment tests plus registered Windows HIP capability checks before warm-cache reuse |
-| Portable execution and recovery | Media helpers, atomic markers, backup handling and native fixture isolation | The corresponding media, sidecar, backup and fixture regression groups, then normal backend/frontend CI |
+| Additional unit                 | Source boundary                                                                                                 | Focused validation                                                                                                                        |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Desktop runtime choice          | Electron runtime, supervisor, IPC and renderer; explicit installation and next-start persistence                | `runtime-*.test.ts`, `backend*.test.ts`, `ipc*.test.ts`, runtime selector and Performance component tests; all locale checks              |
+| Verified HIP VoxCPM2            | `windows_rocm/voxcpm2.py`, managed sidecar installation and VoxCPM2 adapter                                     | `test_voxcpm2_windows_rocm.py`, `test_windows_rocm_voxcpm2_hashes.py`, sidecar installation and marker tests; cached real GPU synthesis   |
+| SDK/header preparation          | `windows_rocm/runtime.py` and explicit setup/reuse                                                              | SDK/header, MIOpen-cache and strict readiness tests; actual VAD on supported hardware                                                     |
+| Qualified WhisperX GPU path     | Named capabilities in `windows_rocm/pipelines.py`, read-only path checks and the ASR runtime compatibility hook | `test_windows_rocm_whisperx_profile.py`, routing/offline controls and natural default-large VAD/CT2/alignment with warm-profile rejection |
+| Optional alignment offline      | ASR backend asset checks and failure/retry cache                                                                | Offline alignment tests plus registered Windows HIP capability checks before warm-cache reuse                                             |
+| Portable execution and recovery | Media helpers, atomic markers, backup handling and native fixture isolation                                     | The corresponding media, sidecar, backup and fixture regression groups, then normal backend/frontend CI                                   |
 
 Keep source tests with the code and repeat the normal CI matrix after integration.
 Hardware evidence above names the tested GPU and its limits; it does not replace
 Linux/macOS/NVIDIA checks or prove a fresh-Windows installation. A saved GUI
 preference alone also does not establish that the intended runtime was installed.
+
+When changing native recipe bytes, package versions or the qualified GPU matrix,
+renew the WhisperX profile registration only after the corresponding hardware
+checks. Keep availability, execution before warm reuse and compute reporting on
+the same qualifier; do not admit speaker diarization through the ASR capability.
 
 ## Maintainer integration checks
 

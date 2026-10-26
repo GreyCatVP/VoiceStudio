@@ -50,19 +50,24 @@ Zarejestrowany profil wymaga:
 
 ## Zakres dowodów i ograniczenia
 
-Rzeczywisty backend z istniejącym modelem `small` przetestowano na RX 9070 XT
-przy czasowym wyjątku diagnostycznym poprzedzającym tę kwalifikację produkcyjną.
+Produkcyjny backend przetestowano na RX 9070 XT z niezmienionym domyślnym modelem
+`large-v3`, bez nadpisania wyboru modelu i bez diagnostycznego wyjątku w bramce zgodności.
 WhisperX sam utworzył domyślny VAD pyannote; rzeczywisty ffmpeg dekodował dźwięk
 24 do 16 kHz, CT2 wykonywał ASR przez HIP, a wav2vec2 wyrównywał słowa na GPU.
 Dla 4,8 s i powtarzanego nagrania 39,6 s uzyskano czasy odpowiednio 12/12 oraz
 48/48 rozpoznanych słów. Dłuższy przebieg automatycznie rozpoznał francuski.
-Rzeczywisty domyślny rozmiar partii wynosił 1, bez nadpisania. Przywrócenie bramki
-blokowało także ciepłą pamięć modeli; procesy zakończyły się zwyczajnie, bez prób
-połączeń zewnętrznych i bez rozwiązywania tokena.
+Rzeczywisty domyślny rozmiar partii wynosił 1, bez nadpisania. Raporty klasy i
+instancji prawidłowo wskazywały przyspieszenie ROCm. Obsługiwana konfiguracja
+korzystała z już wczytanych modeli. Nieobsługiwane nadpisania SDK/TEMP/cache
+blokowały ich użycie przed kolejnym wykonaniem; przywrócenie środowiska pozwalało
+ponowić pracę. Oba drzewa procesów zakończyły się kodem 0 bez wymuszenia.
+Zarejestrowano zero prób połączeń zewnętrznych, odczytu plików tokena i zapisu poza
+obszarem testu, a kontrola diaryzacji nie wywołała rozwiązania tokena. Wcześniejsze
+próby biblioteki i backendu z `small` pozostają osobnymi dowodami diagnostycznymi.
 
 To pokrycie czasów rozpoznanych słów, nie potwierdzenie rozpoznania każdego słowa
-w nagraniu ani wszystkich modeli i języków. Nowa ścieżka produkcyjna nadal wymaga
-naturalnego testu sprzętowego i walidacji pakietu. Diaryzacja mówców pyannote oraz
+w nagraniu ani wszystkich modeli i języków. Walidacja pakietu i świeżej instalacji
+Windows pozostaje osobnym zadaniem. Diaryzacja mówców pyannote oraz
 nieznane możliwości pozostają zablokowane na GPU przed odczytem tokena i użyciem
 ciepłego modelu. Zwykły test gotowości głównego środowiska ich nie certyfikuje.
 
@@ -70,3 +75,8 @@ W razie odrzucenia kwalifikacji można wybrać CPU w ustawieniach wydajności.
 Brak opcjonalnych zasobów wyrównywania w trybie offline zachowuje rodzime czasy
 słów bez pobierania. Ponowienie po naprawieniu zasobów nie oznacza uszkodzonego
 importu. Oddzielne środowiska silników zachowują własne wymagania i walidację.
+
+Przy zmianie receptury, wersji pakietów lub macierzy GPU autorzy powinni ponowić
+odpowiednie próby sprzętowe przed odnowieniem rejestracji profilu WhisperX.
+Dostępność, wykonanie przed użyciem wczytanych modeli i raportowanie urządzenia
+muszą nadal korzystać z tej samej kontroli. Możliwość ASR nie dopuszcza diaryzacji.
