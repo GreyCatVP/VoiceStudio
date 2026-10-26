@@ -74,15 +74,14 @@ const electronPackage = JSON.parse(readFileSync(resolve(root, 'package.json'), '
 assert.match(electronPackage.author?.email ?? '', /@/, 'Linux package declares a maintainer email');
 assert.equal(config.productName, PRODUCT_NAME, 'Builder uses the central product name');
 assert.equal(config.appId, APP_ID, 'Builder uses the central application ID');
+const storeLabel = {
+  'microsoft-store': 'MicrosoftStore-',
+  'mac-app-store': 'MacAppStore-',
+}[DISTRIBUTION_TARGET];
 assert.equal(
   config.artifactName,
-  `${PRODUCT_NAME}-${
-    {
-      'microsoft-store': 'MicrosoftStore',
-      'mac-app-store': 'MacAppStore',
-    }[DISTRIBUTION_TARGET] ?? 'Electron'
-  }-\${version}-\${os}-\${arch}.\${ext}`,
-  'Store packaging is distinct without renaming direct-download artifacts',
+  `${PRODUCT_NAME}-${storeLabel ?? ''}\${version}-\${os}-\${arch}.\${ext}`,
+  'Direct downloads are VoiceStudio-<version>-<os>-<arch>; store packages stay labelled',
 );
 assert.equal(
   config.extraMetadata.voicestudioDistribution,
