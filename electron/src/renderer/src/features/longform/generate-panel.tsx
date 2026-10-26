@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { GenerationProgress } from './generation-progress';
 import type { GenerateBlocker } from './generate-blocker';
@@ -76,7 +77,15 @@ export function GeneratePanel({
         </div>
       )}
       {status && (
-        <p id="generate-status" role="status" className="shrink-0 text-xs text-muted-foreground">
+        <p
+          id="generate-status"
+          role="status"
+          // The page already shows the engine notice with its Fix; say it once.
+          className={cn(
+            'shrink-0 text-xs text-muted-foreground',
+            !active && blocker === 'engine' && 'sr-only',
+          )}
+        >
           {status}
         </p>
       )}

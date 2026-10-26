@@ -124,6 +124,8 @@ export interface UpdateState {
   currentVersion: string;
   /** Absent when this build cannot switch channels (Store builds, dev runs). */
   channel?: UpdateChannel;
+  /** Set only while status is 'unsupported': why this build cannot update itself. */
+  unsupportedReason?: 'development' | 'store' | 'package-manager';
   availableVersion?: string;
   notes?: string | null;
   progress: number;

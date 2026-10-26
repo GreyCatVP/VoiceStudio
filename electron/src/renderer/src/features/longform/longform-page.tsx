@@ -41,6 +41,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { DownloadIcon, ListIcon, SparklesIcon } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { WaveformPlayer } from '@/components/waveform-player';
@@ -219,8 +220,9 @@ export function LongformPage({ mode }: { mode: Mode }) {
         </h1>
         <Link
           to={mode === 'stories' ? '/audiobook' : '/stories'}
-          className={buttonVariants({ variant: 'ghost', size: 'sm' })}
+          className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'ms-auto')}
         >
+          {mode === 'stories' ? <BookOpenTextIcon /> : <AudioLinesIcon />}
           {t(mode === 'stories' ? 'audiobook.title' : 'nav.stories')}
         </Link>
       </WorkspaceHeader>
@@ -478,7 +480,7 @@ export function LongformPage({ mode }: { mode: Mode }) {
             )}
             <p className="text-xs text-muted-foreground">
               {t('audiobook.stats', {
-                chapters: stats.chapters,
+                count: stats.chapters,
                 words: stats.words,
                 runtime: formatRuntimeClock(stats.runtimeSec),
               })}

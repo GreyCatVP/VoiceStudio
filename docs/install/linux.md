@@ -267,9 +267,16 @@ on CPU until you opt into the ROCm variant.
 > **Running in Docker or Podman instead?** There's a prebuilt ROCm image —
 > `ghcr.io/debpalash/voicestudio:stable-rocm` — with GPU acceleration out of the
 > box; see [docker.md](docker.md#pull-and-run-amd-gpu--rocm). The rest of this
-> section is about source/desktop installs. (VoiceStudio has no ROCm path on
-Windows; see [windows.md](windows.md#gpu-support) for what a Radeon card can
-do there.)
+> section is about source/desktop installs. Windows has its own opt-in ROCm
+> setup; see [windows-rocm.md](windows-rocm.md).
+
+**Radeon RX 9000 series (RDNA4: RX 9060 / 9070 / 9070 XT, `gfx1200`/`gfx1201`)**
+is supported natively by the ROCm build below (torch 2.8.0 from the `rocm6.4`
+index includes both architectures), so it needs no `HSA_OVERRIDE_GFX_VERSION`.
+The host needs an `amdgpu` kernel driver new enough for RDNA4 (AMD's ROCm
+6.4.1+ driver, or a recent distribution kernel); `rocminfo` listing your card
+as `gfx1200`/`gfx1201` confirms it. Never remap an RDNA4 card onto `11.0.0`:
+RDNA3 kernels cannot run on it.
 
 Ways to opt in, in order of preference:
 
@@ -328,8 +335,12 @@ Notes:
 - ROCm is exercised far less than the default CUDA/MPS/CPU paths — it works,
   but expect rough edges on consumer cards and report what you hit.
 - Unsupported GFX (e.g. some consumer RDNA cards): if it still won't run, set
-  `HSA_OVERRIDE_GFX_VERSION` yourself (e.g. `export HSA_OVERRIDE_GFX_VERSION=11.0.0`)
-  to the nearest supported architecture before launching.
+  `HSA_OVERRIDE_GFX_VERSION` yourself to a supported architecture **of the same
+  generation** before launching (e.g. `export HSA_OVERRIDE_GFX_VERSION=11.0.0`
+  for a gfx11xx card, `10.3.0` for gfx10xx). A remap across generations cannot
+  work, so RDNA4 (gfx12xx) cards need a ROCm build that lists them instead.
+  When the build lacks your card, VoiceStudio's GPU architecture notification
+  names the exact value to try, or says that no remap exists.
 - ZLUDA (CUDA-on-ROCm translation) can work but is unsupported here — prefer a
   native ROCm wheel.
 
