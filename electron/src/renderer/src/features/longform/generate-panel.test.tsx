@@ -81,3 +81,22 @@ it('explains that the other longform mode is rendering', () => {
   expect(screen.getByRole('button', { name: 'Generate' })).toBeDisabled();
   expect(screen.getByText(/already rendering/i)).toBeVisible();
 });
+
+it('leaves a missing engine to the page notice instead of repeating it', () => {
+  render(
+    <GeneratePanel
+      mode="audiobook"
+      session={idle}
+      blocker="engine"
+      onGenerate={vi.fn()}
+      onStop={vi.fn()}
+    />,
+  );
+  const status = screen.getByText('The voice engine is not ready. Check Settings → Engines.');
+  // Still read out with the disabled button, but not shown twice on screen.
+  expect(status).toHaveClass('sr-only');
+  expect(screen.getByRole('button', { name: 'Create audiobook' })).toHaveAttribute(
+    'aria-describedby',
+    'generate-status',
+  );
+});

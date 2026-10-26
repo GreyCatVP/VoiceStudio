@@ -58,6 +58,16 @@ const serverWorkActive = (models?: ModelInstallJobs, batches?: unknown[]) =>
     ) || batches?.length,
   );
 
+// No reason means no desktop bridge: the browser UI, which never self-updates.
+const unsupportedMessageKey = (reason: UpdateState['unsupportedReason']) =>
+  reason === 'development'
+    ? 'settings.updater_development'
+    : reason === 'package-manager'
+      ? 'settings.updater_package_manager'
+      : reason === 'store'
+        ? 'settings.updater_store'
+        : 'settings.updater_desktop';
+
 function formatBytes(bytes: number): string {
   if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
   if (bytes >= 1024 ** 2) return `${Math.round(bytes / 1024 ** 2)} MB`;
@@ -219,7 +229,7 @@ export function UpdateSettings() {
                     ? t('update.ready', { version: state.availableVersion || '' })
                     : t('update.available', { version: state.availableVersion || '' })
                   : state.status === 'unsupported'
-                    ? t('settings.updater_desktop')
+                    ? t(unsupportedMessageKey(state.unsupportedReason))
                     : state.status === 'checking'
                       ? t('update.checking')
                       : state.status === 'downloading'
