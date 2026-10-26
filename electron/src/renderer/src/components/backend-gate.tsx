@@ -37,7 +37,7 @@ import { RemoteBackendSettings } from '@/features/settings/remote-backend-settin
 import { useBackendStatus } from '@/hooks/use-backend-status';
 import { isBackendBusy } from '@shared/utils/backendStage';
 import {
-  BACKEND_CAUSE_ACTION,
+  backendCauseAction,
   backendFailureCause,
   backendFailureHints,
 } from '@shared/utils/backendHint';
@@ -185,7 +185,8 @@ export function BackendGate({ children, repairDock }: BackendGateProps) {
   // One named cause and one primary action, instead of a raw error to decode.
   const cause = failed && !setup ? backendFailureCause(status.message) : null;
   const pillState: BackendPillState = failed ? 'failed' : reachedReady ? 'recovering' : 'starting';
-  const causeAction = cause ? BACKEND_CAUSE_ACTION[cause] : 'retry';
+  // Only an installed app reports `runtimePath`: its runtime is app-managed and movable.
+  const causeAction = backendCauseAction(cause, { managedRuntime: Boolean(status.runtimePath) });
   const stageText =
     installing && status.setupPhase
       ? t(`bootstrap.${status.setupPhase}`)

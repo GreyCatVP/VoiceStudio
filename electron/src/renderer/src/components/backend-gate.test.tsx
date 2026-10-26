@@ -646,6 +646,27 @@ it('offers Choose another folder for a missing Python environment', async () => 
   expect(chooseRuntimeLocation).toHaveBeenCalled();
 });
 
+it('gives a source checkout Retry, not a folder picker it cannot use (#3480)', () => {
+  const runtimePath = backendStatus.runtimePath;
+  delete backendStatus.runtimePath;
+  try {
+    backendStatus.message =
+      "The Python environment in C:\\Users\\me\\VoiceStudio is incomplete: ModuleNotFoundError: No module named 'fastapi'.";
+
+    renderGate('failed');
+
+    expect(screen.getByTestId('backend-cause')).toHaveTextContent(
+      i18n.t('backend.cause_missing_env'),
+    );
+    expect(
+      screen.queryByRole('button', { name: i18n.t('backend.choose_folder') }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: i18n.t('backend.retry') })).toBeEnabled();
+  } finally {
+    backendStatus.runtimePath = runtimePath;
+  }
+});
+
 it('names no cause for an unrecognised failure', () => {
   backendStatus.message = 'Backend exited unexpectedly (exit code 1).';
 
