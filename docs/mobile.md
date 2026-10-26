@@ -6,13 +6,28 @@ with no computer, account or cloud service. If you also run VoiceStudio on a
 computer (desktop app, Docker or a server), you can pair the phone with it and
 choose, per task, to run on **This phone** or **My computer**.
 
-> **Preview.** The apps aren't in the App Store or Google Play yet. Build them
-> from source (below).
+> **Preview.** The apps aren't in the App Store or Google Play yet. Download them
+> from [Releases](https://github.com/debpalash/VoiceStudio/releases/latest)
+> ([Install](#install)) or build them from source (below).
 
 | | iOS | Android |
 |---|---|---|
 | Minimum OS | iOS 17 (iPhone, iPad) | Android 10 (API 29) |
 | Source | [`mobile/ios/`](../mobile/ios/README.md) | [`mobile/android/`](../mobile/android/README.md) |
+
+## Install
+
+Each release attaches the phone apps next to the desktop installers on the
+[Releases page](https://github.com/debpalash/VoiceStudio/releases/latest).
+
+- **Android:** download `VoiceStudio-<version>-android.apk` on the phone, open
+  it and allow installs from that source when Android asks.
+- **iPhone:** download `VoiceStudio-<version>-ios-unsigned.ipa` and install it
+  with a sideloading tool that signs it with your own Apple ID (for example
+  Sideloadly). With a free Apple ID the install expires after 7 days; turn on
+  Developer Mode (Settings → Privacy & Security) when iOS asks.
+
+Check downloads against the release's `SHA256SUMS.txt`.
 
 Home keeps its title and feature summary beside a compact contributor column,
 with a stacked layout at accessibility text sizes. “Brought to you by” introduces

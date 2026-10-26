@@ -81,7 +81,9 @@ Electron パッケージを含んでいる必要があり、アーカイブ済�
 
 [Releases](https://github.com/debpalash/VoiceStudio/releases/latest) からダウンロードし、お使いのプラットフォームのガイドに従ってください：
 
-**[macOS](../../docs/install/macos.md) · [Windows](../../docs/install/windows.md) · [Linux](../../docs/install/linux.md) · [Docker](../../docs/install/docker.md)**
+**[macOS](../../docs/install/macos.md) · [Windows](../../docs/install/windows.md) · [Linux](../../docs/install/linux.md) · [Docker](../../docs/install/docker.md) · [Android と iPhone](../../docs/mobile.md#install)**
+
+Linux では Snap Store からもインストールできます：`sudo snap install voicestudio`。Android（`.apk`）と iPhone（`.ipa`、ご自身の Apple ID でサイドロード）のアプリもデスクトップ版と同じリリースで配布しています。
 
 **音声クローン**を開き、声を選ぶかクリアな参照音声を追加し、テキストを入力して生成します。求められたら必要なモデルをインストールしてください。必要なハードウェアはエンジンによって異なります。[パフォーマンス](../../docs/performance.md)を参照してください。
 
