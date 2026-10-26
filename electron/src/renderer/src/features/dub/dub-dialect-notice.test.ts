@@ -127,3 +127,18 @@ it('keeps the earlier verdict when no translated text landed', async () => {
 
   expect(dubSession.state.dialectIgnored).toBe(true);
 });
+
+it('remembers which variant a single-variant engine wrote instead (#3143)', async () => {
+  editingWithDialect('pt-PT');
+  backendAnswers({ dialect: 'pt-PT', dialect_applied: false, dialect_used: 'pt-BR' });
+
+  await translateDub('pt', 'nllb');
+
+  expect(dubSession.state.dialectIgnored).toBe(true);
+  expect(dubSession.state.dialectUsed).toBe('pt-BR');
+
+  backendAnswers({ dialect: 'pt-PT', dialect_applied: true });
+  await translateDub('pt', 'openai');
+
+  expect(dubSession.state.dialectUsed).toBeUndefined();
+});

@@ -402,6 +402,7 @@ from core.auth import (
     PrincipalKind,
     credential_matches,
     is_local_host,
+    is_trusted_host_loopback,
     principal_for,
     remote_api_key,
 )
@@ -1807,7 +1808,7 @@ class NetworkAccessMiddleware:
         if not pin:
             return await self.app(scope, receive, send)
         client = scope["client"][0] if scope.get("client") else None
-        if is_local_host(client):
+        if is_local_host(client) or is_trusted_host_loopback(request):
             return await self.app(scope, receive, send)
         if _is_public_path(scope["path"]):
             return await self.app(scope, receive, send)

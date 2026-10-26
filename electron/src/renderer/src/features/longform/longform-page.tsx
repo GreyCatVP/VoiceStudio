@@ -453,6 +453,7 @@ export function LongformPage({ mode }: { mode: Mode }) {
                   setText={(script) => set({ script })}
                 />
                 <textarea
+                  dir="auto"
                   ref={audiobookInput}
                   aria-label={t('clone.script')}
                   className="min-h-64 flex-1 resize-none bg-transparent text-base leading-7 outline-none"

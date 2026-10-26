@@ -76,6 +76,7 @@ export function SecondarySidebar({
   libraryLabel,
   collapsed: controlledCollapsed,
   onCollapsedChange,
+  tabsInHeader = false,
 }: {
   title: string;
   icon: LucideIcon;
@@ -93,6 +94,11 @@ export function SecondarySidebar({
   collapsed?: boolean;
   /** Lets the page re-home the footer's content while the pane is collapsed. */
   onCollapsedChange?: (collapsed: boolean) => void;
+  /**
+   * Show the controls/library tabs in the header row instead of the title, for
+   * pages whose title bar and tabs already name the workspace.
+   */
+  tabsInHeader?: boolean;
 }) {
   const { t } = useTranslation();
   const fullscreen = useWindowFullscreen();
@@ -116,6 +122,62 @@ export function SecondarySidebar({
     if (controlledCollapsed === undefined) setUncontrolledCollapsed(resolved);
     onCollapsedChange?.(resolved);
   };
+  const headerTabs = tabsInHeader && library != null;
+  const tabList = (className: string) => (
+    <div
+      role="tablist"
+      aria-label={title}
+      data-slot="secondary-sidebar-tabs"
+      className={cn('flex min-w-0 shrink-0 gap-1', className)}
+      onKeyDown={(event) => {
+        if (event.altKey || event.ctrlKey || event.metaKey) return;
+        const tabs = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+        const current = tabs.findIndex((tab) => tab === event.target);
+        if (current < 0) return;
+        const forward =
+          getComputedStyle(event.currentTarget).direction === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
+        const backward = forward === 'ArrowRight' ? 'ArrowLeft' : 'ArrowRight';
+        const next =
+          event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? 1
+              : event.key === forward || event.key === backward
+                ? 1 - current
+                : null;
+        if (next === null) return;
+        event.preventDefault();
+        chooseView(next === 0 ? 'controls' : 'library');
+        tabs[next]?.focus();
+      }}
+    >
+      {(
+        [
+          ['controls', title],
+          ['library', libraryLabel ?? title],
+        ] as const
+      ).map(([value, label]) => (
+        <button
+          key={value}
+          type="button"
+          role="tab"
+          id={`${tabsId}-${value}`}
+          aria-controls={`${tabsId}-panel-${value}`}
+          aria-selected={view === value}
+          tabIndex={view === value ? 0 : -1}
+          onClick={() => chooseView(value)}
+          className={cn(
+            'h-7 min-w-0 flex-1 truncate rounded-md px-2 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring',
+            view === value
+              ? 'bg-accent/80 text-foreground'
+              : 'text-muted-foreground hover:bg-accent/45 hover:text-foreground',
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
   const dimensions = WIDTHS[size];
   const resize = usePaneResize({
     storageKey: `voicestudio.secondary-sidebar.${size}`,
@@ -161,7 +223,8 @@ export function SecondarySidebar({
           collapsed ? 'px-1' : 'px-3',
         )}
       >
-        {!collapsed && (
+        {!collapsed && headerTabs && tabList('flex-1')}
+        {!collapsed && !headerTabs && (
           <>
             <span className="grid size-7 shrink-0 place-items-center rounded-lg border border-border/45 bg-background/50 text-primary shadow-[inset_0_1px_0_rgb(255_255_255/7%)]">
               <Icon aria-hidden="true" className="size-4" />
@@ -193,65 +256,10 @@ export function SecondarySidebar({
           </Button>
         )}
       </div>
-      {library != null && !collapsed && (
-        <div
-          role="tablist"
-          aria-label={title}
-          data-slot="secondary-sidebar-tabs"
-          className="flex shrink-0 gap-1 border-b border-border/45 px-2.5 py-2"
-          onKeyDown={(event) => {
-            if (event.altKey || event.ctrlKey || event.metaKey) return;
-            const tabs = [
-              ...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
-            ];
-            const current = tabs.findIndex((tab) => tab === event.target);
-            if (current < 0) return;
-            const forward =
-              getComputedStyle(event.currentTarget).direction === 'rtl'
-                ? 'ArrowLeft'
-                : 'ArrowRight';
-            const backward = forward === 'ArrowRight' ? 'ArrowLeft' : 'ArrowRight';
-            const next =
-              event.key === 'Home'
-                ? 0
-                : event.key === 'End'
-                  ? 1
-                  : event.key === forward || event.key === backward
-                    ? 1 - current
-                    : null;
-            if (next === null) return;
-            event.preventDefault();
-            chooseView(next === 0 ? 'controls' : 'library');
-            tabs[next]?.focus();
-          }}
-        >
-          {(
-            [
-              ['controls', title],
-              ['library', libraryLabel ?? title],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              id={`${tabsId}-${value}`}
-              aria-controls={`${tabsId}-panel-${value}`}
-              aria-selected={view === value}
-              tabIndex={view === value ? 0 : -1}
-              onClick={() => chooseView(value)}
-              className={cn(
-                'h-7 min-w-0 flex-1 truncate rounded-md px-2 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring',
-                view === value
-                  ? 'bg-accent/80 text-foreground'
-                  : 'text-muted-foreground hover:bg-accent/45 hover:text-foreground',
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
+      {library != null &&
+        !collapsed &&
+        !headerTabs &&
+        tabList('border-b border-border/45 px-2.5 py-2')}
       {library != null && (
         <div
           role="tabpanel"

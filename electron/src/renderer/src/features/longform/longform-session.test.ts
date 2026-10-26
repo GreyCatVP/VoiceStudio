@@ -54,6 +54,20 @@ it('keeps the exact chapter milliseconds the cue sheet needs', async () => {
     { title: 'Three', status: 'cached', duration_s: 1.5 },
   ]);
 });
+it('keeps the live per-chunk progress the tracker estimates time left from (#3417)', async () => {
+  fetchMock.mockResolvedValue(
+    eventResponse([
+      { type: 'started', chapters: 2 },
+      { type: 'progress', index: 0, total: 2, fraction: 0.25, eta_s: 90, rtf: 0.5, chunk_s: 4 },
+      { type: 'done', output: 'new.m4b' },
+    ]),
+  );
+  await renderLongform('audiobook');
+  const { progress, startedAt, lastActivityAt } = longformSession.state;
+  expect(progress).toMatchObject({ fraction: 0.25, etaS: 90, rtf: 0.5, chunkS: 4 });
+  expect(startedAt).toEqual(expect.any(Number));
+  expect(lastActivityAt).toBe(progress?.receivedAt);
+});
 it('stop aborts the network request and blocks duplicate renders', async () => {
   fetchMock.mockImplementation(
     (_url, options) =>

@@ -55,6 +55,8 @@ export function dialectLabel(dialect: string, uiLocale: string = 'en'): string {
 export interface DialectOutcome {
   dialect?: string;
   dialect_applied?: boolean;
+  /** The variant the engine wrote instead, when it has only one (#3143). */
+  dialect_used?: string;
   cinematic_skipped?: string;
 }
 

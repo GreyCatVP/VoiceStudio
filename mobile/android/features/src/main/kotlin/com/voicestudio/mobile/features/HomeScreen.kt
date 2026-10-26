@@ -70,13 +70,7 @@ private val destinations = listOf(
             Surface(shape=MaterialTheme.shapes.large, color=role("canvas")) {
                 Box {
                     artwork?.let { Image(it,null,Modifier.matchParentSize(),contentScale=ContentScale.Crop,alpha=.25f) }
-                    Column(Modifier.fillMaxWidth().padding(12.dp)) {
-                        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                            Text(tr("homeUi.title"),Modifier.weight(1f),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold)
-                            Info("mobile.simple.privacy","mobile.local.privacy")
-                        }
-                        ContributorStrip()
-                    }
+                    HomeHero(Modifier.fillMaxWidth().padding(12.dp))
                 }
             }
             BoxWithConstraints {
@@ -166,5 +160,28 @@ private val destinations = listOf(
             }
             Icon(Icons.AutoMirrored.Filled.ArrowForward,null,Modifier.size(18.dp),tint=role("textMuted"))
         }
+    }
+}
+
+
+/** Keep the wordmark and credits parallel; accessibility text can use the full width. */
+@Composable fun HomeHero(modifier: Modifier = Modifier) {
+    BoxWithConstraints(modifier.testTag("home.hero")) {
+        val stacked = LocalDensity.current.fontScale >= 1.6f || maxWidth < 260.dp
+        if(stacked) Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            HomeHeroText(Modifier.fillMaxWidth())
+            Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.CenterEnd) { ContributorStrip() }
+        } else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp),verticalAlignment=Alignment.CenterVertically) {
+            HomeHeroText(Modifier.weight(1f))
+            ContributorStrip()
+        }
+    }
+}
+
+@Composable private fun HomeHeroText(modifier: Modifier = Modifier) {
+    Column(modifier.testTag("home.hero-text"),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+        Text(tr("app.name"),style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.SemiBold,
+            modifier=Modifier.semantics {heading()})
+        Text(tr("mobile.home.subtitle"),style=MaterialTheme.typography.bodyMedium,color=role("textMuted"))
     }
 }

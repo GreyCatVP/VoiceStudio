@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { AgentFixButton } from '@/components/agent-fix-button';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { SetupDownloadNotice } from './setup-download-notice';
 import {
   Select,
   SelectContent,
@@ -303,6 +304,9 @@ export function BackendGate({ children, repairDock }: BackendGateProps) {
               <p className="text-sm font-medium" data-testid="backend-cause">
                 {t(`backend.cause_${cause}`)}
               </p>
+            ) : null}
+            {installing && status.setupPhase === 'installing_deps' ? (
+              <SetupDownloadNotice progress={status.setupProgress} />
             ) : null}
             {failed && !setup
               ? backendFailureHints(status.message).map((key) => (

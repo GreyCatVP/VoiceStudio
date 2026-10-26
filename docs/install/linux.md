@@ -236,7 +236,8 @@ If `uv` times out fetching the python-build-standalone tarball or PyPI:
 # Use a faster Python source mirror (China only — verify a current mirror)
 export UV_PYTHON_INSTALL_MIRROR=https://gh-proxy.com/https://github.com/astral-sh/python-build-standalone/releases/download
 
-# Use a PyPI mirror
+# Use a PyPI mirror (source checkouts that resolve packages themselves; the
+# locked dependency install downloads the wheel URLs pinned in uv.lock)
 export UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple
 
 # Or skip the download entirely if you have a compatible system Python
@@ -251,6 +252,8 @@ Packaged setup already tries a Python download mirror and raises the uv
 network budget automatically; set these to force a specific mirror, or before
 `bun run setup:api` in a source checkout. See
 [troubleshooting](troubleshooting.md#first-run-setup-fails-on-a-restricted-network-githubpypi-blocked).
+If the dependency download is slow or stalls, see
+[First-run setup is slow or stalls on a download](troubleshooting.md#first-run-setup-is-slow-or-stalls-on-a-download).
 
 ## AMD GPU (ROCm)
 

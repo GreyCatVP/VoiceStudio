@@ -323,6 +323,36 @@ describe('packaged runtime setup', () => {
       expect(syncEnv?.[key]).toBe(join(project, '..', '.tmp'));
     expect(syncEnv?.UV_PYTHON_INSTALL_DIR).toBe(join(project, '..', '.python'));
   });
+  // #3411: uv cannot resume, and a cancelled uv leaves its partial wheel in the
+  // cache. Retry must drop those leftovers yet reuse every finished download.
+  it('drops partial downloads from a cancelled attempt and keeps finished wheels', async () => {
+    const { bundle, project } = await fixture();
+    const cache = join(project, '..', '.uv-cache');
+    await mkdir(join(cache, '.tmpHZ1msW', 'torch'), { recursive: true });
+    await writeFile(join(cache, '.tmpHZ1msW', 'torch', 'partial.so'), 'partial');
+    await mkdir(join(cache, 'archive-v0', 'finished'), { recursive: true });
+    await writeFile(join(cache, 'archive-v0', 'finished', 'torch.so'), 'verified');
+    let leftoverAtSync: boolean | undefined;
+    const run = vi.fn(async (_command: string, args: string[]) => {
+      if (args[0] === 'sync') leftoverAtSync = existsSync(join(cache, '.tmpHZ1msW'));
+      await interpreter(project);
+    });
+
+    await installRuntime(
+      bundle,
+      project,
+      'uv',
+      run,
+      new AbortController().signal,
+      undefined,
+      'global',
+    );
+
+    expect(leftoverAtSync).toBe(false);
+    expect(await readFile(join(cache, 'archive-v0', 'finished', 'torch.so'), 'utf8')).toBe(
+      'verified',
+    );
+  });
   it('uses managed Python for new runtime setup and verifies native tokenizer imports', async () => {
     const { bundle, project } = await fixture();
     const run = vi.fn(
@@ -702,6 +732,21 @@ describe('packaged runtime setup', () => {
     ).rejects.toThrow('9 GiB');
     expect(fetch).not.toHaveBeenCalled();
     expect(run).not.toHaveBeenCalled();
+  });
+  it('drops partial downloads before checking free space', async () => {
+    const { bundle, project } = await fixture();
+    const partial = join(project, '..', '.uv-cache', '.tmpHZ1msW');
+    await mkdir(partial, { recursive: true });
+    await writeFile(join(partial, 'torch.so'), 'partial');
+    let partialAtCheck: boolean | undefined;
+    vi.mocked(statfs).mockImplementationOnce(async () => {
+      partialAtCheck = existsSync(partial);
+      return { bavail: 1024, bsize: 1024 } as Awaited<ReturnType<typeof statfs>>;
+    });
+    await expect(
+      installRuntime(bundle, project, null, vi.fn(), new AbortController().signal),
+    ).rejects.toThrow('GiB');
+    expect(partialAtCheck).toBe(false);
   });
   it('reuses the app-private uv after a cancelled or failed installation', async () => {
     const { bundle, project } = await fixture();

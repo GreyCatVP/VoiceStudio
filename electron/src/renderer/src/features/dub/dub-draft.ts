@@ -173,6 +173,12 @@ export function restoreDubDraft(raw: string | null, defaults: DubSession): DubSe
       exportOptions: restoreExportPreferences(value.exportOptions),
       translationFallback: value.translationFallback === true,
       dialectIgnored: value.dialectIgnored === true,
+      dialectUsed:
+        value.dialectIgnored === true &&
+        typeof value.dialectUsed === 'string' &&
+        /^[a-zA-Z]{2,3}-[a-zA-Z]{2,4}$/.test(value.dialectUsed)
+          ? value.dialectUsed
+          : undefined,
       quality: ['fast', 'autofit', 'cinematic', 'agent'].includes(value.quality)
         ? value.quality
         : defaults.quality,

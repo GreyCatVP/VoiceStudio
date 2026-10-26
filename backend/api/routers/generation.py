@@ -1258,6 +1258,14 @@ def _run_inference(
         _oom_friendly_reraise(e)
 
 
+def _backend_supports_seed(backend) -> bool:
+    """Whether this adapter accepts per-request seed controls."""
+    return bool(
+        getattr(backend, "supports_native_omnivoice_controls", False)
+        or getattr(backend, "supports_generation_seed", False)
+    )
+
+
 def _run_backend_inference(
     backend, text, language, ref_audio_path, ref_text, instruct, duration,
     num_step, guidance_scale, speed, denoise, postprocess_output,
@@ -1265,6 +1273,7 @@ def _run_backend_inference(
     max_chunk_chars=None, crossfade_ms=None, *, t_shift=None,
     layer_penalty_factor=None, position_temperature=None,
     class_temperature=None, dropped_sink=None, preset_voice=None,
+    emotion_kwargs=None,
 ):
     """Engine-aware twin of :func:`_run_inference` (issue #312).
 
@@ -1289,10 +1298,12 @@ def _run_backend_inference(
         )
         if preset_voice:
             gen_kwargs["voice"] = preset_voice
+        if emotion_kwargs and getattr(backend, "supports_emotion", False):
+            gen_kwargs.update(emotion_kwargs)
         native_proxy = bool(
             getattr(backend, "supports_native_omnivoice_controls", False)
         )
-        forwards_seed = native_proxy or getattr(backend, "supports_generation_seed", False)
+        forwards_seed = _backend_supports_seed(backend)
         if native_proxy:
             gen_kwargs.update({
                 key: value for key, value in {
@@ -1692,12 +1703,9 @@ def _pcm16_b64(wav_tensor) -> str:
     wire format (same conversion as /ws/tts). N-D tensors take channel 0."""
     import base64
 
-    import torch
+    from services.audio_io import pcm16_mono
 
-    pcm = (wav_tensor * 32767).clamp(-32768, 32767).to(torch.int16)
-    while pcm.ndim > 1:
-        pcm = pcm[0]
-    return base64.b64encode(pcm.cpu().numpy().tobytes()).decode("ascii")
+    return base64.b64encode(pcm16_mono(wav_tensor).numpy().tobytes()).decode("ascii")
 
 
 def _apply_routing_headers(headers, engine_notice):
@@ -1722,6 +1730,44 @@ def generate_budget(engine: Optional[str] = None):
     return generate_budget_s(engine)
 
 
+def _parse_emotion_vector(raw: Optional[str]) -> Optional[list[float]]:
+    """Validate IndexTTS2's eight-dimensional emotion vector at the API boundary.
+
+    The engine expects [happy, angry, sad, afraid, disgusted, melancholic,
+    surprised, calm], each 0..1. Validate before loading any models so a
+    malformed request does not occupy GPU memory.
+    """
+    if raw is None or not raw.strip():
+        return None
+    import json
+    import math
+
+    try:
+        value = json.loads(raw)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=422, detail="Emotion vector must be a JSON array of eight numbers."
+        ) from exc
+    if not isinstance(value, list) or len(value) != 8:
+        raise HTTPException(
+            status_code=422, detail="Emotion vector must contain exactly eight values."
+        )
+    if any(
+        isinstance(item, bool)
+        or not isinstance(item, (int, float))
+        # Compare integer bounds *before* converting to a float: a valid
+        # 400-digit JSON integer exceeds float's range and math.isfinite()
+        # would otherwise raise OverflowError (500 instead of HTTP 422).
+        or not 0 <= item <= 1
+        or not math.isfinite(item)
+        for item in value
+    ):
+        raise HTTPException(
+            status_code=422, detail="Each emotion vector value must be a number from 0 to 1."
+        )
+    return [float(item) for item in value]
+
+
 @router.post("/generate")
 async def generate_speech(
     text: str = Form(...),
@@ -1742,6 +1788,11 @@ async def generate_speech(
     layer_penalty_factor: Optional[float] = Form(None),
     position_temperature: Optional[float] = Form(None),
     class_temperature: Optional[float] = Form(None),
+    # IndexTTS2 cloning: emotion timbre is independent of the speaker reference.
+    # Optional; existing engines and requests retain their previous behavior.
+    emo_text: Optional[str] = Form(None, max_length=500),
+    emo_alpha: Optional[float] = Form(None, ge=0.0, le=1.0),
+    emo_vector: Optional[str] = Form(None),
     profile_id: Optional[str] = Form(None),
     seed: Optional[int] = Form(None),
     effect_preset: str = Form("broadcast"),
@@ -1768,6 +1819,12 @@ async def generate_speech(
     # (text-level chunking, no per-engine token streaming).
     stream: bool = Form(False),
 ):
+    """Generate a voice take through the selected TTS engine.
+
+    Validate engine-specific emotion conditioning before loading models,
+    resolve saved voice references, and send the same controls through
+    classic WAV and streaming generation.
+    """
     # #502: NFC-normalize the input text so decomposed (NFD) diacritics — common
     # in pasted Vietnamese and other Latin-with-marks text — are composed to the
     # single codepoints the tokenizer/model expect, instead of base-letter +
@@ -1805,6 +1862,38 @@ async def generate_speech(
                 "See GET /engines/tts for the list of valid engine ids."
             ),
         )
+    # Validate expressive controls before model loads or GPU routing. A
+    # request must not silently lose emotion when switching to an engine
+    # without this capability, or send conflicting emotion sources.
+    import math
+
+    emotion_vector = _parse_emotion_vector(emo_vector)
+    emotion_text = (emo_text or "").strip() or None
+    if emo_alpha is not None and not math.isfinite(emo_alpha):
+        raise HTTPException(status_code=422, detail="Emotion strength must be finite.")
+    if emotion_text and emotion_vector is not None:
+        raise HTTPException(
+            status_code=422, detail="Choose an emotion description OR an emotion vector."
+        )
+    if emo_alpha is not None and not emotion_text:
+        raise HTTPException(
+            status_code=422, detail="Emotion strength requires an emotion description."
+        )
+    if (emotion_text or emotion_vector is not None) and not getattr(
+        backend_cls, "supports_emotion", False
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=f"{engine_id} does not support emotion controls. Choose IndexTTS2.",
+        )
+    emotion_kwargs = {}
+    if emotion_vector is not None:
+        emotion_kwargs["emo_vector"] = emotion_vector
+    elif emotion_text:
+        emotion_kwargs["emo_text"] = emotion_text
+        if emo_alpha is not None:
+            emotion_kwargs["emo_alpha"] = emo_alpha
+
     # Before any routing, eviction or load, and for remote renders too: the
     # licence is accepted by the user asking for the audio. Raises the 403.
     from services.tts_backend import ensure_engine_licence
@@ -2200,6 +2289,7 @@ async def generate_speech(
                         instruct=instruct, num_step=num_step,
                         guidance_scale=guidance_scale, speed=speed,
                         denoise=denoise, postprocess_output=postprocess_output,
+                        **(emotion_kwargs if getattr(_backend, "supports_emotion", False) else {}),
                         **({
                             key: value for key, value in {
                                 "t_shift": t_shift,
@@ -2210,10 +2300,7 @@ async def generate_speech(
                         } if getattr(
                             _backend, "supports_native_omnivoice_controls", False
                         ) else {}),
-                        **({"seed": used_seed + i} if used_seed is not None and (
-                            getattr(_backend, "supports_native_omnivoice_controls", False)
-                            or getattr(_backend, "supports_generation_seed", False)
-                        ) else {}),
+                        **({"seed": used_seed + i} if used_seed is not None and _backend_supports_seed(_backend) else {}),
                     )
                     sr = _backend.sample_rate
                     skip = getattr(_backend, "applies_own_mastering", False)
@@ -2269,9 +2356,11 @@ async def generate_speech(
                 _oom_friendly_reraise(e)
 
         async def _stream_events():
+            """Yield progress, marked audio chunks, and final generation metadata."""
             import json
 
             def _line(obj) -> bytes:
+                """Encode one streaming synthesis event as a compact NDJSON line."""
                 return (json.dumps(obj, separators=(",", ":")) + "\n").encode("utf-8")
 
             try:
@@ -2292,6 +2381,7 @@ async def generate_speech(
                                     class_temperature=class_temperature,
                                     dropped_sink=_dropped_sink,
                                     preset_voice=preset_voice,
+                                    emotion_kwargs=emotion_kwargs,
                                 ),
                                 what="TTS generate",
                                 min_vram_gb=_engine_min_vram_gb,
@@ -2523,6 +2613,7 @@ async def generate_speech(
                 class_temperature=class_temperature,
                 dropped_sink=_dropped_text,
                 preset_voice=preset_voice,
+                emotion_kwargs=emotion_kwargs,
             )
         else:
             _local_render = functools.partial(

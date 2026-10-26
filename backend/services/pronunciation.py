@@ -33,6 +33,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
+from core.language_variants import VARIANT_CODES as _VARIANT_CODES
 from services.dub_qc import _NO_SPACE_SCRIPT
 
 # A "word" character for boundary purposes. We treat the standard regex word
@@ -245,7 +246,8 @@ _ALL_LANG = "*"
 
 # Picker spellings the bundled map does not list (same aliases as
 # ``TTSBackend._normalize_language_code``).
-_LANG_NAME_ALIASES = {"mandarin": "zh", "arabic": "ar", "tagalog": "tl"}
+# Regional variant names ("Portuguese (Brazil)", #3143) scope to their base id.
+_LANG_NAME_ALIASES = {"mandarin": "zh", "arabic": "ar", "tagalog": "tl", **_VARIANT_CODES}
 # A bare ISO 639 id with optional region/script subtags: en, kbt, es-MX, zh_Hans.
 _LANG_TAG_RE = re.compile(r"^([a-z]{2,3})(?:[-_][a-z0-9]{1,8})*$")
 

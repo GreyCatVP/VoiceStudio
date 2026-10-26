@@ -102,6 +102,17 @@ class ColabASRSetupTests(unittest.TestCase):
                           if " 13. " in s.splitlines()[0])
         self.assertLess(setup, transcribe)
 
+    def test_asr_model_is_prefetched_before_the_backend_starts(self):
+        # Saving a clone in the web UI transcribes its reference only with an
+        # installed ASR model, so Part 1 fetches it before the launch cell.
+        code = ["".join(c["source"]) for c in json.loads(NOTEBOOK.read_text())["cells"]
+                if c["cell_type"] == "code"]
+        prefetch = next(i for i, s in enumerate(code)
+                        if "!hf download Systran/faster-whisper-large-v3" in s)
+        launch = next(i for i, s in enumerate(code)
+                      if s.startswith("# ── 5. Launch the backend"))
+        self.assertLess(prefetch, launch)
+
 
 class ColabLicenceErrorTests(unittest.TestCase):
     """Model-licence 403s read as a licence problem, not a download/GPU failure (#3076)."""

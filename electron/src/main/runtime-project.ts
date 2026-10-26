@@ -6,6 +6,7 @@ import { downloadProxyEnv } from './proxy-env';
 import { DIRECTORY_RENAME, renameWithRetry } from './rename-retry';
 import { downloadRuntimeInstaller } from './runtime-download';
 import { asciiSafePthFiles } from './pth-ascii';
+import { pruneInterruptedUvDownloads, setupDownloadHosts } from './setup-downloads';
 import { scrubText } from '../shared/utils/scrub';
 import { execFile } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
@@ -243,6 +244,28 @@ export function resolveTorchVariant(
   if (!cpuTorchApplies(platform, arch)) return { variant: 'default', explicit: false };
   if (platform === 'win32' && arch === 'arm64') return { variant: 'cpu', explicit: false };
   return { variant: hasNvidia() ? 'default' : 'cpu', explicit: false };
+}
+
+/** uv's download cache: beside the replaceable project, so retries reuse finished wheels. */
+export function runtimeUvCache(project: string): string {
+  return join(project, '..', '.uv-cache');
+}
+
+/** Package to the host its wheel downloads from in this install, for the setup screen (#3411). */
+export async function runtimeDownloadHosts(
+  bundle: string,
+  platform: NodeJS.Platform = process.platform,
+  arch: string = process.arch,
+): Promise<Map<string, string>> {
+  const lock = await readFile(join(bundle, 'uv.lock'), 'utf8');
+  const rocm = resolveTorchVariant(process.env, platform, arch).variant === 'rocm';
+  const rocmHost = new URL(process.env.OMNIVOICE_TORCH_INDEX || ROCM_TORCH_INDEX).host;
+  return setupDownloadHosts(lock, {
+    pytorchIndex: cpuTorchApplies(platform, arch),
+    overrides: rocm
+      ? Object.fromEntries(ROCM_TORCH_PINS.map((pin) => [pin.split(/[=<>!~]/)[0]!, rocmHost]))
+      : undefined,
+  });
 }
 
 /** Python request for a fresh venv; Windows on ARM needs the emulated x64 build. */
@@ -722,6 +745,9 @@ export async function installRuntime(
     throw Object.assign(new Error('INTEL_MAC_UNSUPPORTED'), { code: 'INTEL_MAC_UNSUPPORTED' });
   }
   await mkdir(project, { recursive: true });
+  // A cancelled attempt leaves its unfinished wheels behind; uv cannot resume them.
+  // Drop them before measuring free space, or they can block the retry that would free it.
+  await pruneInterruptedUvDownloads(runtimeUvCache(project));
   const torch = resolveTorchVariant();
   const requiredBytes = torch.variant === 'cpu' ? REQUIRED_CPU_ENV_BYTES : REQUIRED_ENV_BYTES;
   const disk = await statfs(project);
@@ -744,6 +770,8 @@ export async function installRuntime(
   await rm(join(project, '.runtime-ready'), { force: true });
   await stageRuntimeSources(bundle, project);
   await promoteLegacyRuntimeCaches(project);
+  // A promoted legacy cache can carry interrupted downloads of its own.
+  await pruneInterruptedUvDownloads(runtimeUvCache(project));
   const tools = join(project, '.tools');
   const privateUv = join(tools, process.platform === 'win32' ? 'uv.exe' : 'uv');
   if (
@@ -764,7 +792,7 @@ export async function installRuntime(
     UV_PROJECT_ENVIRONMENT: join(project, '.venv'),
     // Keep immutable downloads beside the replaceable project. Clean & Retry can
     // rebuild a broken venv without paying the multi-gigabyte transfer twice.
-    UV_CACHE_DIR: join(project, '..', '.uv-cache'),
+    UV_CACHE_DIR: runtimeUvCache(project),
     UV_PYTHON_INSTALL_DIR: join(project, '..', '.python'),
     TEMP: scratch,
     TMP: scratch,

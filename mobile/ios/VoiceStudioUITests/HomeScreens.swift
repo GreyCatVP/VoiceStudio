@@ -9,7 +9,7 @@ final class HomeScreens: XCTestCase {
         XCTAssertTrue(title.exists)
         XCTAssertEqual(title.label, "Home")
         XCTAssertLessThan(title.frame.midX, app.frame.width / 2)
-        XCTAssertTrue(app.staticTexts["VoiceStudio.sh Open Source"].exists)
+        XCTAssertTrue(app.staticTexts["VoiceStudio"].exists)
         let attachment = XCTAttachment(screenshot: app.screenshot()); attachment.name = "Home-dark"; attachment.lifetime = .keepAlways; add(attachment)
         for (route, title) in [("speak","Speak"),("voices","Voices"),("dub","Dub"),("dictate","Dictate"),("models","Models"),("connect","Connect to VoiceStudio")] {
             let card = app.buttons["home."+route]
@@ -34,5 +34,105 @@ final class HomeScreens: XCTestCase {
         for _ in 0..<5 { if app.buttons["home.speak"].isHittable { break }; app.swipeDown() }
         let light = XCTAttachment(screenshot: app.screenshot()); light.name = "Home-light"; light.lifetime = .keepAlways; add(light)
         app.buttons["home.speak"].tap(); XCTAssertTrue(app.textViews["speak.text"].waitForExistence(timeout: 5))
+    }
+}
+
+final class MaintainerCardScreens: XCTestCase {
+    @MainActor private func launch(largeText: Bool = false) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-smoke", "-AppleLanguages", "(en)"]
+        if largeText { app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] }
+        app.launch()
+        XCTAssertTrue(app.buttons["consent.no"].waitForExistence(timeout: 10))
+        app.buttons["consent.no"].tap()
+        XCTAssertTrue(app.navigationBars["Home"].waitForExistence(timeout: 5))
+        return app
+    }
+
+    @MainActor func testCoreProfilesOpenLocallyAndKeepOtherContributorsAccessible() {
+        let app = launch()
+        let palash = app.buttons["home.contributor.debpalash"]
+        let shimul = app.buttons["home.contributor.velixio"]
+        let other = app.descendants(matching: .any)["home.contributor.kevin9327"].firstMatch
+        XCTAssertTrue(palash.isHittable)
+        XCTAssertTrue(shimul.isHittable)
+        XCTAssertTrue(other.isHittable)
+        XCTAssertGreaterThanOrEqual(palash.frame.height + 0.001, 44)
+        XCTAssertGreaterThanOrEqual(other.frame.height + 0.001, 44)
+        XCTAssertGreaterThanOrEqual(other.frame.width + 0.001, 44)
+        XCTAssertLessThan(palash.frame.maxY, other.frame.minY)
+        let wordmark = app.staticTexts["home.wordmark"]
+        let subtitle = app.staticTexts["home.subtitle"]
+        XCTAssertTrue(wordmark.isHittable)
+        XCTAssertTrue(subtitle.isHittable)
+        XCTAssertEqual(wordmark.label, "VoiceStudio")
+        XCTAssertEqual(subtitle.label, "Open Source fully-local ElevenLabs alternative — voice cloning, voice design, video dubbing, dictation, transcription & audiobook creation in 646 languages.")
+        XCTAssertLessThanOrEqual(wordmark.frame.maxX, palash.frame.minX)
+        XCTAssertLessThanOrEqual(subtitle.frame.maxX, palash.frame.minX)
+        XCTAssertLessThan(wordmark.frame.minY, other.frame.maxY)
+        let credit = app.staticTexts["home.contributors.credit"]
+        XCTAssertTrue(credit.isHittable)
+        XCTAssertEqual(credit.label, "Brought to you by")
+        XCTAssertLessThanOrEqual(credit.frame.maxY, palash.frame.minY)
+        for login in ["kevin9327", "psiberfunk", "jaketame", "rudycelekli"] {
+            let visible = app.descendants(matching: .any)["home.contributor." + login].firstMatch
+            XCTAssertTrue(visible.isHittable, login)
+            XCTAssertGreaterThanOrEqual(visible.frame.height + 0.001, 44)
+        }
+        let bottomRow = app.descendants(matching: .any)["home.contributor.psiberfunk"].firstMatch
+        XCTAssertGreaterThan(bottomRow.frame.minY, other.frame.minY)
+        XCTAssertLessThanOrEqual(max(bottomRow.frame.maxY, subtitle.frame.maxY) - min(wordmark.frame.minY, credit.frame.minY), 180)
+        let compact = XCTAttachment(screenshot: app.screenshot())
+        compact.name = "Home-compact-hero"; compact.lifetime = .keepAlways; add(compact)
+        for (login, name, role, website, social) in [
+            ("debpalash", "Palash Debnath", "Creator and Core Team", "palash.dev", "@idebpalash"),
+            ("velixio", "Shimul Debnath", "Core Team", "shimul.me", "@shimuldn")
+        ] {
+            app.buttons["home.contributor." + login].tap()
+            XCTAssertTrue(app.staticTexts[name].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.staticTexts[role].exists)
+            for (kind, handle) in [("website", website), ("github", "@" + login), ("x", social)] {
+                let link = app.descendants(matching: .any)["home.maintainer." + login + "." + kind].firstMatch
+                for _ in 0..<5 { if link.isHittable { break }; app.swipeUp() }
+                XCTAssertTrue(link.isHittable, kind)
+                XCTAssertTrue(link.label.contains(handle))
+                XCTAssertGreaterThanOrEqual(link.frame.height + 0.001, 44)
+                XCTAssertGreaterThanOrEqual(link.frame.width + 0.001, 44)
+            }
+            let image = XCTAttachment(screenshot: app.screenshot())
+            image.name = "Maintainer-" + login; image.lifetime = .keepAlways; add(image)
+            app.buttons["home.maintainer.close"].tap()
+            XCTAssertTrue(app.buttons["home.contributor." + login].waitForExistence(timeout: 5))
+        }
+        let contributors = app.scrollViews["home.contributors.others"]
+        let lastContributor = app.descendants(matching: .any)["home.contributor.nvtoan0201-swe"].firstMatch
+        for _ in 0..<12 { if lastContributor.isHittable { break }; contributors.swipeLeft() }
+        XCTAssertTrue(lastContributor.isHittable)
+        XCTAssertGreaterThanOrEqual(lastContributor.frame.height + 0.001, 44)
+        let all = app.descendants(matching: .any)["home.contributor.all"].firstMatch
+        for _ in 0..<3 { if all.isHittable { break }; contributors.swipeLeft() }
+        XCTAssertTrue(all.isHittable)
+    }
+
+    @MainActor func testMaintainerLinksRemainReachableAtLargestTextSize() {
+        let app = launch(largeText: true)
+        let maintainer = app.buttons["home.contributor.velixio"]
+        for _ in 0..<5 { if maintainer.isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(maintainer.isHittable)
+        maintainer.tap()
+        XCTAssertTrue(app.staticTexts["Shimul Debnath"].waitForExistence(timeout: 5))
+        for kind in ["website", "github", "x"] {
+            let link = app.descendants(matching: .any)["home.maintainer.velixio." + kind].firstMatch
+            for _ in 0..<8 { if link.isHittable { break }; app.swipeUp() }
+            XCTAssertTrue(link.isHittable, kind)
+            XCTAssertGreaterThanOrEqual(link.frame.height + 0.001, 44)
+            XCTAssertGreaterThanOrEqual(link.frame.minX, 0)
+            XCTAssertLessThanOrEqual(link.frame.maxX, app.frame.width)
+        }
+        XCTAssertTrue(app.buttons["home.maintainer.close"].isHittable)
+        let image = XCTAttachment(screenshot: app.screenshot())
+        image.name = "Maintainer-accessibility-text"; image.lifetime = .keepAlways; add(image)
+        app.buttons["home.maintainer.close"].tap()
+        XCTAssertTrue(maintainer.waitForExistence(timeout: 5))
     }
 }

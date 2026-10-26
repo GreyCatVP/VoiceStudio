@@ -4,7 +4,6 @@
 @import './t3-theme.css';
 
 @source '../../../shared/components/SearchableSelect.jsx';
-@source '../../../shared/components/VirtualSearchableSelect.tsx';
 @source '../../../shared/components/LanguageFlag.jsx';
 @source '../../../shared/components/VoiceSelector.jsx';
 

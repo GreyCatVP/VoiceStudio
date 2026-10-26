@@ -321,12 +321,15 @@ def _skill_llm():
 
 def get_refinement_config() -> dict:
     """Read the persisted config: {auto, smart_cleanup, self_correction,
-    preserve_technical}. Defaults: everything on — but note refinement
+    preserve_technical, spoken_punctuation}. Defaults: everything on — but note refinement
     itself only runs when an LLM backend is configured (see maybe_refine)."""
     from services import settings_store
 
     raw = settings_store.get_text(_SETTINGS_KEY, None)
-    cfg = {"auto": True, **RefinementFlags().to_dict()}
+    # spoken_punctuation is the deterministic, LLM-free "say 'comma'" switch
+    # (services.dictation_cleanup); off by default because "period" and
+    # "colon" are also ordinary words.
+    cfg = {"auto": True, **RefinementFlags().to_dict(), "spoken_punctuation": False}
     if raw:
         try:
             cfg.update({k: bool(v) for k, v in json.loads(raw).items() if k in cfg})

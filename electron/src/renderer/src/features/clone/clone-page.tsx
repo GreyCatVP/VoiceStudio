@@ -178,7 +178,10 @@ export function ClonePage() {
             </div>
           </header>
           <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col gap-5 overflow-y-auto px-6 pt-6 pb-4">
-            <EngineNotice operation="clone" />
+            {/* With the composer on screen, its primary action is the setup instead. */}
+            {(choosingVoice || savingUpload || demo) && !isGenerating && (
+              <EngineNotice operation="clone" />
+            )}
             {choosingVoice ? (
               <VoiceSetup
                 onChosen={finishChoice}

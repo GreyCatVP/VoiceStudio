@@ -86,6 +86,8 @@ _FULL_NAME_TO_CODE = {
     "french": "fr",
     "italian": "it",
     "portuguese": "pt",
+    "portuguese (brazil)": "pt",
+    "portuguese (portugal)": "pt",
     "dutch": "nl",
     "russian": "ru",
     "ukrainian": "uk",
@@ -197,6 +199,27 @@ def _num2words_lang(language: Optional[str]) -> Optional[str]:
         if c in _NUM2WORDS_LANGS:
             return c
     return None
+
+
+# num2words spells some variants with their own locale: its ``pt`` is European
+# Portuguese ("dezasseis") and ``pt_BR`` Brazilian ("dezesseis"). Rule tables
+# stay keyed by the base code; only the num2words call takes the locale.
+_NUM2WORDS_DIALECT_LOCALES = {"pt-BR": "pt_BR", "pt-PT": "pt"}
+
+
+def _num2words_locale(language: Optional[str], lang: str) -> str:
+    """num2words locale for ``lang`` honouring the request's dialect (#3143).
+
+    A plain "Portuguese"/"pt" means Brazilian Portuguese, so it uses
+    ``pt_BR``; before the split every Portuguese request — even "pt-BR" —
+    was read with European number words.
+    """
+    from core.language_variants import dialect_for
+
+    dialect = dialect_for(language)
+    if dialect and dialect.split("-", 1)[0] == lang:
+        return _NUM2WORDS_DIALECT_LOCALES.get(dialect, lang)
+    return lang
 
 
 def _plain_lang_code(language: Optional[str]) -> Optional[str]:
@@ -549,11 +572,18 @@ def _correct_ordinal_suffix(n: int) -> str:
     return _ORDINAL_SUFFIX.get(n % 10, "th")
 
 
-def _numbers_to_words(text: str, lang: str) -> str:
+def _numbers_to_words(text: str, lang: str, locale: Optional[str] = None) -> str:
+    """``lang`` keys the rule tables; ``locale`` (default ``lang``) is the
+    num2words locale, which differs for regional variants (``pt_BR``)."""
     try:
-        from num2words import num2words
+        from num2words import num2words as _num2words
     except ImportError:  # pragma: no cover — direct dependency; belt & braces
         return text
+    base, n2w_locale = lang, locale or lang
+
+    def num2words(value, lang: str, **kwargs):
+        # Every call below names its rule language; swap in the variant locale.
+        return _num2words(value, lang=n2w_locale if lang == base else lang, **kwargs)
 
     def _safe(m: re.Match, render: Callable[[re.Match], str], *, clock: bool = False) -> str:
         # Any num2words hiccup leaves this occurrence untouched.
@@ -630,7 +660,7 @@ def _numbers_to_words(text: str, lang: str) -> str:
             zeros = len(ascii_fraction) - len(ascii_fraction.rstrip("0"))
             if zeros:
                 from num2words import CONVERTER_CLASSES
-                point = getattr(CONVERTER_CLASSES.get(lang), "pointword", None)
+                point = getattr(CONVERTER_CLASSES.get(n2w_locale), "pointword", None)
                 if not isinstance(point, str):
                     return spoken
                 zero = num2words(0, lang=lang)
@@ -727,7 +757,8 @@ def normalize_text(text: str, language: Optional[str] = None) -> str:
     if lang:
         if lang in _ABBREV_COMPILED:
             out = _outside_brackets(out, lambda t: _expand_abbreviations(t, lang))
-        out = _outside_brackets(out, lambda t: _numbers_to_words(t, lang))
+        locale = _num2words_locale(language, lang)
+        out = _outside_brackets(out, lambda t: _numbers_to_words(t, lang, locale))
     else:
         native = _native_lang(language)
         if native:

@@ -47,6 +47,7 @@ Binding for every AI agent (Claude, Codex, Cursor, review bots, …). CLAUDE.md 
 3. Merge current `main` into stale branches before judging their CI — PR-green under an old workflow ≠ main-green.
 4. Gate: "Tests (backend + frontend)" green + MERGEABLE.
 5. After EVERY merge: watch `main`'s own post-merge runs to green (`gh run list --branch main`). Red main = drop everything and fix.
+6. Start every PR, fix and feature from freshly fetched `origin/main` (owner rule, 2026-10-26): `git fetch origin`, confirm local `main` has no incoming or outgoing commits (resolve first if it does), branch from `origin/main`, and merge the latest `main` again right before pushing. `main` requires branches to be up to date before merging; that setting stays on.
 
 ## Change rules (see CLAUDE.md for full text)
 - Root-cause the class, not the instance; fail-before/pass-after regression test; smallest correct change.

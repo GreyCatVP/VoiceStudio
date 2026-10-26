@@ -33,7 +33,7 @@ import { useTtsReadiness } from '@/hooks/use-tts-readiness';
 import { getBridge } from '@/components/bridge';
 import { apiJson, apiPath, describeError } from '@/lib/api/client';
 import { saveExport } from '@/lib/export-history';
-import { LANG_CODES } from '@shared/utils/languages';
+import { TRANSLATION_TARGET_LABELS, translationTargetCode } from '@/lib/translation-targets';
 import { PRESETS } from '@shared/utils/constants';
 import { announceModelLicenceRequired } from '@/features/settings/model-license-contract';
 import type { BatchJob } from '@shared/api/batch-types';
@@ -41,7 +41,7 @@ import { generationFailureMessage } from '@shared/utils/generationFailureMessage
 import { enqueueVideos } from './enqueue';
 import { cachedTtsLanguagesSupported } from '@/lib/language-options';
 import { useTranslationEngines } from '@/features/settings/translation-settings';
-const languageOptions = LANG_CODES.map((item) => item.label);
+const languageOptions = TRANSLATION_TARGET_LABELS;
 export function BatchPage() {
   const { t } = useTranslation();
   const client = useQueryClient();
@@ -106,7 +106,7 @@ export function BatchPage() {
     try {
       const failed = await enqueueVideos(
         files,
-        langs.map((label) => LANG_CODES.find((item) => item.label === label)!.code),
+        langs.map((label) => translationTargetCode(label)!),
         voice,
         preserve,
         (file, cause) => {
@@ -378,7 +378,7 @@ export function BatchPage() {
           </Button>
           <EngineNotice operation="batch" />
           <WatchFolder
-            langs={langs.map((label) => LANG_CODES.find((item) => item.label === label)!.code)}
+            langs={langs.map((label) => translationTargetCode(label)!)}
             voiceId={voice}
             preserveBg={preserve}
             disabled={ttsBlocker !== null}

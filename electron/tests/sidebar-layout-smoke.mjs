@@ -247,7 +247,7 @@ try {
       'macOS titlebar must show the complete VoiceStudio wordmark',
     );
     const expandedSettings = macSidebar.getByRole('link', { name: 'Settings', exact: true });
-    const expandedDevice = macSidebar.getByRole('button', { name: /Local device/ });
+    const expandedDevice = macSidebar.getByRole('button', { name: /^Local:/ });
     const expandedSettingsBounds = await expandedSettings.boundingBox();
     const expandedDeviceBounds = await expandedDevice.boundingBox();
     // Labelled, not icon-only: the footer reads as "Settings" and the device name.
@@ -291,7 +291,7 @@ try {
       .getByRole('link', { name: 'Settings', exact: true })
       .boundingBox();
     const compactDeviceBounds = await compactMacSidebar
-      .getByRole('button', { name: /Local device/ })
+      .getByRole('button', { name: /^Local:/ })
       .boundingBox();
     // The rail footer is one centered column, like the navigation above it.
     assert.ok(

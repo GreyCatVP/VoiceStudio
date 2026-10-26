@@ -129,6 +129,13 @@ settings. The selection is never silently discarded. The notice describes the
 last translation, so switching to an LLM-backed engine and translating again
 clears it.
 
+Portuguese (Brazil) and Portuguese (Portugal) are separate target choices; both
+write the Portuguese track with that dialect, and a plain Portuguese target
+means Brazilian. NLLB, Argos and Google write Brazilian Portuguese, so a
+Brazilian request counts as applied and a European one shows the notice naming
+the variant the engine wrote (`dialect_used` in the response). See
+[Supported Languages](languages.md#regional-variants).
+
 **Translate with Agent** detects the installed Codex, Claude Code, OpenCode and Pi CLIs. Dubbing
 presents Agent and the active Google, Argos, NLLB or API engine as separate translator choices;
 Fast, Autofit and Cinematic remain quality choices for engine translation. The selected agent receives the complete ordered

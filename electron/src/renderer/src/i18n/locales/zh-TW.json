@@ -1,4 +1,18 @@
 {
+  "cloneEmotion": {
+    "title": "情緒",
+    "off": "關閉",
+    "text": "文字描述",
+    "vector": "情緒滑桿",
+    "happy": "喜悅",
+    "angry": "憤怒",
+    "sad": "悲傷",
+    "afraid": "恐懼",
+    "disgusted": "厭惡",
+    "melancholic": "憂鬱",
+    "surprised": "驚訝",
+    "calm": "平靜"
+  },
   "cloneQuality": {
     "title": "音訊品質",
     "precision": "WAV 精度",
@@ -7,7 +21,7 @@
     "hint24": "為編輯和混音提供更高精度。",
     "hint32": "保留完整精度。檔案更大，但不會改善聲音本身。",
     "effort": "聲音細化",
-    "effortHint": "處理次數越多，耗時越長；聲音不一定更好。",
+    "effortHint": "處理次數越少，音質可能越差；次數越多，耗時越長。",
     "mastering": "平衡音量",
     "masteringHint": "讓聲音更均衡、音量更一致。",
     "nextTake": "用於下一次錄音。",
@@ -373,7 +387,8 @@
     "inactive": "未啟用",
     "translation": "翻譯",
     "diarisation": "說話者分離",
-    "localDevice": "本機裝置"
+    "localDevice": "本機裝置",
+    "localShort": "本機"
   },
   "paneActions": {
     "collapse": "收合面板",
@@ -387,7 +402,9 @@
     "select": "選擇",
     "selected": "已選取",
     "change": "更換引擎",
-    "failed": "無法更換引擎，請重試。"
+    "failed": "無法更換引擎，請重試。",
+    "empty": "此類別尚無引擎或模型。",
+    "modelsInstalled": "已安裝 {{installed}}/{{count}}"
   },
   "modelMaintenance": {
     "download": "下載",
@@ -469,6 +486,8 @@
     "paste_failed": "剪貼簿存取遭到封鎖。請使用鍵盤直接貼上到文字欄位。",
     "prompt": "提示",
     "language": "語言",
+    "take_language_next": "新錄音使用{{language}}",
+    "take_language_used": "本條錄音使用的語言",
     "steps": "步驟",
     "voice_source": "語音來源",
     "reference_audio": "參考音訊",
@@ -513,7 +532,7 @@
     "preset_anxious_whisper": "🤫 耳語",
     "preset_surprised_woman": "😲 驚訝",
     "preset_elderly_story": "👴長輩",
-    "preset_sichuan": "🌶️四川話",
+    "preset_sichuan": "四川話",
     "prompt_placeholder": "這個聲音該說什麼？",
     "design_placeholder": "描述聲音，然後輸入它所說的內容...",
     "speed": "速度",
@@ -543,6 +562,28 @@
     "opt_high_pitch": "高音",
     "opt_very_high_pitch": "非常高的音調",
     "opt_whisper": "耳語",
+    "opt_american_accent": "美式口音",
+    "opt_british_accent": "英式口音",
+    "opt_australian_accent": "澳式口音",
+    "opt_canadian_accent": "加拿大口音",
+    "opt_indian_accent": "印度口音",
+    "opt_chinese_accent": "中式口音",
+    "opt_korean_accent": "韓式口音",
+    "opt_japanese_accent": "日式口音",
+    "opt_portuguese_accent": "葡萄牙口音",
+    "opt_russian_accent": "俄式口音",
+    "dialect_henan": "河南話",
+    "dialect_shaanxi": "陝西話",
+    "dialect_sichuan": "四川話",
+    "dialect_guizhou": "貴州話",
+    "dialect_yunnan": "雲南話",
+    "dialect_guilin": "桂林話",
+    "dialect_jinan": "濟南話",
+    "dialect_shijiazhuang": "石家莊話",
+    "dialect_gansu": "甘肅話",
+    "dialect_ningxia": "寧夏話",
+    "dialect_qingdao": "青島話",
+    "dialect_dongbei": "東北話",
     "style_placeholder": "例如耳語",
     "stop_playback": "停止播放",
     "describe_label": "描述你想要的聲音",
@@ -630,6 +671,8 @@
   },
   "designWorkspace": {
     "title": "設計聲音",
+    "takes_show": "顯示最近錄音",
+    "saved_empty": "已儲存的設計會顯示在這裡。",
     "save_failed": "儲存語音設定檔失敗",
     "engine_cannot_design": "{{engine}} 需要參考音訊片段，無法設計聲音。請切換到支援聲音設計的引擎（例如 OmniVoice），或改為複製聲音。",
     "engine_cannot_reuse_sample": "{{engine}} 無法使用參考音訊，因此不能用樣本重新產生這個已儲存的聲音。請切換到支援聲音複製的引擎（例如 OmniVoice）。"
@@ -909,6 +952,7 @@
     "mirror_failed": "還原演繹失敗：{{message}}",
     "cinematic_no_llm": "此品質需要 LLM 供應商。請在「LLM 供應商」中設定後繼續。",
     "dialect_not_applied": "所選方言需要 LLM 才能套用 — 請將引擎切換為 OpenAI/Ollama，或選擇 Cinematic 品質。",
+    "dialect_used": "此引擎只能輸出{{variant}}。如需套用所選方言，請使用 LLM 翻譯引擎。",
     "translate_errors": "{{errorCount}}/{{totalCount}} 段失敗：{{firstError}}",
     "translate_degraded": "全部 {{totalCount}} 個片段已翻譯 — 其中 {{count}} 個因潤飾步驟被略過而使用直譯（{{reason}}）",
     "translated_segments": "翻譯的 {{count}} 段 → {{lang}}",
@@ -1001,7 +1045,8 @@
     "pause": "暫停",
     "seek": "跳轉",
     "missing": "音訊檔案遺失。",
-    "now_playing": "正在播放"
+    "now_playing": "正在播放",
+    "kind_convert": "語音轉換"
   },
   "logs": {
     "no_tauri_log": "磁碟上尚未有 Tauri 登入 — 透過桌面建置啟動以產生一個",
@@ -1492,6 +1537,12 @@
     "submit_failed": "無法開啟投稿表單。",
     "submit_preset": "投稿預設",
     "submit_voice": "投稿語音",
+    "community_packs": "合集",
+    "community_all_packs": "全部",
+    "community_language": "語言",
+    "community_all_languages": "所有語言",
+    "community_new": "新",
+    "community_author_profile": "{{author}} 的 GitHub",
     "zone_community": "社群",
     "import_persona": "導入 .ovsvoice 角色包",
     "persona_imported": "導入“{{name}}”{{unverified}}。",
@@ -1571,7 +1622,10 @@
     "aec_description": "從麥克風移除 VoiceStudio 的播放聲音。",
     "aec_row_title": "為聽寫啟用回音消除",
     "aec_experimental": "實驗性",
-    "aec_hint": "可在播放預覽、配音或影片時聽寫，而不會轉錄應用程式本身的聲音。會增加少量音訊處理；若不會在播放時聽寫，請保持關閉。"
+    "aec_hint": "可在播放預覽、配音或影片時聽寫，而不會轉錄應用程式本身的聲音。會增加少量音訊處理；若不會在播放時聽寫，請保持關閉。",
+    "cleanup_title": "文字整理",
+    "spoken_punctuation": "語音標點",
+    "spoken_punctuation_desc": "說 “comma”, “period”, “question mark”, “new line” 即可輸入。僅支援英語。"
   },
   "tools": {
     "title": "工具",
@@ -1824,6 +1878,10 @@
     "open_cache_failed": "無法開啟章節快取",
     "progress_summary": "正在合成第 {{current}}/{{total}} 章",
     "eta": "剩餘約 {{time}}",
+    "eta_estimating": "正在估算剩餘時間…",
+    "realtime": "{{rate}}× 即時",
+    "realtime_hint": "每渲染一秒產生的音訊秒數",
+    "stalled": "已有 {{time}} 沒有進度。引擎可能卡住了：請查看 記錄 → 後端，或停止後稍後重新建立。已完成的部分會保留。",
     "chapter_n": "第 {{n}} 章",
     "cached_tag": "已快取",
     "failed_tag": "失敗",
@@ -2130,6 +2188,10 @@
     "download_rate": "{{rate}}/秒",
     "eta": "剩餘約 {{time}}",
     "downloads_complete": "下載完成 · 正在安裝套件",
+    "download_source": "來自 {{host}}",
+    "download_stalled": "{{seconds}} 秒內未從 {{host}} 收到資料",
+    "download_stalled_generic": "{{seconds}} 秒內未收到下載資料",
+    "download_stalled_hint": "取消並重試時會保留已完成的檔案。VPN 或代理伺服器可能有幫助。",
     "verifying": "正在驗證環境…",
     "clean_retry": "清理並重試",
     "clean_retry_confirm": "這將重建 Python 環境並重用已驗證的下載。是否繼續？",
@@ -2711,6 +2773,15 @@
     "vol": "卷",
     "vol_title": "音量 (0–200%)",
     "search_placeholder": "搜尋文字...",
+    "replace_placeholder": "取代為…",
+    "replace": "取代",
+    "replace_all": "全部取代",
+    "find_next": "下一個符合",
+    "find_prev": "上一個符合",
+    "find_count": "第 {{current}} / {{total}} 處",
+    "find_none": "沒有符合項目",
+    "replace_done_one": "已取代 {{count}} 處",
+    "replace_done_other": "已取代 {{count}} 處",
     "all_speakers": "所有發言者",
     "select_all_title": "選擇所有過濾的",
     "sel_count": "{{count}} 選擇",
@@ -2903,6 +2974,7 @@
     "latencyMs": "{{ms}} 毫秒",
     "none_ready_title": "語音合成尚未就緒",
     "none_ready_body": "VoiceStudio 可以自動為此裝置設定最佳相容選項。",
+    "set_up": "設定",
     "active": "引擎：{{name}}",
     "none": "沒有啟用的引擎",
     "localInstallRequired": "請在後端電腦上透過 localhost 或安裝指南安裝此引擎。遠端安裝已停用。",
@@ -2919,7 +2991,8 @@
     "balanced": "均衡",
     "quality": "品質",
     "hint": "適用於 OmniVoice 取樣和 Faster-Whisper / NLLB 解碼。其他引擎保留目前設定。",
-    "auto": "自動"
+    "auto": "自動",
+    "autoHint": "為這台電腦選擇最佳等級。"
   },
   "recording": {
     "input_device": "輸入裝置",
@@ -2958,6 +3031,7 @@
     "windows_app_control_blocked": "Windows 應用程式控制封鎖了必要檔案。請聯絡管理員允許受信任的 VoiceStudio 執行環境，然後重新啟動應用程式。",
     "audio_io_failed": "無法讀取或儲存音訊。請檢查檔案格式、磁碟可用空間和檔案存取權限，並在設定 → 儲存空間中檢查資料夾。",
     "no_audio_track": "此檔案沒有音軌，因此沒有可轉錄、配音或複製的語音。請選擇包含聲音的影片或音訊檔案。",
+    "source_language_required": "語音辨識未回報此影片使用的語言，因此無法在此翻譯。請在配音中開啟該影片並選擇其來源語言，或選擇能偵測語言的語音辨識模型。",
     "transcription_media_tool": "轉錄需要 ffmpeg，但 VoiceStudio 找不到或無法執行它。請開啟設定 → 音訊工具並使用下載/修復，或安裝 ffmpeg（macOS：brew install ffmpeg；Windows：winget install Gyan.FFmpeg；Linux：你的套件管理員），然後重新啟動 VoiceStudio。你也可以將 FFMPEG_PATH 指向 ffmpeg 執行檔。",
     "transcription_pipe_lost": "轉錄期間後端失去了通往應用程式的輸出管道（broken pipe）。請重新啟動 VoiceStudio 後再試一次。",
     "gpu_oom": "GPU 記憶體不足。請關閉其他佔用 GPU 的應用程式或卸載模型後重試。你也可以在 設定 → 效能與裝置 中選擇 CPU，或選擇較小的 TTS 引擎。",
@@ -2982,12 +3056,25 @@
     "open_in_browser": "在瀏覽器中開啟",
     "qr_alt": "{{ip}} 的二維碼",
     "pin": "密碼：",
-    "connect": "連線"
+    "connect": "連線",
+    "self_check": "自我檢查",
+    "listening_on": "正在監聽 {{host}}:{{port}}",
+    "recheck": "重新檢查",
+    "address_ok": "正在監聽",
+    "address_down": "沒有回應",
+    "firewall_hint": "無法連線？請使用同一個 Wi-Fi，在防火牆中允許 VoiceStudio（Windows 請選擇私人網路），並關閉 VPN。"
   },
   "repairAgent": {
     "title": "詢問 VoiceStudio Agent",
     "notInstalled": "未安裝",
-    "noSource": "請開啟可寫入的 VoiceStudio 原始碼簽出目錄，讓代理進行修復。",
+    "noSource": "若要修復程式碼，請選擇用 git clone 取得的 VoiceStudio 副本。已安裝的應用程式無法編輯。",
+    "sourceRejected": {
+      "installed_app": "這是已安裝的應用程式，無法編輯。請改選 git clone 的資料夾。",
+      "not_git": "此資料夾不是 git clone。ZIP 下載無法使用，請使用 git clone。",
+      "not_voicestudio": "此資料夾中找不到 VoiceStudio 複本。",
+      "read_only": "VoiceStudio 無法寫入此資料夾。請選擇你自己的資料夾。"
+    },
+    "chooseFailed": "無法使用此資料夾。請重試或選擇其他資料夾。",
     "noneFound": "安裝 Codex、Claude Code、OpenCode 或 Pi 以使用本機修復。",
     "ready": "就緒",
     "placeholder": "出了什麼問題？請加入操作步驟、可見錯誤或預期行為。",
@@ -3266,7 +3353,30 @@
     "match_contains": "包含",
     "match_equals": "完全等於",
     "match_starts": "開頭為",
-    "match_ends": "結尾為"
+    "match_ends": "結尾為",
+    "subtitle": "把朗讀、翻譯、匯出等步驟串起來，一次執行完成。",
+    "saved": "已儲存",
+    "saved_hint": "變更會自動儲存在此裝置上。",
+    "name_label": "工作流程名稱",
+    "from_template": "從範本新增",
+    "template_title": "從範本開始",
+    "template_hint": "選擇一個起點，之後每個步驟都可以修改。",
+    "group_narration": "旁白",
+    "group_audio": "音訊",
+    "group_calls": "通話",
+    "template_recipe": "用同一個聲音朗讀腳本，每個腳本產生一個片段。",
+    "template_clean_recipe": "朗讀腳本，然後統一音量。",
+    "template_transcription": "把音訊片段轉成文字。",
+    "template_conversion": "用已儲存的聲音重新配音音訊片段。",
+    "template_localization": "轉寫片段、翻譯並朗讀結果。",
+    "template_restaurant": "打電話給餐廳預訂座位。",
+    "template_reschedule": "打電話改約時間。",
+    "template_hours": "打電話詢問營業時間。",
+    "needs_setup": "需要設定",
+    "run_blocked": "{{step}}需要設定",
+    "add_kind": "新增{{step}}",
+    "add_after": "在所選步驟後新增{{step}}",
+    "palette_hint": "點擊新增，或拖曳到畫布上。"
   },
   "proPage": {
     "title": "VoiceStudio Pro",
@@ -3440,6 +3550,8 @@
     "hint": "通常建議保留預設值。引導強度控制提示詞的影響，其他選項改變模型建構聲音的方式。每次只調整一項。"
   },
   "languagePicker": {
+    "dialectFollowsVoice": "{{model}} 只有一個{{language}}模型，因此口音取決於參考語音。",
+    "dialectUsed": "{{model}} 僅支援{{variant}}。",
     "auto": "自動",
     "unavailable": "不支援",
     "unsupportedBy": "{{model}} 不支援",
@@ -3450,7 +3562,11 @@
     "unknown": "支援的語言未知",
     "error": "無法檢查語言",
     "modelLanguages": "此模型的語言",
-    "changeModel": "更換模型"
+    "changeModel": "更換模型",
+    "recent": "最近使用",
+    "available": "可用",
+    "showAll": "顯示所有語言",
+    "hideUnsupported": "隱藏不支援的語言"
   },
   "modelLicense": {
     "title": "模型條款",
@@ -3580,6 +3696,10 @@
     "detailsFailed": "無法載入授權詳細資料。請關閉此對話方塊後再試一次。"
   },
   "mobile": {
+    "home": {
+      "subtitle": "你的開源、完全本機執行的 ElevenLabs 替代方案——複製與設計聲音、影片配音、語音輸入、轉錄和有聲書製作，支援 646 種語言。",
+      "brought_by": "由以下開發者為你呈現"
+    },
     "tabs": {
       "speak": "朗讀",
       "voices": "語音",
@@ -4189,5 +4309,25 @@
       "fix1": "在 設定 > 記錄 中檢查後端",
       "fix2": "重新啟動 VoiceStudio 後再試"
     }
+  },
+  "modelInstall": {
+    "queued": "等待開始…",
+    "downloading": "正在下載…",
+    "downloadingPct": "正在下載 · {{pct}}%",
+    "finishing": "正在驗證並安裝…",
+    "cancelling": "正在取消…",
+    "cancelled": "已取消下載",
+    "failed": "下載失敗",
+    "ready": "可以使用",
+    "bytes": "{{done}}，共 {{total}}",
+    "speed": "{{rate}}/秒",
+    "eta": "剩餘 {{time}}",
+    "downloadAgain": "重新下載",
+    "nextDisk": "磁碟空間不足。請釋放空間，或在 設定 → 儲存 中移動模型資料夾，然後重試。",
+    "nextGated": "此模型需要 Hugging Face 存取權限。請在模型頁面申請，並在 設定 → 金鑰憑證 中加入權杖，然後重試。",
+    "nextNetwork": "無法連線到下載伺服器。請在 設定 → 網路 中檢查網路連線、代理或鏡像，然後重試。",
+    "nextMemory": "此裝置記憶體不足。請在 設定 → 效能 中選擇較輕量的設定檔，然後重試。",
+    "downloads": "下載",
+    "activeCount": "進行中的下載：{{count}}"
   }
 }

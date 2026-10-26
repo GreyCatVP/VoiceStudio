@@ -16,3 +16,7 @@ it('keeps a saved language that is outside the TTS vocabulary', () => {
   expect(options.filter((name) => name === 'Chinese (Simplified)')).toHaveLength(1);
   expect(outputLanguageOptions('')).toBe(LANGUAGES);
 });
+
+it('shows a saved plain Portuguese as its regional choice, not an extra row (#3143)', () => {
+  expect(outputLanguageOptions('Portuguese')).toBe(LANGUAGES);
+});

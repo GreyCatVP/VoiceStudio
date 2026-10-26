@@ -1,4 +1,18 @@
 {
+  "cloneEmotion": {
+    "title": "Emoción",
+    "off": "Desactivado",
+    "text": "Descripción",
+    "vector": "Deslizadores",
+    "happy": "Alegría",
+    "angry": "Ira",
+    "sad": "Tristeza",
+    "afraid": "Miedo",
+    "disgusted": "Asco",
+    "melancholic": "Melancolía",
+    "surprised": "Sorpresa",
+    "calm": "Calma"
+  },
   "cloneQuality": {
     "title": "Calidad de audio",
     "precision": "Precisión WAV",
@@ -7,7 +21,7 @@
     "hint24": "Más precisión para editar y mezclar.",
     "hint32": "Conserva toda la precisión. Archivos más grandes, sin mejorar la voz.",
     "effort": "Refinamiento de voz",
-    "effortHint": "Más pasadas tardan más; la voz puede no sonar mejor.",
+    "effortHint": "Menos pasadas pueden reducir la calidad; más pasadas tardan más.",
     "mastering": "Equilibrar volumen",
     "masteringHint": "Hace que el sonido sea más equilibrado y uniforme.",
     "nextTake": "Para tu próxima grabación.",
@@ -375,7 +389,8 @@
     "inactive": "Inactivo",
     "translation": "Traducción",
     "diarisation": "Diarización",
-    "localDevice": "Dispositivo local"
+    "localDevice": "Dispositivo local",
+    "localShort": "Local"
   },
   "paneActions": {
     "collapse": "Contraer panel",
@@ -389,7 +404,9 @@
     "select": "Seleccionar",
     "selected": "Seleccionado",
     "change": "Cambiar motor",
-    "failed": "No se pudo cambiar el motor. Inténtalo de nuevo."
+    "failed": "No se pudo cambiar el motor. Inténtalo de nuevo.",
+    "empty": "Aún no hay motores ni modelos para esta categoría.",
+    "modelsInstalled": "{{installed}} de {{count}} instalados"
   },
   "modelMaintenance": {
     "download": "Descargar",
@@ -471,6 +488,8 @@
     "paste_failed": "Se bloqueó el acceso al portapapeles. Pega directamente en el campo de texto con el teclado.",
     "prompt": "rápido",
     "language": "Idioma",
+    "take_language_next": "Las tomas nuevas usan {{language}}",
+    "take_language_used": "Idioma usado en esta toma",
     "steps": "Pasos",
     "voice_source": "Fuente de voz",
     "reference_audio": "Audio de referencia",
@@ -515,7 +534,7 @@
     "preset_anxious_whisper": "🤫 Susurro",
     "preset_surprised_woman": "😲 Sorprendido",
     "preset_elderly_story": "👴 Anciano",
-    "preset_sichuan": "🌶️ 四川话",
+    "preset_sichuan": "Sichuan",
     "prompt_placeholder": "¿Qué debería decir esta voz?",
     "design_placeholder": "Describe la voz, luego escribe lo que dice...",
     "speed": "Velocidad",
@@ -545,6 +564,28 @@
     "opt_high_pitch": "tono alto",
     "opt_very_high_pitch": "tono muy alto",
     "opt_whisper": "susurrar",
+    "opt_american_accent": "Acento estadounidense",
+    "opt_british_accent": "Acento británico",
+    "opt_australian_accent": "Acento australiano",
+    "opt_canadian_accent": "Acento canadiense",
+    "opt_indian_accent": "Acento indio",
+    "opt_chinese_accent": "Acento chino",
+    "opt_korean_accent": "Acento coreano",
+    "opt_japanese_accent": "Acento japonés",
+    "opt_portuguese_accent": "Acento portugués",
+    "opt_russian_accent": "Acento ruso",
+    "dialect_henan": "Dialecto de Henan",
+    "dialect_shaanxi": "Dialecto de Shaanxi",
+    "dialect_sichuan": "Dialecto de Sichuan",
+    "dialect_guizhou": "Dialecto de Guizhou",
+    "dialect_yunnan": "Dialecto de Yunnan",
+    "dialect_guilin": "Dialecto de Guilin",
+    "dialect_jinan": "Dialecto de Jinan",
+    "dialect_shijiazhuang": "Dialecto de Shijiazhuang",
+    "dialect_gansu": "Dialecto de Gansu",
+    "dialect_ningxia": "Dialecto de Ningxia",
+    "dialect_qingdao": "Dialecto de Qingdao",
+    "dialect_dongbei": "Dialecto del noreste",
     "style_placeholder": "por ej. susurrar",
     "stop_playback": "Detener reproducción",
     "describe_label": "Describe tu voz",
@@ -632,6 +673,8 @@
   },
   "designWorkspace": {
     "title": "Diseñar",
+    "takes_show": "Mostrar tomas recientes",
+    "saved_empty": "Los diseños guardados aparecen aquí.",
     "save_failed": "No se pudo guardar el perfil de voz",
     "engine_cannot_design": "{{engine}} no puede diseñar voces porque necesita un clip de referencia. Cambia a un motor compatible con el diseño de voz, como OmniVoice, o clona una voz.",
     "engine_cannot_reuse_sample": "{{engine}} no puede usar audio de referencia, así que no puede volver a generar esta voz guardada a partir de su muestra. Cambia a un motor compatible con la clonación de voz, como OmniVoice."
@@ -911,6 +954,7 @@
     "mirror_failed": "Error al imitar la interpretación: {{message}}",
     "cinematic_no_llm": "Esta calidad necesita un proveedor de LLM. Configúralo en «Proveedores de LLM» para continuar.",
     "dialect_not_applied": "El dialecto seleccionado necesita un LLM para aplicarse — cambia el motor a OpenAI/Ollama o elige la calidad Cinematic.",
+    "dialect_used": "Este motor solo escribe en {{variant}}. Usa un motor de traducción con LLM para aplicar el dialecto elegido.",
     "translate_errors": "{{errorCount}}/{{totalCount}} segmento(s) fallidos: {{firstError}}",
     "translate_degraded": "Los {{totalCount}} segmento(s) se tradujeron — {{count}} usan la traducción simple porque se omitió el pulido ({{reason}})",
     "translated_segments": "{{count}} segmento(s) traducido(s) → {{lang}}",
@@ -1003,7 +1047,8 @@
     "pause": "Pausar",
     "seek": "Buscar posición",
     "missing": "Falta el archivo de audio.",
-    "now_playing": "Reproduciendo"
+    "now_playing": "Reproduciendo",
+    "kind_convert": "Conversión de voz"
   },
   "logs": {
     "no_tauri_log": "Aún no hay ningún registro de Tauri en el disco: inicie a través de la compilación de escritorio para producir uno",
@@ -1494,6 +1539,12 @@
     "submit_failed": "No se pudo abrir el formulario de envío.",
     "submit_preset": "Enviar un preajuste",
     "submit_voice": "Enviar una voz",
+    "community_packs": "Paquetes",
+    "community_all_packs": "Todos",
+    "community_language": "Idioma",
+    "community_all_languages": "Todos los idiomas",
+    "community_new": "Nuevo",
+    "community_author_profile": "{{author}} en GitHub",
     "zone_community": "Comunidad",
     "import_persona": "Importar un paquete de persona .ovsvoice",
     "persona_imported": "Importado \"{{name}}\"{{unverified}}.",
@@ -1573,7 +1624,10 @@
     "aec_description": "Quita la reproducción de VoiceStudio del micrófono.",
     "aec_row_title": "Activar cancelación de eco para el dictado",
     "aec_experimental": "Experimental",
-    "aec_hint": "Permite dictar mientras se reproduce una vista previa, doblaje o vídeo sin transcribir el audio de la aplicación. Añade un poco de procesamiento; déjalo desactivado si no dictas durante la reproducción."
+    "aec_hint": "Permite dictar mientras se reproduce una vista previa, doblaje o vídeo sin transcribir el audio de la aplicación. Añade un poco de procesamiento; déjalo desactivado si no dictas durante la reproducción.",
+    "cleanup_title": "Limpieza del texto",
+    "spoken_punctuation": "Puntuación dictada",
+    "spoken_punctuation_desc": "Di “comma”, “period”, “question mark”, “new line” para escribirlo. Solo en inglés."
   },
   "tools": {
     "title": "Herramientas",
@@ -1826,6 +1880,10 @@
     "open_cache_failed": "No se pudo abrir la caché de capítulos",
     "progress_summary": "Sintetizando {{current}} de {{total}} capítulos",
     "eta": "~{{time}} restante",
+    "eta_estimating": "Calculando el tiempo restante…",
+    "realtime": "{{rate}}× tiempo real",
+    "realtime_hint": "Segundos de audio generados por cada segundo de renderizado",
+    "stalled": "Sin progreso desde hace {{time}}. Puede que el motor esté bloqueado: revisa Registros → Backend, o detén y vuelve a crear más tarde. Las partes terminadas se conservan.",
     "chapter_n": "Capítulo {{n}}",
     "cached_tag": "en caché",
     "failed_tag": "fallido",
@@ -2132,6 +2190,10 @@
     "download_rate": "{{rate}}/s",
     "eta": "quedan ~{{time}}",
     "downloads_complete": "Descargas completadas · instalando paquetes",
+    "download_source": "Desde {{host}}",
+    "download_stalled": "Sin datos de {{host}} desde hace {{seconds}} s",
+    "download_stalled_generic": "Sin datos de descarga desde hace {{seconds}} s",
+    "download_stalled_hint": "Los archivos completados se conservan si cancelas y reintentas. Una VPN o un proxy puede ayudar.",
     "verifying": "Verificando el entorno…",
     "clean_retry": "Limpiar y reintentar",
     "clean_retry_confirm": "Esto volverá a crear el entorno de Python y reutilizará las descargas verificadas. ¿Continuar?",
@@ -2713,6 +2775,15 @@
     "vol": "volumen",
     "vol_title": "Volumen (0–200%)",
     "search_placeholder": "Buscar texto…",
+    "replace_placeholder": "Reemplazar con…",
+    "replace": "Reemplazar",
+    "replace_all": "Reemplazar todo",
+    "find_next": "Siguiente coincidencia",
+    "find_prev": "Coincidencia anterior",
+    "find_count": "{{current}} de {{total}}",
+    "find_none": "Sin coincidencias",
+    "replace_done_one": "Se reemplazó {{count}} coincidencia",
+    "replace_done_other": "Se reemplazaron {{count}} coincidencias",
     "all_speakers": "Todos los oradores",
     "select_all_title": "Seleccionar todo filtrado",
     "sel_count": "selección {{count}}",
@@ -2905,6 +2976,7 @@
     "latencyMs": "{{ms}} ms",
     "none_ready_title": "La síntesis de voz no está lista",
     "none_ready_body": "VoiceStudio puede configurar automáticamente la mejor opción compatible con este dispositivo.",
+    "set_up": "Configurar",
     "active": "Motor: {{name}}",
     "none": "Ningún motor activo",
     "localInstallRequired": "Instala este motor en el equipo del servidor mediante localhost o su guía de configuración. La instalación remota está desactivada.",
@@ -2921,7 +2993,8 @@
     "balanced": "Equilibrado",
     "quality": "Calidad",
     "hint": "Se aplica al muestreo OmniVoice y a la decodificación Faster-Whisper/NLLB. Otros motores mantienen su configuración actual.",
-    "auto": "Auto"
+    "auto": "Auto",
+    "autoHint": "Elige el mejor nivel para este equipo."
   },
   "recording": {
     "input_device": "Dispositivo de entrada",
@@ -2960,6 +3033,7 @@
     "windows_app_control_blocked": "El control de aplicaciones de Windows bloqueó un archivo necesario. Pide al administrador que permita el entorno de ejecución de confianza de VoiceStudio y reinicia la aplicación.",
     "audio_io_failed": "No se pudo leer o guardar el audio. Comprueba el formato, el espacio libre y los permisos del archivo. Revisa la carpeta en Ajustes → Almacenamiento.",
     "no_audio_track": "Este archivo no tiene pista de audio, así que no hay voz que transcribir, doblar o clonar. Elige un archivo de vídeo o audio que tenga sonido.",
+    "source_language_required": "El reconocimiento de voz no indicó en qué idioma está este video, así que no se puede traducir aquí. Abre el video en Doblaje y elige su idioma de origen, o selecciona un modelo de reconocimiento de voz que detecte el idioma.",
     "transcription_media_tool": "La transcripción necesita ffmpeg, que VoiceStudio no pudo encontrar o ejecutar. Abre Ajustes → Herramientas de audio y usa Descargar/Reparar, o instala ffmpeg (macOS: brew install ffmpeg; Windows: winget install Gyan.FFmpeg; Linux: tu gestor de paquetes) y reinicia VoiceStudio. También puedes apuntar FFMPEG_PATH a un binario de ffmpeg.",
     "transcription_pipe_lost": "El backend perdió su canal de salida con la aplicación durante la transcripción (broken pipe). Reinicia VoiceStudio e inténtalo de nuevo.",
     "gpu_oom": "La GPU se quedó sin memoria. Cierra otras apps que usen mucho la GPU o descarga modelos y vuelve a intentarlo. También puedes elegir CPU en Ajustes → Rendimiento y dispositivo o seleccionar un motor TTS más pequeño.",
@@ -2984,12 +3058,25 @@
     "open_in_browser": "Abrir en el navegador",
     "qr_alt": "QR para {{ip}}",
     "pin": "PIN:",
-    "connect": "Conectar"
+    "connect": "Conectar",
+    "self_check": "Autocomprobación",
+    "listening_on": "Escuchando en {{host}}:{{port}}",
+    "recheck": "Comprobar de nuevo",
+    "address_ok": "Escuchando",
+    "address_down": "No responde",
+    "firewall_hint": "¿No conecta? Usa la misma Wi-Fi, permite VoiceStudio en el firewall (red privada en Windows) y desactiva la VPN."
   },
   "repairAgent": {
     "title": "Preguntar a VoiceStudio Agent",
     "notInstalled": "No instalado",
-    "noSource": "Abra una caja fuente VoiceStudio grabable para permitir que un agente la repare.",
+    "noSource": "Para reparar código, elija una copia de VoiceStudio creada con git clone. La app instalada no se puede editar.",
+    "sourceRejected": {
+      "installed_app": "Esa es la app instalada, que no se puede editar. Elija un git clone.",
+      "not_git": "Esa carpeta no es un git clone. Una descarga ZIP no sirve; use git clone.",
+      "not_voicestudio": "No se encontró ningún clon de VoiceStudio en esa carpeta.",
+      "read_only": "VoiceStudio no puede escribir en esa carpeta. Elija una que sea suya."
+    },
+    "chooseFailed": "No se pudo usar esa carpeta. Inténtelo de nuevo o elija otra.",
     "noneFound": "Instale Codex, Claude Code, OpenCode o Pi para utilizar la reparación local.",
     "ready": "Listo",
     "placeholder": "¿Qué salió mal? Añade los pasos, los errores visibles o el comportamiento esperado.",
@@ -3268,7 +3355,30 @@
     "match_contains": "Contiene",
     "match_equals": "Es exactamente",
     "match_starts": "Empieza por",
-    "match_ends": "Termina en"
+    "match_ends": "Termina en",
+    "subtitle": "Encadena pasos como hablar, traducir y exportar, y ejecútalos de una vez.",
+    "saved": "Guardado",
+    "saved_hint": "Los cambios se guardan automáticamente en este dispositivo.",
+    "name_label": "Nombre del flujo",
+    "from_template": "Nuevo desde plantilla",
+    "template_title": "Empezar con una plantilla",
+    "template_hint": "Elige un punto de partida. Después puedes cambiar cada paso.",
+    "group_narration": "Narración",
+    "group_audio": "Audio",
+    "group_calls": "Llamadas",
+    "template_recipe": "Lee guiones en voz alta con una voz, un clip por guion.",
+    "template_clean_recipe": "Lee guiones en voz alta y luego iguala el volumen.",
+    "template_transcription": "Convierte clips de audio en texto.",
+    "template_conversion": "Vuelve a doblar clips de audio con una voz guardada.",
+    "template_localization": "Transcribe clips, tradúcelos y narra el resultado.",
+    "template_restaurant": "Llama a un restaurante para reservar mesa.",
+    "template_reschedule": "Llama para cambiar una cita.",
+    "template_hours": "Llama para preguntar el horario.",
+    "needs_setup": "Falta configurar",
+    "run_blocked": "Falta configurar {{step}}",
+    "add_kind": "Añadir {{step}}",
+    "add_after": "Añadir {{step}} después del paso seleccionado",
+    "palette_hint": "Haz clic para añadir o arrástralo al lienzo."
   },
   "proPage": {
     "title": "VoiceStudio Pro",
@@ -3442,6 +3552,8 @@
     "hint": "Normalmente conviene usar los valores predeterminados. La guía ajusta la influencia de la indicación; los demás controles cambian cómo el modelo construye el sonido. Cambia uno a la vez."
   },
   "languagePicker": {
+    "dialectFollowsVoice": "{{model}} tiene un solo modelo de {{language}}, así que el acento sigue a la voz de referencia.",
+    "dialectUsed": "{{model}} solo habla {{variant}}.",
     "auto": "Automático",
     "unavailable": "No compatible",
     "unsupportedBy": "No compatible con {{model}}",
@@ -3452,7 +3564,11 @@
     "unknown": "Compatibilidad de idiomas desconocida",
     "error": "No se pudieron comprobar los idiomas",
     "modelLanguages": "Idiomas de este modelo",
-    "changeModel": "Cambiar modelo"
+    "changeModel": "Cambiar modelo",
+    "recent": "Recientes",
+    "available": "Disponibles",
+    "showAll": "Mostrar todos los idiomas",
+    "hideUnsupported": "Ocultar idiomas no compatibles"
   },
   "modelLicense": {
     "title": "Condiciones del modelo",
@@ -3582,6 +3698,10 @@
     "detailsFailed": "No se pudieron cargar los detalles de la licencia. Cierra este diálogo e inténtalo de nuevo."
   },
   "mobile": {
+    "home": {
+      "subtitle": "Tu alternativa a ElevenLabs de código abierto y totalmente local: clona y diseña voces, dobla vídeos, dicta, transcribe y crea audiolibros en 646 idiomas.",
+      "brought_by": "De la mano de"
+    },
     "tabs": {
       "speak": "Hablar",
       "voices": "Voces",
@@ -4191,5 +4311,25 @@
       "fix1": "Revisa el backend en Ajustes > Registros",
       "fix2": "Reinicia VoiceStudio y reintenta"
     }
+  },
+  "modelInstall": {
+    "queued": "Esperando para empezar…",
+    "downloading": "Descargando…",
+    "downloadingPct": "Descargando · {{pct}} %",
+    "finishing": "Verificando e instalando…",
+    "cancelling": "Cancelando…",
+    "cancelled": "Descarga cancelada",
+    "failed": "La descarga falló",
+    "ready": "Listo para usar",
+    "bytes": "{{done}} de {{total}}",
+    "speed": "{{rate}}/s",
+    "eta": "quedan {{time}}",
+    "downloadAgain": "Descargar de nuevo",
+    "nextDisk": "No hay suficiente espacio en disco. Libera espacio o mueve la carpeta de modelos en Ajustes → Almacenamiento y vuelve a intentarlo.",
+    "nextGated": "Este modelo requiere acceso en Hugging Face. Solicítalo en la página del modelo, añade tu token en Ajustes → Credenciales y vuelve a intentarlo.",
+    "nextNetwork": "No se pudo contactar con el servidor de descarga. Revisa la conexión, el proxy o el espejo en Ajustes → Red y vuelve a intentarlo.",
+    "nextMemory": "Este dispositivo se quedó sin memoria. Elige un perfil más ligero en Ajustes → Rendimiento y vuelve a intentarlo.",
+    "downloads": "Descargas",
+    "activeCount": "Descargas en curso: {{count}}"
   }
 }

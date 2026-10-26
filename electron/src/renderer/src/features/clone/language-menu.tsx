@@ -1,18 +1,17 @@
 import { Popover } from '@base-ui/react/popover';
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual';
-import { Check, ChevronDown, Search, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, Search, X } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  layoutMenu,
+  MORE_ROW,
+  rankOptions,
+  type MenuRow,
+  type SearchOption,
+} from '@/lib/language-search';
 
-export interface SearchOption {
-  value: string;
-  label: string;
-  search: string[];
-  disabled?: boolean;
-  pinned?: boolean;
-}
-
-export interface VirtualSelectProps {
+export interface LanguageMenuProps {
   value: string;
   options: SearchOption[];
   onChange: (value: string) => void;
@@ -27,47 +26,8 @@ export interface VirtualSelectProps {
   recentsKey?: string;
 }
 
-export const normalizeSearch = (value: string) =>
-  value.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase().trim();
-
-export function rankOptions(options: SearchOption[], query: string, recents: string[]) {
-  const normalized = normalizeSearch(query);
-  const terms = normalized.split(/\s+/).filter(Boolean);
-  return options
-    .map((option, order) => {
-      const fields = option.search;
-      const exact = fields.some((field) => field === normalized);
-      const matches = terms.every((term) => fields.some((field) => field.includes(term)));
-      const prefix = fields.some((field) => field.startsWith(normalized));
-      const recent = recents.indexOf(option.value);
-      return {
-        option,
-        order,
-        matches,
-        score: terms.length
-          ? exact
-            ? 0
-            : prefix
-              ? 1
-              : 2
-          : option.pinned
-            ? -2
-            : recent < 0
-              ? 10
-              : recent,
-      };
-    })
-    .filter((item) => item.matches)
-    .sort(
-      (a, b) =>
-        Number(Boolean(a.option.disabled)) - Number(Boolean(b.option.disabled)) ||
-        a.score - b.score ||
-        a.order - b.order,
-    )
-    .map(({ option }) => option);
-}
-
 function readRecents(key: string) {
+  if (!key) return [];
   try {
     const value: unknown = JSON.parse(localStorage.getItem(key) || '[]');
     return Array.isArray(value)
@@ -78,13 +38,14 @@ function readRecents(key: string) {
   }
 }
 
-type Row = { label: string } | { items: SearchOption[]; start: number };
 const HEIGHT = 38;
 const HEADER_HEIGHT = 28;
 const LIST_MAX_HEIGHT = 320;
+const rowHeight = (row: MenuRow) =>
+  row.kind === 'header' || row.kind === 'family' ? HEADER_HEIGHT : HEIGHT;
 
-/** Opt-in virtual surface for SearchableSelect; classic consumers retain their contract. */
-export function VirtualSearchableSelect({
+/** Virtualized, searchable language menu with recents and collapsed unsupported languages. */
+export function LanguageMenu({
   value,
   options,
   onChange,
@@ -97,10 +58,11 @@ export function VirtualSearchableSelect({
   footer,
   unavailableLabel,
   recentsKey = '',
-}: VirtualSelectProps) {
+}: LanguageMenuProps) {
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [expanded, setExpanded] = useState(false);
   const [activeValue, setActiveValue] = useState(value);
   const [recents, setRecents] = useState(() => readRecents(recentsKey));
   const [list, setList] = useState<HTMLDivElement | null>(null);
@@ -110,33 +72,39 @@ export function VirtualSearchableSelect({
   const id = useId();
   const rtl = i18n.dir() === 'rtl';
   const current = options.find((item) => item.value === value);
+  const unavailable = unavailableLabel || t('languagePicker.unavailable');
   const sorted = useMemo(() => rankOptions(options, query, recents), [options, query, recents]);
-  const enabled = sorted.filter((item) => !item.disabled);
-  const active = enabled.find((item) => item.value === activeValue) ?? enabled[0];
-  const rows = useMemo(() => {
-    const result: Row[] = [];
-    let position = 0;
-    for (const isDisabled of [false, true]) {
-      const group = sorted.filter((item) => Boolean(item.disabled) === isDisabled);
-      if (!group.length) continue;
-      if (isDisabled) result.push({ label: unavailableLabel || t('languagePicker.unavailable') });
-      for (let index = 0; index < group.length; index += columns) {
-        result.push({ items: group.slice(index, index + columns), start: position });
-        position += Math.min(columns, group.length - index);
-      }
-    }
-    return result;
-  }, [sorted, columns, unavailableLabel, t]);
-  const activeRow = rows.findIndex(
-    (row) => 'items' in row && row.items.some((item) => item.value === active?.value),
+  const { rows, navigation, size } = useMemo(
+    () =>
+      layoutMenu({
+        sorted,
+        query,
+        recents,
+        columns,
+        // A saved unsupported choice stays visible instead of hiding behind the toggle.
+        expanded,
+        toggle: !current?.disabled,
+        labels: {
+          recent: t('languagePicker.recent'),
+          available: t('languagePicker.available'),
+          unavailable,
+        },
+      }),
+    [sorted, query, recents, columns, expanded, current?.disabled, unavailable, t],
+  );
+  const enabledCount = sorted.filter((item) => !item.disabled).length;
+  const active = navigation.includes(activeValue) ? activeValue : navigation[0];
+  const activeRow = rows.findIndex((row) =>
+    row.kind === 'more'
+      ? active === MORE_ROW
+      : row.kind === 'items' && row.items.some((item) => item.value === active),
   );
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => list,
     enabled: open && !disabled,
-    estimateSize: (index) => ('label' in rows[index] ? HEADER_HEIGHT : HEIGHT),
-    getItemKey: (index) =>
-      'label' in rows[index] ? 'disabled-header' : rows[index].items[0].value,
+    estimateSize: (index) => rowHeight(rows[index]),
+    getItemKey: (index) => rows[index].key,
     overscan: 3,
     rangeExtractor: (range) =>
       [...new Set([...defaultRangeExtractor(range), ...(activeRow >= 0 ? [activeRow] : [])])].sort(
@@ -169,12 +137,20 @@ export function VirtualSearchableSelect({
     setQuery('');
     if (next) {
       setActiveValue(value);
+      setExpanded(false);
       setRecents(readRecents(recentsKey));
     }
   };
-  const commit = (option: SearchOption) => {
+  const commit = (selected: string) => {
+    if (selected === MORE_ROW) {
+      setExpanded((previous) => !previous);
+      setActiveValue(MORE_ROW);
+      input.current?.focus();
+      return;
+    }
+    const option = options.find((item) => item.value === selected && !item.disabled);
     // Re-read props, including after a model switch while the popup is open.
-    if (disabled || !options.some((item) => item.value === option.value && !item.disabled)) return;
+    if (disabled || !option) return;
     onChange(option.value);
     if (recentsKey && !option.pinned) {
       const next = [option.value, ...recents.filter((item) => item !== option.value)].slice(0, 4);
@@ -188,7 +164,95 @@ export function VirtualSearchableSelect({
     changeOpen(false);
     trigger.current?.focus();
   };
-  const optionId = (option: SearchOption) => `${id}-${encodeURIComponent(option.value)}`;
+  const optionId = (key: string) => `${id}-${encodeURIComponent(key)}`;
+  const rowClass = (key: string) =>
+    `my-0.5 flex min-w-0 items-center gap-2 rounded-md px-2 text-start text-[13px] outline-none disabled:cursor-not-allowed disabled:text-muted-foreground ${active === key ? 'bg-accent ring-1 ring-inset ring-border' : 'enabled:hover:bg-muted'}`;
+  const renderRow = (row: MenuRow) => {
+    if (row.kind === 'header' || row.kind === 'family')
+      return (
+        <div
+          className={`flex h-full items-end pb-1 text-muted-foreground ${row.kind === 'header' ? 'px-2 text-[11px] font-medium' : 'ps-3 pe-2 text-[11px]'}`}
+          aria-hidden="true"
+        >
+          <span className="truncate">{row.label}</span>
+        </div>
+      );
+    if (row.kind === 'more') {
+      const label = row.expanded
+        ? t('languagePicker.hideUnsupported')
+        : t('languagePicker.showAll');
+      return (
+        <button
+          type="button"
+          role="option"
+          id={optionId(MORE_ROW)}
+          aria-label={label}
+          aria-selected={false}
+          aria-description={unavailable}
+          aria-posinset={row.position + 1}
+          aria-setsize={size}
+          tabIndex={-1}
+          className={`${rowClass(MORE_ROW)} h-[34px] w-full text-muted-foreground`}
+          onPointerMove={(event) => {
+            if (event.pointerType === 'mouse') setActiveValue(MORE_ROW);
+          }}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => commit(MORE_ROW)}
+        >
+          <ChevronRight
+            className={`size-4 shrink-0 transition-transform ${row.expanded ? 'rotate-90' : rtl ? 'rotate-180' : ''}`}
+            aria-hidden="true"
+          />
+          <span className="min-w-0 flex-1 truncate">{label}</span>
+          {!row.expanded && (
+            <span className="shrink-0 rounded-full bg-muted px-1.5 text-[11px] tabular-nums">
+              +{row.hidden}
+            </span>
+          )}
+        </button>
+      );
+    }
+    return (
+      <div
+        className="grid h-full gap-0.5"
+        style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+      >
+        {row.items.map((option, index) => (
+          <button
+            type="button"
+            role="option"
+            key={option.value}
+            id={optionId(option.value)}
+            aria-label={option.label}
+            aria-selected={option.value === value}
+            aria-disabled={Boolean(option.disabled)}
+            aria-description={option.disabled ? unavailable : undefined}
+            aria-posinset={row.start + index + 1}
+            aria-setsize={size}
+            disabled={option.disabled}
+            tabIndex={-1}
+            className={rowClass(option.value)}
+            onPointerMove={(event) => {
+              if (event.pointerType === 'mouse' && !option.disabled) setActiveValue(option.value);
+            }}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => commit(option.value)}
+          >
+            {renderOption ? (
+              renderOption(option)
+            ) : (
+              <span className="min-w-0 flex-1 truncate">{option.label}</span>
+            )}
+            <span className="w-3 shrink-0">
+              {option.value === value && (
+                <Check className="size-3.5 text-primary" aria-hidden="true" />
+              )}
+            </span>
+          </button>
+        ))}
+      </div>
+    );
+  };
   return (
     <Popover.Root open={open && !disabled} onOpenChange={changeOpen}>
       <Popover.Trigger
@@ -259,11 +323,8 @@ export function VirtualSearchableSelect({
                     event.altKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight');
                   if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || horizontal) {
                     event.preventDefault();
-                    const index = Math.max(
-                      0,
-                      enabled.findIndex((item) => item.value === active?.value),
-                    );
-                    // A visual grid remains a listbox: every enabled option is reachable in reading order.
+                    const index = Math.max(0, navigation.indexOf(active ?? ''));
+                    // A visual grid remains a listbox: every enabled row is reachable in reading order.
                     const step = horizontal
                       ? (event.key === 'ArrowRight') !== rtl
                         ? 1
@@ -271,8 +332,9 @@ export function VirtualSearchableSelect({
                       : event.key === 'ArrowDown'
                         ? 1
                         : -1;
-                    const next = enabled[Math.max(0, Math.min(enabled.length - 1, index + step))];
-                    if (next) setActiveValue(next.value);
+                    const next =
+                      navigation[Math.max(0, Math.min(navigation.length - 1, index + step))];
+                    if (next) setActiveValue(next);
                   }
                 }}
               />
@@ -294,7 +356,7 @@ export function VirtualSearchableSelect({
             <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 pt-2 pb-1 text-[11px] text-muted-foreground">
               {header}
               <span id={`${id}-status`} role="status" aria-live="polite" aria-atomic="true">
-                {t('languagePicker.results', { enabled: enabled.length, total: sorted.length })}
+                {t('languagePicker.results', { enabled: enabledCount, total: sorted.length })}
               </span>
             </div>
             <div
@@ -311,10 +373,7 @@ export function VirtualSearchableSelect({
                 maxHeight:
                   Math.min(
                     LIST_MAX_HEIGHT,
-                    rows.reduce(
-                      (height, row) => height + ('label' in row ? HEADER_HEIGHT : HEIGHT),
-                      0,
-                    ),
+                    rows.reduce((height, row) => height + rowHeight(row), 0),
                   ) || HEIGHT,
               }}
             >
@@ -324,69 +383,15 @@ export function VirtualSearchableSelect({
                 </p>
               )}
               <div className="relative" style={{ height: virtualizer.getTotalSize() }}>
-                {virtualizer.getVirtualItems().map((virtual) => {
-                  const row = rows[virtual.index];
-                  return (
-                    <div
-                      key={virtual.key}
-                      className="absolute inset-x-0 top-0"
-                      style={{ height: virtual.size, transform: `translateY(${virtual.start}px)` }}
-                    >
-                      {'label' in row ? (
-                        <div
-                          className="flex h-full items-center px-2 text-xs text-muted-foreground"
-                          aria-hidden="true"
-                        >
-                          {row.label}
-                        </div>
-                      ) : (
-                        <div
-                          className="grid h-full gap-0.5"
-                          style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
-                        >
-                          {row.items.map((option, index) => (
-                            <button
-                              type="button"
-                              role="option"
-                              key={option.value}
-                              id={optionId(option)}
-                              aria-label={option.label}
-                              aria-selected={option.value === value}
-                              aria-disabled={Boolean(option.disabled)}
-                              aria-description={
-                                option.disabled
-                                  ? unavailableLabel || t('languagePicker.unavailable')
-                                  : undefined
-                              }
-                              aria-posinset={row.start + index + 1}
-                              aria-setsize={sorted.length}
-                              disabled={option.disabled}
-                              tabIndex={-1}
-                              className={`my-0.5 flex min-w-0 items-center gap-2 rounded-md px-2 text-start text-[13px] outline-none disabled:cursor-not-allowed disabled:text-muted-foreground ${active?.value === option.value ? 'bg-accent ring-1 ring-inset ring-border' : 'enabled:hover:bg-muted'} `}
-                              onPointerMove={(event) => {
-                                if (event.pointerType === 'mouse' && !option.disabled)
-                                  setActiveValue(option.value);
-                              }}
-                              onMouseDown={(event) => event.preventDefault()}
-                              onClick={() => commit(option)}
-                            >
-                              {renderOption ? (
-                                renderOption(option)
-                              ) : (
-                                <span className="min-w-0 flex-1 truncate">{option.label}</span>
-                              )}
-                              <span className="w-3 shrink-0">
-                                {option.value === value && (
-                                  <Check className="size-3.5 text-primary" aria-hidden="true" />
-                                )}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                {virtualizer.getVirtualItems().map((virtual) => (
+                  <div
+                    key={virtual.key}
+                    className="absolute inset-x-0 top-0"
+                    style={{ height: virtual.size, transform: `translateY(${virtual.start}px)` }}
+                  >
+                    {renderRow(rows[virtual.index])}
+                  </div>
+                ))}
               </div>
             </div>
             {footer && (

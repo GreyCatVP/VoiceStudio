@@ -1,4 +1,5 @@
 import { PipelineFailure } from '@/components/pipeline-failure';
+import { EngineSetupButton, EngineSetupStatus, useEngineSetup } from '@/components/engine-notice';
 import { InstallSttButton } from './install-stt-button';
 import { Progress as ProgressPrimitive } from '@base-ui/react/progress';
 import {
@@ -43,6 +44,7 @@ import { EngineLanguagePicker } from './engine-language-picker';
 import { PresetVoicePicker } from './preset-voice-picker';
 import { CloneReadinessNotice } from './clone-readiness-notice';
 import { QualityControls } from './quality-controls';
+import { EmotionControls } from './emotion-controls';
 import { CloneDemoAction } from './clone-demo';
 import { useCloneDemo } from '@/hooks/use-clone-demo';
 
@@ -315,6 +317,7 @@ export function VoiceControls({ size = 'icon-lg' }: { size?: 'icon-sm' | 'icon-l
   );
 }
 
+/** Render the Voice Cloning composer including engine-aware emotion controls. */
 export function ActionBar() {
   const { t } = useTranslation();
   const demo = useCloneDemo();
@@ -347,11 +350,17 @@ export function ActionBar() {
               : 'clone.generating_status',
       )
     : t('clone.synthesize');
+  // Not ready: the primary action is the setup that fixes it, not a dead Synthesize.
+  const setup = useEngineSetup('clone');
+  const needsSetup = blocker === 'engine' && !demo && !isGenerating;
 
   return (
     <section className="@container/composer">
-      {blocker && !isGenerating && (
-        <CloneReadinessNotice id={readinessId} blocker={blocker} demo={demo} />
+      {needsSetup ? (
+        <EngineSetupStatus setup={setup} id={readinessId} />
+      ) : (
+        blocker &&
+        !isGenerating && <CloneReadinessNotice id={readinessId} blocker={blocker} demo={demo} />
       )}
       {error && (
         <PipelineFailure
@@ -368,15 +377,22 @@ export function ActionBar() {
           <span aria-hidden="true" className="mx-1 h-4 w-px bg-border" />
           <QualityControls disabled={isGenerating} />
           <VoiceControls />
+          <EmotionControls disabled={isGenerating} />
         </div>
 
         <div className="relative ml-auto flex shrink-0 gap-2">
           {demo ? (
             <CloneDemoAction />
+          ) : needsSetup ? (
+            <EngineSetupButton
+              setup={setup}
+              primary
+              className="h-10 w-60 max-w-full shrink-0 rounded-lg px-4 shadow-sm"
+            />
           ) : (
             <Button
               size="lg"
-              className="h-10 w-60 shrink-0 justify-between overflow-hidden rounded-lg ps-4 pe-2.5 shadow-sm transition-colors"
+              className="h-10 w-60 max-w-full shrink-0 justify-between overflow-hidden rounded-lg ps-4 pe-2.5 shadow-sm transition-colors"
               onClick={() => void generate()}
               disabled={isGenerating || blocker !== null}
               aria-describedby={blocker ? readinessId : undefined}

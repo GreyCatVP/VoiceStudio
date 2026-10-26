@@ -1,4 +1,18 @@
 {
+  "cloneEmotion": {
+    "title": "感情",
+    "off": "オフ",
+    "text": "文章で指定",
+    "vector": "感情スライダー",
+    "happy": "喜び",
+    "angry": "怒り",
+    "sad": "悲しみ",
+    "afraid": "恐れ",
+    "disgusted": "嫌悪",
+    "melancholic": "憂鬱",
+    "surprised": "驚き",
+    "calm": "落ち着き"
+  },
   "cloneQuality": {
     "title": "音声品質",
     "precision": "WAV精度",
@@ -7,7 +21,7 @@
     "hint24": "編集やミキシング向けに精度を高めます。",
     "hint32": "最大精度を保持します。ファイルは大きくなりますが、声自体は改善されません。",
     "effort": "声の調整回数",
-    "effortHint": "回数が多いほど時間がかかりますが、声が良くなるとは限りません。",
+    "effortHint": "回数が少ないと品質が下がることがあります。多いほど時間がかかります。",
     "mastering": "音量を整える",
     "masteringHint": "音のバランスと音量を均一にします。",
     "nextTake": "次の録音に適用します。",
@@ -373,7 +387,8 @@
     "inactive": "無効",
     "translation": "翻訳",
     "diarisation": "話者分離",
-    "localDevice": "ローカルデバイス"
+    "localDevice": "ローカルデバイス",
+    "localShort": "ローカル"
   },
   "paneActions": {
     "collapse": "パネルを折りたたむ",
@@ -387,7 +402,9 @@
     "select": "選択",
     "selected": "選択中",
     "change": "エンジンを変更",
-    "failed": "エンジンを変更できませんでした。再試行してください。"
+    "failed": "エンジンを変更できませんでした。再試行してください。",
+    "empty": "このカテゴリのエンジンやモデルはまだありません。",
+    "modelsInstalled": "{{count}} 個中 {{installed}} 個をインストール済み"
   },
   "modelMaintenance": {
     "download": "ダウンロード",
@@ -469,6 +486,8 @@
     "paste_failed": "クリップボードへのアクセスが拒否されました。キーボードでテキスト欄に直接貼り付けてください。",
     "prompt": "プロンプト",
     "language": "言語",
+    "take_language_next": "新しいテイクは{{language}}を使用",
+    "take_language_used": "このテイクで使用した言語",
     "steps": "ステップ",
     "voice_source": "音声ソース",
     "reference_audio": "参照音声",
@@ -513,7 +532,7 @@
     "preset_anxious_whisper": "🤫 ささやき",
     "preset_surprised_woman": "😲びっくり",
     "preset_elderly_story": "👴長老",
-    "preset_sichuan": "🌶️四川话",
+    "preset_sichuan": "四川",
     "prompt_placeholder": "この声は何と言えばいいのでしょうか？",
     "design_placeholder": "音声を説明し、その内容を入力します…",
     "speed": "速度",
@@ -543,6 +562,28 @@
     "opt_high_pitch": "高音",
     "opt_very_high_pitch": "とても高いピッチ",
     "opt_whisper": "ささやき声",
+    "opt_american_accent": "アメリカ英語なまり",
+    "opt_british_accent": "イギリス英語なまり",
+    "opt_australian_accent": "オーストラリア英語なまり",
+    "opt_canadian_accent": "カナダ英語なまり",
+    "opt_indian_accent": "インド英語なまり",
+    "opt_chinese_accent": "中国語なまり",
+    "opt_korean_accent": "韓国語なまり",
+    "opt_japanese_accent": "日本語なまり",
+    "opt_portuguese_accent": "ポルトガル語なまり",
+    "opt_russian_accent": "ロシア語なまり",
+    "dialect_henan": "河南方言",
+    "dialect_shaanxi": "陝西方言",
+    "dialect_sichuan": "四川方言",
+    "dialect_guizhou": "貴州方言",
+    "dialect_yunnan": "雲南方言",
+    "dialect_guilin": "桂林方言",
+    "dialect_jinan": "済南方言",
+    "dialect_shijiazhuang": "石家荘方言",
+    "dialect_gansu": "甘粛方言",
+    "dialect_ningxia": "寧夏方言",
+    "dialect_qingdao": "青島方言",
+    "dialect_dongbei": "東北方言",
     "style_placeholder": "例:ささやき声",
     "stop_playback": "再生を停止",
     "describe_label": "声を言葉で説明",
@@ -630,6 +671,8 @@
   },
   "designWorkspace": {
     "title": "デザイン",
+    "takes_show": "最近のテイクを表示",
+    "saved_empty": "保存したデザインがここに表示されます。",
     "save_failed": "音声プロファイルの保存に失敗しました",
     "engine_cannot_design": "{{engine}} は参照クリップが必要なため、音声をデザインできません。OmniVoice などボイスデザインに対応したエンジンに切り替えるか、代わりに音声をクローンしてください。",
     "engine_cannot_reuse_sample": "{{engine}} は参照音声を使用できないため、この保存済みの音声をそのサンプルから再生成できません。OmniVoice など音声クローンに対応したエンジンに切り替えてください。"
@@ -909,6 +952,7 @@
     "mirror_failed": "演技の反映に失敗しました: {{message}}",
     "cinematic_no_llm": "この品質にはLLMプロバイダーが必要です。続行するには「LLMプロバイダー」で設定してください。",
     "dialect_not_applied": "選択した方言の適用には LLM が必要です — エンジンを OpenAI/Ollama に切り替えるか、Cinematic 品質を選んでください。",
+    "dialect_used": "このエンジンは{{variant}}のみで出力します。選択した方言を適用するには LLM 翻訳エンジンを使用してください。",
     "translate_errors": "{{errorCount}}/{{totalCount}} セグメントが失敗しました: {{firstError}}",
     "translate_degraded": "全 {{totalCount}} セグメントを翻訳しました — {{count}} 件は仕上げ処理がスキップされたため通常の翻訳を使用しています（{{reason}}）",
     "translated_segments": "{{count}} セグメント → {{lang}} を翻訳しました",
@@ -1001,7 +1045,8 @@
     "pause": "一時停止",
     "seek": "再生位置",
     "missing": "音声ファイルが見つかりません。",
-    "now_playing": "再生中"
+    "now_playing": "再生中",
+    "kind_convert": "音声変換"
   },
   "logs": {
     "no_tauri_log": "ディスク上にまだ Tauri ログがありません — デスクトップ ビルド経由で起動してログを作成します",
@@ -1492,6 +1537,12 @@
     "submit_failed": "投稿フォームを開けませんでした。",
     "submit_preset": "プリセットを投稿",
     "submit_voice": "音声を投稿",
+    "community_packs": "パック",
+    "community_all_packs": "すべて",
+    "community_language": "言語",
+    "community_all_languages": "すべての言語",
+    "community_new": "新着",
+    "community_author_profile": "GitHub の {{author}}",
     "zone_community": "コミュニティ",
     "import_persona": ".ovsvoice ペルソナ バンドルをインポートする",
     "persona_imported": "「{{name}}」{{unverified}} をインポートしました。",
@@ -1571,7 +1622,10 @@
     "aec_description": "マイクから VoiceStudio の再生音を除去します。",
     "aec_row_title": "音声入力のエコーキャンセルを有効化",
     "aec_experimental": "試験的",
-    "aec_hint": "プレビュー、吹き替え、動画の再生中でも、アプリ自身の音声を文字起こしせずに音声入力できます。処理が少し増えるため、再生中に入力しない場合はオフのままにしてください。"
+    "aec_hint": "プレビュー、吹き替え、動画の再生中でも、アプリ自身の音声を文字起こしせずに音声入力できます。処理が少し増えるため、再生中に入力しない場合はオフのままにしてください。",
+    "cleanup_title": "テキストの整形",
+    "spoken_punctuation": "音声による句読点",
+    "spoken_punctuation_desc": "“comma”, “period”, “question mark”, “new line” と言うと入力されます。英語のみ。"
   },
   "tools": {
     "title": "ツール",
@@ -1824,6 +1878,10 @@
     "open_cache_failed": "章のキャッシュを開けませんでした",
     "progress_summary": "{{total}} 章中 {{current}} 章を合成中",
     "eta": "残り約 {{time}}",
+    "eta_estimating": "残り時間を推定中…",
+    "realtime": "{{rate}}× 実時間",
+    "realtime_hint": "レンダリング1秒あたりに生成される音声の秒数",
+    "stalled": "{{time}} 進捗がありません。エンジンが停止している可能性があります。ログ → バックエンドを確認するか、停止して後でもう一度作成してください。完了した部分は保持されます。",
     "chapter_n": "第 {{n}} 章",
     "cached_tag": "キャッシュ済み",
     "failed_tag": "失敗",
@@ -2130,6 +2188,10 @@
     "download_rate": "{{rate}}/秒",
     "eta": "残り約 {{time}}",
     "downloads_complete": "ダウンロード完了 · パッケージをインストール中",
+    "download_source": "{{host}} から",
+    "download_stalled": "{{host}} から {{seconds}} 秒間データがありません",
+    "download_stalled_generic": "{{seconds}} 秒間ダウンロードデータがありません",
+    "download_stalled_hint": "キャンセルして再試行しても、完了したファイルは保持されます。VPN またはプロキシが役立つ場合があります。",
     "verifying": "環境を確認中…",
     "clean_retry": "クリーンアップして再試行",
     "clean_retry_confirm": "検証済みのダウンロードを再利用して Python 環境を再構築します。続行しますか？",
@@ -2711,6 +2773,15 @@
     "vol": "巻",
     "vol_title": "音量 (0 ～ 200%)",
     "search_placeholder": "テキストを検索…",
+    "replace_placeholder": "置換後の文字…",
+    "replace": "置換",
+    "replace_all": "すべて置換",
+    "find_next": "次を検索",
+    "find_prev": "前を検索",
+    "find_count": "{{current}} / {{total}} 件",
+    "find_none": "一致なし",
+    "replace_done_one": "{{count}} 件を置換しました",
+    "replace_done_other": "{{count}} 件を置換しました",
     "all_speakers": "すべてのスピーカー",
     "select_all_title": "フィルタリングされたすべてを選択",
     "sel_count": "{{count}} 選択",
@@ -2903,6 +2974,7 @@
     "latencyMs": "{{ms}} ミリ秒",
     "none_ready_title": "音声合成の準備ができていません",
     "none_ready_body": "VoiceStudio がこのデバイスに最適な互換オプションを自動で設定できます。",
+    "set_up": "セットアップ",
     "active": "エンジン：{{name}}",
     "none": "有効なエンジンがありません",
     "localInstallRequired": "バックエンドのコンピューターで localhost またはセットアップガイドを使ってこのエンジンをインストールしてください。リモートインストールは無効です。",
@@ -2919,7 +2991,8 @@
     "balanced": "バランス",
     "quality": "品質",
     "hint": "OmniVoice のサンプリングと Faster-Whisper / NLLB のデコードに適用されます。他のエンジンは現在の設定を維持します。",
-    "auto": "自動"
+    "auto": "自動",
+    "autoHint": "このコンピューターに最適なレベルを選びます。"
   },
   "recording": {
     "input_device": "入力デバイス",
@@ -2958,6 +3031,7 @@
     "windows_app_control_blocked": "Windowsのアプリケーション制御が必要なファイルをブロックしました。信頼できるVoiceStudioランタイムを許可するよう管理者に依頼し、アプリを再起動してください。",
     "audio_io_failed": "音声を読み込むか保存することができませんでした。ファイル形式、ディスクの空き容量、ファイルのアクセス権を確認してください。設定 → ストレージでフォルダーを確認してください。",
     "no_audio_track": "このファイルには音声トラックがないため、文字起こし・吹き替え・クローンする音声がありません。音声を含む動画または音声ファイルを選んでください。",
+    "source_language_required": "音声認識がこの動画の話し言葉を報告しなかったため、ここでは翻訳できません。吹き替えで動画を開いて元の言語を選ぶか、言語を検出できる音声認識モデルを選んでください。",
     "transcription_media_tool": "文字起こしには ffmpeg が必要ですが、VoiceStudio は見つけられないか実行できませんでした。設定 → オーディオツールを開いてダウンロード/修復を使うか、ffmpeg をインストール（macOS: brew install ffmpeg、Windows: winget install Gyan.FFmpeg、Linux: お使いのパッケージマネージャー）して VoiceStudio を再起動してください。FFMPEG_PATH を ffmpeg のファイルに向けることもできます。",
     "transcription_pipe_lost": "文字起こし中にバックエンドがアプリへの出力パイプを失いました（broken pipe）。VoiceStudio を再起動してもう一度お試しください。",
     "gpu_oom": "GPU のメモリが不足しました。GPU を多く使う他のアプリを閉じるかモデルをアンロードしてから、もう一度お試しください。設定 → パフォーマンスとデバイスで CPU を選ぶか、より小さな TTS エンジンを選ぶこともできます。",
@@ -2982,12 +3056,25 @@
     "open_in_browser": "ブラウザで開く",
     "qr_alt": "{{ip}} の QR",
     "pin": "PIN:",
-    "connect": "接続"
+    "connect": "接続",
+    "self_check": "セルフチェック",
+    "listening_on": "{{host}}:{{port}} で待ち受け中",
+    "recheck": "再確認",
+    "address_ok": "待ち受け中",
+    "address_down": "応答なし",
+    "firewall_hint": "接続できない場合は、同じ Wi-Fi を使い、ファイアウォールで VoiceStudio を許可し（Windows ではプライベート ネットワーク）、VPN をオフにしてください。"
   },
   "repairAgent": {
     "title": "VoiceStudio Agent に相談",
     "notInstalled": "未インストール",
-    "noSource": "エージェントが修復できるよう、書き込み可能な VoiceStudio のソースチェックアウトを開いてください。",
+    "noSource": "コードを修復するには、git clone で作成した VoiceStudio のコピーを選んでください。インストール済みアプリは編集できません。",
+    "sourceRejected": {
+      "installed_app": "これはインストール済みアプリのため編集できません。git clone したフォルダーを選んでください。",
+      "not_git": "このフォルダーは git clone ではありません。ZIP ダウンロードは使えません。git clone を使ってください。",
+      "not_voicestudio": "このフォルダーに VoiceStudio のクローンが見つかりません。",
+      "read_only": "VoiceStudio はこのフォルダーに書き込めません。自分のフォルダーを選んでください。"
+    },
+    "chooseFailed": "このフォルダーを使用できませんでした。もう一度試すか、別のフォルダーを選んでください。",
     "noneFound": "ローカル修復を使うには Codex、Claude Code、OpenCode、または Pi をインストールしてください。",
     "ready": "準備完了",
     "placeholder": "何が起きましたか？手順、表示されたエラー、期待する動作を入力してください。",
@@ -3266,7 +3353,30 @@
     "match_contains": "次を含む",
     "match_equals": "次と完全に一致",
     "match_starts": "次で始まる",
-    "match_ends": "次で終わる"
+    "match_ends": "次で終わる",
+    "subtitle": "読み上げ・翻訳・書き出しなどのステップをつなげて、まとめて実行できます。",
+    "saved": "保存済み",
+    "saved_hint": "変更はこのデバイスに自動保存されます。",
+    "name_label": "ワークフロー名",
+    "from_template": "テンプレートから作成",
+    "template_title": "テンプレートから始める",
+    "template_hint": "出発点を選んでください。各ステップは後から変更できます。",
+    "group_narration": "ナレーション",
+    "group_audio": "オーディオ",
+    "group_calls": "通話",
+    "template_recipe": "1つの声で台本を読み上げます。台本ごとに1クリップ。",
+    "template_clean_recipe": "台本を読み上げてから音量をそろえます。",
+    "template_transcription": "音声クリップをテキストにします。",
+    "template_conversion": "保存済みの声で音声クリップを吹き替えます。",
+    "template_localization": "クリップを文字起こしし、翻訳してナレーションにします。",
+    "template_restaurant": "レストランに電話してテーブルを予約します。",
+    "template_reschedule": "電話して予約を変更します。",
+    "template_hours": "電話して営業時間を尋ねます。",
+    "needs_setup": "設定が必要",
+    "run_blocked": "{{step}}の設定が必要です",
+    "add_kind": "{{step}}を追加",
+    "add_after": "選択したステップの後に{{step}}を追加",
+    "palette_hint": "クリックで追加、またはキャンバスへドラッグします。"
   },
   "proPage": {
     "title": "VoiceStudio Pro",
@@ -3440,6 +3550,8 @@
     "hint": "通常は既定値のままで構いません。ガイダンスはプロンプトの影響を、その他の設定はモデルの音の組み立て方を調整します。一度に一つずつ変更してください。"
   },
   "languagePicker": {
+    "dialectFollowsVoice": "{{model}} の{{language}}モデルは1つだけのため、アクセントは参照音声に従います。",
+    "dialectUsed": "{{model}} は{{variant}}のみに対応しています。",
     "auto": "自動",
     "unavailable": "非対応",
     "unsupportedBy": "{{model}} は非対応",
@@ -3450,7 +3562,11 @@
     "unknown": "対応言語は不明です",
     "error": "言語を確認できませんでした",
     "modelLanguages": "このモデルの言語",
-    "changeModel": "モデルを変更"
+    "changeModel": "モデルを変更",
+    "recent": "最近使用",
+    "available": "利用可能",
+    "showAll": "すべての言語を表示",
+    "hideUnsupported": "非対応の言語を隠す"
   },
   "modelLicense": {
     "title": "モデルの利用条件",
@@ -3580,6 +3696,10 @@
     "detailsFailed": "ライセンスの詳細を読み込めませんでした。このダイアログを閉じて、もう一度お試しください。"
   },
   "mobile": {
+    "home": {
+      "subtitle": "オープンソースで完全ローカルなElevenLabsの代替 — 声のクローンとデザイン、動画の吹き替え、音声入力、文字起こし、オーディオブック制作を646言語で。",
+      "brought_by": "提供"
+    },
     "tabs": {
       "speak": "読み上げ",
       "voices": "音声",
@@ -4189,5 +4309,25 @@
       "fix1": "設定 > ログでバックエンドを確認する",
       "fix2": "VoiceStudioを再起動して再試行する"
     }
+  },
+  "modelInstall": {
+    "queued": "開始を待っています…",
+    "downloading": "ダウンロード中…",
+    "downloadingPct": "ダウンロード中 · {{pct}}%",
+    "finishing": "検証とインストール中…",
+    "cancelling": "キャンセル中…",
+    "cancelled": "ダウンロードをキャンセルしました",
+    "failed": "ダウンロードに失敗しました",
+    "ready": "使用できます",
+    "bytes": "{{total}} 中 {{done}}",
+    "speed": "{{rate}}/秒",
+    "eta": "残り {{time}}",
+    "downloadAgain": "もう一度ダウンロード",
+    "nextDisk": "ディスクの空き容量が足りません。空き容量を確保するか、設定 → ストレージ でモデルフォルダーを移動してから再試行してください。",
+    "nextGated": "このモデルには Hugging Face のアクセス権が必要です。モデルページで申請し、設定 → 資格情報 にトークンを追加してから再試行してください。",
+    "nextNetwork": "ダウンロードサーバーに接続できません。設定 → ネットワーク で接続、プロキシ、ミラーを確認してから再試行してください。",
+    "nextMemory": "このデバイスのメモリが不足しました。設定 → パフォーマンス で軽いプロファイルを選んでから再試行してください。",
+    "downloads": "ダウンロード",
+    "activeCount": "進行中のダウンロード: {{count}}"
   }
 }

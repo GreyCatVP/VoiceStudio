@@ -98,6 +98,12 @@ already in use". To run two side by side, start the second one with
 `VOICESTUDIO_ALLOW_MULTIPLE_INSTANCES=1` plus its own ports, for example
 `VOICESTUDIO_UI_PORT=3912 VOICESTUDIO_ELECTRON_PROXY_PORT=3913`.
 
+On macOS, development launches coordinate bundle preparation and retain each
+active dev server’s branded Electron bundle across main-process restarts.
+Unused bundles are removed on later launches; cleanup failures do not prevent
+a valid cached bundle from starting. Native OS locks release automatically when
+all holders exit, including after a crash.
+
 Product builds read the app name, application ID, and the backend/web/Electron
 development ports from `config/app.json`. Change that manifest instead of
 copying new defaults into launchers or runtime modules.
@@ -405,6 +411,11 @@ hard rules from the first prompt.
 
 ## Quality gates your PR must pass
 
+- **Gallery pin:** a PR that changes the `omnivoice-gallery` submodule must
+  move it forward along the gallery's `main` (`.github/workflows/gallery-pin.yml`).
+  If it fails on a PR that never meant to touch the gallery, the checkout had a
+  stale submodule: run `git submodule update omnivoice-gallery` and drop that
+  change from the commit.
 - **First CI run from a fork:** a pull request from a fork waits for a
   maintainer to approve it (the `external-pr` environment) before CI starts.
   Branches in this repository start at once.

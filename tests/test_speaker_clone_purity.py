@@ -49,13 +49,15 @@ def _seg(start, end, speaker="Speaker 1", text="hello there"):
 
 class TestPickReferenceSlices:
     def test_rejects_slices_below_minimum_duration(self):
-        # Six 1.0 s fragments total 6 s (> MIN_REF_DURATION_S) — pre-fix they
-        # were all picked; now every one is under MIN_SLICE_DURATION_S so the
-        # speaker yields no reference at all (default voice beats a bad clone).
-        items = [(i, _seg(i * 3.0, i * 3.0 + 1.0)) for i in range(6)]
+        # Fragments under MIN_SLICE_DURATION_S never join a reference while the
+        # speaker has enough long slices. (A speaker with ONLY short turns uses
+        # the guarded short-turn fallback instead — tests/test_dub_multispeaker_3419.py.)
+        long_items = [(10 + i, _seg(30.0 + i * 5.0, 34.0 + i * 5.0)) for i in range(2)]
+        short_items = [(i, _seg(i * 3.0, i * 3.0 + 1.0)) for i in range(6)]
         assert MIN_SLICE_DURATION_S > 1.0  # test premise
-        assert 6 * 1.0 > MIN_REF_DURATION_S  # pre-fix these WOULD have passed
-        assert _pick_reference_slices(items) == []
+        assert 2 * 4.0 >= MIN_REF_DURATION_S
+        chosen = _pick_reference_slices(short_items + long_items)
+        assert [idx for idx, _ in chosen] == [10, 11]
 
     def test_prefers_slice_not_adjacent_to_other_speaker(self):
         # Two equal-length candidates for Speaker 1; the first is 0.1 s away

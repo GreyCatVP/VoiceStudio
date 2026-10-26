@@ -141,8 +141,10 @@ export function WorkspaceSidebar() {
             >
               <img src={brandIcon} alt="" className="size-6 shrink-0" />
               <span className="flex min-w-0 flex-col leading-tight">
-                <span className="truncate text-base font-semibold">{t('app.name')}</span>
-                <span className="text-[11px] leading-none text-muted-foreground tabular-nums">
+                <span className="truncate text-[15px] font-semibold tracking-tight">
+                  {t('app.name')}
+                </span>
+                <span className="mt-0.5 truncate text-[11px] leading-none text-muted-foreground tabular-nums">
                   {versionLabel}
                 </span>
               </span>
@@ -176,7 +178,9 @@ export function WorkspaceSidebar() {
                     title={t('nav.settings')}
                     className={cn(
                       buttonVariants({ variant: 'ghost', size: 'sm' }),
-                      'workspace-nav-item h-7 shrink-0 gap-1.5 px-2 text-xs',
+                      // Settings may shrink (label truncates) so long translations never push
+                      // the footer row wider than the pane.
+                      'workspace-nav-item h-7 min-w-0 shrink gap-1.5 px-2 text-xs',
                     )}
                   >
                     <SettingsIcon
@@ -184,7 +188,9 @@ export function WorkspaceSidebar() {
                       data-tone="settings"
                       data-motion="turn"
                     />
-                    <span className="hidden @[11rem]/engines:inline">{t('nav.settings')}</span>
+                    <span className="hidden min-w-0 truncate @[11rem]/engines:inline">
+                      {t('nav.settings')}
+                    </span>
                   </Link>
                 ) : undefined
               }
