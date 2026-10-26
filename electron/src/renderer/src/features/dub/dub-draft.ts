@@ -1,5 +1,6 @@
 import { restoreExportPreferences } from './dub-export';
 import type { DubSession } from './dub-session';
+import { DUB_INPUT_ISSUES } from './dub-input-issue';
 export const DUB_DRAFT_KEY = 'voicestudio.dub.session.v1';
 
 function isProviderErrorText(value: unknown): value is string {
@@ -96,6 +97,10 @@ export function restoreDubDraft(raw: string | null, defaults: DubSession): DubSe
       recovery,
       segments,
       filename: typeof value.filename === 'string' ? value.filename : '',
+      // A rejected file keeps its Change file prompt after a reload.
+      inputIssue: (DUB_INPUT_ISSUES as readonly unknown[]).includes(value.inputIssue)
+        ? value.inputIssue
+        : null,
       duration:
         Number.isFinite(value.duration) && Number(value.duration) > 0
           ? Number(value.duration)
@@ -165,8 +170,10 @@ export function restoreDubDraft(raw: string | null, defaults: DubSession): DubSe
                 if (typeof item !== 'number' || !Number.isFinite(item)) return false;
                 if (key === 'gap_guard_s') return item >= 0;
                 if (key === 'min_audio_rate') return item >= 0.5 && item <= 1;
-                return ['max_audio_only_rate', 'audio_rate_cap', 'video_slow_cap'].includes(key)
-                  && item >= 1;
+                return (
+                  ['max_audio_only_rate', 'audio_rate_cap', 'video_slow_cap'].includes(key) &&
+                  item >= 1
+                );
               }),
             )
           : undefined,
@@ -193,8 +200,10 @@ export function restoreDubDraft(raw: string | null, defaults: DubSession): DubSe
         typeof value.condenseSuggest === 'boolean'
           ? value.condenseSuggest
           : defaults.condenseSuggest,
-      translationInstructions: typeof value.translationInstructions === 'string'
-        ? value.translationInstructions.slice(0, 5000) : undefined,
+      translationInstructions:
+        typeof value.translationInstructions === 'string'
+          ? value.translationInstructions.slice(0, 5000)
+          : undefined,
       dialect:
         typeof value.dialect === 'string' && /^[a-zA-Z]{2,3}-[a-zA-Z]{2,4}$/.test(value.dialect)
           ? value.dialect
