@@ -19,6 +19,7 @@ import {
 import { rewriteDevApiProxyPath } from "../../../../shared/web-api-routing";
 import { encodeDownloadFailure } from "@shared/download-failure";
 import { nativeSaveError } from "@/lib/native-save";
+import { FAILURE_CATALOG, failureTopicOf } from "@shared/utils/failureCatalog";
 import en from "@/i18n/locales/en.json";
 import pl from "@/i18n/locales/pl.json";
 
@@ -258,7 +259,7 @@ describe.each([
     expect(error.payload?.detail).toEqual(detail);
   });
 
-  it("retains the existing missing-media-tool message and recovery hints", async () => {
+  it("localizes missing-media-tool guidance and retains recovery hints", async () => {
     const detail = {
       stage: "video-retime",
       code: "media_tool_missing",
@@ -270,8 +271,13 @@ describe.each([
       new Response(JSON.stringify({ detail }), { status: 503 }),
     );
     expect(error.status).toBe(503);
-    expect(describeError(error)).toBe(detail.message);
+    expect(describeError(error)).toBe(catalog.failureClass.media_tool_missing);
     expect(error.payload?.detail).toEqual(detail);
+    expect(failureTopicOf(error)).toBe("MEDIA_TOOL_MISSING");
+    expect(FAILURE_CATALOG.MEDIA_TOOL_MISSING.action).toEqual({
+      kind: "open",
+      target: "media",
+    });
     expect(i18next.t).not.toHaveBeenCalledWith(
       "tts_errors.video_retime_fps_unavailable",
     );

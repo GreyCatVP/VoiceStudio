@@ -1316,10 +1316,7 @@ export async function installRuntime(
   );
   // The ready marker is written last and is authoritative: it supersedes the
   // install marker even if removing that marker below fails (#3475).
-  await writeFile(
-    join(project, RUNTIME_READY_MARKER),
-    await dependencyStamp(bundle, torch),
-  );
+  await writeFile(join(project, RUNTIME_READY_MARKER), await dependencyStamp(bundle, torch));
   // Windows briefly locks a freshly written file while antivirus or the indexer
   // scans it; retry instead of failing a finished install on that lock.
   await rm(join(project, RUNTIME_INSTALLING_MARKER), {
