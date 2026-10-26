@@ -40,6 +40,15 @@ _ABBREVIATIONS = frozenset({
     "e.g", "i.e", "a.m", "p.m", "u.s", "u.s.a", "u.k",
 })
 
+# Non-Latin sentence enders: Arabic full stop (Urdu "khatma"), Arabic question
+# mark, Devanagari danda / double danda. Without them an Urdu, Persian, Arabic
+# or Hindi script over the chunk limit was cut at an arbitrary space
+# mid-sentence. They never mark abbreviations or decimals, and are matched
+# with or without a following space.
+_SCRIPT_SENTENCE_ENDERS = "\u06d4\u061f\u0964\u0965"
+# Arabic comma and semicolon — the clause-boundary fallback for those scripts.
+_SCRIPT_CLAUSE_MARKS = "\u060c\u061b"
+
 # Inline bracket tags (paralinguistic tags like [laugh]; our own
 # [pause 300ms] markers). The splitter must never cut inside one.
 _BRACKET_TAG_RE = re.compile(r"\[[^\]]*\]")
@@ -134,8 +143,9 @@ def split_text_into_chunks(text: str, max_chars: int = DEFAULT_MAX_CHUNK_CHARS) 
     """Split *text* at natural boundaries into chunks of at most *max_chars*.
 
     Priority: sentence-end (``.!?`` not after an abbreviation/decimal and not
-    inside brackets, plus fullwidth equivalents) -> clause boundary
-    (``;:,`` / em dash) -> whitespace -> hard cut that avoids splitting a
+    inside brackets, plus fullwidth CJK, Arabic-script and Devanagari enders)
+    -> clause boundary (``;:,`` / em dash / Arabic comma and semicolon)
+    -> whitespace -> hard cut that avoids splitting a
     ``[tag]``.
     """
     text = text.strip()
@@ -274,7 +284,9 @@ def _find_last_sentence_end(text: str, limit: int | None = None) -> int:
 
     Skips periods after common abbreviations and decimals, anything inside
     a bracket tag, and also recognizes fullwidth sentence punctuation
-    (ideographic full stop / fullwidth ! and ?) for no-space scripts.
+    (ideographic full stop / fullwidth ! and ?) and the Arabic-script /
+    Devanagari enders in ``_SCRIPT_SENTENCE_ENDERS``, with or without a
+    following space.
 
     ``limit`` — only positions ``< limit`` count. Callers pass a window one
     character longer than the chunk so the character after a candidate is the
@@ -299,23 +311,25 @@ def _find_last_sentence_end(text: str, limit: int | None = None) -> int:
         if _inside_bracket_tag(text, pos):
             continue
         best = pos
-    # Fullwidth sentence enders (ideographic full stop, fullwidth !, ?)
-    # written as escapes to keep the repo's no-literal-CJK gate clean.
-    for m in re.finditer("[\u3002\uff01\uff1f]", text):
-        if best < m.start() < limit:
+    # Script-specific sentence enders that need no following space (writers
+    # often omit it): fullwidth CJK (written as escapes to keep the repo's
+    # no-literal-CJK gate clean), plus _SCRIPT_SENTENCE_ENDERS.
+    for m in re.finditer("[\u3002\uff01\uff1f" + _SCRIPT_SENTENCE_ENDERS + "]", text):
+        if best < m.start() < limit and not _inside_bracket_tag(text, m.start()):
             best = m.start()
     return best
 
 
 def _find_last_clause_boundary(text: str, limit: int | None = None) -> int:
-    """Index of the last clause punctuation (``;:,`` / em dash), or -1.
+    """Index of the last clause punctuation (``;:,`` / em dash / Arabic
+    comma and semicolon), or -1.
 
     ``limit`` as in :func:`_find_last_sentence_end`.
     """
     if limit is None:
         limit = len(text)
     best = -1
-    for m in re.finditer(r"[;:,—](?:\s|$)", text):
+    for m in re.finditer(r"[;:,—](?:\s|$)|[" + _SCRIPT_CLAUSE_MARKS + "]", text):
         if m.start() >= limit:
             continue
         if _inside_bracket_tag(text, m.start()):
@@ -390,7 +404,13 @@ def report_dropped_chunks(dropped: list, total: int, texts=None, sink=None) -> N
                 pass
         detail = ""
         if named:
-            detail = " — no audio for: " + "; ".join(repr(t[:80]) for t in named)
+            # The log is user-shareable diagnostics: scrub the whole sentence
+            # before truncating so a cut cannot split a secret past the
+            # scrubber. The sink keeps the raw text for the user's own view.
+            from core.scrub import scrub_text
+
+            detail = " — no audio for: " + "; ".join(
+                repr(scrub_text(t)[:80]) for t in named)
         logger.warning(
             "Dropped %d of %d rendered chunk(s): the engine returned no audio "
             "for them, so the output is missing that text%s. This is silent in "

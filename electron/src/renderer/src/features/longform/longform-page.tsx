@@ -20,6 +20,7 @@ import { StoryCast } from './story-cast';
 import { clearedScriptPatch, scriptSize } from './story-clear';
 import { ConfirmDialog } from '../clone/confirm-dialog';
 import { AudiobookMarkupToolbar } from './audiobook-markup-toolbar';
+import { ChapterOutline } from './chapter-outline';
 import { storyVoicesReady } from './story-inputs';
 import { StorySpeed } from './story-speed';
 import { ProjectSettings } from './project-settings';
@@ -85,6 +86,7 @@ export function LongformPage({ mode }: { mode: Mode }) {
   const [exporting, setExporting] = useState(false);
   const [warningsDismissed, setWarningsDismissed] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
+  const [scriptCaret, setScriptCaret] = useState(0);
   const audiobookInput = useRef<HTMLTextAreaElement>(null);
   const locked = !!session.active || importing;
   const scriptLines = scriptSize(mode, draft);
@@ -426,19 +428,32 @@ export function LongformPage({ mode }: { mode: Mode }) {
                   disabled={locked}
                   setText={(script) => set({ script })}
                 />
-                <textarea
-                  dir="auto"
-                  ref={audiobookInput}
-                  aria-label={t('clone.script')}
-                  className="min-h-64 flex-1 resize-none bg-transparent text-base leading-7 outline-none"
-                  value={draft.script}
-                  placeholder={t('audiobook.script_placeholder')}
-                  disabled={locked}
-                  onChange={(e) => {
-                    set({ script: e.target.value });
-                    if (warningsDismissed) setWarningsDismissed(false);
-                  }}
-                />
+                <div className="flex min-h-64 flex-1 flex-col gap-3 lg:flex-row">
+                  <ChapterOutline
+                    script={draft.script}
+                    caret={scriptCaret}
+                    textareaRef={audiobookInput}
+                    disabled={locked}
+                    onJump={setScriptCaret}
+                  />
+                  <textarea
+                    dir="auto"
+                    ref={audiobookInput}
+                    aria-label={t('clone.script')}
+                    className="min-h-64 min-w-0 flex-1 resize-none bg-transparent text-base leading-7 outline-none"
+                    value={draft.script}
+                    placeholder={t('audiobook.script_placeholder')}
+                    disabled={locked}
+                    onSelect={(event) => setScriptCaret(event.currentTarget.selectionStart)}
+                    onClick={(event) => setScriptCaret(event.currentTarget.selectionStart)}
+                    onKeyUp={(event) => setScriptCaret(event.currentTarget.selectionStart)}
+                    onChange={(e) => {
+                      set({ script: e.target.value });
+                      setScriptCaret(e.target.selectionStart);
+                      if (warningsDismissed) setWarningsDismissed(false);
+                    }}
+                  />
+                </div>
               </div>
             ) : (
               <StoryEditor

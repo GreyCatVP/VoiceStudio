@@ -14,18 +14,31 @@ extension XCUIApplication {
         let symbols = ["Home": "house", "Voices": "person.wave.2", "Dub": "film", "Dictate": "mic", "Settings": "gearshape"]
         return buttons.matching(NSPredicate(format: "label == %@ AND identifier == %@", label, symbols[label] ?? label)).firstMatch
     }
-    /// Swipes until `element` sits wholly between the navigation bar and the tab bar.
+    /// Scrolls until `element` sits wholly between the navigation bar and the tab bar.
     /// Content scrolled under those translucent bars can still report `isHittable`,
-    /// and a tap there lands on the bar instead of the element.
+    /// and a tap there lands on the bar instead of the element. Once the element is on
+    /// screen it is nudged toward the visible band with slow, measured drags in whichever
+    /// direction it lies: a full-screen flick can carry a lazily-loaded card past the
+    /// band and out of the hierarchy, where it can no longer be found.
     @MainActor func reveal(_ element: XCUIElement, swipingDown: Bool = false, attempts: Int = 8) {
         for _ in 0..<attempts {
-            if element.isHittable {
-                let bar = navigationBars.firstMatch, tab = tabBars.firstMatch
-                let top = bar.exists ? bar.frame.maxY : frame.minY
-                let bottom = tab.exists && tab.frame.height < frame.height / 3 ? tab.frame.minY : frame.maxY
-                if element.frame.minY >= top - 0.5 && element.frame.maxY <= bottom + 0.5 { return }
+            let bar = navigationBars.firstMatch, tab = tabBars.firstMatch
+            let top = bar.exists ? bar.frame.maxY : frame.minY
+            let bottom = tab.exists && tab.frame.height < frame.height / 3 ? tab.frame.minY : frame.maxY
+            guard element.exists, !element.frame.isEmpty else {
+                if swipingDown { swipeDown() } else { swipeUp() }
+                continue
             }
-            if swipingDown { swipeDown() } else { swipeUp() }
+            let target = element.frame
+            if target.minY >= top - 0.5 && target.maxY <= bottom + 0.5 { return }
+            let band = bottom - top
+            // Positive moves content up (the element lies below the band), negative down.
+            let needed = target.maxY > bottom + 0.5 && target.height <= band ? target.maxY - bottom + 16 : target.minY - top - 16
+            let distance = max(-band * 0.6, min(band * 0.6, needed))
+            let origin = coordinate(withNormalizedOffset: .zero)
+            let start = origin.withOffset(CGVector(dx: frame.midX, dy: top + band / 2 + distance / 2))
+            let end = origin.withOffset(CGVector(dx: frame.midX, dy: top + band / 2 - distance / 2))
+            start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.3)
         }
     }
     @MainActor func openSpeak() {
