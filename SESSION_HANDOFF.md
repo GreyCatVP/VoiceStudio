@@ -1,5 +1,16 @@
 # Session handoff (this PC)
 
+## Sidecar memory cap (2026-10-26)
+
+The VoxCPM2 sidecar grew to 23 GB committed and filled P1's commit limit (other apps
+failed with 0xc000012d). Commit a242eeb38 adds `OMNIVOICE_SIDECAR_MAX_MEMORY_MB`: the
+reaper (every 30 s) recycles a sidecar at or above the cap, only between requests;
+the next request respawns it. `Launch-VoiceStudio-LAN.ps1` (P1-local, untracked) sets
+16384. It takes effect the next time the backend starts (logon task / crash restart);
+the running backend was not restarted. Check: the log line "recycling sidecar using".
+Tests: `tests/backend/services/test_sidecar_memory_cap.py` (runtime venv has no pytest;
+use `pip install --target <dir> pytest` + `PYTHONPATH`).
+
 ## GPU 1 = voice (2026-10-16)
 
 This PC has two NVIDIA cards (PCI-bus order): GPU 0 = RTX 5080 (ComfyUI, LoRA
