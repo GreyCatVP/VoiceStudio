@@ -184,6 +184,7 @@ def env(tmp_path, monkeypatch):
     async def mux(command, **_kw):
         with open(command[-1], "wb") as fh:
             fh.write(b"m4b")
+        return 0, b"", b""  # the render checks the exit code (#3017)
     monkeypatch.setattr(ffmpeg_utils, "run_ffmpeg", mux)
 
     clock = _Clock()

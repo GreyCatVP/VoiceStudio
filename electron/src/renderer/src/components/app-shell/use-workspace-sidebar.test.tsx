@@ -58,10 +58,19 @@ it('uses the icon rail beside a section pane, including the Clone and Home libra
   state.path = '/clone';
   expect(renderHook(useWorkspaceSidebarState).result.current.compact).toBe(false);
 });
-it('keeps the full navigation where a page has no pane of its own and syncs explicit collapse', () => {
+it('keeps one navigation layout on Integrations, Pro and integration details', () => {
+  state.narrow = false;
+  for (const path of ['/integrations', '/integrations/n8n', '/pro', '/workflows', '/clone']) {
+    state.path = path;
+    expect(renderHook(useWorkspaceSidebarState).result.current.compact, path).toBe(true);
+  }
+});
+it('syncs an explicit collapse after the user expands the rail', () => {
   state.path = '/integrations';
   state.narrow = false;
   const { result, rerender } = renderHook(useWorkspaceSidebarState);
+  act(() => result.current.setOpen(true));
+  rerender();
   expect(result.current.compact).toBe(false);
   act(() => result.current.setOpen(false));
   rerender();

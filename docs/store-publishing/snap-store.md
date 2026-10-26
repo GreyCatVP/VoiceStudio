@@ -82,6 +82,17 @@ so upload `icon.png`, `banner.png` and the screenshots in the Snap dashboard's
 Listing page by hand. The banner is rendered from `store/snap/banner.html` at
 1920x640 (open it in Chromium and capture the viewport) and must stay 3:1.
 
+## Snapcraft Builds (dashboard)
+
+`snap/snapcraft.yaml` lets the snapcraft.io **Builds** tab build the snap too.
+It repackages the official Linux `.deb` of the latest GitHub release (checked
+against the release's `SHA256SUMS.txt`) with the same strict confinement and
+interfaces as the release workflow, and disables the in-app updater because
+snapd owns updates. `tests/test_snapcraft_yaml.py` keeps its interfaces equal
+to the `snap-store` target in `electron/electron-builder.config.mjs`. The
+release workflow above remains the primary path; if Snapcraft Builds is
+connected, release its revisions to `edge` and promote as usual.
+
 ## Confinement validation
 
 Install the rehearsal locally, then connect the recording interface:

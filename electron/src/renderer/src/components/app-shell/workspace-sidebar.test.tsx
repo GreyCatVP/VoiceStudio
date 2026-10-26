@@ -81,6 +81,15 @@ it('expands the compact rail on double-click without changing single-click navig
   expect(sidebar.setOpen).toHaveBeenCalledWith(true);
 });
 
+it('sizes the rail to the row above the bottom player, never the whole viewport', () => {
+  // A viewport-tall rail ran under the now-playing dock and hid its last items.
+  sidebar.compact = true;
+  render(<WorkspaceSidebar />);
+  const rail = screen.getByRole('complementary', { name: 'clone.saved_profiles' });
+  expect(rail).toHaveClass('h-full');
+  expect(rail.className).not.toMatch(/\bh-(?:dvh|screen|svh)\b/);
+});
+
 it('keeps only navigation and status in the slim expanded sidebar', () => {
   render(<WorkspaceSidebar />);
   const navigation = screen.getByTestId('navigation');
