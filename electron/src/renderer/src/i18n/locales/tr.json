@@ -1,4 +1,18 @@
 {
+  "cloneEmotion": {
+    "title": "Duygu",
+    "off": "Kapalı",
+    "text": "Açıklama",
+    "vector": "Kaydırıcılar",
+    "happy": "Mutluluk",
+    "angry": "Öfke",
+    "sad": "Üzüntü",
+    "afraid": "Korku",
+    "disgusted": "İğrenme",
+    "melancholic": "Melankoli",
+    "surprised": "Şaşkınlık",
+    "calm": "Sakinlik"
+  },
   "cloneQuality": {
     "title": "Ses kalitesi",
     "precision": "WAV hassasiyeti",
@@ -7,7 +21,7 @@
     "hint24": "Düzenleme ve miks için daha fazla hassasiyet.",
     "hint32": "Tam hassasiyeti korur. Dosyalar büyür, sesin kendisi iyileşmez.",
     "effort": "Sesi iyileştirme",
-    "effortHint": "Daha fazla geçiş daha uzun sürer; ses daha iyi olmayabilir.",
+    "effortHint": "Daha az geçiş kaliteyi düşürebilir; daha fazla geçiş daha uzun sürer.",
     "mastering": "Ses düzeyini dengele",
     "masteringHint": "Sesi daha dengeli ve tutarlı hale getirir.",
     "nextTake": "Bir sonraki kaydınız için.",
@@ -20,7 +34,8 @@
     "preset16": "Standart",
     "preset24": "Düzenleme için",
     "preset32": "Orijinal",
-    "sizeUnknown": "Boyut, oluşturma tamamlandıktan sonra gösterilir."
+    "sizeUnknown": "Boyut, oluşturma tamamlandıktan sonra gösterilir.",
+    "sampleRate": "{{rate}} kHz"
   },
   "presetVoice": {
     "label": "Hazır ses"
@@ -102,7 +117,13 @@
     "dub": "Ses veya videoyu çevirip dublaj yapın.",
     "stories": "Birden fazla sesle sahneler oluşturun.",
     "audiobook": "Bölümlü sesli kitaplar oluşturun.",
-    "transcribe": "Kayıtları metne dönüştürün."
+    "transcribe": "Kayıtları metne dönüştürün.",
+    "creatorCoreTeam": "Yaratıcı ve çekirdek ekip",
+    "coreTeam": "Çekirdek ekip",
+    "maintainerPalash": "Palash Debnath",
+    "maintainerShimul": "Shimul Debnath",
+    "follow": "Takip et",
+    "website": "Web sitesi"
   },
   "twilioIntegration": {
     "exposureWarning": "Bunu açmak, tünelinizin internette yayımladığı ayrı bir yerel bağlantı noktası açar. Yalnızca Twilio Auth Token'ınızla imzalanan istekler kabul edilir; VoiceStudio'nun geri kalanı gizli kalır.",
@@ -366,11 +387,13 @@
     "inactive": "Etkin değil",
     "translation": "Çeviri",
     "diarisation": "Konuşmacı ayrıştırma",
-    "localDevice": "Yerel cihaz"
+    "localDevice": "Yerel cihaz",
+    "localShort": "Yerel"
   },
   "paneActions": {
     "collapse": "Paneli daralt",
-    "edit": "Ses profilini düzenle"
+    "edit": "Ses profilini düzenle",
+    "expand": "Paneli genişlet"
   },
   "modelSettings": {
     "models": "Modeller",
@@ -379,7 +402,9 @@
     "select": "Seç",
     "selected": "Seçili",
     "change": "Motoru değiştir",
-    "failed": "Motor değiştirilemedi. Tekrar deneyin."
+    "failed": "Motor değiştirilemedi. Tekrar deneyin.",
+    "empty": "Bu kategori için henüz motor veya model yok.",
+    "modelsInstalled": "{{count}} modelden {{installed}} tanesi yüklü"
   },
   "modelMaintenance": {
     "download": "İndir",
@@ -461,6 +486,8 @@
     "paste_failed": "Pano erişimi engellendi. Klavyeyi kullanarak doğrudan metin alanına yapıştırın.",
     "prompt": "İstemi",
     "language": "Dil",
+    "take_language_next": "Yeni çekimler {{language}} kullanır",
+    "take_language_used": "Bu çekimde kullanılan dil",
     "steps": "Adımlar",
     "voice_source": "Ses Kaynağı",
     "reference_audio": "Referans ses",
@@ -505,7 +532,7 @@
     "preset_anxious_whisper": "🤫 Fısıltı",
     "preset_surprised_woman": "😲 Şaşırdım",
     "preset_elderly_story": "👴 yaşlı",
-    "preset_sichuan": "🌶️",
+    "preset_sichuan": "Sichuan",
     "prompt_placeholder": "Bu ses ne söylemeli?",
     "design_placeholder": "Sesi tanımlayın, ardından ne dediğini yazın…",
     "speed": "Hız",
@@ -535,6 +562,28 @@
     "opt_high_pitch": "yüksek perde",
     "opt_very_high_pitch": "çok yüksek perde",
     "opt_whisper": "fısıltı",
+    "opt_american_accent": "Amerikan aksanı",
+    "opt_british_accent": "İngiliz aksanı",
+    "opt_australian_accent": "Avustralya aksanı",
+    "opt_canadian_accent": "Kanada aksanı",
+    "opt_indian_accent": "Hint aksanı",
+    "opt_chinese_accent": "Çin aksanı",
+    "opt_korean_accent": "Kore aksanı",
+    "opt_japanese_accent": "Japon aksanı",
+    "opt_portuguese_accent": "Portekiz aksanı",
+    "opt_russian_accent": "Rus aksanı",
+    "dialect_henan": "Henan lehçesi",
+    "dialect_shaanxi": "Shaanxi lehçesi",
+    "dialect_sichuan": "Sichuan lehçesi",
+    "dialect_guizhou": "Guizhou lehçesi",
+    "dialect_yunnan": "Yunnan lehçesi",
+    "dialect_guilin": "Guilin lehçesi",
+    "dialect_jinan": "Jinan lehçesi",
+    "dialect_shijiazhuang": "Shijiazhuang lehçesi",
+    "dialect_gansu": "Gansu lehçesi",
+    "dialect_ningxia": "Ningxia lehçesi",
+    "dialect_qingdao": "Qingdao lehçesi",
+    "dialect_dongbei": "Kuzeydoğu lehçesi",
     "style_placeholder": "örneğin fısıltı",
     "stop_playback": "Oynatmayı durdur",
     "describe_label": "Sesinizi tarif edin",
@@ -615,10 +664,15 @@
     "replace_reference": "Referansı değiştir",
     "keep_reference": "Mevcut referansı koru",
     "new_reference": "Yeni referans: {{name}}",
-    "replace_reference_hint": "Kaydetmek bu sesin referans örneğini değiştirir. Yeni klip farklı bir konuşmacıya ait olabileceğinden kilitli kayıt ve kendi ses doğrulaması temizlenir. Yeni klibin otomatik olarak yazıya dökülmesi için transkripti boş bırakın."
+    "replace_reference_hint": "Kaydetmek bu sesin referans örneğini değiştirir. Yeni klip farklı bir konuşmacıya ait olabileceğinden kilitli kayıt ve kendi ses doğrulaması temizlenir. Yeni klibin otomatik olarak yazıya dökülmesi için transkripti boş bırakın.",
+    "cannotCloneUseDesign": "Bu model ses klonlayamaz. Ses tasarımında bir ses tarif edin veya klonlayan bir model seçin.",
+    "savedTab": "Kayıtlı",
+    "recentsTab": "Son"
   },
   "designWorkspace": {
     "title": "Tasarla",
+    "takes_show": "Son çekimleri göster",
+    "saved_empty": "Kaydedilen tasarımlar burada görünür.",
     "save_failed": "Ses profili kaydedilemedi",
     "engine_cannot_design": "{{engine}} referans klip gerektirdiği için ses tasarlayamaz. OmniVoice gibi ses tasarımını destekleyen bir motora geçin ya da bunun yerine bir ses klonlayın.",
     "engine_cannot_reuse_sample": "{{engine}} referans ses kullanamadığı için kayıtlı bu sesi örneğinden yeniden oluşturamaz. OmniVoice gibi ses klonlamayı destekleyen bir motora geçin."
@@ -898,6 +952,7 @@
     "mirror_failed": "Sunum yansıtılamadı: {{message}}",
     "cinematic_no_llm": "Bu kalite bir LLM sağlayıcısı gerektirir. Devam etmek için LLM Sağlayıcıları bölümünde yapılandırın.",
     "dialect_not_applied": "Seçilen lehçe için LLM gerekir — motoru OpenAI/Ollama yapın veya Cinematic kalitesini seçin.",
+    "dialect_used": "Bu motor yalnızca {{variant}} yazar. Seçilen lehçeyi uygulamak için bir LLM çeviri motoru kullanın.",
     "translate_errors": "{{errorCount}}/{{totalCount}} segment(ler)i başarısız oldu: {{firstError}}",
     "translate_degraded": "{{totalCount}} segmentin tümü çevrildi — {{count}} tanesi cilalama adımı atlandığı için düz çeviriyi kullanıyor ({{reason}})",
     "translated_segments": "{{count}} segment(ler) çevrildi → {{lang}}",
@@ -989,7 +1044,9 @@
     "play": "Oynat",
     "pause": "Duraklat",
     "seek": "Oynatma konumu",
-    "missing": "Ses dosyası bulunamadı."
+    "missing": "Ses dosyası bulunamadı.",
+    "now_playing": "Şimdi çalıyor",
+    "kind_convert": "Ses dönüştürme"
   },
   "logs": {
     "no_tauri_log": "Henüz diskte Tauri oturumu açılmadı; bir tane oluşturmak için masaüstü sürümü aracılığıyla başlatın",
@@ -1408,7 +1465,7 @@
     "gpu_report_state_intel_unsupported": "{{gpu}} bulundu, ancak kurulu hiçbir motor Intel GPU'larını kullanamaz, bu yüzden her şey CPU'da çalışır.",
     "gpu_report_state_unknown": "GPU durumu belirlenemedi.",
     "gpu_report_option_vulkan_engines": "Kendi GPU çalışma zamanına sahip bir motor kullanın: audio.cpp, AMD Radeon GPU'larda Vulkan üzerinden çalışır (Ayarlar → Modeller → çalışma zamanını kur).",
-    "gpu_report_option_rocm_windows_manual": "VoiceStudio, Windows'ta ROCm'lu PyTorch kurmaz. AMD yeni Radeon kartlar için ayrı wheel paketleri yayımlıyor, ancak bunlar buradaki motorların test edildiğinden daha yeni bir PyTorch gerektiriyor ve bazı motorlar bozuluyor. Yalnızca sorun gidermeye hazırsanız deneyin (Windows kurulum kılavuzuna bakın).",
+    "gpu_report_option_rocm_windows_manual": "Desteklenen Windows 11 x64 AMD donanımında, OMNIVOICE_TORCH_VARIANT=rocm ile VoiceStudio'nun ROCm 7.2.1 kurulumunu etkinleştirin. Zaten kuruluysa kurulumu yeniden çalıştırın ve AMD'nin sürücü ve donanım uyumluluk tablosunu kontrol edin. İsteğe bağlı motorların ayrı sınırlamaları vardır; Windows kurulum kılavuzuna bakın.",
     "gpu_report_option_rocm_variant_linux": "PyTorch'un ROCm derlemesini kurmak için OMNIVOICE_TORCH_VARIANT=rocm ayarlayın ve kurulumu yeniden çalıştırın.",
     "gpu_report_option_rocm_device_access": "amdgpu sürücüsünün yüklü olduğunu ve kullanıcınızın /dev/kfd'yi açabildiğini kontrol edin (render ve video grupları).",
     "gpu_report_option_reinstall_cuda_torch": "Çalışma zamanını yeniden kurun; böylece PyTorch'un CUDA derlemesi kurulur.",
@@ -1480,6 +1537,12 @@
     "submit_failed": "Gönderim formu açılamadı.",
     "submit_preset": "Ön ayar gönder",
     "submit_voice": "Ses gönder",
+    "community_packs": "Paketler",
+    "community_all_packs": "Tümü",
+    "community_language": "Dil",
+    "community_all_languages": "Tüm diller",
+    "community_new": "Yeni",
+    "community_author_profile": "GitHub'da {{author}}",
     "zone_community": "Topluluk",
     "import_persona": "Bir .ovsvoice kişi paketini içe aktarın",
     "persona_imported": "\"{{name}}\"{{unverified}} içe aktarıldı.",
@@ -1559,7 +1622,10 @@
     "aec_description": "VoiceStudio çalma sesini mikrofondan çıkarın.",
     "aec_row_title": "Dikte için yankı gidermeyi etkinleştir",
     "aec_experimental": "Deneysel",
-    "aec_hint": "Ön izleme, dublaj veya video oynarken uygulamanın sesini yazıya dökmeden dikte etmenizi sağlar. Biraz işlem ekler; çalma sırasında dikte etmiyorsanız kapalı bırakın."
+    "aec_hint": "Ön izleme, dublaj veya video oynarken uygulamanın sesini yazıya dökmeden dikte etmenizi sağlar. Biraz işlem ekler; çalma sırasında dikte etmiyorsanız kapalı bırakın.",
+    "cleanup_title": "Metin temizliği",
+    "spoken_punctuation": "Sesli noktalama",
+    "spoken_punctuation_desc": "Yazmak için “comma”, “period”, “question mark”, “new line” deyin. Yalnızca İngilizce."
   },
   "tools": {
     "title": "Araçlar",
@@ -1667,7 +1733,6 @@
     "title": "Hikaye Düzenleyici",
     "subtitle": "Karakter başına seslerle çok kanallı sesli kitap",
     "cast": "Oyuncular",
-    "castTitle": "Cast — her karaktere bir ses atayın",
     "addCharacter": "Karakter ekle",
     "character": "Karakter",
     "characterName": "Karakter adı",
@@ -1716,7 +1781,6 @@
     "addFirst": "İlk Satırı Ekle",
     "linePlaceholder": "Diyaloğa veya anlatıma girin… sessiz bir ara için [0,5 saniye duraklat] kullanın",
     "text": "metin",
-    "voice": "ses",
     "defaultVoice": "Varsayılan",
     "inlineVoice": "Satır içi sesi ayarla",
     "inlineVoiceHint": "Vurgulanan metnin sesini değiştirin (veya imlece bir anahtar ekleyin)",
@@ -1747,7 +1811,19 @@
     "global_speed_apply": "Tüm satırlarda kullan",
     "deleteProjectConfirm": "Bu proje kalıcı olarak silinsin mi?",
     "moveUp": "Yukarı taşı",
-    "moveDown": "Aşağı taşı"
+    "moveDown": "Aşağı taşı",
+    "voiceLabel": "Ses",
+    "scriptSubtitle": "Satır satır yazın ve her karaktere kendi sesini verin.",
+    "speedHint": "Kendi hızı olmayan satırlar için.",
+    "castEmpty": "Karakter ekleyin, ardından her satırı kimin söyleyeceğini seçin.",
+    "speaker": "Konuşmacı",
+    "speakerNone": "Anlatıcı",
+    "speakerChip": "Konuşmacı: {{name}}",
+    "voiceChip": "Ses: {{name}}",
+    "toneChip": "Ton ve hız: {{speed}}",
+    "lineVoice": "Satır sesi",
+    "chapterHeading": "Bölüm başlığı",
+    "lineActions": "Satır işlemleri"
   },
   "audiobook": {
     "cast": "Kadro",
@@ -1802,6 +1878,10 @@
     "open_cache_failed": "Bölüm önbelleği açılamadı",
     "progress_summary": "{{total}} bölümden {{current}} tanesi sentezleniyor",
     "eta": "~{{time}} kaldı",
+    "eta_estimating": "Kalan süre tahmin ediliyor…",
+    "realtime": "{{rate}}× gerçek zamanlı",
+    "realtime_hint": "Her saniyelik işlemede üretilen ses saniyesi",
+    "stalled": "{{time}} boyunca ilerleme yok. Motor takılmış olabilir: Günlükler → Arka uç bölümüne bakın ya da durdurup daha sonra yeniden oluşturun. Tamamlanan bölümler korunur.",
     "chapter_n": "Bölüm {{n}}",
     "cached_tag": "önbellekte",
     "failed_tag": "başarısız",
@@ -1874,7 +1954,9 @@
     "deepl_base_url_help": "Özel DeepL API uç noktası (varsayılan: https://api.deepl.com/v2). Proxy/kendi kendine barındırılan için değişiklik.",
     "microsoft_base_url_help": "Özel Azure Translator uç noktası (varsayılan: https://api.cognitive.microsofttranslator.com).",
     "region": "Bölge",
-    "aws_profile": "AWS profili"
+    "aws_profile": "AWS profili",
+    "deepl_key_placeholder": "DeepL API anahtarı",
+    "microsoft_key_placeholder": "Microsoft API anahtarı"
   },
   "about": {
     "architecture": "Mimarlık",
@@ -1958,6 +2040,7 @@
     "original": "Orijinal",
     "dub_suffix": "(Dub)",
     "bg_audio": "Arka plan sesi",
+    "bg_level": "Arka plan ses düzeyi",
     "mix_bg_video": "Her dublajlı parçanın altında müziği/efektleri karıştırın",
     "subs_in_video": "Videodaki altyazılar",
     "hardsub": "Altyazıları resme yazın (hardsub)",
@@ -2054,6 +2137,7 @@
     "setup_access": "Uygulamanın veri klasörüne yazma izni verip yeniden deneyin.",
     "setup_unsupported_platform": "Bu Intel Mac, yerel yapay zekâ arka ucunu çalıştıramaz — PyTorch'ta macOS Intel wheel'leri yok. Bunun yerine aşağıdan bir uzak arka uca bağlanın; yerel kurulum gerekmez.",
     "setup_wrong_architecture": "Bu, Apple Silicon bir Mac'te Rosetta üzerinden çalışan VoiceStudio Intel (x64) sürümü; bu yüzden yerel yapay zekâ arka ucu kurulamıyor. Uygulamadan çıkın, Apple Silicon (arm64) DMG'sini üzerine kurun ve yeniden açın — sesleriniz ve projeleriniz korunur.",
+    "setup_missing_system_library": "Bu Windows sisteminde, PyTorch ses eklentisinin ihtiyaç duyduğu Microsoft Visual C++ 2015-2022 Redistributable (x64) eksik. Microsoft’tan yükleyip Yeniden Dene’ye basın.",
     "download_apple_silicon": "Apple Silicon sürümünü indir",
     "ready": "Motor hazır",
     "show_log": "Günlüğü göster",
@@ -2077,7 +2161,23 @@
     "hint_spawn_blocked": "İşletim sisteminiz veya güvenlik yazılımınız yerel motorun başlatılmasını reddetti. VoiceStudio çalışma zamanı klasörünü antivirüs dışlamalarınıza ekleyin (Windows: Windows Güvenliği → Virüs ve tehdit koruması → Ayarları yönet → Dışlamalar), klasörün OneDrive gibi bulutla eşitlenen bir klasörde olmadığından emin olun ve yeniden deneyin.",
     "hint_smart_app_control": "Windows Akıllı Uygulama Denetimi yerel motoru engelledi. Uygulama başına istisna tanımıyor, bu yüzden antivirüs dışlaması işe yaramaz. Windows Güvenliği → Uygulama ve tarayıcı denetimi → Akıllı Uygulama Denetimi ayarları bölümünden kapatın (Windows sıfırlanmadan tekrar açamaz) ya da VoiceStudio’yu başka bir bilgisayarda çalışan bir motora bağlayıp yeniden deneyin.",
     "hint_slow_start": "Bekleme süresi dolduğunda motor hâlâ başlıyordu. Yavaş bilgisayarlar, özellikle ayrı ekran kartı olmayanlar, ve bir kurulumdan sonraki ilk başlatma (antivirüs her yeni dosyayı tarar) birkaç dakika sürebilir. Çok bellek kullanan uygulamaları kapatıp yeniden deneyin; sonraki başlatmalar çok daha hızlıdır.",
-    "hint_synced_folder": "Bu konum, bulutla eşitlenen bir klasörde (OneDrive, Dropbox, iCloud Drive, Google Drive). Yalnızca çevrimiçi yer tutucular ve dosya kilitleme Python ortamını bozar. VoiceStudio'yu normal bir yerel klasöre (örneğin Windows'ta C:\\VoiceStudio, macOS ve Linux'ta ~/VoiceStudio) taşıyın ve yeniden kurun."
+    "hint_synced_folder": "Bu konum, bulutla eşitlenen bir klasörde (OneDrive, Dropbox, iCloud Drive, Google Drive). Yalnızca çevrimiçi yer tutucular ve dosya kilitleme Python ortamını bozar. VoiceStudio'yu normal bir yerel klasöre (örneğin Windows'ta C:\\VoiceStudio, macOS ve Linux'ta ~/VoiceStudio) taşıyın ve yeniden kurun.",
+    "cause_smart_app_control": "Windows Akıllı Uygulama Denetimi altyapıyı engelledi",
+    "cause_spawn_blocked": "Güvenlik yazılımı altyapının başlamasını engelledi",
+    "cause_native_crash": "Altyapı başlarken çöktü (yerel hata)",
+    "cause_missing_env": "Python ortamı eksik veya tamamlanmamış",
+    "cause_permission": "Altyapı klasörüne yazma izni yok",
+    "cause_synced_folder": "Altyapı klasörü bulutla eşitlenen bir klasörün içinde",
+    "cause_slow_start": "Altyapı yavaş bir bilgisayarda hâlâ başlıyor",
+    "choose_folder": "Başka bir klasör seç",
+    "copy_diagnostics": "Tanılamayı kopyala",
+    "diagnostics_copied": "Tanılama kopyalandı",
+    "details": "Ayrıntılar",
+    "pill_starting": "Başlatılıyor",
+    "pill_recovering": "Toparlanıyor",
+    "pill_failed": "Başarısız",
+    "pill_repeats": "Art arda {{count}} kez",
+    "offline_bar": "Altyapı meşgul, otomatik olarak yeniden bağlanılıyor"
   },
   "bootstrap": {
     "checking": "Ortam kontrol ediliyor…",
@@ -2088,6 +2188,10 @@
     "download_rate": "{{rate}}/sn",
     "eta": "~{{time}} kaldı",
     "downloads_complete": "İndirmeler tamamlandı · paketler kuruluyor",
+    "download_source": "{{host}} kaynağından",
+    "download_stalled": "{{seconds}} sn'dir {{host}} kaynağından veri yok",
+    "download_stalled_generic": "{{seconds}} sn'dir indirme verisi yok",
+    "download_stalled_hint": "İptal edip yeniden denerseniz tamamlanan dosyalar korunur. VPN veya proxy yardımcı olabilir.",
     "verifying": "Ortam doğrulanıyor…",
     "clean_retry": "Temizle ve Yeniden Dene",
     "clean_retry_confirm": "Bu işlem, doğrulanmış indirmeleri yeniden kullanarak Python ortamını yeniden oluşturur. Devam edilsin mi?",
@@ -2372,7 +2476,8 @@
     "storage_temp": "Geçici dosyalar",
     "change": "Değiştir…",
     "reset_default": "Varsayılana sıfırla",
-    "region_label": "İndirme bölgesi"
+    "region_label": "İndirme bölgesi",
+    "free_space": "Bu sürücüde {{free}} GB boş alan var, yaklaşık {{needed}} GB gerekli"
   },
   "asr_missing": {
     "message": "Yüklü bir konuşmadan metne modeli yok — bu özellik sesi yazıya dökmek için bir model gerektirir.",
@@ -2514,7 +2619,18 @@
     "staleTitle": "Güncelleme mevcut",
     "staleMessage": "VoiceStudio {{current}} kullanıyorsunuz, ancak {{latest}} zaten yayında — bu hata orada düzeltilmiş olabilir. Bildirmeden önce en son sürüme bakmak ister misiniz?",
     "staleView": "Güncellemeyi görüntüle",
-    "staleFileAnyway": "Yine de bildir"
+    "staleFileAnyway": "Yine de bildir",
+    "summary_label": "Ne ters gitti?",
+    "summary_placeholder": "Tek satır, örneğin: Dublaj %40’ta duruyor",
+    "summary_required": "Önce tek satırlık bir açıklama ekleyin.",
+    "sent_title": "Neler gönderilecek",
+    "sent_app": "Uygulama sürümü ve derlemesi",
+    "sent_system": "İşletim sistemi, GPU, bellek ve boş disk alanı",
+    "sent_engines": "Hangi altyapıların etkin olduğu",
+    "sent_logs": "Ana klasör yolunuz ve belirteçler çıkarılmış son altyapı günlük satırları",
+    "sent_pages": "Son ziyaret edilen sayfa adları",
+    "not_sent": "Asla gönderilmez: sesiniz, metniniz veya seslendirmeleriniz. Dosya adları günlüklerde veya açıklamanızda yer alabilir; göndermeden önce GitHub önizlemesini kontrol edin.",
+    "submit": "GitHub sorunu aç"
   },
   "crash": {
     "notice_unclean": "Önceki oturum {{ago}} önce düzgün kapanmadan sona erdi. Bu çoğu zaman zararsızdır — makine uykuya geçti, uygulama zorla kapatıldı veya bir VM/kapsayıcı durduruldu.",
@@ -2657,6 +2773,15 @@
     "vol": "Cilt",
     "vol_title": "Hacim (%0–200)",
     "search_placeholder": "Metin ara…",
+    "replace_placeholder": "Şununla değiştir…",
+    "replace": "Değiştir",
+    "replace_all": "Tümünü değiştir",
+    "find_next": "Sonraki eşleşme",
+    "find_prev": "Önceki eşleşme",
+    "find_count": "{{current}} / {{total}} eşleşme",
+    "find_none": "Eşleşme yok",
+    "replace_done_one": "{{count}} eşleşme değiştirildi",
+    "replace_done_other": "{{count}} eşleşme değiştirildi",
     "all_speakers": "Tüm konuşmacılar",
     "select_all_title": "Filtrelenenlerin tümünü seç",
     "sel_count": "{{count}} seç",
@@ -2849,6 +2974,7 @@
     "latencyMs": "{{ms}} ms",
     "none_ready_title": "Konuşma sentezi hazır değil",
     "none_ready_body": "VoiceStudio bu cihaz için en iyi uyumlu seçeneği otomatik olarak ayarlayabilir.",
+    "set_up": "Kur",
     "active": "Motor: {{name}}",
     "none": "Etkin motor yok",
     "localInstallRequired": "Bu motoru arka uç bilgisayarında localhost veya kurulum kılavuzu üzerinden yükleyin. Uzaktan kurulum devre dışıdır.",
@@ -2865,7 +2991,8 @@
     "balanced": "Dengeli",
     "quality": "Kalite",
     "hint": "OmniVoice örnekleme ve Faster-Whisper / NLLB kod çözme için geçerlidir. Diğer motorlar mevcut ayarlarını korur.",
-    "auto": "Otomatik"
+    "auto": "Otomatik",
+    "autoHint": "Bu bilgisayar için en iyi seviyeyi seçer."
   },
   "recording": {
     "input_device": "Giriş aygıtı",
@@ -2904,6 +3031,7 @@
     "windows_app_control_blocked": "Windows uygulama denetimi gerekli bir dosyayı engelledi. Yöneticinizden güvenilir VoiceStudio çalışma ortamına izin vermesini isteyin, ardından uygulamayı yeniden başlatın.",
     "audio_io_failed": "Ses okunamadı veya kaydedilemedi. Dosya biçimini, boş disk alanını ve dosya izinlerini kontrol edin. Ayarlar → Depolama bölümündeki klasörü inceleyin.",
     "no_audio_track": "Bu dosyada ses parçası yok, bu yüzden yazıya dökülecek, dublajlanacak veya klonlanacak konuşma yok. Ses içeren bir video veya ses dosyası seçin.",
+    "source_language_required": "Konuşma tanıma bu videoda hangi dilin konuşulduğunu bildirmedi, bu yüzden burada çevrilemiyor. Videoyu Seslendirme'de açıp kaynak dilini seçin veya dili algılayan bir konuşma tanıma modeli seçin.",
     "transcription_media_tool": "Yazıya dökme için ffmpeg gerekir, ancak VoiceStudio onu bulamadı veya çalıştıramadı. Ayarlar → Ses araçları bölümünü açıp İndir/Onar'ı kullanın ya da ffmpeg'i kurun (macOS: brew install ffmpeg; Windows: winget install Gyan.FFmpeg; Linux: paket yöneticiniz) ve VoiceStudio'yu yeniden başlatın. FFMPEG_PATH değişkenini bir ffmpeg dosyasına da yönlendirebilirsiniz.",
     "transcription_pipe_lost": "Arka uç, yazıya dökme sırasında uygulamaya giden çıkış kanalını kaybetti (broken pipe). VoiceStudio'yu yeniden başlatıp tekrar deneyin.",
     "gpu_oom": "GPU belleği tükendi. GPU'yu çok kullanan diğer uygulamaları kapatın veya modelleri boşaltın, sonra tekrar deneyin. Ayarlar → Performans ve Aygıt bölümünden CPU'yu seçebilir veya daha küçük bir TTS motoru seçebilirsiniz.",
@@ -2928,12 +3056,25 @@
     "open_in_browser": "Tarayıcıda aç",
     "qr_alt": "{{ip}} için QR",
     "pin": "PIN:",
-    "connect": "Bağlan"
+    "connect": "Bağlan",
+    "self_check": "Öz denetim",
+    "listening_on": "{{host}}:{{port}} dinleniyor",
+    "recheck": "Yeniden denetle",
+    "address_ok": "Dinleniyor",
+    "address_down": "Yanıt vermiyor",
+    "firewall_hint": "Bağlanamıyor musunuz? Aynı Wi-Fi'yi kullanın, VoiceStudio'ya güvenlik duvarında izin verin (Windows'ta Özel ağ) ve VPN'i kapatın."
   },
   "repairAgent": {
     "title": "VoiceStudio Agent’a sor",
     "notInstalled": "Yüklü değil",
-    "noSource": "Bir ajanın onarabilmesi için yazılabilir bir VoiceStudio kaynak çalışma kopyası açın.",
+    "noSource": "Kodu onarmak için git clone ile oluşturulmuş bir VoiceStudio kopyası seçin. Yüklü uygulama düzenlenemez.",
+    "sourceRejected": {
+      "installed_app": "Bu, düzenlenemeyen yüklü uygulama. Bunun yerine bir git clone seçin.",
+      "not_git": "Bu klasör bir git clone değil. ZIP indirmesi çalışmaz; git clone kullanın.",
+      "not_voicestudio": "Bu klasörde VoiceStudio kopyası bulunamadı.",
+      "read_only": "VoiceStudio bu klasöre yazamıyor. Size ait bir klasör seçin."
+    },
+    "chooseFailed": "Bu klasör kullanılamadı. Tekrar deneyin veya başka bir klasör seçin.",
     "noneFound": "Yerel onarım için Codex, Claude Code, OpenCode veya Pi yükleyin.",
     "ready": "Hazır",
     "placeholder": "Ne yanlış gitti? Adımları, görünen hataları veya beklenen davranışı ekleyin.",
@@ -3212,7 +3353,30 @@
     "match_contains": "İçerir",
     "match_equals": "Tam olarak eşittir",
     "match_starts": "Şununla başlar",
-    "match_ends": "Şununla biter"
+    "match_ends": "Şununla biter",
+    "subtitle": "Konuşma, çeviri ve dışa aktarma gibi adımları zincirleyin, hepsini tek seferde çalıştırın.",
+    "saved": "Kaydedildi",
+    "saved_hint": "Değişiklikler bu cihazda otomatik olarak kaydedilir.",
+    "name_label": "İş akışı adı",
+    "from_template": "Şablondan yeni",
+    "template_title": "Bir şablonla başlayın",
+    "template_hint": "Bir başlangıç noktası seçin. Her adımı sonradan değiştirebilirsiniz.",
+    "group_narration": "Seslendirme",
+    "group_audio": "Ses",
+    "group_calls": "Aramalar",
+    "template_recipe": "Metinleri tek bir sesle okuyun, her metin için bir klip.",
+    "template_clean_recipe": "Metinleri okuyun, ardından ses düzeyini eşitleyin.",
+    "template_transcription": "Ses kliplerini metne dönüştürün.",
+    "template_conversion": "Ses kliplerini kayıtlı bir sesle yeniden seslendirin.",
+    "template_localization": "Klipleri yazıya dökün, çevirin ve sonucu seslendirin.",
+    "template_restaurant": "Masa ayırtmak için bir restoranı arayın.",
+    "template_reschedule": "Bir randevuyu ertelemek için arayın.",
+    "template_hours": "Çalışma saatlerini sormak için arayın.",
+    "needs_setup": "Kurulum gerekli",
+    "run_blocked": "{{step}} kurulum gerektiriyor",
+    "add_kind": "{{step}} ekle",
+    "add_after": "{{step}} adımını seçili adımdan sonra ekle",
+    "palette_hint": "Eklemek için tıklayın veya tuvale sürükleyin."
   },
   "proPage": {
     "title": "VoiceStudio Pro",
@@ -3386,6 +3550,8 @@
     "hint": "Genellikle varsayılanları koruyun. Yönlendirme istemin etkisini ayarlar; diğer kontroller modelin sesi oluşturma şeklini değiştirir. Her seferinde birini değiştirin."
   },
   "languagePicker": {
+    "dialectFollowsVoice": "{{model}} için tek bir {{language}} modeli var, bu yüzden aksan referans sesi izler.",
+    "dialectUsed": "{{model}} yalnızca {{variant}} konuşur.",
     "auto": "Otomatik",
     "unavailable": "Desteklenmiyor",
     "unsupportedBy": "{{model}} tarafından desteklenmiyor",
@@ -3396,7 +3562,11 @@
     "unknown": "Dil desteği bilinmiyor",
     "error": "Diller kontrol edilemedi",
     "modelLanguages": "Bu modelin dilleri",
-    "changeModel": "Modeli değiştir"
+    "changeModel": "Modeli değiştir",
+    "recent": "Son kullanılanlar",
+    "available": "Kullanılabilir",
+    "showAll": "Tüm dilleri göster",
+    "hideUnsupported": "Desteklenmeyen dilleri gizle"
   },
   "modelLicense": {
     "title": "Model koşulları",
@@ -3526,6 +3696,10 @@
     "detailsFailed": "Lisans ayrıntıları yüklenemedi. Bu pencereyi kapatıp yeniden deneyin."
   },
   "mobile": {
+    "home": {
+      "subtitle": "ElevenLabs’a açık kaynaklı, tamamen yerel alternatifiniz — 646 dilde ses klonlayıp tasarlayın, videolara dublaj yapın, dikte edin, yazıya dökün ve sesli kitaplar oluşturun.",
+      "brought_by": "Sizlere sunanlar"
+    },
     "tabs": {
       "speak": "Konuş",
       "voices": "Sesler",
@@ -3889,6 +4063,271 @@
       "retry": "Tekrar dene",
       "rate_limited": "Bu ağdan çok fazla bildirim geldi. Daha sonra tekrar deneyin.",
       "invalid": "Bu bildirim gönderilemedi. Uygulamayı güncelleyip tekrar deneyin."
+    },
+    "production": {
+      "new": "Yeni proje",
+      "script_hint": "Bölümler için # Bölüm başlığı, karakter değiştirmek için satır başında [voice:Name] kullanın. Yalnızca düz metin; diğer işaretlemeler sesli okunur.",
+      "conversion_hint": "En fazla 30 saniyelik bir ses klibi seçin. Dönüştürme, sesi yazıya döküp seçilen sesle okur; özgün konuşma biçimini korumaz.",
+      "normalize_text": "Metni düzenle"
+    },
+    "calls": {
+      "remote_control": "Eşleştirilmiş cihazlardan çağrı kontrolüne izin ver",
+      "remote_control_hint": "API anahtarıyla doğrulanan telefonların çağrı başlatmasına ve yönetmesine izin ver. Çağrı ayarları bu bilgisayarda kalır.",
+      "hint": "Çağrılar eşleştirilmiş bilgisayarınız ve yapılandırılmış Twilio numarası üzerinden yapılır. Önce bilgisayarda çağrı kontrolünü etkinleştirin.",
+      "authentication": "Çağrıları kontrol etmek için bilgisayarın API anahtarıyla eşleştirin. Paylaşım PIN’i çağrı yetkisi vermez.",
+      "billing": "Twilio çağrı ücretleri uygulanır.",
+      "clone_hint": "Whisper örneğinizin dökümünü çıkarır. Ayrı bir klonlama modeli kaydetmeden önce klonlanmış bir ses önizlemesi oluşturur; iki model de gereklidir."
+    },
+    "host": {
+      "title": "Telefon konuşma API’si",
+      "hint": "Seçilen yüklü sesi OpenAI tarzı bir konuşma uç noktası ve MCP (2025-11-25) üzerinden sunar. Yalnızca bu ekran açıkken ve uygulama etkinken çalışır.",
+      "lan": "Yerel ağa izin ver",
+      "lan_hint": "Kapalı: yalnızca bu telefon. Açık: ağınızdaki cihazlar geçici Bearer belirteciyle bağlanabilir. Belirteci gizli tutun.",
+      "start": "Sunucuyu başlat",
+      "copy": "Bearer belirtecini kopyala",
+      "running": "Sunucu çalışıyor",
+      "capabilities_hint": "Yalnızca seçtiğiniz yüklü modelleri ve sesi sunun. Bu ekran açık kaldığı sürece konuşma üretimi, döküm ve çeviri bu telefonda çalışır.",
+      "allow_speech": "Konuşma üretimine izin ver",
+      "allow_transcription": "Döküme izin ver",
+      "allow_translation": "Çeviriye izin ver",
+      "voice_source": "Ses kaynağı",
+      "preset": "Hazır sesler",
+      "saved": "Kayıtlı sesler",
+      "audio_hint": "Döküm, base64 PCM16 mono WAV, 8–24 kHz ve en fazla 30 saniyeyi destekler."
+    },
+    "books": {
+      "import_failed": "Kitap içe aktarılamadı. Şifrelenmemiş EPUB, metin PDF veya UTF-8 metin kullanın (en fazla 64 MB).",
+      "no_text": "Okunabilir metin bulunamadı. Taranmış PDF’ler içe aktarılmadan önce metin tanıma gerektirir.",
+      "export_failed": "Ses dışa aktarılamadı. M4B en fazla 255 bölümü destekler.",
+      "invalid_controls": "0,5 ile 2 arasında hızlar, en fazla 30 saniyelik duraklamalar ve boş olmayan telaffuz girdileri kullanın.",
+      "controls_hint": "EPUB, metin PDF veya TXT içe aktarın. Saniye cinsinden sessizlik için [pause:0.5] ekleyin; bir satırın hızını değiştirmek için başına [speed:1.25] yazın. Değişmeyen satırlar kayıtlı sesi yeniden kullanır.",
+      "line_speed": "Satır hızı",
+      "restore_recipe": "Kayıtlı ses tarifini düzenle",
+      "save_recipe_copy": "Yeni ses olarak kaydet"
+    },
+    "editing": {
+      "undo": "Geri al",
+      "redo": "Yinele",
+      "subtitles": "Altyazılar",
+      "import_subtitles": "SRT / VTT içe aktar",
+      "export_srt": "SRT dışa aktar",
+      "export_vtt": "VTT dışa aktar",
+      "source_text": "Kaynak metin",
+      "original": "Özgün ses",
+      "generated": "Oluşturulan ses",
+      "split_at": "Bölme noktası",
+      "split": "Bölümü böl",
+      "merge": "Sonrakiyle birleştir",
+      "replace_subtitles": "Altyazı zaman çizelgesi değiştirilsin mi?",
+      "replace": "Değiştir",
+      "replace_subtitles_detail": "Bu, bu dilin bölüm zaman çizelgesini değiştirir. Diğer dillerin yeniden çevrilmesi gerekebilir. Oluşturmadan önce geri alabilirsiniz.",
+      "preview_unavailable": "Sesini önizlemeden önce bu bölümü oluşturun.",
+      "subtitle_invalid": "Bölümleri en fazla 30 saniye olan geçerli bir SRT veya VTT dosyası seçin.",
+      "subtitle_missing": "Altyazıları dışa aktarmadan önce tüm bölümleri çevirin.",
+      "split_invalid": "Her iki tarafta yeterli metin kalacak şekilde bölüm içinde bir bölme noktası seçin.",
+      "merge_invalid": "Aynı sesi kullanan ve toplam süresi en fazla 30 saniye olan bitişik bölümleri birleştirin.",
+      "waveform": "Ses dalga biçimi"
+    },
+    "jobs": {
+      "title": "Telefonda işleme",
+      "checkpointed": "Tamamlanan adımlar kaydedilir. Gerektiğinde iptal edip devam edin.",
+      "power_paused": "Pili korumak veya telefonu soğutmak için işleme duraklatıldı. Koşullar iyileşince devam edin.",
+      "background_paused": "Arka planda duraklatıldı. Bu görevi yeniden açın ve kaydedilen adımlardan devam edin.",
+      "requesting_gpu": "Arka plan GPU erişimi isteniyor…",
+      "requesting_cpu": "Arka plan CPU süresi isteniyor…",
+      "continued_gpu": "GPU ile devam izni verildi; iOS görevi yine de duraklatabilir veya sonlandırabilir.",
+      "continued_cpu": "CPU ile devam izni verildi; iOS görevi yine de duraklatabilir veya sonlandırabilir.",
+      "switching_cpu": "CPU ile devam etmeden önce ilerleme kaydediliyor ve GPU serbest bırakılıyor…",
+      "background_limited": "Arka plan süresini iOS sınırlar. Süre dolarsa tamamlanan adımlar kaydedilir.",
+      "background_requestable": "Bu telefon arka plan GPU isteklerini destekler. Her görev yine de iOS onayı gerektirir.",
+      "gpu_unavailable": "Arka plan GPU burada kullanılamıyor. CPU ile devam edin veya kayıtlı adımları sürdürmek için yeniden açın.",
+      "cpu_fallback": "Arka plan GPU kullanılamadığında CPU ile devama izin ver",
+      "cpu_tradeoff": "CPU daha yavaştır ve daha fazla pil tüketebilir. Ön plandaki işler normalde GPU kullanır.",
+      "cpu_unavailable": "Yüklü sürüm bu modeli CPU ile sürdüremiyor. Kaydedilen adımlar ön planda sürdürülebilir.",
+      "resume_checkpoint": "Kayıtlı görevi sürdür",
+      "foreground_service": "Android izin verdiği sürece bir ön plan hizmeti bu görevi çalışır tutar."
+    },
+    "flow": {
+      "import_media": "Ses veya video içe aktar",
+      "template_clean": "Düzenle ve oku",
+      "template_translate": "Çevir ve oku",
+      "template_transcribe": "Yazıya dök ve çevir",
+      "contains": "Metin şunu içeriyorsa devam et (büyük/küçük harfe duyarlı)",
+      "skip": "Yoksa {{count}} adımı atla",
+      "skip_label": "Yoksa atlanacak adımlar",
+      "retries": "Yeniden deneme: {{count}}",
+      "retries_label": "Hatadan sonra yeniden denemeler",
+      "step_transcribe": "Medyayı yazıya dök",
+      "step_condition": "Koşul"
+    },
+    "integration": {
+      "received": "Alınan içerik",
+      "review": "Görevi çalıştırmadan önce paylaşılan içeriği gözden geçirin. Hiçbir şey otomatik başlamaz.",
+      "shortcut_speak": "Seslendirmeyi aç",
+      "shortcut_dictate": "Dikteyi aç",
+      "widget_description": "Seslendirmeyi veya dikteyi açar. Kayıt yalnızca Başlat düğmesine dokununca başlar.",
+      "text": "Metin"
+    },
+    "export": {
+      "failed": "Ses dışa aktarılamadı. Boş depolama alanını kontrol edip tekrar deneyin."
+    },
+    "processing": {
+      "audio_editor": "Ses düzenleyici",
+      "hint": "Çevrimdışı konuşma düzenleme: 24 kHz mono. Kaynak dosyanız değişmez.",
+      "select_audio": "Ses seç",
+      "fade_in": "Açılış solması (saniye)",
+      "fade_out": "Kapanış solması (saniye)",
+      "gain_db": "Kazanç (dB)",
+      "normalize": "Tepeyi normalleştir",
+      "target_peak": "Hedef tepe (dBFS)",
+      "noise_gate": "Gürültü kapısı",
+      "gate_threshold": "Kapı eşiği (dBFS)",
+      "process": "Düzenlemeleri uygula",
+      "result": "İşlenmiş ses",
+      "peak": "Tepe",
+      "changed_settings": "Ayarlar değişti. Güncel sesi dinlemek veya dışa aktarmak için düzenlemeleri uygulayın.",
+      "preview_hint": "Kaynak önizlemesi kırpma başlangıcından itibaren en fazla 30 saniye oynatır.",
+      "invalid": "Kırpma zamanlarını, solma sürelerini ve ses seviyelerini kontrol edin.",
+      "segment_gain": "Bölüm ses düzeyi",
+      "mute": "Bölümü sessize al",
+      "record_consent": "Bu kaydı ses dönüştürme için kullanma iznim var.",
+      "merge_levels": "Bölümleri birleştirmeden önce aynı ses düzeyi ve sessizlik ayarlarını kullanın."
+    },
+    "transcripts": {
+      "hint": "Bu telefonda dört saate kadar ses veya videoyu yazıya dökün. Tamamlanan bölümler devam etmek üzere kaydedilir.",
+      "edited_hint": "Özgün dökümünüz saklanır. Metni düzenledikten sonra zaman kodlu altyazıları dışa aktarmak için özgün dökümü geri yükleyin."
+    },
+    "workflowParity": {
+      "bind_hint": "JSON taşındıktan sonra sesleri yeniden seçin. Çeviri, seçilen telefon modelini kullanır. Sesi yeniden ekleyin; dönüştürme en fazla 30 saniyelik klipleri kabul eder.",
+      "bind_voices": "Her konuşma veya dönüştürme adımı için yerel bir ses seçin.",
+      "branch_template": "Evet / hayır iş akışı",
+      "choose_next": "Sonraki adımı seç",
+      "export_json": "Masaüstü JSON dışa aktar",
+      "graph_hint": "Her kartı sonraki adıma bağlayın. Koşulun iki yolu yeniden birleşebilir. Her yol Bitiş noktasına ulaşmalıdır.",
+      "import_json": "Masaüstü JSON içe aktar",
+      "incompatible_merge": "Bu adımlar uyumsuz metin veya ses aktarır. Birleşen yollar aynı değer türünü taşımalıdır.",
+      "input_type": "Girdi",
+      "invalid_graph": "Tüm adımları tek girdiden Bitiş noktasına bağlayın. Koşullar bir Evet ve bir Hayır yolu gerektirir; döngülere izin verilmez.",
+      "invalid_language": "Her çeviri adımının kaynak ve hedef dilini seçin.",
+      "next_route": "Sonraki adım",
+      "no_route": "Hayır yolu",
+      "runs": "Kayıtlı çalıştırmalar",
+      "saved_steps": "İzlenen {{count}} adım kaydedildi",
+      "single_input": "Her iş akışında bir metin veya bir ses kaynağı kullanın. Masaüstü toplu işlerini içe aktarmadan önce ayırın.",
+      "source_language": "Kaynak dil",
+      "unsupported": "Bu telefon {{kind}} düğümünü çalıştıramaz. İçe aktarmadan önce masaüstünde kaldırın veya değiştirin.",
+      "unsupported_settings": "Desteklenmeyen ya da aralık dışı iş akışı ayarları.",
+      "yes_route": "Evet yolu",
+      "auto_voice_language": "Telefonda kayıtlı sesler dili metinden algılar. Konuşma dili için Otomatik seçin."
+    },
+    "galleryCopy": {
+      "action": "Bu telefona kopyala",
+      "ready": "Bu telefona kopyalandı",
+      "requires_host": "Önce bilgisayarınızda bir sesi kullanın, ardından referansını bu telefona kopyalayın.",
+      "confirm": "Bu sesin referans kaydı ve dökümü eşleştirilmiş bilgisayarınızdan indirilsin mi? Yalnızca sesin sahibiyseniz veya izniniz varsa ve lisansına uyacaksanız devam edin.",
+      "unavailable": "Kopyalama için en fazla 30 saniyelik referans ses ve boş olmayan bir döküm gerekir."
+    },
+    "dub_advanced": {
+      "ass": "Biçimli altyazılar (.ass)",
+      "background_hint": "Arka plan karıştırma, bilgisayarınızın ayırdığı bir parça gerektirir.",
+      "cast": "Oyuncular",
+      "cast_checked": "Konuşmacı etiketlerini ve sesleri kontrol ettim",
+      "clips": "Segment başına klipler (.zip)",
+      "color": "Altyazı rengi",
+      "computer_hint": "Eşleştirilmiş bilgisayarınızda kurulu motorlarla çalışır.",
+      "cyan": "Camgöbeği",
+      "detect": "Bilgisayarda konuşmacıları algıla",
+      "detect_hint": "Bilgisayarda kurulu modelleri kullanır. Analiz bölümleri değiştirebilir; ses kadrosunu inceleyip her hedef dili yeniden oluşturun.",
+      "dual": "İkili (çevrilmiş + orijinal)",
+      "export_limit": "Paketler toplam 1 GiB, dosya başına 512 MiB ile sınırlıdır.",
+      "exports": "Dışa aktarma seçenekleri",
+      "font_size": "Yazı boyutu",
+      "generate_first": "Dışa aktarmadan önce bu dili oluşturun.",
+      "install_on_computer": "Önce bilgisayarınıza konuşmacı ayrıştırma modellerini kurun.",
+      "invalid_cast": "Konuşmacı analizi eksik veya geçersiz.",
+      "invalid_export": "Bu dışa aktarma seçenekleri geçersiz.",
+      "keep_cast": "Kadronun mevcut sesini koru",
+      "manual_cast_hint": "Telefonda konuşmacı etiketleri atayın. Otomatik algılama için Bilgisayarı kullanın.",
+      "merge_speakers": "Farklı konuşmacıların bölümleri birleştirilemez.",
+      "missing_translation": "Çeviri tüm bölümleri kapsamadı. Aynı kaynakla yeniden deneyin.",
+      "multi_audio": "Birden fazla ses parçalı video",
+      "multi_audio_hint": "Oluşturulan tüm dilleri içerir. Seçilen dil varsayılan olarak oynatılır.",
+      "replace_overrides": "Tek tek satırların seslerini değiştir",
+      "review_cast": "Algılanan etiketleri inceleyip her konuşmacı için bir ses seçin.",
+      "source_voice": "Bu konuşmacının sesi",
+      "speaker": "Konuşmacı",
+      "stems": "Dublaj + özgün ses (.zip)",
+      "stems_hint": "Özgün kayıt ayrıştırılmamıştır. Ayrı arka plan parçası için Bilgisayarı kullanın.",
+      "timing": "Zamanlama",
+      "top": "Altyazıları üste yerleştir",
+      "video_required": "Birden fazla ses parçasını aktarmadan önce video oluşturun.",
+      "white": "Beyaz",
+      "yellow": "Sarı"
+    },
+    "handoff": {
+      "title": "Proje aktarımı ve yedekleme",
+      "hint": "Düzenlenebilir projeleri yedekleyip telefonlar ve bilgisayarlar arasında taşıyın. İçe aktarma yeni kopyalar oluşturur.",
+      "permission": "Paketteki ses kayıtlarını kullanma iznim var.",
+      "inbox": "Alınan projeler",
+      "receive": "Al",
+      "imported": "Proje içe aktarıldı",
+      "failed": "Proje aktarılamadı.",
+      "invalid": "Desteklenmeyen veya hasarlı proje arşivi.",
+      "too_large": "Arşiv sınırı: toplam 1 GB, dosya başına 512 MB.",
+      "voices_required": "Ses kayıtlarını içe aktarmadan veya göndermeden önce izni onaylayın.",
+      "compatibility": "Bu cihaz kurulu uyumlu modelleri kullanır. Motora özgü ayarlar ve diğer cihazların oluşturma önbellekleri arşivde tutulur.",
+      "import": "İçe aktar",
+      "export": "Dışa aktar",
+      "send": "Gönder"
     }
+  },
+  "failureCause": {
+    "details": "Ayrıntılar",
+    "fixes": "Önerilen çözümler",
+    "vram": {
+      "title": "GPU belleği doldu",
+      "fix1": "GPU kullanan diğer uygulamaları kapatın",
+      "fix2": "CPU'yu veya daha küçük bir motoru seçin"
+    },
+    "model_missing": {
+      "title": "Model indirilmemiş",
+      "fix1": "Model Kataloğu'ndan indirin",
+      "fix2": "Yüklemek için Onar'ı kullanın"
+    },
+    "busy": {
+      "title": "Motor meşgul",
+      "fix1": "Geçerli işin bitmesini bekleyin",
+      "fix2": "Birazdan tekrar deneyin"
+    },
+    "timeout": {
+      "title": "Oluşturma zaman aşımına uğradı",
+      "fix1": "Daha kısa bir bölüm deneyin",
+      "fix2": "Proxy zaman aşımını artırın"
+    },
+    "bad_response": {
+      "title": "Sunucudan beklenmeyen yanıt",
+      "fix1": "Ayarlar > Günlükler'de arka ucu kontrol edin",
+      "fix2": "VoiceStudio'yu yeniden başlatıp tekrar deneyin"
+    }
+  },
+  "modelInstall": {
+    "queued": "Başlamayı bekliyor…",
+    "downloading": "İndiriliyor…",
+    "downloadingPct": "İndiriliyor · %{{pct}}",
+    "finishing": "Doğrulanıyor ve kuruluyor…",
+    "cancelling": "İptal ediliyor…",
+    "cancelled": "İndirme iptal edildi",
+    "failed": "İndirme başarısız oldu",
+    "ready": "Kullanıma hazır",
+    "bytes": "{{total}} içinden {{done}}",
+    "speed": "{{rate}}/sn",
+    "eta": "{{time}} kaldı",
+    "downloadAgain": "Yeniden indir",
+    "nextDisk": "Yeterli disk alanı yok. Yer açın veya model klasörünü Ayarlar → Depolama bölümünden taşıyın, ardından yeniden deneyin.",
+    "nextGated": "Bu model Hugging Face erişimi gerektirir. Model sayfasından erişim isteyin, belirtecinizi Ayarlar → Kimlik Bilgileri bölümüne ekleyin, ardından yeniden deneyin.",
+    "nextNetwork": "İndirme sunucusuna ulaşılamadı. Bağlantıyı, proxy'yi veya yansıyı Ayarlar → Ağ bölümünden kontrol edin, ardından yeniden deneyin.",
+    "nextMemory": "Bu cihazın belleği yetmedi. Ayarlar → Performans bölümünden daha hafif bir profil seçin, ardından yeniden deneyin.",
+    "downloads": "İndirmeler",
+    "activeCount": "Süren indirmeler: {{count}}"
   }
 }

@@ -61,6 +61,8 @@ export interface EngineBackend {
   output_channels?: number | null;
   /** Lowercase picker names; null/absent means model-specific or unrestricted. */
   supported_language_names?: string[] | null;
+  /** Regional accents the engine renders itself, e.g. ['pt-BR'] (#3143). */
+  rendered_dialects?: string[] | null;
   execution_evidence?: {
     evidence_state: string;
     actual_execution_provider?: string | null;
@@ -73,6 +75,8 @@ export interface EngineBackend {
   reason: string | null;
   hint?: string | null;
   supports_cloning?: boolean | null;
+  /** Graded emotion conditioning (IndexTTS2): text, strength and vector. */
+  supports_emotion?: boolean;
   /** Built-in voices a request may pick (`preset_voice`); empty or absent when the engine has none (#2938). */
   preset_voices?: string[];
   default_voice?: string | null;
@@ -169,6 +173,10 @@ export interface CloneGenerateInput {
   instructVocabulary?: InstructVocabulary;
   /** Voice Design draft stored with the take; never affects synthesis. */
   designRecipe?: DesignRecipe;
+  /** IndexTTS2 independent emotion conditioning (text or eight weights). */
+  emoText?: string;
+  emoAlpha?: number;
+  emoVector?: number[];
   steps: number;
   cfg: number;
   speed: number;

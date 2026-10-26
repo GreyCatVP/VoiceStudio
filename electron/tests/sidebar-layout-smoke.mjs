@@ -247,15 +247,24 @@ try {
       'macOS titlebar must show the complete VoiceStudio wordmark',
     );
     const expandedSettings = macSidebar.getByRole('link', { name: 'Settings', exact: true });
-    const expandedDevice = macSidebar.getByRole('button', { name: /Local device/ });
+    const expandedDevice = macSidebar.getByRole('button', { name: /^Local:/ });
     const expandedSettingsBounds = await expandedSettings.boundingBox();
     const expandedDeviceBounds = await expandedDevice.boundingBox();
-    assert.equal((await expandedSettings.innerText()).trim(), '');
+    // Labelled, not icon-only: the footer reads as "Settings" and the device name.
+    assert.equal((await expandedSettings.innerText()).trim(), 'Settings');
+    assert.notEqual((await expandedDevice.innerText()).trim(), '');
+    // Device sits beside Settings on one row; the device name keeps room to read.
     assert.ok(
       expandedSettingsBounds &&
         expandedDeviceBounds &&
-        expandedDeviceBounds.x > expandedSettingsBounds.x,
-      'expanded macOS Local device must sit right of icon-only Settings',
+        expandedDeviceBounds.x >= expandedSettingsBounds.x + expandedSettingsBounds.width - 1 &&
+        Math.abs(
+          expandedDeviceBounds.y +
+            expandedDeviceBounds.height / 2 -
+            (expandedSettingsBounds.y + expandedSettingsBounds.height / 2),
+        ) <= 2 &&
+        expandedDeviceBounds.width >= 64,
+      `expanded macOS Local device must sit beside Settings: ${JSON.stringify({ expandedSettingsBounds, expandedDeviceBounds })}`,
     );
     await expandedDevice.click();
     await macPage.locator('[data-slot=popover-content][data-open]').waitFor({ state: 'visible' });
@@ -282,18 +291,19 @@ try {
       .getByRole('link', { name: 'Settings', exact: true })
       .boundingBox();
     const compactDeviceBounds = await compactMacSidebar
-      .getByRole('button', { name: /Local device/ })
+      .getByRole('button', { name: /^Local:/ })
       .boundingBox();
+    // The rail footer is one centered column, like the navigation above it.
     assert.ok(
       compactSettingsBounds &&
         compactDeviceBounds &&
-        compactDeviceBounds.x > compactSettingsBounds.x &&
+        compactDeviceBounds.y >= compactSettingsBounds.y + compactSettingsBounds.height &&
         Math.abs(
-          compactDeviceBounds.y +
-            compactDeviceBounds.height / 2 -
-            (compactSettingsBounds.y + compactSettingsBounds.height / 2),
+          compactDeviceBounds.x +
+            compactDeviceBounds.width / 2 -
+            (compactSettingsBounds.x + compactSettingsBounds.width / 2),
         ) <= 1,
-      `macOS Local device must sit to the right of Settings: ${JSON.stringify({ compactSettingsBounds, compactDeviceBounds })}`,
+      `macOS Local device must sit centered below Settings: ${JSON.stringify({ compactSettingsBounds, compactDeviceBounds })}`,
     );
     const workspaceTitleBounds = await macPage
       .getByRole('heading', { name: 'Voice cloning' })

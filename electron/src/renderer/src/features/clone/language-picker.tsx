@@ -3,13 +3,18 @@ import { useTranslation } from 'react-i18next';
 import { AlertCircleIcon, LanguagesIcon, XIcon } from 'lucide-react';
 // Shared JSX controls are also consumed by the maintained shared UI modules.
 // @ts-expect-error Shared JSX has no declaration file.
-import SearchableSelect from '@shared/components/SearchableSelect';
-// @ts-expect-error Shared JSX has no declaration file.
 import LanguageFlag from '@shared/components/LanguageFlag';
-import type { SearchOption } from '@shared/components/VirtualSearchableSelect';
+import type { SearchOption } from '@/lib/language-search';
 import { LANGUAGES } from '@/lib/languages';
 import { languageOptions, languageSupported, type LanguageOption } from '@/lib/language-options';
+import {
+  canonicalLanguage,
+  dialectOutcome,
+  languageDialect,
+  languageTagName,
+} from '@/lib/language-variants';
 import { setCloneSetting, useCloneSetting } from '@/lib/store/clone-settings';
+import { LanguageMenu } from './language-menu';
 
 export interface LanguagePickerProps {
   value?: string;
@@ -21,6 +26,8 @@ export interface LanguagePickerProps {
   modelLabel?: string;
   capabilityState?: 'known' | 'unknown' | 'loading' | 'error';
   recentsScope?: string;
+  /** Regional accents the model renders itself (#3143); null = unknown. */
+  renderedDialects?: readonly string[] | null;
 }
 
 export function LanguagePicker({
@@ -33,10 +40,31 @@ export function LanguagePicker({
   modelLabel,
   capabilityState,
   recentsScope = 'language',
+  renderedDialects,
 }: LanguagePickerProps = {}) {
   const { t, i18n } = useTranslation();
   const saved = useCloneSetting('language');
-  const language = value ?? saved;
+  // A value saved before the regional split ("Portuguese") shows as the
+  // variant it means when this picker offers variants; the stored value
+  // itself is left untouched (#3143). Pickers without variants (dub source)
+  // keep showing it as-is.
+  const raw = value ?? saved;
+  const canonical = canonicalLanguage(raw);
+  const language = canonical !== raw && options.includes(canonical) ? canonical : raw;
+  const dialect = modelLabel ? languageDialect(language) : undefined;
+  const outcome = dialectOutcome(dialect, renderedDialects);
+  const dialectNote =
+    outcome === 'voice' && dialect
+      ? t('languagePicker.dialectFollowsVoice', {
+          model: modelLabel,
+          language: languageTagName(dialect.split('-')[0], i18n.language),
+        })
+      : outcome && typeof outcome === 'object'
+        ? t('languagePicker.dialectUsed', {
+            model: modelLabel,
+            variant: languageTagName(outcome.used, i18n.language),
+          })
+        : '';
   const entries = useMemo(
     () =>
       languageOptions(options, i18n.language, t('languagePicker.auto')).map((option) => ({
@@ -81,9 +109,7 @@ export function LanguagePicker({
     );
   };
   return (
-    <SearchableSelect
-      virtualized
-      menuPortal
+    <LanguageMenu
       value={language}
       options={entries}
       disabled={disabled}
@@ -91,23 +117,26 @@ export function LanguagePicker({
       buttonClassName={className}
       unavailableLabel={unavailable}
       recentsKey={`voicestudio.language-recents.${recentsScope}.v1`}
-      onChange={(next: string) => {
+      onChange={(next) => {
         if (onValueChange) onValueChange(next);
         else setCloneSetting('language', next);
       }}
       renderOption={renderOption}
-      renderValue={(option: LanguageOption | undefined) => (
-        <>
-          {invalid ? (
-            <AlertCircleIcon className="size-4 text-warning" aria-hidden="true" />
-          ) : option?.code ? (
-            <LanguageFlag code={option.code === 'zh' ? 'cmn-Hans' : option.code} />
-          ) : (
-            <LanguagesIcon className="size-4 text-muted-foreground" aria-hidden="true" />
-          )}
-          <span className="max-w-48 truncate">{option?.label || language}</span>
-        </>
-      )}
+      renderValue={(entry) => {
+        const option = entry as LanguageOption | undefined;
+        return (
+          <>
+            {invalid ? (
+              <AlertCircleIcon className="size-4 text-warning" aria-hidden="true" />
+            ) : option?.code ? (
+              <LanguageFlag code={option.code === 'zh' ? 'cmn-Hans' : option.code} />
+            ) : (
+              <LanguagesIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+            )}
+            <span className="max-w-48 truncate">{option?.label || language}</span>
+          </>
+        );
+      }}
       header={
         <span className="min-w-0 truncate" title={modelLabel}>
           {modelLabel || t('clone.language')}
@@ -118,16 +147,19 @@ export function LanguagePicker({
       }
       footer={
         modelLabel ? (
-          <div className="flex items-center justify-between gap-2">
-            <span>
-              {invalid ? t('languagePicker.chooseSupported') : t('languagePicker.modelLanguages')}
-            </span>
-            <a
-              href="#/settings/models/tts"
-              className="shrink-0 rounded text-primary hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {t('languagePicker.changeModel')}
-            </a>
+          <div className="space-y-1">
+            {dialectNote && <p role="status">{dialectNote}</p>}
+            <div className="flex items-center justify-between gap-2">
+              <span>
+                {invalid ? t('languagePicker.chooseSupported') : t('languagePicker.modelLanguages')}
+              </span>
+              <a
+                href="#/settings/models/tts"
+                className="shrink-0 rounded text-primary hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {t('languagePicker.changeModel')}
+              </a>
+            </div>
           </div>
         ) : undefined
       }

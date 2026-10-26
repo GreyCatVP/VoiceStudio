@@ -224,6 +224,35 @@ def test_the_dockerfile_passes_copies_and_checks_the_overrides():
     assert "open('deploy/uv-overrides.txt')" in guard and "specifier.contains" in guard
 
 
+@pytest.mark.parametrize("line_ending", ["\n", "\r\n"])
+@pytest.mark.parametrize("installed", ["13.0.0", "12.3.0"])
+def test_docker_override_guard_parses_lines_and_enforces_versions(
+    tmp_path, monkeypatch, capsys, line_ending, installed,
+):
+    """Execute the shipped guard: a cold image must parse its override file,
+    including line endings, while a below-floor install must still fail."""
+    import importlib.metadata
+    import shlex
+
+    text = _DOCKERFILE.read_text(encoding="utf-8")
+    start = text.index('RUN python3 -c "from importlib.metadata import version;')
+    command = text[start:text.index("\n\n", start)].replace("\\\n", " ")
+    args = shlex.split(command)
+    assert args[:3] == ["RUN", "python3", "-c"]
+    (tmp_path / "deploy").mkdir()
+    (tmp_path / "deploy/uv-overrides.txt").write_bytes(
+        line_ending.join(["# Security overrides", "", "  pillow>=13.0.0  ", ""]).encode()
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(importlib.metadata, "version", lambda name: installed)
+    if installed == "12.3.0":
+        with pytest.raises(AssertionError, match="pillow 12.3.0 does not satisfy pillow>=13.0.0"):
+            exec(args[3], {})
+    else:
+        exec(args[3], {})
+        assert "uv overrides applied: pillow 13.0.0" in capsys.readouterr().out
+
+
 def test_the_colab_notebook_passes_the_overrides():
     nb = json.loads(_NOTEBOOK.read_text(encoding="utf-8"))
     installs = [

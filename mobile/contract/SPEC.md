@@ -15,6 +15,7 @@ no accounts. M1 (below) is the computer connection; M2 is on-device inference.
 | File | Source | Regenerate |
 |---|---|---|
 | `contract/openapi.json` | backend FastAPI app | `uv run python scripts/export_openapi.py` |
+| `contract/maintainer-cards.json`, iOS contributor assets | Electron Home maintainer cards and portraits | `bun scripts/export-mobile-contributors.ts` |
 | `contract/tokens.json`, `Tokens.generated.swift`, `Tokens.generated.kt` | Electron theme | `bun scripts/export-mobile-tokens.ts` |
 | Locale catalogs | `electron/src/renderer/src/i18n/locales/*.json` | copied into each app at build time |
 
@@ -81,17 +82,23 @@ no accounts. M1 (below) is the computer connection; M2 is on-device inference.
 ## Screens (M1)
 
 Bottom navigation: **Home**, **Voices**, **Dub**, **Dictate**, **Settings**.
-Home is the default after consent. It adapts Electron's dashboard with the same
+Home is the default after consent. The compact hero places the wordmark and feature
+summary beside the labeled contributor column; accessibility text sizes can stack them.
+Both apps show larger core-maintainer portraits
+above a two-row horizontal scroller of remaining contributors; tapping a core maintainer opens a scrollable
+native sheet with their localized identity and website, GitHub and X links.
+Profile metadata and brand artwork derive from Electron and are bundled offline.
+External pages open only on an explicit link tap. It adapts Electron's dashboard with the same
 bundled `electron/public/signal-field.webp` artwork, generated palettes, Inter,
 card hierarchy, recent generated audio, recent dubbing projects and saved voices.
-Its six working shortcuts open Speak, voice cloning, Dub, Dictate, Models and
-Connect. Speak stays reachable from Home; it is not a sixth bottom tab. Recent
+Its working shortcuts open Speak, voice cloning, Dub, Dictate, Models, Connect
+and the M3 production workspaces below. Speak stays reachable from Home; it is not a sixth bottom tab. Recent
 phone audio plays locally, saved phone voices open Speak with that reference
 selected, and project rows open that project's outputs/resume controls. Computer
 libraries are shown only from the paired host. Empty sections use localized
 empty states; Home never starts downloads or external requests on its own.
-Desktop-only workspaces (voice design, stories, audiobooks, galleries and tools)
-are not represented as nonfunctional mobile shortcuts.
+Every production shortcut opens a native implementation on both platforms;
+M3 documents their supported operations and execution locations.
 All tabs work without pairing once on-device models are installed (see M2); the Connect flow is reachable from first run and from Settings.
 
 1. **First run**
@@ -187,7 +194,7 @@ All tabs work without pairing once on-device models are installed (see M2); the 
   built from source (iOS: CMake + Xcode toolchain, Metal where supported;
   Android: NDK `arm64-v8a`, plus `x86_64` for the emulator).
 - Each app wraps the runtimes behind one platform interface
-  (`LocalEngine`: `synthesize`, `clone`, `transcribe`, `streamTranscribe`,
+  (`LocalEngine`: `synthesize`, `clone`, `design`, `transcribe`, `streamTranscribe`,
   `translate`, all cancellable, all off the main thread, progress reported).
   Feature screens never call a runtime directly.
 
@@ -310,7 +317,7 @@ repository). It needs no sign-in and accepts no audio or identifiers.
   | `platform` | `android` / `ios` |
   | `app_version` | root `package.json` version |
   | `task` | `speak` / `clone` / `dub` |
-  | `model_id` | phone: the `repo` from `models.json` of the model that made it (Speak: the TTS or clone model; a cloned voice: the `asr` model that transcribed its reference; a dub: its pinned `clone` model; results saved before this feature: `unknown`); computer: the engine id the host reported, else `unknown` (characters outside `0-9A-Za-z._/:-` removed, at most 128) |
+  | `model_id` | phone: the `repo` from `models.json` of the model that made it (Speak: the TTS or clone model; a cloned voice: the `clone` model that generated its saved preview (legacy voices can retain their ASR attribution); a dub: its pinned `clone` model; results saved before this feature: `unknown`); computer: the engine id the host reported, else `unknown` (characters outside `0-9A-Za-z._/:-` removed, at most 128) |
   | `model_revision` | phone only: the model's `revision` |
   | `runs_on` | `phone` / `computer` |
 
@@ -338,3 +345,146 @@ repository). It needs no sign-in and accepts no audio or identifiers.
   only when ticked, optional fields omitted when empty), headers (key format,
   no `Authorization`), the same key on Retry, a new key after 409, 429 and 400
   handling, and the production base URL unless a build overrides it.
+
+
+## M3 — native production workspaces
+
+Home exposes Voice Design, Stories, Audiobook, Batch dubbing, Gallery, Tools and
+Workflows on both platforms. These are native screens; no embedded desktop UI.
+
+- **Voice Design** uses the installed OmniVoice model through `LocalEngine.design`,
+  the existing clone-model licence/fit gate and the shared native inference
+  lease. Gender, age, pitch and style options are generated from Electron's
+  `CATEGORIES` by `bun scripts/export-mobile-design.ts` into `design.json`;
+  both resource pipelines bundle it. Seed is stable until New seed. Saving a
+  generated sample writes marked reference audio, its exact text, model identity,
+  traits and seed atomically. It becomes an ordinary phone reference voice.
+  A saved reference must be 0.1–30 seconds; longer samples remain shareable.
+- **Stories / Audiobook** share `ProductionProject`, including manuscript,
+  per-character casting, pronunciation, speed and pause controls. Bounded local
+  EPUB/text-PDF/TXT import never executes embedded content or extracts ZIP paths.
+  Unencrypted files are capped at 64 MB; scanned PDFs fail without readable text.
+  Content-addressed segment audio includes voice/model/settings; changing one
+  line reuses unaffected audio. Disk-streamed marked WAV and chapter outputs
+  export as WAV, MP3, AAC/M4A and chaptered M4B (up to 255 chapters). The same
+  pinned, source-built LAME encoder ships on both; cancellation and atomic
+  replacement preserve earlier results. Speak also exports WAV/M4A/MP3.
+- **Batch dubbing** publishes requests before enqueueing. Native durable queues
+  resume checkpointed work; cancellation preserves completed segments. No watch
+  folders or automatic imports. Host/source changes invalidate stale results.
+- **Dub editor** retains stable segment identities, per-language output hashes
+  and per-segment audio caches. Text/timing/voice edits, split/merge, undo/redo,
+  bounded SRT/VTT import/export and original/generated waveforms ship together.
+  Persisted segment gain/mute applies only during preview/mixing, invalidating
+  output fingerprints while keeping synthesized PCM caches valid.
+  Previous outputs remain until replacements succeed. Stale generated previews
+  are unavailable; source/reference media stay until explicit deletion. Manual
+  speaker labels and cast-wide voice assignment retain per-line overrides and
+  deduplicate reference PCM. Styled/dual ASS uses line timings. Clip and audio
+  packages verify cached render hashes and exclude voice references; original
+  audio is explicitly unseparated. Native encoded-video mux preserves multiple
+  language/default/alternate tracks. ZIP exports cap total bytes at 1 GiB and
+  each file at 512 MiB.
+- **Advanced paired dubbing** reuses installed-only diarization and existing host
+  SSE/task receipts. Explicit Detect requests `reanalyze_speakers=true` to refresh
+  labels on completed transcripts while preserving cue IDs, text, translations,
+  timing and explicit voice choices; ordinary reconnects replay the saved result.
+  Analysis and regeneration retain per-cue `gain`, `speed`, `direction`, `instruct`
+  and `effect_preset`; omitted legacy values retain the backend defaults.
+  Recasting translates fresh source cues on the same approved
+  provider before regeneration; resumed events validate original source text.
+  Host export supports selected/default/original tracks, separated background,
+  subtitle burn, dual/karaoke captions and existing audio/subtitle/package formats.
+  Acoustic diarization, isolated background separation and subtitle burn remain
+  explicit computer tasks.
+- **Editable project handoff** uses a version-1 `.vsproject` stored ZIP with a
+  SHA-256 manifest, canonical manuscript/timeline, assets, voice metadata and
+  preserved foreign settings/caches. Both phones and Electron import new IDs;
+  canonical phone edits override preserved desktop snapshots. Story chapter
+  headings survive both directions without becoming spoken lines; dub targets
+  include saved translation languages even before those tracks are rendered.
+  Voice/source conditioning requires explicit permission; credentials, licence receipts and
+  ownership verification are never restored. Bounded extraction rejects unsafe
+  paths, links, duplicate entries, unsupported versions and altered content.
+  Imports roll back failed writes; disconnected host imports finish their
+  transaction and remain available in the paired inbox. Completed outgoing host
+  archives expire after 24 hours or when pruned to the newest 20 within 2 GiB;
+  active downloads and imported projects/assets are never pruned.
+- **Tools** provides offline ASR/re-synthesis conversion of clips up to 30 seconds,
+  optional pitch-preserving duration fitting, and A/B synthesis of two phone
+  voices. Conversion aborts on an empty transcript before synthesis; decoded
+  scratch PCM is removed on success, failure or cancellation. Each result has
+  playback, system sharing and Report with the actual generating model. Inline
+  conversion recording requires microphone permission and consent, stops at
+  29 seconds and releases capture on lifecycle stop.
+- **Audio editor** uses bounded disk passes (up to four hours) for trim, fades,
+  gain, actual peak normalization with a −50 dBFS silence guard, and a noise gate.
+  It preserves source media and synthetic provenance, supports WAV/M4A/MP3,
+  and never loads a model or marks natural-only DSP as synthetic.
+- **Gallery** defaults to installed phone presets and opens Speak with the
+  selected model/speaker. My computer loads the paginated community catalogue
+  through the paired client, displays author/licence/language, previews only on
+  Play and materializes a host profile only on Use voice. Host changes discard
+  gallery results, preview and selected profiles. Copy to phone requires a separate
+  explicit voice-permission action and requests the host's bounded stored voice
+  bundle. A valid transcript and reference up to 30 seconds are installed under
+  a fresh phone identity; author/licence attribution remains visible and travels
+  with project archives. No model download/inference or direct external networking
+  is introduced.
+- **Workflows** retain ordered legacy recipes and support typed acyclic graphs
+  with yes/no contains/equals/starts/ends conditions and compatible branch joins.
+  Transcription, translation, speech, ASR/re-synthesis conversion and normalization
+  execute with bounded retries. Input/model/settings hashes bind checkpoints and
+  saved run paths. Desktop version-1 workflow JSON import/export validates nodes;
+  agent/call/unknown nodes, cycles, unreachable paths, incompatible types and
+  multiple input batches fail explicitly. Audio is reattached and voices rebound
+  locally. Conversion is limited to 30 seconds; templates remain local.
+- **Transcriptions** saves local and paired live dictation into app-private history.
+  Search, original-preserving edits, copy, delete, TXT/JSON and timed SRT/VTT
+  exports are available on both. File transcription accepts source files up to 1 GiB and decodes up to four hours
+  to disk and recognizes bounded 20-second chunks with absolute cue offsets.
+  Atomic per-chunk checkpoints bind source SHA-256 and the exact installed model
+  pin; cancellation retains completed chunks. Completion removes scratch PCM.
+  Edited text cannot export stale subtitle timings until the original is restored.
+  Android uses a foreground worker; iOS uses the shared CPU job owner and resumes
+  saved records after restart. Import never downloads a model.
+- **Jobs** live beyond screen navigation. Android foreground workers expose
+  progress/cancellation. iOS requests user-started continued processing on iOS
+  26+, including supported GPU continuation with the signed GPU entitlement
+  and an actual OS grant. A user-enabled CPU fallback cancels/checkpoints,
+  awaits native-lease cleanup, then reruns the same immutable operation under
+  task-scoped CPU selection. No process-global backend environment is changed;
+  foreground Metal remains the default. Unsupported/denied grants and older OS
+  limits retain explicit resume. Thermal critical state and critically low
+  battery pause work. Sustained jobs cover dubs, narration, workflows and file transcription;
+  interactive tools remain screen-owned. Paused book/workflow recipes may resume
+  only when their full draft and model configuration still match; edits discard
+  stale resume closures without replacing the newer draft.
+- **Cloning** requires separate ASR and cloning models. ASR alone cannot create a
+  cloned voice. Publication follows successful marked cloned-preview synthesis;
+  original reference WAV/PCM stays separate. Failed/canceled synthesis publishes
+  no voice. Legacy voices without generated previews retain their old playback.
+- **Calls** run on the paired computer. Only an authenticated operator session
+  or API key plus the computer's off-by-default `allow_remote_control` setting
+  enables the desktop-mode exception. PIN/trusted-network callers never gain
+  call control. `/calls/settings` keeps its strict admin gate; remote callers
+  cannot opt themselves in on desktop-mode hosts. Existing server-mode operator
+  access is unchanged. Explicit confirmation precedes outbound dialing.
+- **Phone API / MCP** is explicitly started, foreground-only and loopback-bound
+  by default, with optional LAN binding. A random ephemeral bearer authenticates
+  all endpoints. Strict bounded HTTP framing (16 KiB headers, 2 MiB bodies),
+  Host/Origin validation, one active model operation and no arbitrary paths,
+  URLs, voices or downloads constrain access. Enabled installed models alone
+  are advertised. Preset/saved-voice speech returns marked WAV/MP3; opt-in ASR
+  accepts base64 PCM16 mono WAV (8–24 kHz, at most 30 seconds), and opt-in text
+  translation accepts only selected-model language codes. Stateless JSON MCP
+  2025-11-25 supports initialize, ping, tools/list and tools/call with enabled
+  speak/transcribe/translate tools. Closing/backgrounding cancels all requests.
+- **System integration** accepts shared text/audio/video into a review screen.
+  Widgets/shortcuts open workspaces without automatic inference or microphone
+  access. Voice-design recipes can be restored into their editor.
+
+Generated speech in every workspace uses the existing synthetic-audio marking
+chokepoint. Report reuses the existing `speak` task; mixed-model books report
+`unknown` rather than incorrectly attributing every voice to one model. No new
+model downloads, gallery imports, calls or integrations start from Home.
