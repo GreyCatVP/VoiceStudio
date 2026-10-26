@@ -276,21 +276,29 @@ async function scopeTargets(key: DiskResetScope, roots: ResetRoots): Promise<str
 
 async function allowedTarget(
   path: string,
+  key: DiskResetScope,
   roots: ResetRoots,
   home: string | null,
 ): Promise<boolean> {
+  if (key === 'models')
+    return within(path, roots.models) && isValidVoiceStudioRoot(roots.models, home);
   if (
+    key === 'caches' &&
     normalized(dirname(path)) === normalized(roots.temp) &&
     basename(path).toLocaleLowerCase('en-US').startsWith('omnivoice')
   ) {
     return true;
   }
-  for (const root of [roots.data, roots.models, roots.logs].filter((value): value is string =>
-    Boolean(value),
-  )) {
-    if (within(path, root) && (await isValidVoiceStudioRoot(root, home))) return true;
+  for (const root of [roots.data, roots.logs].filter((value): value is string => Boolean(value))) {
+    if (within(path, root) && (await isAppOwnedRoot(root, home))) return true;
   }
   return false;
+}
+
+async function overlapsSharedModels(path: string, models: string | null): Promise<boolean> {
+  if (!models) return false;
+  const candidate = await physicalPath(path);
+  return Boolean(candidate && (within(candidate, models) || within(models, candidate)));
 }
 
 export async function scanResetScopes(
@@ -305,6 +313,8 @@ export async function scanResetScopes(
     shared: false,
     needs_restart: false,
   }));
+  const sharedModels = await modelsAreShared(roots.models, roots.data, home);
+  const sharedModelRoot = sharedModels ? await physicalPath(roots.models) : null;
   for (const key of DISK_RESET_SCOPES) {
     const targets = await scopeTargets(key, roots);
     const present: string[] = [];
@@ -315,7 +325,12 @@ export async function scanResetScopes(
       paths: present,
       size_bytes: sizes.reduce((sum, size) => sum + size, 0),
       exists: present.length > 0,
-      shared: key === 'models' && (await modelsAreShared(roots.models, roots.data, home)),
+      shared:
+        key === 'models'
+          ? sharedModels
+          : (
+              await Promise.all(present.map((path) => overlapsSharedModels(path, sharedModelRoot)))
+            ).some(Boolean),
       needs_restart: true,
     });
   }
@@ -335,11 +350,18 @@ export async function purgeResetScopes(
     restarted: false,
   };
   const wanted = DISK_RESET_SCOPES.filter((key) => requested.includes(key));
+  const modelsSelected = wanted.includes('models');
+  const sharedModelRoot = (await modelsAreShared(roots.models, roots.data, home))
+    ? await physicalPath(roots.models)
+    : null;
   const targets: string[] = [];
   for (const key of wanted) {
     for (const target of await scopeTargets(key, roots)) {
       if (!(await stat(target))) continue;
-      if (!(await allowedTarget(target, roots, home))) {
+      if (
+        !(await allowedTarget(target, key, roots, home)) ||
+        (!modelsSelected && (await overlapsSharedModels(target, sharedModelRoot)))
+      ) {
         report.refused.push(target);
         continue;
       }
