@@ -19,7 +19,8 @@ def sdk_environment(monkeypatch, tmp_path, runtime):
     monkeypatch.setattr(runtime, "dll_directories", lambda: [])
     monkeypatch.setenv("ROCM_PATH", "")
     monkeypatch.delenv("ROCM_PATH")
-    monkeypatch.delenv("MIOPEN_CUSTOM_CACHE_DIR", raising=False)
+    monkeypatch.setenv("MIOPEN_CUSTOM_CACHE_DIR", "")
+    monkeypatch.delenv("MIOPEN_CUSTOM_CACHE_DIR")
     root = tmp_path / "SDK with spaces"
     header = root / "include/rocrand/rocrand_xorwow.h"
     header.parent.mkdir(parents=True)

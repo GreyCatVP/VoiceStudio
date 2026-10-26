@@ -18,7 +18,8 @@ def cache_environment(monkeypatch, runtime):
     monkeypatch.setattr(runtime, "dll_directories", lambda: [])
     monkeypatch.setenv("MIOPEN_DISABLE_CACHE", "")
     monkeypatch.delenv("MIOPEN_DISABLE_CACHE")
-    monkeypatch.delenv("MIOPEN_CUSTOM_CACHE_DIR", raising=False)
+    monkeypatch.setenv("MIOPEN_CUSTOM_CACHE_DIR", "")
+    monkeypatch.delenv("MIOPEN_CUSTOM_CACHE_DIR")
     return monkeypatch
 
 
