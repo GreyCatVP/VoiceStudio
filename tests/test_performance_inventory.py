@@ -195,3 +195,37 @@ def test_verified_windows_hip_asr_reserves_vram(local_inventory, monkeypatch, ve
     monkeypatch.setattr(inventory, "make_plan", capture)
     inventory.profile_plan("max", {}, local_inventory)
     assert captured["asr"][-1].vram == expected
+
+
+@pytest.mark.parametrize("engine", ["mlx-whisper", "parakeet-mlx", "moonshine"])
+def test_gpu_or_user_picked_asr_engine_is_kept(local_inventory, engine):
+    # Apple Silicon auto-detects MLX Whisper on the GPU; a preset must not pin
+    # CPU faster-whisper over it (or over any engine the user picked).
+    local_inventory["asr"] = {"engine": engine, "model": engine}
+    entry = inventory.profile_plan("max", {}, local_inventory)["families"]["asr"]
+    assert entry["reason"] == "kept"
+    assert entry["selection"]["engine"] == engine
+
+
+def test_ct2_asr_engine_still_follows_the_preset(local_inventory):
+    local_inventory["asr"] = {"engine": "whisperx", "model": "whisperx"}
+    entry = inventory.profile_plan("max", {}, local_inventory)["families"]["asr"]
+    assert entry["reason"] != "kept"
+    assert entry["selection"]["engine"] == "faster-whisper"
+
+
+def test_family_preset_does_not_pin_faster_whisper_over_mlx(monkeypatch):
+    from core import prefs
+    from services import asr_backend
+
+    monkeypatch.delenv("OMNIVOICE_ASR_BACKEND", raising=False)
+    monkeypatch.setattr(prefs, "is_env_shadowed", lambda key: False)
+    monkeypatch.setattr(asr_backend, "active_backend_id", lambda: "mlx-whisper")
+    pinned = Mock()
+    monkeypatch.setattr(prefs, "set_", pinned)
+    monkeypatch.setattr(profiles, "_installed_ct2_models", lambda: [
+        {"repo_id": "Systran/faster-whisper-large-v3", "size_gb": 3.1},
+    ])
+    monkeypatch.setattr(profiles, "_faster_whisper_backend", lambda: "faster-whisper")
+    assert profiles._activate_asr_model("max") is None
+    pinned.assert_not_called()
