@@ -33,6 +33,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
+from core.language_variants import VARIANT_CODES as _VARIANT_CODES
 from services.dub_qc import _NO_SPACE_SCRIPT
 
 # A "word" character for boundary purposes. We treat the standard regex word
@@ -193,14 +194,21 @@ def lexicon_signature(lexicon: Optional[dict]) -> str:
 def load_lexicon(path) -> dict[str, str]:
     """Load + normalize a lexicon from a JSON file.
 
-    A missing file, empty file, or non-object JSON yields ``{}`` rather than
-    raising — a project simply has no lexicon yet. Malformed JSON still raises
-    (caller's choice to surface it).
+    A missing file, empty file, unreadable file (non-UTF-8 bytes, OS error),
+    or non-object JSON yields ``{}`` rather than raising — a project simply
+    has no lexicon yet. Malformed JSON still raises (caller's choice to
+    surface it).
     """
     p = Path(path)
-    if not p.is_file():
+    try:
+        if not p.is_file():
+            return {}
+        raw = p.read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeDecodeError):
+        # Same family as a missing file: the lexicon is unreadable, so
+        # treat it as not-yet-authored. Malformed JSON (the next step) is
+        # a different bug class and still propagates as before.
         return {}
-    raw = p.read_text(encoding="utf-8").strip()
     if not raw:
         return {}
     data = json.loads(raw)
@@ -238,7 +246,8 @@ _ALL_LANG = "*"
 
 # Picker spellings the bundled map does not list (same aliases as
 # ``TTSBackend._normalize_language_code``).
-_LANG_NAME_ALIASES = {"mandarin": "zh", "arabic": "ar", "tagalog": "tl"}
+# Regional variant names ("Portuguese (Brazil)", #3143) scope to their base id.
+_LANG_NAME_ALIASES = {"mandarin": "zh", "arabic": "ar", "tagalog": "tl", **_VARIANT_CODES}
 # A bare ISO 639 id with optional region/script subtags: en, kbt, es-MX, zh_Hans.
 _LANG_TAG_RE = re.compile(r"^([a-z]{2,3})(?:[-_][a-z0-9]{1,8})*$")
 

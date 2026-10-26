@@ -322,6 +322,10 @@ def _handle_synthesize(msg: dict, stdout) -> None:
             "ref_audio must be a local file path; URLs are not accepted (local-first)."
         )
     model = _load_model(stdout)
+    if msg.get("seed") is not None:
+        import torch  # noqa: PLC0415
+
+        torch.manual_seed(int(msg["seed"]))
     chunks = list(_run_model(model, msg))
     sample_rate = int(getattr(model, "sample_rate", COSYVOICE_SAMPLE_RATE) or COSYVOICE_SAMPLE_RATE)
     pcm_b64, n_samples = _mono_pcm_b64(chunks, sample_rate)

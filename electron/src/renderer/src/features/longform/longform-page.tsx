@@ -41,6 +41,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { DownloadIcon, ListIcon, SparklesIcon } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { WaveformPlayer } from '@/components/waveform-player';
@@ -54,7 +55,7 @@ import { useProfiles } from '@/hooks/use-profiles';
 import { apiJson, apiPath, describeError } from '@/lib/api/client';
 import { saveExport } from '@/lib/export-history';
 import { EngineLanguagePicker } from '@/features/clone/engine-language-picker';
-import { LANG_CODES } from '@shared/utils/languages';
+import { outputLanguageOptions } from './output-languages';
 import {
   editLongform,
   dismissLongformError,
@@ -84,6 +85,7 @@ export function LongformPage({ mode }: { mode: Mode }) {
     mode === 'audiobook' ? draft.script : draft.lines.map((line) => line.text).join('\n');
   const names = useMemo(() => parseCastNames(text), [text]);
   const stats = useMemo(() => scriptStats(text), [text]);
+  const languageOptions = useMemo(() => outputLanguageOptions(draft.language), [draft.language]);
   const { data: profiles = [] } = useProfiles();
   const [importing, setImporting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -218,8 +220,9 @@ export function LongformPage({ mode }: { mode: Mode }) {
         </h1>
         <Link
           to={mode === 'stories' ? '/audiobook' : '/stories'}
-          className={buttonVariants({ variant: 'ghost', size: 'sm' })}
+          className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'ms-auto')}
         >
+          {mode === 'stories' ? <BookOpenTextIcon /> : <AudioLinesIcon />}
           {t(mode === 'stories' ? 'audiobook.title' : 'nav.stories')}
         </Link>
       </WorkspaceHeader>
@@ -289,7 +292,7 @@ export function LongformPage({ mode }: { mode: Mode }) {
               <EngineLanguagePicker
                 operation={ttsOperation}
                 value={draft.language}
-                options={['Auto', ...LANG_CODES.map((l) => l.label)]}
+                options={languageOptions}
                 disabled={locked}
                 onValueChange={(language) => set({ language })}
               />
@@ -452,6 +455,7 @@ export function LongformPage({ mode }: { mode: Mode }) {
                   setText={(script) => set({ script })}
                 />
                 <textarea
+                  dir="auto"
                   ref={audiobookInput}
                   aria-label={t('clone.script')}
                   className="min-h-64 flex-1 resize-none bg-transparent text-base leading-7 outline-none"
@@ -476,7 +480,7 @@ export function LongformPage({ mode }: { mode: Mode }) {
             )}
             <p className="text-xs text-muted-foreground">
               {t('audiobook.stats', {
-                chapters: stats.chapters,
+                count: stats.chapters,
                 words: stats.words,
                 runtime: formatRuntimeClock(stats.runtimeSec),
               })}

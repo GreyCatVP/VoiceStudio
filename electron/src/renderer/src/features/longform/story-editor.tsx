@@ -213,6 +213,7 @@ export function StoryEditor({
             {t('stories.autocastHint')}
           </p>
           <textarea
+            dir="auto"
             aria-label={t('stories.autocast')}
             placeholder={t('stories.splitPlaceholder')}
             className="min-h-32 w-full rounded-lg border border-border/60 bg-background/40 p-3 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"

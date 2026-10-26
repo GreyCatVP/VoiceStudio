@@ -6,7 +6,8 @@ import { getBridge } from '@/components/bridge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { runRendererTask } from '@/lib/global-error-recovery';
-import { REPO_URL, WEBSITE_URL, X_URL } from '@shared/utils/contactLinks';
+import { REPO_URL } from '@shared/utils/contactLinks';
+import { homeMaintainerCards as MAINTAINER_CARDS } from './home-maintainer-cards';
 import { homeContributors, homeCoreMaintainers } from './home-contributors-data';
 
 function openProfile(event: MouseEvent<HTMLAnchorElement>) {
@@ -16,49 +17,6 @@ function openProfile(event: MouseEvent<HTMLAnchorElement>) {
   const href = event.currentTarget.href;
   runRendererTask('Open contributor profile', () => bridge.files.openExternal(href));
 }
-
-/** Core team hover cards: name, role and the profiles people can follow. */
-const MAINTAINER_CARDS: Record<
-  string,
-  {
-    name: 'homeUi.maintainerPalash' | 'homeUi.maintainerShimul';
-    role: 'homeUi.creatorCoreTeam' | 'homeUi.coreTeam';
-    links: CardLink[];
-  }
-> = {
-  debpalash: {
-    name: 'homeUi.maintainerPalash',
-    role: 'homeUi.creatorCoreTeam',
-    links: [
-      { kind: 'website', handle: 'palash.dev', href: WEBSITE_URL },
-      {
-        kind: 'github',
-        handle: '@debpalash',
-        href: 'https://github.com/debpalash',
-      },
-      { kind: 'x', handle: '@idebpalash', href: X_URL },
-    ],
-  },
-  velixio: {
-    name: 'homeUi.maintainerShimul',
-    role: 'homeUi.coreTeam',
-    links: [
-      { kind: 'website', handle: 'shimul.me', href: 'https://shimul.me' },
-      {
-        kind: 'github',
-        handle: '@velixio',
-        href: 'https://github.com/velixio',
-      },
-      { kind: 'x', handle: '@shimuldn', href: 'https://x.com/shimuldn' },
-    ],
-  },
-};
-
-type CardLink = {
-  kind: 'website' | 'github' | 'x';
-  handle: string;
-  href: string;
-};
 
 type Credit = { login: string; avatar: string };
 

@@ -58,6 +58,11 @@ export interface BackendStatus {
     activePackage?: string;
     downloadsComplete?: boolean;
     estimatedBytes?: boolean;
+    /** Host serving the active download, from the wheel URLs pinned in uv.lock. */
+    downloadHost?: string;
+    /** Pending downloads received no bytes for `stalledSeconds`. */
+    stalled?: boolean;
+    stalledSeconds?: number;
   };
   /** http://127.0.0.1:<port> — no trailing slash. */
   baseUrl: string;
@@ -119,6 +124,8 @@ export interface UpdateState {
   currentVersion: string;
   /** Absent when this build cannot switch channels (Store builds, dev runs). */
   channel?: UpdateChannel;
+  /** Set only while status is 'unsupported': why this build cannot update itself. */
+  unsupportedReason?: 'development' | 'store' | 'package-manager';
   availableVersion?: string;
   notes?: string | null;
   progress: number;
@@ -214,6 +221,8 @@ export interface RepairAgentState {
   exitCode?: number | null;
   workspaceAvailable: boolean;
   workspacePath?: string;
+  /** Set only on a chooseWorkspace reply whose picked folder was rejected. */
+  workspaceError?: 'installed_app' | 'not_git' | 'not_voicestudio' | 'read_only';
 }
 export type RepairAgentEvent =
   | { sessionId: string; type: 'output'; text: string }

@@ -55,7 +55,7 @@ const WIDTHS = {
 
 const VARIANT_STYLES = {
   controls:
-    '[&>section]:shadow-[inset_0_1px_0_color-mix(in_oklab,var(--foreground)_3%,transparent)] [&>details]:shadow-[inset_0_1px_0_color-mix(in_oklab,var(--foreground)_3%,transparent)] [&_summary]:min-h-8 [&_summary]:select-none [&_summary]:items-center [&_summary]:px-0.5 [&_summary]:font-medium [&_summary]:text-foreground/90 [&_summary:hover]:bg-background/35 [&_h2]:text-foreground/90 [&_h3]:text-foreground/90',
+    '[&_summary]:min-h-8 [&_summary]:select-none [&_summary]:items-center [&_summary]:px-0.5 [&_summary]:font-medium [&_summary]:text-foreground/90 [&_summary:hover]:bg-background/35 [&_h2]:text-foreground/90 [&_h3]:text-foreground/90',
   navigation:
     '[&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2.5 [&>button]:rounded-lg [&>button]:px-2.5 [&>button]:font-normal [&>button]:transition-[color,background-color,box-shadow] [&>button:hover]:bg-accent/55 [&>button[aria-pressed=true]]:bg-accent/80 [&>button[aria-pressed=true]]:font-medium [&>button[aria-pressed=true]]:shadow-[inset_2px_0_0_var(--primary)] [&>button>svg]:text-muted-foreground [&>button[aria-pressed=true]>svg]:text-primary',
   library:
@@ -76,6 +76,7 @@ export function SecondarySidebar({
   libraryLabel,
   collapsed: controlledCollapsed,
   onCollapsedChange,
+  tabsInHeader = false,
 }: {
   title: string;
   icon: LucideIcon;
@@ -93,6 +94,11 @@ export function SecondarySidebar({
   collapsed?: boolean;
   /** Lets the page re-home the footer's content while the pane is collapsed. */
   onCollapsedChange?: (collapsed: boolean) => void;
+  /**
+   * Show the controls/library tabs in the header row instead of the title, for
+   * pages whose title bar and tabs already name the workspace.
+   */
+  tabsInHeader?: boolean;
 }) {
   const { t } = useTranslation();
   const fullscreen = useWindowFullscreen();
@@ -116,6 +122,62 @@ export function SecondarySidebar({
     if (controlledCollapsed === undefined) setUncontrolledCollapsed(resolved);
     onCollapsedChange?.(resolved);
   };
+  const headerTabs = tabsInHeader && library != null;
+  const tabList = (className: string) => (
+    <div
+      role="tablist"
+      aria-label={title}
+      data-slot="secondary-sidebar-tabs"
+      className={cn('flex min-w-0 shrink-0 gap-1', className)}
+      onKeyDown={(event) => {
+        if (event.altKey || event.ctrlKey || event.metaKey) return;
+        const tabs = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+        const current = tabs.findIndex((tab) => tab === event.target);
+        if (current < 0) return;
+        const forward =
+          getComputedStyle(event.currentTarget).direction === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
+        const backward = forward === 'ArrowRight' ? 'ArrowLeft' : 'ArrowRight';
+        const next =
+          event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? 1
+              : event.key === forward || event.key === backward
+                ? 1 - current
+                : null;
+        if (next === null) return;
+        event.preventDefault();
+        chooseView(next === 0 ? 'controls' : 'library');
+        tabs[next]?.focus();
+      }}
+    >
+      {(
+        [
+          ['controls', title],
+          ['library', libraryLabel ?? title],
+        ] as const
+      ).map(([value, label]) => (
+        <button
+          key={value}
+          type="button"
+          role="tab"
+          id={`${tabsId}-${value}`}
+          aria-controls={`${tabsId}-panel-${value}`}
+          aria-selected={view === value}
+          tabIndex={view === value ? 0 : -1}
+          onClick={() => chooseView(value)}
+          className={cn(
+            'h-7 min-w-0 flex-1 truncate rounded-md px-2 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring',
+            view === value
+              ? 'bg-accent/80 text-foreground'
+              : 'text-muted-foreground hover:bg-accent/45 hover:text-foreground',
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
   const dimensions = WIDTHS[size];
   const resize = usePaneResize({
     storageKey: `voicestudio.secondary-sidebar.${size}`,
@@ -137,7 +199,7 @@ export function SecondarySidebar({
         } as CSSProperties
       }
       className={cn(
-        'secondary-sidebar relative [--pane-resize-display:flex] @max-[40rem]:[--pane-resize-display:none] flex min-h-0 shrink-0 flex-col border-r border-border/55 bg-[color-mix(in_oklab,var(--muted)_13%,var(--background))] shadow-[inset_-1px_0_0_color-mix(in_oklab,var(--foreground)_2%,transparent)] [container-type:inline-size]',
+        'secondary-sidebar relative [--pane-resize-display:flex] @max-[40rem]:[--pane-resize-display:none] flex min-h-0 shrink-0 flex-col border-r border-border/55 bg-[color-mix(in_oklab,var(--muted)_13%,var(--background))] [container-type:inline-size]',
         collapsed
           ? 'w-11'
           : 'w-[var(--secondary-sidebar-width)] @max-[40rem]:max-h-[40%] @max-[40rem]:w-full @max-[40rem]:border-r-0 @max-[40rem]:border-b',
@@ -157,11 +219,12 @@ export function SecondarySidebar({
         data-slot="secondary-sidebar-header"
         style={lightsInset ? { paddingInlineStart: lightsInset + 12 } : undefined}
         className={cn(
-          'workspace-titlebar flex h-12 shrink-0 items-center gap-2.5 border-b border-border/45 bg-background/30 shadow-[0_1px_0_color-mix(in_oklab,var(--foreground)_2%,transparent)] backdrop-blur-xl',
+          'workspace-titlebar flex h-12 shrink-0 items-center gap-2.5 border-b border-border/45',
           collapsed ? 'px-1' : 'px-3',
         )}
       >
-        {!collapsed && (
+        {!collapsed && headerTabs && tabList('flex-1')}
+        {!collapsed && !headerTabs && (
           <>
             <span className="grid size-7 shrink-0 place-items-center rounded-lg border border-border/45 bg-background/50 text-primary shadow-[inset_0_1px_0_rgb(255_255_255/7%)]">
               <Icon aria-hidden="true" className="size-4" />
@@ -193,65 +256,10 @@ export function SecondarySidebar({
           </Button>
         )}
       </div>
-      {library != null && !collapsed && (
-        <div
-          role="tablist"
-          aria-label={title}
-          data-slot="secondary-sidebar-tabs"
-          className="flex shrink-0 gap-1 border-b border-border/45 px-2.5 py-2"
-          onKeyDown={(event) => {
-            if (event.altKey || event.ctrlKey || event.metaKey) return;
-            const tabs = [
-              ...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
-            ];
-            const current = tabs.findIndex((tab) => tab === event.target);
-            if (current < 0) return;
-            const forward =
-              getComputedStyle(event.currentTarget).direction === 'rtl'
-                ? 'ArrowLeft'
-                : 'ArrowRight';
-            const backward = forward === 'ArrowRight' ? 'ArrowLeft' : 'ArrowRight';
-            const next =
-              event.key === 'Home'
-                ? 0
-                : event.key === 'End'
-                  ? 1
-                  : event.key === forward || event.key === backward
-                    ? 1 - current
-                    : null;
-            if (next === null) return;
-            event.preventDefault();
-            chooseView(next === 0 ? 'controls' : 'library');
-            tabs[next]?.focus();
-          }}
-        >
-          {(
-            [
-              ['controls', title],
-              ['library', libraryLabel ?? title],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              id={`${tabsId}-${value}`}
-              aria-controls={`${tabsId}-panel-${value}`}
-              aria-selected={view === value}
-              tabIndex={view === value ? 0 : -1}
-              onClick={() => chooseView(value)}
-              className={cn(
-                'h-7 min-w-0 flex-1 truncate rounded-md px-2 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring',
-                view === value
-                  ? 'bg-accent/80 text-foreground'
-                  : 'text-muted-foreground hover:bg-accent/45 hover:text-foreground',
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
+      {library != null &&
+        !collapsed &&
+        !headerTabs &&
+        tabList('border-b border-border/45 px-2.5 py-2')}
       {library != null && (
         <div
           role="tabpanel"
@@ -285,7 +293,7 @@ export function SecondarySidebar({
       {footer !== undefined && footer !== null && !collapsed && !showLibrary && (
         <div
           data-slot="secondary-sidebar-footer"
-          className="flex min-h-0 max-h-[70%] flex-col space-y-3 border-t border-border/55 bg-background/40 p-3.5 text-[13px] backdrop-blur-xl"
+          className="flex min-h-0 max-h-[70%] flex-col space-y-3 border-t border-border/55 p-3.5 text-[13px]"
         >
           {footer}
         </div>

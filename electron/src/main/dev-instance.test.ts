@@ -61,34 +61,45 @@ describe('bun dev replaces an earlier dev instance', () => {
     ).toEqual([4]);
   });
 
-  it('asks a leftover dev app to quit and forces it only if it is still there', async () => {
-    let running = [7];
-    const kill = vi.fn((pid: number, signal: string) => {
-      if (signal === 'SIGKILL') running = running.filter((p) => p !== pid);
-    });
-    await stopLeftoverDevApps({
-      location: '/dev/',
-      list: () => running.map((pid) => `${pid} /dev/Electron .`).join('\n'),
-      kill,
-      sleep: async () => {},
-      timeoutMs: 1000,
-    });
-    expect(kill.mock.calls).toEqual([
-      [7, 'SIGTERM'],
-      [7, 'SIGKILL'],
-    ]);
+  it.each(['darwin', 'linux', 'win32'])(
+    'asks a leftover dev app to quit and forces it only if it is still there on %s',
+    async (platformName) => {
+      const platform = Object.getOwnPropertyDescriptor(process, 'platform')!;
+      Object.defineProperty(process, 'platform', { value: platformName, configurable: true });
+      try {
+        const location = platformName === 'win32' ? 'C:\\dev\\' : '/dev/';
+        const executable = location + (platformName === 'win32' ? 'electron.exe' : 'Electron');
+        let running = [7];
+        const kill = vi.fn((pid: number, signal: string) => {
+          if (signal === 'SIGKILL') running = running.filter((p) => p !== pid);
+        });
+        await stopLeftoverDevApps({
+          location,
+          list: () => running.map((pid) => `${pid} ${executable} .`).join('\n'),
+          kill,
+          sleep: async () => {},
+          timeoutMs: 1000,
+        });
+        expect(kill.mock.calls).toEqual([
+          [7, 'SIGTERM'],
+          [7, 'SIGKILL'],
+        ]);
 
-    kill.mockClear();
-    running = [8];
-    await stopLeftoverDevApps({
-      location: '/dev/',
-      list: () => running.map((pid) => `${pid} /dev/Electron .`).join('\n'),
-      kill: (pid: number, signal: string) => {
-        kill(pid, signal);
-        running = [];
-      },
-      sleep: async () => {},
-    });
-    expect(kill.mock.calls).toEqual([[8, 'SIGTERM']]);
-  });
+        kill.mockClear();
+        running = [8];
+        await stopLeftoverDevApps({
+          location,
+          list: () => running.map((pid) => `${pid} ${executable} .`).join('\n'),
+          kill: (pid: number, signal: string) => {
+            kill(pid, signal);
+            running = [];
+          },
+          sleep: async () => {},
+        });
+        expect(kill.mock.calls).toEqual([[8, 'SIGTERM']]);
+      } finally {
+        Object.defineProperty(process, 'platform', platform);
+      }
+    },
+  );
 });

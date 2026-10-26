@@ -9,6 +9,8 @@ export function generationFailureMessage(
   switch ((value as { code?: unknown }).code) {
     case 'transcription_media_tool':
       return translate('tts_errors.transcription_media_tool');
+    case 'transcription_disk_full':
+      return translate('tts_errors.disk_full');
     case 'transcription_pipe_lost':
       return translate('tts_errors.transcription_pipe_lost');
   }
@@ -21,10 +23,14 @@ export function generationFailureMessage(
       return translate('tts_errors.audio_io_failed');
     case 'NO_AUDIO_TRACK':
       return translate('tts_errors.no_audio_track');
+    case 'SOURCE_LANGUAGE_REQUIRED':
+      return translate('tts_errors.source_language_required');
     case 'GPU_OOM':
       return translate('tts_errors.gpu_oom');
     case 'HOST_MEMORY_EXHAUSTED':
       return translate('tts_errors.host_memory_exhausted');
+    case 'DISK_FULL':
+      return translate('tts_errors.disk_full');
     case 'ENGINE_DEPENDENCY_MISSING':
       return translate('tts_errors.engine_dependency_missing');
     case 'REFERENCE_STT_MISSING':

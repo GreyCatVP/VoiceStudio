@@ -48,6 +48,7 @@ export function AutoSizeTextarea({
   }, [value]);
   return (
     <textarea
+      dir="auto"
       ref={(node) => {
         local.current = node;
         inputRef?.(node);

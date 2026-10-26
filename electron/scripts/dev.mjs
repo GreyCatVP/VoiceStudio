@@ -5,7 +5,9 @@ import {
   existsSync,
   mkdtempSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
+  realpathSync,
   renameSync,
   rmSync,
   statSync,
@@ -18,6 +20,12 @@ import {
   DEFAULT_ELECTRON_PROXY_PORT,
 } from '../../config/app-config.mjs';
 import { clearDevPorts } from '../../scripts/clear-dev-ports.mjs';
+import {
+  activeMacDevBundles,
+  holdMacDevBundle,
+  macDevLeaseDirectory,
+  withMacDevCacheLock,
+} from './mac-dev-cache.mjs';
 
 const APP_NAME = 'VoiceStudio';
 const here = dirname(fileURLToPath(import.meta.url));
@@ -101,7 +109,9 @@ export function prepareMacDevElectron({
     existsSync(plan.manifest) &&
     readFileSync(plan.manifest, 'utf8') === expectedManifest;
 
-  if (cacheIsValid()) return plan.destinationExecutable;
+  if (cacheIsValid()) {
+    return plan.destinationExecutable;
+  }
 
   mkdirSync(cacheRoot, { recursive: true });
   const stagingRoot = mkdtempSync(join(cacheRoot, '.staging-'));
@@ -152,6 +162,72 @@ export function prepareMacDevElectron({
   }
 
   return plan.destinationExecutable;
+}
+
+/** Reserve a bundle before returning it, including the gap before Vite spawns. */
+export function prepareMacDevSession(options) {
+  const cacheRoot = options.cacheRoot ?? defaultCacheRoot;
+  return withMacDevCacheLock(
+    cacheRoot,
+    (directory) => {
+      const executable = prepareMacDevElectron(options);
+      const bundleRoot = resolve(dirname(executable), '../../..');
+      const lease = holdMacDevBundle(directory, bundleRoot);
+      try {
+        pruneOldBundles(cacheRoot, bundleRoot, { leaseDirectory: directory });
+        return { executable, ...lease };
+      } catch (error) {
+        lease.release();
+        throw error;
+      }
+    },
+    options.leaseDirectory,
+  );
+}
+
+/**
+ * Production callers hold the coordination lock throughout preparation,
+ * reservation and pruning. Active leases protect both running and not-yet-
+ * spawned dev servers; old launchers/orphan Electron apps are checked too.
+ */
+export function pruneOldBundles(cacheRoot, keep, { leaseDirectory } = {}) {
+  let entries, root, selected, protectedRoots;
+  try {
+    root = realpathSync(cacheRoot);
+    selected = realpathSync(keep);
+    protectedRoots = activeMacDevBundles(leaseDirectory ?? macDevLeaseDirectory(root));
+    if (!protectedRoots) return;
+    if (process.platform === 'darwin') {
+      const result = spawnSync('ps', ['-axo', 'pid=,command='], { encoding: 'utf8' });
+      if (result.status !== 0) return; // Unknown usage is not safe to delete.
+      for (const line of result.stdout.split(/\r?\n/)) {
+        const command = /^\s*\d+\s+(.*)$/.exec(line)?.[1];
+        const marker = '/VoiceStudio.app/Contents/MacOS/';
+        if (!command?.includes(marker)) continue;
+        const end = command.indexOf(' ', command.indexOf(marker) + marker.length);
+        const executable = end < 0 ? command : command.slice(0, end);
+        // Resolve symlinked node_modules paths used by another worktree.
+        try {
+          if (realpathSync(executable).startsWith(root + '/')) return;
+        } catch {
+          /* It may be a different checkout or an already-exited app. */
+        }
+      }
+    }
+    entries = readdirSync(root, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+    const path = join(root, entry.name);
+    if (path === selected || protectedRoots.has(path)) continue;
+    try {
+      rmSync(path, { recursive: true, force: true });
+    } catch {
+      /* A stale cache is optional cleanup, never a launch prerequisite. */
+    }
+  }
 }
 
 /**
@@ -294,32 +370,51 @@ export function launchElectronVite(
   // reads path.txt directly, so resolve the binary before it starts on every OS.
   env.ELECTRON_EXEC_PATH ||= resolveElectronExecutable();
 
+  let bundleSession;
   if (process.platform === 'darwin') {
     const electronPackage = require.resolve('electron/package.json');
     const { version: electronVersion } = JSON.parse(readFileSync(electronPackage, 'utf8'));
     const { version: appVersion } = JSON.parse(
       readFileSync(join(repoRoot, 'package.json'), 'utf8'),
     );
-    env.ELECTRON_EXEC_PATH = prepareMacDevElectron({
+    bundleSession = prepareMacDevSession({
       electronExecutable: env.ELECTRON_EXEC_PATH,
       electronVersion,
       appVersion,
       iconPath: join(electronRoot, 'build', 'icons', 'icon.icns'),
     });
+    env.ELECTRON_EXEC_PATH = bundleSession.executable;
   }
 
-  const child = spawnProcess(process.execPath, [electronViteBin, 'dev', '--watch', ...args], {
-    cwd: electronRoot,
-    env,
-    stdio: 'inherit',
-  });
+  let child;
+  try {
+    child = spawnProcess(process.execPath, [electronViteBin, 'dev', '--watch', ...args], {
+      cwd: electronRoot,
+      env,
+      // Vite holds this kernel lease across Electron main-process restarts,
+      // even if this wrapper is killed before its normal shutdown handler.
+      stdio: bundleSession ? ['inherit', 'inherit', 'inherit', bundleSession.fd] : 'inherit',
+    });
+  } catch (error) {
+    bundleSession?.release();
+    throw error;
+  }
   // Stopping this launcher must stop its dev server too; otherwise the server
   // outlives it and keeps the port.
   const forwarded = ['SIGINT', 'SIGTERM', 'SIGHUP'];
   const forward = (signal) => child.kill(signal);
   for (const signal of forwarded) process.on(signal, forward);
-  child.on('exit', (code, signal) => {
+  const release = () => {
+    bundleSession?.release();
     for (const name of forwarded) process.off(name, forward);
+  };
+  child.on('error', (error) => {
+    release();
+    console.error(`Could not start the development server: ${error.message}`);
+    process.exitCode = 1;
+  });
+  child.on('exit', (code, signal) => {
+    release();
     if (signal) process.kill(process.pid, signal);
     else process.exitCode = code ?? 1;
   });

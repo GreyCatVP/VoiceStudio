@@ -14,8 +14,16 @@ choose, per task, to run on **This phone** or **My computer**.
 | Minimum OS | iOS 17 (iPhone, iPad) | Android 10 (API 29) |
 | Source | [`mobile/ios/`](../mobile/ios/README.md) | [`mobile/android/`](../mobile/android/README.md) |
 
-Home marks **@debpalash** and **@velixio** with a small star badge as the core
-maintainer team, matching Electron. The badge has a localized core-maintainer description for accessibility.
+Home keeps its title and feature summary beside a compact contributor column,
+with a stacked layout at accessibility text sizes. “Brought to you by” introduces
+14 contributors, with the smaller portraits in a two-row horizontal scroller. It puts
+**Palash (@debpalash)** and **Shimul (@velixio)** above the smaller
+contributor portraits. Tap either core maintainer to open a native profile sheet
+with their role, website, GitHub and X links. Portraits, brand icons and profile
+metadata are bundled for offline use; external pages open only when tapped.
+Contributor portraits use the public GitHub profile images refreshed on
+2026-10-26. The contributor export also keeps iOS portraits identical to
+Electron and Android.
 
 ## What you can do
 
@@ -241,6 +249,7 @@ are generated from the desktop app and backend, never copied by hand:
 ```sh
 bun scripts/export-mobile-tokens.ts        # theme tokens from the Electron theme
 bun scripts/export-mobile-design.ts        # native design traits from Electron
+bun scripts/export-mobile-contributors.ts  # maintainer identities and profile links
 uv run python scripts/export_openapi.py    # mobile/contract/openapi.json from the backend
 ```
 

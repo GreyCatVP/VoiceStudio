@@ -10,13 +10,23 @@ struct HomeView: View {
     var body: some View {
         Page {
             VStack(alignment: .leading, spacing: VSTokens.spacingGap * 2) {
-                VStack(alignment: .leading, spacing: VSTokens.spacingGap) {
-                    Text(model.t("homeUi.title"))
-                        .font(.custom("InterVariable", size: VSTokens.iosHomeWordmarkSize, relativeTo: .title).weight(.semibold))
-                        .fixedSize(horizontal: false, vertical: true)
-                    ViewThatFits(in: .horizontal) {
-                        HStack(alignment: .bottom, spacing: VSTokens.spacingGap) { privacy; ContributorCluster() }
-                        VStack(alignment: .leading, spacing: VSTokens.spacingGap) { privacy; ContributorCluster().frame(maxWidth: .infinity, alignment: .trailing) }
+                Group {
+                    if typeSize.isAccessibilitySize {
+                        VStack(alignment: .leading, spacing: 12) {
+                            heroText
+                            ContributorCluster().frame(maxWidth: .infinity, alignment: .trailing)
+                        }
+                    } else {
+                        ViewThatFits(in: .horizontal) {
+                            HStack(alignment: .center, spacing: 12) {
+                                heroText.frame(minWidth: 140, idealWidth: 180, maxWidth: .infinity, alignment: .leading)
+                                ContributorCluster()
+                            }
+                            VStack(alignment: .leading, spacing: 12) {
+                                heroText
+                                ContributorCluster().frame(maxWidth: .infinity, alignment: .trailing)
+                            }
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading).padding(Theme.compactInset)
@@ -92,8 +102,17 @@ struct HomeView: View {
         .refreshable { await model.phone.refresh(); if model.connection.client != nil { await model.perform { try await model.refresh() } } }
         .onDisappear { player.pause() }
     }
-    private var privacy: some View {
-        Text(model.t("mobile.local.privacy")).font(.subheadline).foregroundStyle(theme.color("textMuted")).frame(maxWidth: .infinity, alignment: .leading)
+    private var heroText: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(model.t("app.name"))
+                .font(.custom("InterVariable", size: VSTokens.iosHomeWordmarkSize, relativeTo: .title2).weight(.semibold))
+                .lineLimit(typeSize.isAccessibilitySize ? nil : 1).minimumScaleFactor(0.8)
+                .accessibilityIdentifier("home.wordmark")
+            Text(model.t("mobile.home.subtitle")).font(typeSize.isAccessibilitySize ? .body : .caption)
+                .foregroundStyle(theme.color("textMuted"))
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("home.subtitle")
+        }
     }
     private func destination<Content: View>(_ id: String, title: String, detail: String, icon: String, primary: Bool = false, @ViewBuilder content: () -> Content) -> some View {
         NavigationLink(destination: content()) {

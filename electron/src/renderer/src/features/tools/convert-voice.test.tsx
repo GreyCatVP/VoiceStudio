@@ -1,5 +1,5 @@
 import { clearConversion } from './conversion-state';
-import { cleanup, fireEvent, render, screen, act } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, act, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, expect, it, vi } from 'vitest';
 const mock = vi.hoisted(() => ({
@@ -8,6 +8,10 @@ const mock = vi.hoisted(() => ({
   convert: vi.fn(),
   ready: true,
   cloning: true as boolean | null,
+  saveAudio: vi.fn(() => Promise.resolve({ canceled: true })),
+}));
+vi.mock('@/components/bridge', () => ({
+  getBridge: () => ({ files: { saveAudio: mock.saveAudio, revealPath: vi.fn() } }),
 }));
 vi.mock('@/hooks/use-engines', () => ({
   useEngines: () => ({
@@ -179,4 +183,19 @@ it.each([
   fireEvent.click(screen.getByRole('button', { name: 'convert.convert' }));
   expect(await screen.findByTestId('convert-result')).toBeInTheDocument();
   expect(mock.convert).toHaveBeenCalledWith(expect.any(File), id, true, expect.any(AbortSignal));
+});
+
+it('exports the converted take through the shared native save action', async () => {
+  mock.convert.mockResolvedValue({ id: 'take-7', audio_url: '/audio/take-7.wav', text: 'Done' });
+  const { upload } = mount();
+  upload();
+  fireEvent.click(screen.getByRole('button', { name: 'Alpha' }));
+  fireEvent.click(screen.getByRole('button', { name: 'convert.convert' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'clone.download' }));
+  await waitFor(() =>
+    expect(mock.saveAudio).toHaveBeenCalledWith({
+      url: '/api/audio/take-7.wav',
+      suggestedName: 'voicestudio-take-7.wav',
+    }),
+  );
 });

@@ -4,9 +4,11 @@ Community-tested path for running VoiceStudio's PyTorch engines on a **Radeon
 GPU from Windows**, inside a WSL2 distro, with reusable disk images so the
 setup can be wiped and restored in under a minute.
 
-> **Status: unsupported, community-tested.** VoiceStudio has no official ROCm
-> path on Windows ([windows.md — GPU support](windows.md#gpu-support)), and AMD
-> officially validates ROCm-on-WSL only for some cards. This guide records one
+> **Status: unsupported, community-tested.** The supported way to use ROCm on
+> Windows is now the opt-in native installation in the
+> [Windows ROCm guide](windows-rocm.md); prefer it when your card is on its
+> matrix. This WSL2 route predates it, and AMD officially validates
+> ROCm-on-WSL only for some cards. This guide records one
 > working build end to end, including every error hit along the way, so others
 > can reproduce or adapt it. If you only need a Radeon-accelerated engine
 > without any of this, use [audio.cpp](../engines/audio-cpp.md) (Vulkan) on
@@ -398,8 +400,9 @@ scripts above.
 
 ### 1. Docs say "no ROCm on Windows" and the Docker WSL path is unverified
 
-VoiceStudio's [windows.md](windows.md#gpu-support) says PyTorch engines run on
-CPU on Radeon. [docker.md](docker.md#amd-gpu-on-wsl2) documents a Docker plus
+When this guide was written, VoiceStudio's [windows.md](windows.md#gpu-support)
+said PyTorch engines run on CPU on Radeon (the native
+[Windows ROCm guide](windows-rocm.md) came later). [docker.md](docker.md#amd-gpu-on-wsl2) documents a Docker plus
 ROCDXG route marked *Unverified*. Research for this guide found:
 
 - **The current route is ROCDXG.** AMD documents it in the

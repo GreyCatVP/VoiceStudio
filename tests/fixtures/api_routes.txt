@@ -172,6 +172,7 @@ GET /system/last-run-crash
 GET /system/logs
 GET /system/logs/stream
 GET /system/logs/tauri
+GET /system/network/check
 GET /system/network/state
 GET /system/notifications
 GET /system/quarantine-status
