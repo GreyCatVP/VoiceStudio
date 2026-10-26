@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { isTrustedRenderer } from './trusted-renderer';
 import type { UpdateReleaseInfo, UpdateState } from '../preload/index.d';
 import { sendToLiveWindow } from './window-safety';
-import { applicationUpdatesSupported, CURRENT_DISTRIBUTION } from './distribution';
+import { applicationUpdatesUnsupportedReason, CURRENT_DISTRIBUTION } from './distribution';
 import type { DistributionTarget } from '../../../config/distributions.mjs';
 
 // electron-updater is CommonJS. Electron executes our main bundle as ESM, so
@@ -260,6 +260,7 @@ export class DesktopUpdater {
       currentVersion: __APP_VERSION__,
       progress: 0,
       channel: selectable ? this.channel : undefined,
+      unsupportedReason: this.unsupportedReason() ?? undefined,
     };
     if (!supported) return;
 
@@ -500,7 +501,11 @@ export class DesktopUpdater {
   }
 
   private updatesSupported(): boolean {
-    return applicationUpdatesSupported(app.isPackaged, this.distribution);
+    return this.unsupportedReason() === null;
+  }
+
+  private unsupportedReason() {
+    return applicationUpdatesUnsupportedReason(app.isPackaged, this.distribution);
   }
 
   private patch(value: Partial<UpdateState>): void {

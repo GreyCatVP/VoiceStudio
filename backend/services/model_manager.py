@@ -1567,6 +1567,36 @@ def _configure_rocm_if_needed(torch):
         logger.debug("ROCm GFX auto-config skipped: %s", e)
 
 
+def _rocm_arch_remedy(device_arch: str, arch_list) -> str:
+    """What a Linux ROCm user can do about an architecture this build lacks.
+
+    ``HSA_OVERRIDE_GFX_VERSION`` is only suggested toward a same-family target
+    the build actually ships, with the exact value. Generic "11.0.0" advice made
+    RDNA4 owners (gfx1200/gfx1201, #3418) remap onto RDNA3 kernels, which cannot
+    run on gfx12 at all.
+    """
+    from core.device_caps import gfx_generation, hsa_override_for, same_generation_targets
+
+    install = (
+        f"Install a ROCm PyTorch build that lists {device_arch}: "
+        "OMNIVOICE_TORCH_VARIANT=rocm setup installs torch 2.8.0 from the "
+        "rocm6.4 index, which includes gfx1200/gfx1201 (RX 9000 series)."
+    )
+    if "HSA_OVERRIDE_GFX_VERSION" in device_arch:
+        return "Remove or correct HSA_OVERRIDE_GFX_VERSION, or " + install[0].lower() + install[1:]
+    siblings = same_generation_targets(device_arch, arch_list)
+    if not siblings:
+        return (
+            f"No HSA_OVERRIDE_GFX_VERSION remap can help: this build has no "
+            f"gfx{gfx_generation(device_arch)}xx target. " + install
+        )
+    target = siblings[-1]
+    return (
+        f"{install} As an unsupported workaround, HSA_OVERRIDE_GFX_VERSION="
+        f"{hsa_override_for(target)} runs it on the {target} kernels."
+    )
+
+
 def check_device_compatibility():
     """Check if PyTorch supports the current GPU's architecture.
 
@@ -1598,9 +1628,7 @@ def check_device_compatibility():
         return False, (
             f"{device_name} ({device_arch}) is not supported by this ROCm "
             f"PyTorch build. Supported architectures: {', '.join(arch_list)}. "
-            f"Set HSA_OVERRIDE_GFX_VERSION to the closest supported target "
-            f"(e.g. 11.0.0 for a gfx11xx card) or install a ROCm build that "
-            f"lists {device_arch}."
+            + _rocm_arch_remedy(device_arch, arch_list)
         )
     return False, (
         f"{device_name} ({device_arch}) is not supported by this PyTorch build. "
