@@ -226,7 +226,7 @@ jobs:
         if: inputs.publish == true && inputs.allow_unsigned != true && matrix.platform == 'win32'
         shell: pwsh
         run: |
-          $installers = @(Get-ChildItem electron/release/VoiceStudio-Electron-*.exe)
+          $installers = @(Get-ChildItem electron/release/VoiceStudio-*.exe)
           if ($installers.Count -eq 0) { throw "No installer to verify" }
           foreach ($installer in $installers) {
             $signature = Get-AuthenticodeSignature $installer.FullName
@@ -267,7 +267,7 @@ jobs:
         env:
           HAS_CREDENTIALS: ${{ secrets.ELECTRON_WINDOWS_CSC_LINK != '' }}
         run: |
-          $installers = @(Get-ChildItem electron/release/VoiceStudio-Electron-*.exe)
+          $installers = @(Get-ChildItem electron/release/VoiceStudio-*.exe)
           if ($installers.Count -eq 0) { throw "No installer to verify" }
           $unsigned = @($installers | Where-Object { (Get-AuthenticodeSignature $_.FullName).Status -ne 'Valid' })
           if ($unsigned.Count -eq 0) { $status = 'signed' }
@@ -291,7 +291,7 @@ jobs:
         working-directory: electron
         run: |
           if [ "$RUNNER_OS" = Linux ]; then
-            for image in release/VoiceStudio-Electron-*-linux-x64.AppImage; do
+            for image in release/VoiceStudio-*-linux-x64.AppImage; do
               VOICESTUDIO_PACKAGED_EXE="electron/$image" xvfb-run -a node tests/packaged-smoke.mjs --setup
             done
           else
@@ -304,7 +304,7 @@ jobs:
           retention-days: 14
           if-no-files-found: error
           path: |
-            electron/release/VoiceStudio-Electron-*
+            electron/release/VoiceStudio-*
             electron/release/electron-*.yml
             electron/release/store-artifact-manifest-*.json
 
