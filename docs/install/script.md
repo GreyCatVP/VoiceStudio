@@ -1,7 +1,7 @@
 # Shell installer (Electron)
 
 The shell installer supports macOS (Apple Silicon and Intel) and Linux x64.
-On Windows, download the `VoiceStudio-Electron-…-win-x64.exe` installer (or
+On Windows, download the `VoiceStudio-…-win-x64.exe` installer (or
 `…-win-arm64.exe` on a Snapdragon/ARM PC) from
 [Releases](https://github.com/debpalash/VoiceStudio/releases).
 
@@ -31,6 +31,8 @@ curl -fsSL https://voicestudio.sh/install | sh -s -- --main
 ```
 
 `--source` is an alias for `--main`. It cannot be combined with `--version`.
+Release packages are named `VoiceStudio-<version>-<os>-<arch>`; the installers
+still find the `VoiceStudio-Electron-*` names that releases up to v0.5.7-beta.3 used.
 After downloading the script for inspection, the equivalent local commands are
 `sh scripts/install.sh`, `sh scripts/install.sh --version X.Y.Z`, and
 `sh scripts/install.sh --main`.
