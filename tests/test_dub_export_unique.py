@@ -483,8 +483,8 @@ class TestAudioOnlyDubbing:
             files={"video": ("clip.mp4", b"\x00" * 16, "video/mp4")},
             data={"input_type": "audio"},
         )
-        assert r.status_code == 400
-        assert "audio file" in r.json()["detail"].lower()
+        assert r.status_code == 415
+        assert r.json()["detail"].startswith("Unsupported audio file type")
 
     def test_ingest_requests_reject_unregistered_source_languages(self, app_client):
         client, _dc, _dx, _tmp = app_client
