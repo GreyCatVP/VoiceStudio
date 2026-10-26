@@ -290,7 +290,7 @@ export function TranscriptionsPage() {
                   aria-pressed={selectedId === entry.id}
                   onClick={() => setSelectedId(entry.id)}
                 >
-                  <p className="line-clamp-2 text-[13px] leading-5 font-medium">
+                  <p className="line-clamp-2 text-[13px] leading-5 font-medium" dir="auto">
                     {preferredTranscript(entry)}
                   </p>
                   <div className="mt-1 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
@@ -697,7 +697,7 @@ export function TranscriptionsPage() {
                     </Button>
                   </div>
                 </div>
-                <p className="whitespace-pre-wrap text-base leading-7">
+                <p className="whitespace-pre-wrap text-base leading-7" dir="auto">
                   {preferredTranscript(selected)}
                 </p>
                 {selected.refined_text && selected.refined_text.trim() !== selected.text.trim() ? (

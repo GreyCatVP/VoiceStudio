@@ -43,6 +43,7 @@ final class WifiState: @unchecked Sendable {
     private(set) var generationStore: PhoneGenerationStore?
     private(set) var productionStore: ProductionStore?
     private(set) var workflowStore: PhoneWorkflowStore?
+    private(set) var transcriptStore: PhoneTranscriptStore?
     private(set) var engine: (any LocalEngine)?
     init(bundle: Bundle = .main) {
         allowMobileData = UserDefaults.standard.bool(forKey: "models.mobile-data")
@@ -69,6 +70,8 @@ final class WifiState: @unchecked Sendable {
             do { productionStore = try ProductionStore(root: root.appendingPathComponent("production")) }
             catch { self.error = ClientError("mobile.errors.file") }
             do { workflowStore = try PhoneWorkflowStore(root: root.appendingPathComponent("workflows")) }
+            catch { self.error = ClientError("mobile.errors.file") }
+            do { transcriptStore = try PhoneTranscriptStore(root: root.appendingPathComponent("transcripts")) }
             catch { self.error = ClientError("mobile.errors.file") }
         } catch {
             // Initialization remains usable for the paired-host flows; the Models page explains the failure.

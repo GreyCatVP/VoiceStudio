@@ -8,6 +8,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.voicestudio.mobile.designsystem.*
 import com.voicestudio.mobile.network.CommunityItem
+import com.voicestudio.mobile.network.downloadPhoneVoiceBundle
+import com.voicestudio.mobile.local.PhoneVoice
+import com.voicestudio.mobile.local.PhoneVoiceBundle
+import java.io.File
 import kotlinx.coroutines.*
 
 @Composable fun GalleryScreen(vm: StudioViewModel,navigate: (String)->Unit) {
@@ -20,6 +24,11 @@ import kotlinx.coroutines.*
     var items by remember(host.connectionId) {mutableStateOf(emptyList<CommunityItem>())}
     var total by remember(host.connectionId) {mutableStateOf(0)}
     var loading by remember {mutableStateOf(false)}
+    var imported by rememberSaveable(host.connectionId) {mutableStateOf(mapOf<String,String>())}
+    var copyTarget by remember(host.connectionId) {mutableStateOf<CommunityItem?>(null)}
+    var copied by remember(host.connectionId) {mutableStateOf<PhoneVoice?>(null)}
+    var copying by remember {mutableStateOf(false)}
+    var copyJob by remember {mutableStateOf<Job?>(null)}
     var audio by remember(host.connectionId) {mutableStateOf<String?>(null)}
     suspend fun load() {
         val api=vm.api ?: return
@@ -59,14 +68,35 @@ import kotlinx.coroutines.*
                     Secondary("gallery.use_voice",!host.busy) {vm.run {
                         val api=vm.api ?: return@run
                         val saved=api.useCommunity(item.id)
-                        if(vm.api===api) {vm.refreshVoiceLibrary();navigate("host-voice/"+android.net.Uri.encode(saved.profile_id))}
+                        if(vm.api===api) {imported=imported+(item.id to saved.profile_id);vm.refreshVoiceLibrary();navigate("host-voice/"+android.net.Uri.encode(saved.profile_id))}
                     }}
+                    if(item.id in imported) Secondary("mobile.galleryCopy.action",!copying) {copyTarget=item}
                 }}
             }
+            Text(tr("mobile.galleryCopy.requires_host"))
+            if(copying) {InlineLoading();Secondary("common.cancel") {copyJob?.cancel()}}
+            copied?.let {voice->Secondary("mobile.galleryCopy.ready") {navigate("voice/"+android.net.Uri.encode(voice.id))}}
             if(items.isEmpty()&&!loading) EmptyState("gallery.community_empty")
             if(items.size<total) Secondary("common.more_info",!loading) {scope.launch {load()}}
             if(loading) InlineLoading()
             audio?.let {path ->vm.api?.let {HostPlayer(it,path,vm::fail)}}
         }
     }
+    DisposableEffect(host.connectionId) {onDispose {copyJob?.cancel()}}
+    copyTarget?.let {item ->AlertDialog(onDismissRequest={copyTarget=null},title={Text(tr("mobile.galleryCopy.action"))},text={Text(tr("mobile.galleryCopy.confirm")+"\n"+listOfNotNull(item.author,item.license).joinToString(" · "))},
+        confirmButton={TextButton(onClick={
+            copyTarget=null;val api=vm.api;val profile=imported[item.id]
+            if(api!=null&&profile!=null&&!copying) {
+                copying=true;copyJob=scope.launch {try {
+                    val file=File.createTempFile("voice-copy-",".omnivoice",context.cacheDir)
+                    try {
+                        api.downloadPhoneVoiceBundle(profile,file)
+                        if(vm.api!==api) throw CancellationException()
+                        val attribution=mapOf("source" to "community","id" to item.id,"name" to item.name)+listOfNotNull(item.author?.let {"author" to it},item.license?.let {"license" to it},item.language?.let {"language" to it}).toMap()
+                        copied=PhoneVoiceBundle.install(file,vm.phone.voices,attribution,true);vm.phone.refresh()
+                    } finally {file.delete()}
+                } catch(e:CancellationException) {throw e} catch(e:Exception) {vm.fail(e)} finally {copying=false;copyJob=null}}
+            }
+        }) {Text(tr("mobile.galleryCopy.action"))}},dismissButton={TextButton(onClick={copyTarget=null}) {Text(tr("common.cancel"))}})}
+
 }

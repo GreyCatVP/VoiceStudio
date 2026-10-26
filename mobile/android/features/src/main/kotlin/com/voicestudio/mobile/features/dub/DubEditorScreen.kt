@@ -55,6 +55,7 @@ class DubEditorSession: ViewModel() {
     var splitPositions by draft.splitPositions
     LaunchedEffect(record?.request?.id) {if(!draft.initialized&&record!=null) {segments=record.checkpoint.segments;target=record.request.targets.firstOrNull()?.code.orEmpty();draft.initialized=true}}
     var saving by remember {mutableStateOf(false)}
+    var replaceCastOverrides by remember {mutableStateOf(false)}
     var previewing by remember {mutableStateOf(false)}
     var preview by remember(id) {mutableStateOf<DubPreview?>(null)}
     var previewLabel by remember {mutableStateOf("mobile.editing.original")}
@@ -126,17 +127,41 @@ class DubEditorSession: ViewModel() {
             Box(Modifier.weight(1f)) {Secondary("mobile.editing.export_srt",!saving) {export(false)}}
             Box(Modifier.weight(1f)) {Secondary("mobile.editing.export_vtt",!saving) {export(true)}}
         }
+        Heading("mobile.dub_advanced.cast")
+        Text(tr("mobile.dub_advanced.manual_cast_hint"),style=MaterialTheme.typography.bodySmall)
+        if(PhoneDubCast.speakers(segments).isNotEmpty()) {
+            Toggle("mobile.dub_advanced.replace_overrides",replaceCastOverrides) {replaceCastOverrides=it}
+            PhoneDubCast.speakers(segments).forEach {speaker ->
+                val assignments=segments.filter {it.speaker?.trim()==speaker&&!PhoneDubCast.isLineOverride(it)}.mapNotNull {it.voiceID}.distinct()
+                val selected=assignments.singleOrNull()?.takeIf {value ->value.isEmpty()||phone.voices.any {it.id==value}} ?: "__keep__"
+                // Speaker names are user content, while the shared picker receives its localized role.
+                Text(speaker,style=MaterialTheme.typography.titleSmall)
+                ChoicePicker("mobile.speak.voice",selected,listOf(Choice("__keep__",tr("mobile.dub_advanced.keep_cast")),Choice("",tr("stories.defaultVoice")))+phone.voices.map {Choice(it.id,it.name)}) {value ->
+                    if(!saving&&!previewing&&value!="__keep__") {rememberEdit()
+                        val affected=segments.filter {it.speaker?.trim()==speaker&&(replaceCastOverrides||!PhoneDubCast.isLineOverride(it))}
+                        voices=voices+affected.mapNotNull {it.id?.let {id ->id to value}}.toMap()
+                        segments=PhoneDubCast.assigning(segments,speaker,value,replaceCastOverrides)
+                    }
+                }
+            }
+        }
         } }
         itemsIndexed(segments,key={index,segment ->segment.id ?: "legacy-$index"}) {index,segment ->
             val segmentID=segment.id ?: "legacy-$index"
             Group {Column(Modifier.padding(VSTheme.inset),verticalArrangement=Arrangement.spacedBy(VSTheme.gap)) {
+                Field("mobile.dub_advanced.speaker",segment.speaker.orEmpty(),{value ->if(!saving&&!previewing) {rememberEdit("speaker-$segmentID")
+                    val changed=if(segment.referenceOrigin=="cast") {voices=voices+(segmentID to "");segment.copy(speaker=value,referenceFile=null,referenceText=null,referenceOrigin=null,voiceID=null)} else segment.copy(speaker=value)
+                    segments=segments.toMutableList().also {it[index]=changed}
+                }})
                 Field("mobile.editing.source_text",segment.speech.text,{if(!saving&&!previewing) {rememberEdit("source-$segmentID");segments=segments.toMutableList().also {list->list[index]=segment.copy(speech=segment.speech.copy(text=it))}}},multiline=true)
                 Row(horizontalArrangement=Arrangement.spacedBy(VSTheme.gap)) {
                     Box(Modifier.weight(1f)) {Field("dubWorkspace.start",timingText["$segmentID-start"] ?: segment.speech.start.toString(),{if(!saving&&!previewing) {rememberEdit("start-$segmentID");timingText=timingText+("$segmentID-start" to it);segments=segments.toMutableList().also {list->list[index]=segment.copy(speech=segment.speech.copy(start=it.toDoubleOrNull() ?: Double.NaN))}}})}
                     Box(Modifier.weight(1f)) {Field("dubWorkspace.end",timingText["$segmentID-end"] ?: segment.speech.end.toString(),{if(!saving&&!previewing) {rememberEdit("end-$segmentID");timingText=timingText+("$segmentID-end" to it);segments=segments.toMutableList().also {list->list[index]=segment.copy(speech=segment.speech.copy(end=it.toDoubleOrNull() ?: Double.NaN))}}})}
                 }
                 Field("tools.translated_line",segment.translations[target].orEmpty(),{if(!saving&&!previewing) {rememberEdit("translation-$segmentID-$target");segments=segments.toMutableList().also {list->list[index]=segment.copy(translations=segment.translations+(target to it))}}},multiline=true)
-                if(!saving&&!previewing) ChoicePicker("mobile.speak.voice",selection(segment),(if(segment.referenceFile==null) emptyList() else listOf(Choice("__keep__",tr("clone.keep_reference"))))+listOf(Choice("",tr("stories.defaultVoice")))+phone.voices.map {Choice(it.id,it.name)}) {rememberEdit();voices=voices+(segmentID to it)}
+                if(!saving&&!previewing) ChoicePicker("mobile.speak.voice",selection(segment),(if(segment.referenceFile==null) emptyList() else listOf(Choice("__keep__",tr("clone.keep_reference"))))+listOf(Choice("",tr("stories.defaultVoice")))+phone.voices.map {Choice(it.id,it.name)}) {value ->rememberEdit();voices=voices+(segmentID to value)
+                    if(value!="__keep__") segments=segments.toMutableList().also {it[index]=segment.copy(referenceOrigin="segment",voiceID=value)}
+                }
                 Text(tr("mobile.processing.segment_gain")+" "+(segment.gain*100).toInt()+"%",style=MaterialTheme.typography.bodySmall)
                 val gainLabel=tr("mobile.processing.segment_gain")
                 Slider(value=segment.gain.toFloat(),onValueChange={value ->if(!saving&&!previewing) {rememberEdit("gain-$segmentID");segments=segments.toMutableList().also {it[index]=segment.copy(gain=value.toDouble())}}},valueRange=0f..2f,enabled=!saving&&!previewing,modifier=Modifier.semantics {contentDescription=gainLabel})
@@ -176,11 +201,12 @@ class DubEditorSession: ViewModel() {
             saving=true;preview=null
             scope.launch {
                 try {
+                    val referenceCache=mutableMapOf<String,Pair<LocalAudio,String>>()
                     val references=segments.mapIndexedNotNull {index,segment ->
                         val voiceID=selection(segment)
                         if(voiceID.isBlank()||voiceID=="__keep__") null else {
                             val voice=phone.voices.firstOrNull {it.id==voiceID} ?: throw ClientFailure("audiobook.blocked.voice")
-                            index to (vm.phone.voices.reference(voice) to voice.transcript)
+                            index to referenceCache.getOrPut(voice.id) {vm.phone.voices.reference(voice) to voice.transcript}
                         }
                     }.toMap()
                     val edits=segments.map {segment ->if(selection(segment)=="") segment.copy(referenceFile=null,referenceText=if(segment.referenceFile!=null) null else segment.referenceText) else segment}

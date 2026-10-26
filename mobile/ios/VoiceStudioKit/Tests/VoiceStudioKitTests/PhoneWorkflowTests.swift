@@ -61,6 +61,19 @@ private func fixtureRoot() throws -> URL {
     let decoded = try await AVPhoneAudioDecoder().decode(source: result, output: root.appendingPathComponent("decoded.pcm"), maxSeconds: 5, progress: { _ in })
     #expect(try decoded.frames >= 21600)
     #expect(try decoded.read(start: 0, count: min(24000, decoded.frames)).samples.contains { abs($0) > 0.01 })
+    let second = try await BookExport.encode(wave: wave,format: "m4a",synthetic: true)
+    let multi = try await PhoneDubMultiAudio.export(source: source,tracks: [PhoneDubMuxTrack(file: result,language: "fr",name: "French"),PhoneDubMuxTrack(file: second,language: "de",name: "German")],to: root.appendingPathComponent("multitrack.mp4"))
+    let multilingual = AVURLAsset(url: multi)
+    let audioTracks = try await multilingual.loadTracks(withMediaType: .audio)
+    #expect(audioTracks.count == 2)
+    #expect(try await audioTracks[0].load(.languageCode) == "fra")
+    #expect(try await audioTracks[1].load(.languageCode) == "deu")
+    let multiVideo = try #require(try await multilingual.loadTracks(withMediaType: .video).first)
+    let multiTransform = try await multiVideo.load(.preferredTransform)
+    #expect(abs(multiTransform.b-1) < 0.001 && abs(multiTransform.c+1) < 0.001)
+    let group = try #require(try await multilingual.loadMediaSelectionGroup(for: .audible))
+    #expect(group.options.count == 2); #expect(group.defaultOption?.locale?.language.languageCode?.identifier == "fr")
+    #expect(try PhoneAudioProcessing.containsSyntheticMarker(multi))
 }
 private func fixtureModel(_ capability: ModelCapability) throws -> PhoneModel {
     try ModelCatalogue.decode(Data(contentsOf: repository.appendingPathComponent("mobile/contract/models.json"))).models.first { $0.capability == capability }!
@@ -540,4 +553,44 @@ func realAuxiliaryPhoneDubOfflineAndResume() async throws {
     let pcm = try await AVPhoneAudioDecoder().decode(source: output,output: root.appendingPathComponent("check.pcm"),maxSeconds: 2,progress: { _ in })
     #expect(try pcm.read(start: 2500,count: 100).samples.allSatisfy { abs($0-0.2) < 0.0001 })
     #expect(try pcm.read(start: 13000,count: 100).samples.allSatisfy { $0 == 0 })
+}
+
+@Test func nativeDubPackagesShareCastReferencesAndExportVerifiedMarkedClipsWithoutReferenceAssets() async throws {
+    let root = try fixtureRoot(); defer { try? FileManager.default.removeItem(at: root) }
+    let source = root.appendingPathComponent("source.wav"); try Data("natural recording".utf8).write(to: source)
+    let store = try PhoneDubStore(root: root.appendingPathComponent("jobs")), engine = FixtureEngine()
+    let models = try [fixtureModel(.asr),fixtureModel(.translate),fixtureModel(.clone)]
+    let request = try await store.create(source: source,title: "Source",targets: [PhoneDubTarget(code: "fr",name: "French")],models: models,consent: true,audioOnly: true)
+    let pipeline = PhoneDubPipeline(store: store,engine: engine,decoder: FixtureDecoder(),media: FixtureMedia())
+    let first = try await pipeline.run(id: request.id,models: models)
+    var edits = first.segments.map { cue in var value = cue; value.speaker = "../Alex"; value.referenceOrigin = "cast"; value.voiceID = "voice"; return value }
+    edits[0].gain = 0.5; edits[1].muted = true
+    let reference = PCMChunk(samples: Array(repeating: 0.3,count: 4800),sampleRate: 24000)
+    try await store.edit(request.id,segments: edits,references: [0:(reference,"Shared cast"),1:(reference,"Shared cast")])
+    let saved = try await store.checkpoint(request.id)
+    #expect(Set(saved.segments.compactMap(\.referenceFile)).count == 1)
+    let complete = try await pipeline.run(id: request.id,models: models)
+    let clips = try await store.exportPackage(request.id,target: "fr",kind: .clips,workspace: root)
+    let entries = try ProjectArchive.entries(clips).map(\.path)
+    #expect(entries.contains("segments/00001.wav")); #expect(entries.contains("segments/00002.wav")); #expect(entries.contains("subtitles.ass")); #expect(!entries.contains { $0.contains("reference") || $0.contains("..") })
+    let files = try await ProjectArchive.extract(clips,to: root.appendingPathComponent("clips"))
+    #expect(try PhoneAudioProcessing.containsSyntheticMarker(files["segments/00001.wav"]!))
+    let manifest = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: files["manifest.json"]!)) as? [String:Any])
+    let exportedSegments = try #require(manifest["segments"] as? [[String:Any]])
+    #expect(exportedSegments.first?["speaker"] as? String == "../Alex"); #expect(manifest["originalIsIsolatedBackground"] as? Bool == false)
+    for segment in exportedSegments {
+        for key in ["voiceID","referenceFile","referenceText","referenceOrigin","referenceNeedsTranscription"] { #expect(segment[key] == nil) }
+    }
+    #expect(try await store.checkpoint(request.id).segments == complete.segments)
+    let stems = try await store.exportPackage(request.id,target: "fr",kind: .stems,workspace: root)
+    let stemFiles = try await ProjectArchive.extract(stems,to: root.appendingPathComponent("stems"))
+    #expect(try PhoneAudioProcessing.containsSyntheticMarker(stemFiles["dubbed.wav"]!)); #expect(try !PhoneAudioProcessing.containsSyntheticMarker(stemFiles["original.wav"]!))
+    let stemManifest = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: stemFiles["manifest.json"]!)) as? [String:Any])
+    let stemSegments = try #require(stemManifest["segments"] as? [[String:Any]])
+    for segment in stemSegments {
+        for key in ["voiceID","referenceFile","referenceText","referenceOrigin","referenceNeedsTranscription"] { #expect(segment[key] == nil) }
+    }
+    let cache = try await store.file(request.id,complete.renders.first!.file!); try Data("corrupt".utf8).write(to: cache)
+    await #expect(throws: (any Error).self) { try await store.exportPackage(request.id,target: "fr",kind: .clips,workspace: root) }
+    #expect(try await store.checkpoint(request.id).outputs.map(\.file) == complete.outputs.map(\.file)); #expect(try !ProjectArchive.entries(clips).isEmpty)
 }

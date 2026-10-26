@@ -7,7 +7,12 @@ the same stack the original WhisperX paper used.
 ## What diarization buys you
 
 - Multi-speaker dubbing: each detected speaker gets its own voice clone in
-  the target language.
+  the target language. A line whose words belong to two speakers is split at
+  the speaker change, on every transcription path (the app, the CLI and the
+  phone companion). A speaker who only speaks in short turns still gets a
+  clone, cut from their turns with the edges next to other speakers trimmed
+  off; only a speaker with less than about 3 s of clean speech falls back to
+  the default voice.
 - Subtitle styling: speaker labels (`SPEAKER_00:`, `SPEAKER_01:`, …) on the
   exported SRT/VTT files.
 - Audio editing: per-speaker tracks in the timeline view.

@@ -31,9 +31,12 @@ Protocol:
     ``"final_kind": "utterance"|"summary"``. Utterances are mid-session
     commits; the summary is the authoritative whole-session result at EOF.
 
-    Every ``final`` text is normalised by services.text_polish (leading
-    capital for Latin scripts, terminal punctuation, single-spaced) so the
-    pasted result reads like typed text. Partials are raw.
+    Every dictation ``final`` text is cleaned by services.dictation_cleanup
+    (hesitations, stutters, all-caps, punctuation spacing, optional spoken
+    punctuation) and normalised by services.text_polish (leading capital for
+    Latin scripts, terminal punctuation, single-spaced) so the pasted result
+    reads like typed text. Platform-stream API clients get polish only.
+    Partials are raw.
 """
 from __future__ import annotations
 
@@ -50,6 +53,7 @@ from typing import Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from api.dependencies import is_local_host, ws_remote_authorized
+from services.dictation_cleanup import join_dictation_pieces, polish_dictation
 from services.text_polish import polish_text
 
 router = APIRouter()
@@ -98,6 +102,37 @@ _AEC_FAR = 0x01   # playback reference frame (feed the echo model only)
 # absurd rate must never be believed: it would re-open the unbounded-memory
 # path the recovery-tail cap closed.
 SR_MIN, SR_MAX = 8000, 96000
+
+
+# Marks "no language passed" apart from an explicit None (language unknown).
+_SESSION_LANGUAGE = object()
+
+
+def _final_polisher(websocket, language: str | None):
+    """The text normaliser for this session's ``final`` frames.
+
+    Dictation sessions get the full cleanup (services.dictation_cleanup);
+    platform-stream API clients keep the plain polish they always had. The
+    spoken-punctuation setting is read once per session. The returned
+    callable takes ``(text, language=None)``; a language passed in overrides
+    the session's, even when it is ``None``: the silent-model recovery's
+    fallback recognizer may not report a language, and the failed model's
+    English hint must not then strip Portuguese "um" or German "er"."""
+    if isinstance(websocket, _PlatformWebSocket):
+        return lambda text, lang=_SESSION_LANGUAGE: polish_text(text)
+    from services.dictation_cleanup import _spoken_punctuation_enabled
+
+    spoken = _spoken_punctuation_enabled()
+    return lambda text, lang=_SESSION_LANGUAGE: polish_dictation(
+        text,
+        language if lang is _SESSION_LANGUAGE else lang,
+        spoken_punctuation=spoken,
+    )
+
+
+def _spec_language(spec) -> str | None:
+    """Language hint for a sherpa model's text (None when multilingual)."""
+    return "en" if getattr(spec, "languages", "") == "English" else None
 
 
 def _is_end_control(text: str | None) -> bool:
@@ -529,7 +564,12 @@ async def ws_transcribe(websocket: WebSocket):
             )
             # Dictation v2: deterministic polish so the pasted final reads
             # like typed text (leading capital, terminal punctuation).
-            result["text"] = polish_text(result.get("text", ""))
+            if is_platform_stream:
+                result["text"] = polish_text(result.get("text", ""))
+            else:
+                result["text"] = await asyncio.to_thread(
+                    polish_dictation, result.get("text", ""), result.get("language"),
+                )
             # Wave 2.1: optional local-LLM refinement of the final text.
             # HARD-BOUNDED (maybe_refine_async, ~4s OMNIVOICE_REFINE_TIMEOUT_S):
             # a slow/dead LLM can never delay this `final` beyond the budget —
@@ -686,9 +726,12 @@ def _pcm16_rms(pcm: bytes) -> float:
 
 
 async def _recover_silent_sherpa(
-    spec, pcm: bytes, pcm_sr: int,
+    spec, pcm: bytes, pcm_sr: int, polish=None,
 ) -> tuple[str, list[dict]]:
-    """Retry a token-silent Sherpa session through an installed local ASR."""
+    """Retry a token-silent Sherpa session through an installed local ASR.
+
+    ``polish`` is the session's :func:`_final_polisher`, so platform-stream
+    clients keep plain polish on this path too."""
     logger.warning(
         "dictation model %s decoded NOTHING from %.1fs of speech-level audio "
         "— falling back to the capture ASR engine for this session",
@@ -713,7 +756,7 @@ async def _recover_silent_sherpa(
         result = await _transcribe_buffer_full(
             [pcm], pcm_sr=pcm_sr, skip_sherpa=True,
         )
-        text = polish_text(_result_text(result))
+        text = (polish or polish_dictation)(_result_text(result), result.get("language"))
         if not text:
             return "", []
         # The RMS gate can fire on fan/keyboard noise. Only another recognizer
@@ -836,6 +879,7 @@ async def _run_sherpa_streaming(websocket: WebSocket, spec):
     from services.asr_backend import get_sherpa_dictation_backend
 
     pcm_sr, aec = await _sherpa_session(websocket)
+    polish = _final_polisher(websocket, _spec_language(spec))
     logger.info("sherpa streaming dictation: model=%s sr=%d aec=%s",
                 spec.id, pcm_sr, bool(aec))
 
@@ -904,7 +948,7 @@ async def _run_sherpa_streaming(websocket: WebSocket, spec):
             if endpoint:
                 # Commit this utterance (polished — it gets pasted); reset
                 # for the next one.
-                text = polish_text(text)
+                text = polish(text)
                 if text:
                     committed.append(text)
                     await _send({"type": "final", "text": text,
@@ -928,18 +972,18 @@ async def _run_sherpa_streaming(websocket: WebSocket, spec):
     except Exception as e:
         logger.debug("sherpa streaming flush failed: %s", e)
         tail_text = ""
-    tail_text = polish_text(tail_text)
+    tail_text = polish(tail_text)
     if tail_text and tail_text != (committed[-1] if committed else None):
         committed.append(tail_text)
 
-    # Pieces are already polished; the join is too (polish is idempotent).
-    full = " ".join(t for t in committed if t).strip()
+    # Pieces are already polished; join them as typed (no space across CJK).
+    full = join_dictation_pieces(committed)
     segments = [{"start": 0.0, "end": None, "text": t} for t in committed if t]
 
     model_silent = is_model_silent(full, heard_speech, session_pcm.total_bytes)
     if model_silent:
         recovered, recovered_segments = await _recover_silent_sherpa(
-            spec, session_pcm.tail(), pcm_sr,
+            spec, session_pcm.tail(), pcm_sr, polish,
         )
         if recovered:
             full = recovered
@@ -987,6 +1031,7 @@ async def _run_sherpa_offline(websocket: WebSocket, spec):
     from services.asr_backend import get_sherpa_dictation_backend
 
     pcm_sr, aec = await _sherpa_session(websocket)
+    polish = _final_polisher(websocket, _spec_language(spec))
     logger.info("sherpa offline dictation: model=%s sr=%d aec=%s",
                 spec.id, pcm_sr, bool(aec))
 
@@ -1063,7 +1108,7 @@ async def _run_sherpa_offline(websocket: WebSocket, spec):
             return
         del buf[:len(snapshot)]
         last_partial = ""
-        text = polish_text(text)
+        text = polish(text)
         if text:
             committed.append(text)
             await _send({"type": "final", "text": text,
@@ -1114,11 +1159,11 @@ async def _run_sherpa_offline(websocket: WebSocket, spec):
     except Exception:
         logger.exception("sherpa offline final failed")
         tail = ""
-    tail = polish_text(tail)
+    tail = polish(tail)
     if tail:
         committed.append(tail)
-    # Pieces are already polished; the join is too (polish is idempotent).
-    full = " ".join(committed).strip()
+    # Pieces are already polished; join them as typed (no space across CJK).
+    full = join_dictation_pieces(committed)
     segments = [{"start": 0.0, "end": None, "text": t} for t in committed]
 
     # Silent-model fallback: we heard speech-level audio but the selected
@@ -1129,7 +1174,7 @@ async def _run_sherpa_offline(websocket: WebSocket, spec):
     model_silent = is_model_silent(full, heard_speech, session_pcm.total_bytes)
     if model_silent:
         recovered, recovered_segments = await _recover_silent_sherpa(
-            spec, session_pcm.tail(), pcm_sr,
+            spec, session_pcm.tail(), pcm_sr, polish,
         )
         if recovered:
             full = recovered

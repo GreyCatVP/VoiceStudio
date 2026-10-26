@@ -17,6 +17,7 @@ public enum PhoneDubEditing {
     public static func merge(_ segments: [PhoneDubSegment],index: Int) throws -> [PhoneDubSegment] {
         guard index >= 0, index+1 < segments.count else { throw ClientError("mobile.editing.merge_invalid") }
         var a = segments[index]; let b = segments[index+1]
+        guard a.speaker == b.speaker else { throw ClientError("mobile.dub_advanced.merge_speakers") }
         guard (a.gain ?? 1) == (b.gain ?? 1), (a.muted == true) == (b.muted == true) else { throw ClientError("mobile.processing.merge_levels") }
         guard b.speech.start >= a.speech.start, b.speech.end > a.speech.end, b.speech.end-a.speech.start <= 30,
               a.referenceFile == b.referenceFile, a.referenceFile == nil || a.referenceText == b.referenceText else { throw ClientError("mobile.editing.merge_invalid") }
@@ -34,9 +35,10 @@ public enum PhoneDubEditing {
             if overlap.count == 1, first.speech.start == cue.start, first.speech.end == cue.end {
                 var exact = first; exact.translations[target] = cue.text; return exact
             }
+            guard overlap.allSatisfy({ $0.speaker == first.speaker }) else { throw ClientError("mobile.dub_advanced.merge_speakers") }
             guard overlap.allSatisfy({ ($0.gain ?? 1) == (first.gain ?? 1) && ($0.muted == true) == (first.muted == true) }) else { throw ClientError("mobile.processing.merge_levels") }
             guard overlap.allSatisfy({ $0.referenceFile == first.referenceFile && (first.referenceFile == nil || $0.referenceText == first.referenceText) }) else { throw ClientError("mobile.editing.merge_invalid") }
-            return PhoneDubSegment(speech: SpeechSegment(start: cue.start,end: cue.end,text: overlap.map(\.speech.text).joined(separator: "\n")),referenceText: first.referenceFile == nil ? nil : first.referenceText,translations: [target:cue.text],referenceFile: first.referenceFile,referenceNeedsTranscription: first.referenceFile == nil,gain: first.gain,muted: first.muted)
+            return PhoneDubSegment(speech: SpeechSegment(start: cue.start,end: cue.end,text: overlap.map(\.speech.text).joined(separator: "\n")),referenceText: first.referenceFile == nil ? nil : first.referenceText,translations: [target:cue.text],referenceFile: first.referenceFile,referenceNeedsTranscription: first.referenceFile == nil,gain: first.gain,muted: first.muted,speaker: first.speaker,referenceOrigin: first.referenceOrigin,voiceID: first.voiceID)
         }
     }
     private static func splitText(_ text: String,fraction: Double) throws -> (String,String) {

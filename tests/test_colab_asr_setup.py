@@ -102,6 +102,70 @@ class ColabASRSetupTests(unittest.TestCase):
                           if " 13. " in s.splitlines()[0])
         self.assertLess(setup, transcribe)
 
+    def test_asr_model_is_prefetched_before_the_backend_starts(self):
+        # Saving a clone in the web UI transcribes its reference only with an
+        # installed ASR model, so Part 1 fetches it before the launch cell.
+        code = ["".join(c["source"]) for c in json.loads(NOTEBOOK.read_text())["cells"]
+                if c["cell_type"] == "code"]
+        prefetch = next(i for i, s in enumerate(code)
+                        if "!hf download Systran/faster-whisper-large-v3" in s)
+        launch = next(i for i, s in enumerate(code)
+                      if s.startswith("# ── 5. Launch the backend"))
+        self.assertLess(prefetch, launch)
+
+
+class ColabLicenceErrorTests(unittest.TestCase):
+    """Model-licence 403s read as a licence problem, not a download/GPU failure (#3076)."""
+
+    BODY = {"detail": {"code": "model_licence_required", "message": "Accept the licence.",
+                       "models": [{"repo_id": "org/model-a"}]}}
+
+    def cell(self, marker):
+        cells = json.loads(NOTEBOOK.read_text())["cells"]
+        return next("".join(c["source"]) for c in cells
+                    if c["cell_type"] == "code" and marker in "".join(c["source"]))
+
+    def helpers(self):
+        src = self.cell("def api_fail")
+        ns = {"json": json, "LOG_HINT": "LOG"}
+        exec(src[src.index("def _error_detail"):src.index("def speak")], ns)
+        return ns
+
+    def test_api_fail_names_licence_and_models(self):
+        resp = types.SimpleNamespace(status_code=403, text=json.dumps(self.BODY),
+                                     json=lambda: self.BODY)
+        with self.assertRaisesRegex(SystemExit, r"model licence not accepted[\s\S]*org/model-a[\s\S]*cell 6[\s\S]*Model Catalogue"):
+            self.helpers()["api_fail"](resp, "/generate")
+
+    def test_api_fail_keeps_plain_http_errors(self):
+        def not_json():
+            raise ValueError("not json")
+        resp = types.SimpleNamespace(status_code=500, text="boom", json=not_json)
+        with self.assertRaisesRegex(SystemExit, r"HTTP 500\nboom") as cm:
+            self.helpers()["api_fail"](resp, "/generate")
+        self.assertNotIn("licence", str(cm.exception))
+
+    def run_smoke(self, body, code):
+        import io
+        import urllib.error
+
+        def urlopen(req, timeout=None):
+            if isinstance(req, str):
+                return io.BytesIO(b"{}")
+            raise urllib.error.HTTPError(
+                "http://x/generate", code, "err", {}, io.BytesIO(body.encode()))
+        with patch("urllib.request.urlopen", side_effect=urlopen):
+            exec(self.cell("# ── 7. Smoke test"), {})
+
+    def test_smoke_cell_names_licence(self):
+        with self.assertRaisesRegex(SystemExit, r"model licence not accepted[\s\S]*org/model-a[\s\S]*cell 6[\s\S]*Model Catalogue"):
+            self.run_smoke(json.dumps(self.BODY), 403)
+
+    def test_smoke_cell_keeps_plain_http_errors(self):
+        with self.assertRaisesRegex(SystemExit, r"HTTP 500\nboom") as cm:
+            self.run_smoke("boom", 500)
+        self.assertNotIn("licence", str(cm.exception))
+
 
 if __name__ == "__main__":
     unittest.main()
