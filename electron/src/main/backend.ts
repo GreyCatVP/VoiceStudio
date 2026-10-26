@@ -1,13 +1,14 @@
 import { decideMissingRuntime, runtimeWasInstalled } from './runtime-repair';
+import { windowsRocmInstalled, windowsRocmRequested } from './runtime-windows-rocm';
+import { runtimeProjectReady } from './runtime-readiness';
+import { runRuntimeProbe } from './runtime-probe';
 import {
   installRuntime,
   MISSING_SYSTEM_LIBRARY_CODE,
   promoteLegacyRuntimeCaches,
-  runtimeCompatible,
   runtimeDependenciesReady,
   runtimeDownloadHosts,
   runtimeInstallInterrupted,
-  runtimeReady,
   runtimePython,
   runtimeUvCache,
   stageRuntimeSources,
@@ -950,6 +951,8 @@ export class BackendSupervisor extends EventEmitter<{
               previouslyInstalled: await runtimeWasInstalled(project),
               repairAttempted: this.repairAttempted,
               unsupported: isUnsupportedPlatform(),
+              rocmNotYetInstalled:
+                windowsRocmRequested() && !(await windowsRocmInstalled(project)),
             });
             this.runtimeRepairFailed = action === 'repair_failed';
             this.runtimeInterrupted = await runtimeInstallInterrupted(project);
@@ -1057,10 +1060,7 @@ export class BackendSupervisor extends EventEmitter<{
     this.setStage('installing', { message: undefined });
     const stopWatching = this.watchSetupDownloads(gen, controller.signal);
     try {
-      const reusable =
-        ((await runtimeReady(backendRoot(), project)) ||
-          (await runtimeCompatible(backendRoot(), project))) &&
-        (await runtimeDependenciesReady(project));
+      const reusable = await runtimeProjectReady(backendRoot(), project);
       if (gen !== this.generation || controller.signal.aborted) return;
       if (reusable) {
         await this.start();
@@ -1086,10 +1086,7 @@ export class BackendSupervisor extends EventEmitter<{
           'Creating a separate Electron runtime; existing environment preserved.',
         );
         this.emitStatus();
-        const fallbackReusable =
-          ((await runtimeReady(backendRoot(), project)) ||
-            (await runtimeCompatible(backendRoot(), project))) &&
-          (await runtimeDependenciesReady(project));
+        const fallbackReusable = await runtimeProjectReady(backendRoot(), project);
         if (gen !== this.generation || controller.signal.aborted) return;
         if (fallbackReusable) {
           await this.start();
@@ -1109,8 +1106,27 @@ export class BackendSupervisor extends EventEmitter<{
         backendRoot(),
         project,
         findUv(),
-        (command, args, cwd, env) =>
-          new Promise<string>((resolve, reject) => {
+        (command, args, cwd, env, options) => {
+          if (options?.timeoutMs)
+            return runRuntimeProbe(
+              command,
+              args,
+              cwd,
+              { ...childEnv(this.port, this.runtimeRegion), ...env },
+              {
+                timeoutMs: options.timeoutMs,
+                signal: controller.signal,
+                onSpawn: (child) => {
+                  this.child = child;
+                  this.attachLineReader(child.stdout, 'out');
+                  this.attachLineReader(child.stderr, 'err');
+                },
+                onClose: (child) => {
+                  if (this.child === child) this.child = null;
+                },
+              },
+            );
+          return new Promise<string>((resolve, reject) => {
             if (controller.signal.aborted) {
               reject(controller.signal.reason);
               return;
@@ -1148,7 +1164,8 @@ export class BackendSupervisor extends EventEmitter<{
                   }),
                 );
             });
-          }),
+          });
+        },
         controller.signal,
         (phase) => {
           if (gen !== this.generation) return;
@@ -1438,10 +1455,7 @@ export class BackendSupervisor extends EventEmitter<{
       configured ? [configured] : [this.runtimeProject, own, ...legacyTauriRuntimeProjects()]
     ).filter((candidate): candidate is string => Boolean(candidate));
     for (const project of new Set(candidates.map((candidate) => resolve(candidate)))) {
-      if (
-        ((await runtimeReady(bundle, project)) || (await runtimeCompatible(bundle, project))) &&
-        (await runtimeDependenciesReady(project))
-      ) {
+      if (await runtimeProjectReady(bundle, project)) {
         this.runtimeProject = project;
         if (project !== own && project !== configured)
           this.pushLog('out', `Reusing compatible Tauri runtime: ${project}`);
