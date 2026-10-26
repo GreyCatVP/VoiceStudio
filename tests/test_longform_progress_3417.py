@@ -249,3 +249,13 @@ def test_generic_engine_is_built_once_not_per_chapter(monkeypatch):
         assert len(built) == 1  # fails before: one engine (sidecar) per chapter
     finally:
         tb._ENGINE_INSTANCES.pop(_Sidecar, None)
+
+
+def test_a_fast_positive_measurement_never_reports_zero():
+    from services.longform_progress import RenderProgress
+
+    p = RenderProgress([1000], clock=lambda: 0.0)
+    p.start_chapter(0, now=0.0)
+    p.chunk(0, 100, 1000, audio_s=0.5, now=0.03)  # a 30 ms chunk
+    snap = p.snapshot(now=0.03)
+    assert snap["chunk_s"] == 0.1 and snap["rtf"] > 0

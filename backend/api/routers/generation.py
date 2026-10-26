@@ -1703,12 +1703,9 @@ def _pcm16_b64(wav_tensor) -> str:
     wire format (same conversion as /ws/tts). N-D tensors take channel 0."""
     import base64
 
-    import torch
+    from services.audio_io import pcm16_mono
 
-    pcm = (wav_tensor * 32767).clamp(-32768, 32767).to(torch.int16)
-    while pcm.ndim > 1:
-        pcm = pcm[0]
-    return base64.b64encode(pcm.cpu().numpy().tobytes()).decode("ascii")
+    return base64.b64encode(pcm16_mono(wav_tensor).numpy().tobytes()).decode("ascii")
 
 
 def _apply_routing_headers(headers, engine_notice):

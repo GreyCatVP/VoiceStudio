@@ -152,6 +152,7 @@ export function DesignPage() {
       setDraft((current) => ({ ...current, profileId: created.id }));
       setCloneSetting('language', created.language || 'Auto');
       setName('');
+      toast.success(t('clone.saved_profile'));
     } catch (error) {
       setSaveError(describeError(error));
     } finally {
