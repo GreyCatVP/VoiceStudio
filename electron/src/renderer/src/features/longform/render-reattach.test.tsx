@@ -158,3 +158,60 @@ it('says when interrupted renders cannot be checked and retries on request', asy
   expect(await screen.findByText('Tale')).toBeVisible();
   expect(screen.queryByRole('alert')).toBeNull();
 });
+
+it('shows one card per interrupted project, explains a disabled Resume and can be dismissed', async () => {
+  localStorage.clear();
+  const jobs = [
+    {
+      job_id: 'old',
+      type: 'audiobook',
+      title: 'Book',
+      chapters_done: 0,
+      total_chapters: 2,
+      created_at: 1,
+    },
+    {
+      job_id: 'new',
+      type: 'audiobook',
+      title: 'Book',
+      chapters_done: 0,
+      total_chapters: 2,
+      created_at: 2,
+    },
+    {
+      job_id: 's1',
+      type: 'story',
+      title: 'Tale',
+      chapters_done: 1,
+      total_chapters: 3,
+      created_at: 3,
+    },
+  ];
+  expect(recoveriesFor('audiobook', jobs).map((job) => job.job_id)).toEqual(['new']);
+  expect(recoveriesFor('audiobook', jobs, ['new']).map((job) => job.job_id)).toEqual(['old']);
+
+  apiJsonMock.mockResolvedValue({ jobs });
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <RenderRecovery
+        mode="audiobook"
+        active={false}
+        disabled
+        disabledReason="Text-to-speech is not ready"
+        onResume={vi.fn()}
+      />
+    </QueryClientProvider>,
+  );
+  expect(await screen.findAllByText('Book')).toHaveLength(1);
+  expect(screen.queryByText('Tale')).toBeNull();
+  const resume = screen.getByRole('button', { name: 'Resume' });
+  expect(resume).toBeDisabled();
+  expect(resume).toHaveAccessibleDescription('Text-to-speech is not ready');
+  fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+  // Every manifest of that book goes with it.
+  await waitFor(() => expect(screen.queryByText('Book')).toBeNull());
+  expect(JSON.parse(localStorage.getItem('voicestudio.longform.dismissed-recoveries')!)).toEqual([
+    'old',
+    'new',
+  ]);
+});

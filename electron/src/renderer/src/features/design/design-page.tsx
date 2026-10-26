@@ -1,3 +1,4 @@
+import { DisabledReason, firstReason } from '@/components/disabled-reason';
 import { VoicesSidebar } from '@/features/clone/voices-sidebar';
 import { WandSparklesIcon } from 'lucide-react';
 import { SecondarySidebar } from '@/components/workspace-sidebar';
@@ -431,15 +432,26 @@ export function DesignPage() {
               aria-label={t('clone.profile_name')}
               placeholder={`${t('clone.profile_name')}…`}
             />
-            <Button
-              type="submit"
-              size="sm"
+            <DisabledReason
               className="w-full"
-              disabled={!name.trim() || saving || mapper.pending || generation.isGenerating}
+              reason={firstReason([
+                [generation.isGenerating, t('disabledReason.generating')],
+                [!name.trim(), t('disabledReason.name_required')],
+              ])}
             >
-              <SaveIcon />
-              {t('clone.save_as_profile')}
-            </Button>
+              {(describedBy) => (
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="w-full"
+                  disabled={!name.trim() || saving || mapper.pending || generation.isGenerating}
+                  aria-describedby={describedBy}
+                >
+                  <SaveIcon />
+                  {t('clone.save_as_profile')}
+                </Button>
+              )}
+            </DisabledReason>
             {saveError && (
               <p role="alert" className="text-xs text-destructive">
                 {t('clone.save_failed', { message: saveError })}

@@ -159,3 +159,26 @@ def test_a_stable_app_skips_beta_sections():
 def test_unknown_app_version_keeps_every_release():
     assert len(changelog.parse_changelog(_CHANNELS, 5, None)) == 4
     assert len(changelog.parse_changelog(_CHANNELS, 5, "dev-build")) == 4
+
+
+def test_intro_drops_download_table_and_images():
+    text = """## [1.0.0] — 2026-10-01
+
+**Headline.** The release.
+
+**Download**
+
+| Platform | Installer |
+| --- | --- |
+| Windows x64 | [Installer](https://example.test/a.exe) |
+
+![screenshot](https://example.test/a.png)
+
+**Upgrading:** Install over the old app.
+
+### Fixed
+
+- A fix. (#1)
+"""
+    [release] = changelog.parse_changelog(text)
+    assert release["intro"] == "**Headline.** The release.\n\n**Upgrading:** Install over the old app."

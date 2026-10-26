@@ -8,9 +8,9 @@ import {
   preferredTranscript,
 } from '@shared/utils/transcriptionFormat';
 import { RecordingInputs } from '@/components/recording-inputs';
-import { AgentFixButton } from '@/components/agent-fix-button';
+import { NotReadyNotice, SetUpLink } from '@/components/engine-notice';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { runRendererTask } from '@/lib/global-error-recovery';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -375,19 +375,13 @@ export function TranscriptionsPage() {
               {selectedModel ? (
                 <span
                   className="inline-flex min-w-0 max-w-72 items-center gap-1.5 px-1 text-xs text-muted-foreground"
-                  title={`${t(
-                    mode === 'accurate' ? 'engineSidebar.asr' : 'engineSidebar.dictation',
-                  )} · ${selectedModel}`}
+                  title={t('transcriptions.active_model', { model: selectedModel })}
                 >
                   {mode === 'accurate' ? (
                     <ScanTextIcon className="size-3.5 shrink-0" aria-hidden="true" />
                   ) : (
                     <KeyboardIcon className="size-3.5 shrink-0" aria-hidden="true" />
                   )}
-                  <span className="shrink-0">
-                    {t(mode === 'accurate' ? 'engineSidebar.asr' : 'engineSidebar.dictation')}
-                  </span>
-                  <span aria-hidden="true">·</span>
                   <span className="truncate">{selectedModel}</span>
                 </span>
               ) : null}
@@ -499,21 +493,12 @@ export function TranscriptionsPage() {
             !accurateReadiness.data?.ready &&
             !accurateReadiness.isPending && (
               <div className="border-b border-border/50 px-6 py-3">
-                <div className="mx-auto flex w-full max-w-4xl items-center gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-sm">
-                  <ScanTextIcon className="size-4 shrink-0 text-muted-foreground" />
-                  <span className="min-w-0 flex-1">{t('transcriptions.missing_model')}</span>
-                  <AgentFixButton request="Restore accurate file transcription. Install and activate the best compatible local ASR model through VoiceStudio, preserve the selected media and mode, then verify transcription is ready to start." />
-                  <Link
-                    to="/settings/models/$family"
-                    params={{ family: 'asr' }}
-                    className={buttonVariants({
-                      variant: 'outline',
-                      size: 'sm',
-                    })}
-                  >
-                    {t('engineSidebar.asr')}
-                  </Link>
-                </div>
+                <NotReadyNotice
+                  compact
+                  className="mx-auto w-full max-w-4xl"
+                  title={t('transcriptions.missing_model')}
+                  action={<SetUpLink family="asr" />}
+                />
               </div>
             )}
           <div className="border-b border-border/50 px-6 py-3">
@@ -560,18 +545,7 @@ export function TranscriptionsPage() {
                                 : 'common.loading',
                           )}
                 </span>
-                {liveState.issue === 'model' && (
-                  <>
-                    <AgentFixButton request="Restore live dictation readiness. Install and activate the best compatible dictation model through VoiceStudio, preserve this transcription workspace, and verify recording can start." />
-                    <Link
-                      to="/settings/models/$family"
-                      params={{ family: 'dictation' }}
-                      className={buttonVariants({ variant: 'ghost', size: 'sm' })}
-                    >
-                      {t('nav.settings')}
-                    </Link>
-                  </>
-                )}
+                {liveState.issue === 'model' && <SetUpLink family="dictation" />}
                 {liveState.stage === 'error' && liveState.text && (
                   <Button
                     variant="ghost"

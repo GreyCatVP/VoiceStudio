@@ -135,7 +135,7 @@ export function StoryEditor({
     setNotice(
       t('stories.autocastDone', {
         lines: result.tracks.length,
-        voices: result.speakers.length,
+        count: result.speakers.length,
       }),
     );
   };
