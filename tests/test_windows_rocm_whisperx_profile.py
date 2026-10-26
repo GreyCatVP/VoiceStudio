@@ -4,11 +4,29 @@ from types import SimpleNamespace
 
 import pytest
 
-from core.device_caps import HostCaps
-from core.windows_rocm import ct2, pipelines, runtime
-from core.windows_rocm.recipe import expected_versions, load_recipe
-from services import asr_backend as ab
-from services.engine_routing import runtime_compute_profile
+HostCaps = ct2 = pipelines = runtime = None
+expected_versions = load_recipe = ab = runtime_compute_profile = None
+
+
+@pytest.fixture(autouse=True)
+def app_modules(monkeypatch):
+    """Resolve current canonical modules after any earlier suite reloads."""
+    from importlib import import_module
+
+    caps = import_module("core.device_caps")
+    ct2_module = import_module("core.windows_rocm.ct2")
+    pipelines_module = import_module("core.windows_rocm.pipelines")
+    runtime_module = import_module("core.windows_rocm.runtime")
+    recipe_module = import_module("core.windows_rocm.recipe")
+    asr_module = import_module("services.asr_backend")
+    routing_module = import_module("services.engine_routing")
+    for name, value in {
+        "HostCaps": caps.HostCaps, "ct2": ct2_module, "pipelines": pipelines_module,
+        "runtime": runtime_module, "expected_versions": recipe_module.expected_versions,
+        "load_recipe": recipe_module.load_recipe, "ab": asr_module,
+        "runtime_compute_profile": routing_module.runtime_compute_profile,
+    }.items():
+        monkeypatch.setitem(globals(), name, value)
 
 
 @pytest.fixture
