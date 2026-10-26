@@ -282,6 +282,8 @@ _UNCHANGED_CASES = [
     ("English", "foo__bar__baz here"),
     ("English", "имя_файла_здесь test"),
     ("English", "a lone * stays"),
+    # Unspaced arithmetic keeps its multiplication signs
+    (None, "2*3*4 and 10**2"),
     ("English", "[**bold**] markers inside brackets stay untouched"),
     # Plain text is byte-identical
     ("English", "The quick brown fox jumps."),

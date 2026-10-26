@@ -333,7 +333,8 @@ _UNSAFE_CONTROL_TRANSLATION = dict.fromkeys(_UNSAFE_CONTROL_CODEPOINTS)
 # CommonMark lets asterisks open inside words (``un**believ**able``). ``_``/
 # ``__`` additionally refuse word characters on the outer side, so
 # ``snake_case`` and ``foo__bar__baz`` survive. Arithmetic (``2 * 3 * 4``)
-# survives via the whitespace rule. Bodies span soft line breaks.
+# survives via the whitespace rule, and ``2*3*4`` via a digit-flank rule.
+# Bodies span soft line breaks.
 #
 # Linear single-pass scan (#3205 P1): lazy ``(.+?)`` backtracks quadratically
 # on unmatched openers (``"**a " * 25000`` stalls synthesis), so delimiters
@@ -395,6 +396,9 @@ def _open_ok(
     s, L, rs, _re = tok
     if s + L > n - 1 or text[s + L].isspace():
         return False
+    # ``2*3*4`` is arithmetic, not emphasis: a digit on both sides of ``*``.
+    if not word_guarded and rs > 0 and text[rs - 1].isdigit() and text[s + L].isdigit():
+        return False
     return not word_guarded or rs == 0 or not _is_wordch(text[rs - 1])
 
 
@@ -403,6 +407,8 @@ def _close_ok(
 ) -> bool:
     s, _L, _rs, re_ = tok
     if s == 0 or text[s - 1].isspace():
+        return False
+    if not word_guarded and re_ < n and text[s - 1].isdigit() and text[re_].isdigit():
         return False
     return not word_guarded or re_ >= n or not _is_wordch(text[re_])
 
