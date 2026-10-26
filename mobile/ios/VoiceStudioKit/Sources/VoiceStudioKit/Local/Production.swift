@@ -83,9 +83,10 @@ public struct ProductionProject: Codable, Sendable, Identifiable, Equatable {
     public var cast: [String: String]
     public var pronunciations: [String:String]?
     public var speed: Float?
+    public var handoff: JSONValue?
     public var modifiedAt: Date
-    public init(id: UUID = UUID(), kind: String, title: String, script: String = "", defaultVoice: String = "preset:0", cast: [String:String] = [:], modifiedAt: Date = Date(), pronunciations: [String:String]? = nil, speed: Float? = nil) {
-        self.id = id; self.kind = kind; self.title = title; self.script = script; self.defaultVoice = defaultVoice; self.cast = cast; self.modifiedAt = modifiedAt; self.pronunciations = pronunciations; self.speed = speed
+    public init(id: UUID = UUID(), kind: String, title: String, script: String = "", defaultVoice: String = "preset:0", cast: [String:String] = [:], modifiedAt: Date = Date(), pronunciations: [String:String]? = nil, speed: Float? = nil, handoff: JSONValue? = nil) {
+        self.id = id; self.kind = kind; self.title = title; self.script = script; self.defaultVoice = defaultVoice; self.cast = cast; self.modifiedAt = modifiedAt; self.pronunciations = pronunciations; self.speed = speed; self.handoff = handoff
     }
     public func plan() throws -> ProductionPlan { try ProductionPlan(script: script,pronunciations: pronunciations ?? [:],speed: speed ?? 1) }
     public func voice(for role: String) -> String { cast[role].flatMap { $0.isEmpty ? nil : $0 } ?? defaultVoice }
@@ -97,6 +98,11 @@ public actor ProductionStore {
     private var rendering = Set<UUID>()
     public init(root: URL) throws { self.root = root; try PrivateFiles.directory(root) }
     private func directory(_ id: UUID) throws -> URL { try PrivateFiles.child(root,id.uuidString) }
+    internal func handoffDirectory(_ id: UUID) throws -> URL {
+        guard !rendering.contains(id) else { throw ClientError("audiobook.blocked.busy") }
+        return try directory(id)
+    }
+    internal func handoffRenderDirectory(_ project: ProductionProject,configuration: String) throws -> URL { try renderDirectory(project,configuration) }
     public func save(_ project: ProductionProject) throws {
         guard ["stories","audiobook"].contains(project.kind), !project.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, project.title.count <= 200, project.script.utf16.count <= 1_000_000 else { throw ClientError("mobile.errors.file") }
         let dir = try directory(project.id); try PrivateFiles.directory(dir)

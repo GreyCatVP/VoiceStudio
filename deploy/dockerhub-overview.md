@@ -23,8 +23,9 @@ web-server build**: a FastAPI backend serving a pre-built React UI over HTTP, so
 you can run it on an AMD64 homelab box or GPU server and open
 the UI in a browser.
 
-**Architecture:** published images are **`linux/amd64` only**; there is no
-native ARM64 image. On Apple Silicon, use the
+**Architecture:** the main and `:rocm` images are **`linux/amd64` only**.
+ARM servers with an NVIDIA GPU (DGX Spark / GB10, GH200, GB200) use the native
+`linux/arm64` `:stable-cuda-arm64` image. On Apple Silicon, use the
 [native macOS app](https://github.com/debpalash/VoiceStudio/blob/main/docs/install/macos.md)
 for Apple GPU acceleration; the Linux container cannot access the Mac's Apple
 GPU through MPS or MLX. Other ARM64 hosts need an AMD64 server or CPU emulation,
@@ -124,7 +125,9 @@ see the [Docker install guide](https://github.com/debpalash/VoiceStudio/blob/mai
 | `:sha-xxxxxxx` | Exact commit — produced by every image build (main, releases, manual runs) |
 | `:rocm` | **AMD GPU (ROCm) build** of the rolling preview — the ROCm analogue of `:latest` |
 | `:stable-rocm`, `:0.5.6-rocm`, `:0.5-rocm`, `:sha-xxxxxxx-rocm` | ROCm builds of the corresponding tags above |
-| `:beta`, `:0.5.9-beta.1` | Newest beta prerelease and its exact version. A beta never moves `:stable` or `:0.5`; `-rocm` forms exist too (`:beta-rocm`) |
+| `:cuda-arm64` | **ARM64 NVIDIA GPU build** (`linux/arm64`, DGX Spark / Grace) of the rolling preview |
+| `:stable-cuda-arm64`, `:0.5.6-cuda-arm64`, `:0.5-cuda-arm64`, `:sha-xxxxxxx-cuda-arm64` | ARM64 NVIDIA builds of the corresponding tags above |
+| `:beta`, `:0.5.9-beta.1` | Newest beta prerelease and its exact version. A beta never moves `:stable` or `:0.5`; `-rocm` and `-cuda-arm64` forms exist too (`:beta-rocm`, `:beta-cuda-arm64`) |
 
 Release tags are published only when the GitHub Release is published.
 Preview builds always come from `main` and never version-sort below `:stable`,
@@ -189,6 +192,12 @@ adds there are root-owned).
   A six-digit share PIN is also available for casual LAN access, but it does
   not authorize administration or dictation; see the
   [API authentication guide](https://github.com/debpalash/VoiceStudio/blob/main/docs/api-auth.md).
+- The share PIN also applies to the host's own browser, which reaches the
+  container from Docker's gateway address. On a host only you use, with the
+  port published on `127.0.0.1`, `-e OMNIVOICE_TRUST_HOST_LOOPBACK=1` lets that
+  browser skip the PIN; other machines still need it. Read the
+  [risks](https://github.com/debpalash/VoiceStudio/blob/main/docs/install/docker.md#trust-host-loopback)
+  first.
 
 > **Security:** Loopback-only publishing is the safe default. Before exposing
 > VoiceStudio on a trusted LAN, configure `OMNIVOICE_API_KEY`. On any untrusted

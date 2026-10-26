@@ -29,7 +29,8 @@ class ProductionNavigationTest {
         try {
             compose.setContent {StudioApp(vm)}
             compose.waitUntil(15000) {shadowOf(Looper.getMainLooper()).idle();!vm.state.value.loading&&!vm.phone.state.value.loading}
-            val routes=listOf("design" to "Voice design","stories" to "Stories","audiobook" to "Audiobook","batch" to "Batch dubbing","gallery" to "Gallery","workflows" to "Workflows","calls" to "Calls","local-api" to "Phone speech API","tools" to "Tools")
+            val strings=com.voicestudio.mobile.l10n.L10n.load(app,"en")
+            val routes=listOf("transcriptions" to strings.t("transcriptions.title"),"handoff" to strings.t("mobile.handoff.title"),"design" to "Voice design","stories" to "Stories","audiobook" to "Audiobook","batch" to "Batch dubbing","gallery" to "Gallery","workflows" to "Workflows","calls" to "Calls","local-api" to "Phone speech API","tools" to "Tools")
             for((route,title) in routes) {
                 compose.onNodeWithTag("home.$route").performScrollTo().performClick()
                 compose.onAllNodesWithText(title).onFirst().assertExists()

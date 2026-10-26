@@ -71,6 +71,16 @@ function mount() {
   );
   return client;
 }
+it('keeps long step labels inside the sidebar with the full label as a tooltip', async () => {
+  // #2940: a long single-word label overflowed the sidebar instead of wrapping.
+  mock.ready = false;
+  mount();
+  await screen.findByText('Preflight');
+  const step = screen.getByRole('button', { name: '3.settings.privacy' });
+  expect(step).toHaveAttribute('title', 'settings.privacy');
+  const label = step.querySelector('[data-setup-step-label]');
+  expect(label).toHaveClass('min-w-0', 'line-clamp-2', '[overflow-wrap:anywhere]');
+});
 it('bypasses onboarding for a backend with required models present', async () => {
   localStorage.setItem('voicestudio.setup.complete.v1', '1');
   mount();

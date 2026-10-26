@@ -36,7 +36,7 @@ fun mediaDisplayName(context: Context, uri: Uri): String? = context.contentResol
         if(column>=0 && cursor.moveToFirst()) cursor.getString(column)?.takeIf {it.isNotBlank()} else null
     }
 
-suspend fun copyMedia(context: Context, uri: Uri, extension: String): File {
+suspend fun copyMedia(context: Context, uri: Uri, extension: String, maxBytes: Long = Long.MAX_VALUE): File {
     var pending: File?=null
     try {return withContext(Dispatchers.IO) {
         val original=mediaDisplayName(context,uri)
@@ -45,8 +45,8 @@ suspend fun copyMedia(context: Context, uri: Uri, extension: String): File {
         val file=File(context.filesDir,"uploads/${java.util.UUID.randomUUID()}.$suffix").apply {parentFile!!.mkdirs()}
         pending=file
         requireNotNull(context.contentResolver.openInputStream(uri)).use {input ->file.outputStream().use {out ->
-            val buffer=ByteArray(262144)
-            while(true) {currentCoroutineContext().ensureActive();val count=input.read(buffer);if(count<0) break;out.write(buffer,0,count)}
+            val buffer=ByteArray(262144);var total=0L
+            while(true) {currentCoroutineContext().ensureActive();val count=input.read(buffer);if(count<0) break;total+=count;if(total>maxBytes) throw ClientFailure("mobile.errors.file");out.write(buffer,0,count)}
         }}
         currentCoroutineContext().ensureActive();file
     }} catch(e:Exception) {pending?.delete();throw e}

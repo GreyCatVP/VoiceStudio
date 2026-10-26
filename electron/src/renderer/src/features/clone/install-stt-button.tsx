@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { DownloadIcon, LoaderCircleIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { InstallProgress } from '@/components/model-install-progress';
+import { useModelInstall } from '@/hooks/use-model-install';
 import { apiJson, describeError } from '@/lib/api/client';
 import { router } from '@/router';
 
@@ -17,15 +18,17 @@ interface RecommendedModel {
  * Offered beside the "reference transcription needs a speech-to-text model"
  * error so the fix is one click instead of a hunt through the Model Catalogue
  * (#2929, #2678). Starts the download of the first speech-to-text model the
- * host's curated preset lists; with nothing left to install it opens the
- * catalogue, where a model can be selected.
+ * host's curated preset lists and follows it inline; with nothing left to
+ * install it opens the catalogue, where a model can be selected.
  */
 export function InstallSttButton() {
   const { t } = useTranslation();
-  const client = useQueryClient();
-  const [busy, setBusy] = useState(false);
-  const install = async () => {
-    setBusy(true);
+  const [resolving, setResolving] = useState(false);
+  const install = useModelInstall(undefined, {
+    onReady: () => toast.success(t('modelInstall.ready')),
+  });
+  const begin = async () => {
+    setResolving(true);
     try {
       const { models } = await apiJson<{ models: RecommendedModel[] }>('/setup/recommendations');
       const missing = models.find(
@@ -35,21 +38,35 @@ export function InstallSttButton() {
         await router.navigate({ to: '/settings/models' });
         return;
       }
-      await apiJson('/models/install', {
-        method: 'POST',
-        body: JSON.stringify({ repo_id: missing.repo_id }),
-      });
-      await client.invalidateQueries({ queryKey: ['model-install-jobs'] });
-      toast.success(t('models.started_downloading', { count: 1 }));
+      if ((await install.start(missing.repo_id)) === 'started')
+        toast.success(t('models.started_downloading', { count: 1 }));
     } catch (error) {
       toast.error(describeError(error));
     } finally {
-      setBusy(false);
+      setResolving(false);
     }
   };
+  const view = install.view;
+  if (view && view.stage !== 'ready' && view.stage !== 'cancelled') {
+    return (
+      <InstallProgress
+        className="min-w-48 flex-1"
+        view={view}
+        busy={install.busy}
+        onCancel={() => void install.cancel()}
+        onRetry={() => void install.retry()}
+        onDismiss={view.stage === 'failed' ? install.dismiss : undefined}
+      />
+    );
+  }
   return (
-    <Button type="button" size="sm" disabled={busy} onClick={() => void install()}>
-      {busy ? (
+    <Button
+      type="button"
+      size="sm"
+      disabled={resolving || install.busy}
+      onClick={() => void begin()}
+    >
+      {resolving ? (
         <LoaderCircleIcon className="animate-spin motion-reduce:animate-none" />
       ) : (
         <DownloadIcon />

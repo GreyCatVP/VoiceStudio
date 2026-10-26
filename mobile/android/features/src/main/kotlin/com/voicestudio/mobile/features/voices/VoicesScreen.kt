@@ -124,6 +124,7 @@ import java.io.File
                     Surface(shape=androidx.compose.foundation.shape.CircleShape,color=role("messageSurface")) {Text(profile.name.take(1).uppercase(),Modifier.padding(VSTheme.inset))}
                     Column(Modifier.weight(1f)) {
                         Text(profile.name,style=MaterialTheme.typography.titleMedium)
+                        local(profile)?.sourceAttribution?.let {credit ->Text(listOfNotNull(credit["author"],credit["license"],credit["name"]).joinToString(" · "),style=MaterialTheme.typography.bodySmall,color=role("textMuted"))}
                         LocationBadge(local(profile)!=null)
                     }
                     IconAction("player.play",Icons.Default.PlayArrow,profile.audioUrl!=null) {preview=profile.audioUrl}

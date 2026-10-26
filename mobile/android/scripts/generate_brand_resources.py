@@ -2,6 +2,7 @@
 """Generate Android vectors/adaptive icons from the canonical SVG and theme tokens."""
 import argparse
 import json
+import runpy
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
@@ -15,6 +16,8 @@ def android(**attrs):
     return {f'{{{ANDROID}}}{key}': str(value) for key, value in attrs.items()}
 
 def generate(repository, output):
+    contributors = runpy.run_path(str(repository / "scripts/prepare_mobile_contributors.py"))
+    contributors["prepare_android_icons"](repository, output)
     logo = ET.parse(repository / 'docs/logo.svg').getroot()
     tokens = json.loads((repository / 'mobile/contract/tokens.json').read_text())
     canvas = next(p for p in tokens['palettes'] if p['id'] == 'default')['colors'][tokens['defaultMode']]['canvas']

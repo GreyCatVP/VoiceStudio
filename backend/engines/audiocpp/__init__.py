@@ -190,6 +190,9 @@ class AudioCPPBackend(TTSBackend):
         "weights research/non-commercial)"
     )
     supports_voice_design = True
+    # The seed travels in the request body; the C++ server's sampler never
+    # sees the parent's torch RNG, so /generate must forward it (#3413).
+    supports_generation_seed = True
     applies_own_mastering = True  # model-decoded 24 kHz studio output
     gpu_compat = ("cpu",)
     runs_out_of_process = True

@@ -9,15 +9,15 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.serialization.Serializable
 
 @Serializable data class PhoneWorkflowStep(val id: String=UUID.randomUUID().toString(),val kind: String,val language: String="en",val containsText: String?=null,val skipSteps: Int?=null,val retries: Int?=null)
-@Serializable data class PhoneWorkflow(val id: String=UUID.randomUUID().toString(),val name: String,val steps: List<PhoneWorkflowStep> = emptyList(),val inputText: String? = null,val voiceSelection: String? = null,val inputFile: String?=null,val inputName: String?=null,val inputHash: String?=null) {
-    val valid get()=name.isNotBlank()&&name.length<=200&&steps.isNotEmpty()&&steps.size<=20&&steps.map {it.id}.distinct().size==steps.size&&steps.withIndex().all {(index,step)->step.kind in listOf("normalize","translate","speak","transcribe","condition")&&step.language.isNotBlank()&&(step.retries ?: 0) in 0..3&&(step.kind!="transcribe"||index==0)&&(step.kind!="speak"||index==steps.lastIndex)&&(step.kind!="condition"||(!step.containsText.isNullOrEmpty()&&(step.skipSteps ?: 1) in 1..20))}
+@Serializable data class PhoneWorkflow(val id: String=UUID.randomUUID().toString(),val name: String,val steps: List<PhoneWorkflowStep> = emptyList(),val inputText: String? = null,val voiceSelection: String? = null,val inputFile: String?=null,val inputName: String?=null,val inputHash: String?=null,val graph: WorkflowGraph?=null) {
+    val valid get()=if(graph!=null) name.isNotBlank()&&name.length<=200&&runCatching {graph!!.validate()}.isSuccess else name.isNotBlank()&&name.length<=200&&steps.isNotEmpty()&&steps.size<=20&&steps.map {it.id}.distinct().size==steps.size&&steps.withIndex().all {(index,step)->step.kind in listOf("normalize","translate","speak","transcribe","condition")&&step.language.isNotBlank()&&(step.retries ?: 0) in 0..3&&(step.kind!="transcribe"||index==0)&&(step.kind!="speak"||index==steps.lastIndex)&&(step.kind!="condition"||(!step.containsText.isNullOrEmpty()&&(step.skipSteps ?: 1) in 1..20))}
 }
 data class WorkflowValue(val text: String,val audio: LocalAudio? = null)
 data class PhoneWorkflowResult(val text: String,val audio: File?)
 @Serializable private data class WorkflowCheckpoint(val texts: List<String> = emptyList(),val nextIndex: Int?=null,val spoken: Boolean?=null)
 
-class PhoneWorkflowStore(private val root: File) {
-    companion object {private val locks=ConcurrentHashMap<String,Mutex>()}
+class PhoneWorkflowStore(internal val root: File) {
+    companion object {internal val locks=ConcurrentHashMap<String,Mutex>()}
     private fun id(value: String): String {require(UUID.fromString(value).toString()==value);return value}
     private fun hash(file: File): String {val digest=MessageDigest.getInstance("SHA-256");file.inputStream().use {stream->val buffer=ByteArray(1024*1024);while(true) {val count=stream.read(buffer);if(count<0) break;digest.update(buffer,0,count)}};return digest.digest().joinToString("") {"%02x".format(it)}}
     suspend fun save(workflow: PhoneWorkflow)=withContext(Dispatchers.IO) {

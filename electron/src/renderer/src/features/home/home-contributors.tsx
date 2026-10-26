@@ -6,7 +6,8 @@ import { getBridge } from '@/components/bridge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { runRendererTask } from '@/lib/global-error-recovery';
-import { REPO_URL, WEBSITE_URL, X_URL } from '@shared/utils/contactLinks';
+import { REPO_URL } from '@shared/utils/contactLinks';
+import { homeMaintainerCards as MAINTAINER_CARDS } from './home-maintainer-cards';
 import { homeContributors, homeCoreMaintainers } from './home-contributors-data';
 
 function openProfile(event: MouseEvent<HTMLAnchorElement>) {
@@ -16,48 +17,6 @@ function openProfile(event: MouseEvent<HTMLAnchorElement>) {
   const href = event.currentTarget.href;
   runRendererTask('Open contributor profile', () => bridge.files.openExternal(href));
 }
-
-/** Core team hover cards: name, role and the profiles people can follow. */
-const MAINTAINER_CARDS: Record<
-  string,
-  {
-    name: string;
-    role: 'homeUi.creatorCoreTeam' | 'homeUi.coreTeam';
-    links: CardLink[];
-  }
-> = {
-  debpalash: {
-    name: 'Palash',
-    role: 'homeUi.creatorCoreTeam',
-    links: [
-      { kind: 'website', handle: 'palash.dev', href: WEBSITE_URL },
-      {
-        kind: 'github',
-        handle: '@debpalash',
-        href: 'https://github.com/debpalash',
-      },
-      { kind: 'x', handle: '@idebpalash', href: X_URL },
-    ],
-  },
-  velixio: {
-    name: 'Velixio',
-    role: 'homeUi.coreTeam',
-    links: [
-      {
-        kind: 'github',
-        handle: '@velixio',
-        href: 'https://github.com/velixio',
-      },
-      { kind: 'x', handle: '@shimuldn', href: 'https://x.com/shimuldn' },
-    ],
-  },
-};
-
-type CardLink = {
-  kind: 'website' | 'github' | 'x';
-  handle: string;
-  href: string;
-};
 
 type Credit = { login: string; avatar: string };
 
@@ -113,43 +72,53 @@ export function HomeContributors() {
           className="home-contributor-popup"
           aria-label={`@${credit.login}`}
         >
+          {/* Banner tinted from the theme's primary colour, so the card follows light and dark themes. */}
+          <div className="home-contributor-banner" aria-hidden="true" />
           <div className="home-contributor-identity">
-            <img src={credit.avatar} alt="" width={40} height={40} />
-            <div>
-              <strong>{card.name}</strong>
-              <small>{t(card.role)}</small>
+            <img src={credit.avatar} alt="" width={52} height={52} />
+            <div className="min-w-0">
+              <strong>{t(card.name)}</strong>
+              <small>@{credit.login}</small>
+              <span className="home-contributor-role">
+                <StarIcon aria-hidden="true" />
+                {t(card.role)}
+              </span>
             </div>
           </div>
-          {card.links.map(({ kind, handle, href }) => {
-            const label =
-              kind === 'website' ? t('homeUi.website') : kind === 'github' ? 'GitHub' : 'X';
-            const KindIcon =
-              kind === 'website' ? GlobeIcon : kind === 'github' ? GitHubIcon : XLogoIcon;
-            return (
-              <a
-                key={kind}
-                data-kind={kind}
-                aria-label={`${label} ${handle}`}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={openProfile}
-              >
-                <KindIcon className="home-contributor-link-icon" aria-hidden="true" />
-                <span className="min-w-0 flex-1">
-                  <strong>{label}</strong>
-                  <small className="truncate">{handle}</small>
-                </span>
-                <span className="home-contributor-follow">
-                  {kind === 'website' ? (
-                    <ArrowUpRightIcon className="size-3.5" aria-hidden="true" />
-                  ) : (
-                    t('homeUi.follow')
-                  )}
-                </span>
-              </a>
-            );
-          })}
+          <div className="home-contributor-links">
+            {card.links.map(({ kind, handle, href }) => {
+              const label =
+                kind === 'website' ? t('homeUi.website') : kind === 'github' ? 'GitHub' : 'X';
+              const KindIcon =
+                kind === 'website' ? GlobeIcon : kind === 'github' ? GitHubIcon : XLogoIcon;
+              return (
+                <a
+                  key={kind}
+                  data-kind={kind}
+                  aria-label={`${label} ${handle}`}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={openProfile}
+                >
+                  <span className="home-contributor-link-icon">
+                    <KindIcon aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <strong>{label}</strong>
+                    <small className="truncate">{handle}</small>
+                  </span>
+                  <span className="home-contributor-follow">
+                    {kind === 'website' ? (
+                      <ArrowUpRightIcon className="size-3.5" aria-hidden="true" />
+                    ) : (
+                      t('homeUi.follow')
+                    )}
+                  </span>
+                </a>
+              );
+            })}
+          </div>
         </PopoverContent>
       </Popover>
     );

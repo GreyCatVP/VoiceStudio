@@ -25,6 +25,7 @@ class PhoneStudio(context: Context, private val scope: CoroutineScope, private v
     val voices=PhoneVoiceStore(File(application.noBackupFilesDir,"voices"))
     val production=ProductionStore(File(application.noBackupFilesDir,"production"))
     val workflows=PhoneWorkflowStore(File(application.noBackupFilesDir,"workflows"))
+    val transcripts=PhoneTranscriptStore(File(application.noBackupFilesDir,"transcripts"))
     val dubs=PhoneDubStore(File(application.noBackupFilesDir,"dubs"))
     private val mutable=MutableStateFlow(PhoneState())
     val state=mutable.asStateFlow()
@@ -67,6 +68,10 @@ class PhoneStudio(context: Context, private val scope: CoroutineScope, private v
             withContext(Dispatchers.IO) {licence.record(model,accepted,fingerprint)};refresh();completed(true)
         } catch(e:CancellationException) {throw e} catch(e:Exception) {failure(e);completed(false)}
     }}
+    fun saveTranscript(text: String,modelID: String?=null) {
+        if(text.isBlank()) return
+        scope.launch {try {transcripts.saveDictation(java.util.UUID.randomUUID().toString(),text.lineSequence().first().take(120),text,modelID)} catch(e:CancellationException) {throw e} catch(e:Exception) {failure(e)}}
+    }
     fun speak(model: PhoneModel, text: String, speaker: Int, voice: PhoneVoice? = null, language: String? = null) {
         if(inference?.isActive==true) return
         inference=scope.launch {

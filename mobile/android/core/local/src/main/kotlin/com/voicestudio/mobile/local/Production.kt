@@ -64,7 +64,7 @@ data class ProductionPlan(val segments: List<ProductionSegment>, val chapters: L
 }
 
 @Serializable data class ProductionProject(val id: String=UUID.randomUUID().toString(),val kind: String,val title: String,
-    val script: String="",val defaultVoice: String="preset:0",val cast: Map<String,String> = emptyMap(),val modifiedAt: Long=System.currentTimeMillis(),val pronunciations: Map<String,String> = emptyMap(),val speed: Float=1f) {
+    val script: String="",val defaultVoice: String="preset:0",val cast: Map<String,String> = emptyMap(),val modifiedAt: Long=System.currentTimeMillis(),val pronunciations: Map<String,String> = emptyMap(),val speed: Float=1f,val handoff: JsonObject?=null) {
     fun plan()=ProductionPlan.parse(script,pronunciations,speed)
     fun voice(role: String)=cast[role]?.takeIf {it.isNotEmpty()} ?: defaultVoice
 }
@@ -73,6 +73,8 @@ data class ProductionPlan(val segments: List<ProductionSegment>, val chapters: L
 class ProductionStore(private val root: File) {
     companion object {private val locks=ConcurrentHashMap<String,Mutex>()}
     private fun directory(id: String): File {require(UUID.fromString(id).toString()==id);return File(root,id)}
+    internal fun handoffDirectory(id: String)=directory(id)
+    internal fun handoffRenderDirectory(project: ProductionProject,configuration: String)=renderDirectory(project,configuration)
     private fun key(project: ProductionProject,configuration: String): String {
         val cast=buildJsonObject {project.cast.toSortedMap().forEach {(k,v)->put(k,v)}}
         val value=buildJsonArray {add("narration-v2");add(project.script);add(project.defaultVoice);add(cast);add(project.speed);add(buildJsonObject {project.pronunciations.toSortedMap().forEach {(k,v)->put(k,v)}});add(configuration)}

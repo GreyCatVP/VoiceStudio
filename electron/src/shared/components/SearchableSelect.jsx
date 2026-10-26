@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { createPortal } from 'react-dom';
 import { Search, ChevronDown, Check, Star, Clock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { VirtualSearchableSelect } from './VirtualSearchableSelect';
 
 const MAX_DISPLAY = 200;
 
@@ -31,11 +30,7 @@ const GROUP_LABEL_CLS =
   'pt-[4px] px-[10px] pb-[2px] text-[0.55rem] uppercase tracking-[0.06em] text-[color:var(--text-secondary)] opacity-70 flex items-center gap-[4px]';
 
 export default function SearchableSelect(props) {
-  return props.virtualized ? (
-    <VirtualSearchableSelect {...props} />
-  ) : (
-    <ClassicSearchableSelect {...props} />
-  );
+  return <ClassicSearchableSelect {...props} />;
 }
 
 function ClassicSearchableSelect({

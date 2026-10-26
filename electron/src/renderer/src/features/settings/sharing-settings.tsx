@@ -6,7 +6,9 @@ import {
   Globe2Icon,
   LoaderCircleIcon,
   NetworkIcon,
+  RefreshCwIcon,
   ShieldCheckIcon,
+  TriangleAlertIcon,
   WifiIcon,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -27,6 +29,13 @@ interface NetworkState {
   share_port: number | null;
   pin: string | null;
   lan_addresses: string[];
+}
+
+interface NetworkCheck {
+  enabled: boolean;
+  bind_host: string | null;
+  share_port: number | null;
+  addresses: { address: string; listening: boolean }[];
 }
 
 interface PortInfo {
@@ -94,6 +103,11 @@ export function SharingSettings() {
     queryKey: ['system-info'],
     queryFn: ({ signal }) => apiJson<PortInfo>('/system/info', { signal }),
   });
+  const check = useQuery({
+    queryKey: ['network-share-check'],
+    queryFn: ({ signal }) => apiJson<NetworkCheck>('/system/network/check', { signal }),
+    enabled: network.data?.enabled === true,
+  });
   const tailscale = useQuery({
     queryKey: ['tailscale-status'],
     queryFn: ({ signal }) => apiJson<TailscaleStatus>('/system/tailscale/status', { signal }),
@@ -141,8 +155,21 @@ export function SharingSettings() {
     };
   }, [network.data]);
 
+  // The self-check re-reads this machine's addresses; a network change since
+  // sharing started (new Wi-Fi, VPN) replaces the stale URLs and QR codes.
+  useEffect(() => {
+    if (!check.data?.enabled) return;
+    const fresh = check.data.addresses.map((entry) => entry.address);
+    client.setQueryData<NetworkState>(['network-share'], (current) =>
+      current?.enabled && current.lan_addresses.join() !== fresh.join()
+        ? { ...current, lan_addresses: fresh }
+        : current,
+    );
+  }, [check.data, client]);
+
   const setNetworkState = (state: NetworkState) => {
     client.setQueryData(['network-share'], state);
+    client.removeQueries({ queryKey: ['network-share-check'] });
     setConfirming(false);
   };
 
@@ -326,6 +353,56 @@ export function SharingSettings() {
                 <strong className="font-mono text-xl tracking-[0.18em]">{state.pin}</strong>
               </div>
             )}
+          </div>
+        )}
+        {state?.enabled && (
+          <div
+            data-testid="sharing-self-check"
+            className="space-y-2 border-t border-border/60 px-4 py-3 text-xs text-muted-foreground"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span>
+                {check.data?.enabled
+                  ? t('network.listening_on', {
+                      host: check.data.bind_host,
+                      port: check.data.share_port,
+                    })
+                  : t('network.self_check')}
+              </span>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                aria-label={t('network.recheck')}
+                title={t('network.recheck')}
+                disabled={check.isFetching}
+                onClick={() => void check.refetch()}
+              >
+                {check.isFetching ? (
+                  <LoaderCircleIcon aria-hidden="true" className="animate-spin" />
+                ) : (
+                  <RefreshCwIcon aria-hidden="true" />
+                )}
+              </Button>
+            </div>
+            {check.data?.enabled && (
+              <ul className="flex flex-wrap gap-x-4 gap-y-1">
+                {check.data.addresses.map((entry) => (
+                  <li key={entry.address} className="flex items-center gap-1">
+                    {entry.listening ? (
+                      <CheckIcon aria-hidden="true" className="size-3.5 text-emerald-500" />
+                    ) : (
+                      <TriangleAlertIcon aria-hidden="true" className="size-3.5 text-amber-500" />
+                    )}
+                    <code>{entry.address}</code>
+                    <span className="sr-only">
+                      {entry.listening ? t('network.address_ok') : t('network.address_down')}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p>{t('network.firewall_hint')}</p>
           </div>
         )}
         {(network.isError || networkError) && (

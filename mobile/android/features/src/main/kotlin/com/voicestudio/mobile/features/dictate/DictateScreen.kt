@@ -25,7 +25,7 @@ import kotlinx.coroutines.CancellationException
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     val api=vm.api ?: return
-    val controller=remember(api) {DictationController(api,scope,vm::fail)}
+    val controller=remember(api) {DictationController(api,scope,vm::fail,completed={vm.phone.saveTranscript(it)})}
     val transcript by controller.text.collectAsState()
     val active by controller.active.collectAsState()
     val lifecycle=LocalLifecycleOwner.current
@@ -73,7 +73,9 @@ import kotlinx.coroutines.CancellationException
     })
 }
 
-@Composable fun DictateScreen(vm: StudioViewModel) {
+@Composable fun DictateScreen(vm: StudioViewModel,onHistory: ()->Unit = {}) {
+    Column {
+    Secondary("transcriptions.title",onClick=onHistory)
     com.voicestudio.mobile.features.models.TaskLocation(vm,"dictate",setOf("asr-stream")) {location,model ->
         if(location==com.voicestudio.mobile.local.RunLocation.COMPUTER) ComputerDictateScreen(vm)
         else {
@@ -81,4 +83,5 @@ import kotlinx.coroutines.CancellationException
             PhoneDictateScreen(vm,model,location==com.voicestudio.mobile.local.RunLocation.PHONE&&model?.let {phone.canRun(it,vm.phone.ramBytes)}==true)
         }
     }
+}
 }

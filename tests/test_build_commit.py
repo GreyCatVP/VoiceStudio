@@ -50,6 +50,6 @@ def test_docker_images_receive_the_commit_as_a_late_build_arg():
         for step in job["steps"]
         if str(step.get("uses", "")).startswith("docker/build-push-action@")
     ]
-    assert len(builds) == 2
+    assert len(builds) == 3  # CUDA amd64, ROCm, CUDA arm64
     for step in builds:
         assert "BUILD_COMMIT=${{ steps.source.outputs.commit }}" in step["with"]["build-args"]
