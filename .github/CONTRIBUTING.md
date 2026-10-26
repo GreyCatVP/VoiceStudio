@@ -411,6 +411,11 @@ hard rules from the first prompt.
 
 ## Quality gates your PR must pass
 
+- **Gallery pin:** a PR that changes the `omnivoice-gallery` submodule must
+  move it forward along the gallery's `main` (`.github/workflows/gallery-pin.yml`).
+  If it fails on a PR that never meant to touch the gallery, the checkout had a
+  stale submodule: run `git submodule update omnivoice-gallery` and drop that
+  change from the commit.
 - **First CI run from a fork:** a pull request from a fork waits for a
   maintainer to approve it (the `external-pr` environment) before CI starts.
   Branches in this repository start at once.

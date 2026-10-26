@@ -63,6 +63,7 @@ case "$PLATFORM" in
 esac
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$REPO_ROOT/scripts/lib/omnivoice-vulkan.sh"
 BIN_DIR="$REPO_ROOT/bin"
 mkdir -p "$BIN_DIR"
 
@@ -83,11 +84,18 @@ cd "$WORK/src"
 # EXIT trap deletes the build tree, .so files and all (#1348). Copy them
 # next to the binary; a static build simply has nothing matching. The
 # backend puts bin/ on the loader path when it spawns the binary.
+# Every library copied here is also recorded in COPIED_LIBS so the manifest
+# step below checksums it: the runtime loads these at spawn time (with
+# GGML_BACKEND_DL it picks its CPU/Vulkan backend from them), so they are
+# verified like the executable.
+COPIED_LIBS="$WORK/copied-libs"
+: > "$COPIED_LIBS"
 copy_shared_libs() {
     find build \( -name 'libggml*.so*' -o -name 'libggml*.dylib' -o -name 'ggml*.dll' \) \
         -type f -print0 2>/dev/null |
         while IFS= read -r -d '' lib; do
             cp -v "$lib" "$BIN_DIR/"
+            basename "$lib" >> "$COPIED_LIBS"
         done
     # Dereference any symlinked SONAMEs (libggml.so.0 -> libggml.so) so the
     # copies in bin/ are real files under every name the loader asks for.
@@ -95,7 +103,22 @@ copy_shared_libs() {
         -type l -print0 2>/dev/null |
         while IFS= read -r -d '' lib; do
             cp -vL "$lib" "$BIN_DIR/"
+            basename "$lib" >> "$COPIED_LIBS"
         done
+}
+
+# Multi-config generators (Visual Studio) put the executable under
+# build/Release/; single-config ones (Ninja, Makefiles) put it in build/.
+built_windows_exe() {
+    local candidate
+    for candidate in build/Release/omnivoice-tts.exe build/omnivoice-tts.exe; do
+        if [[ -f "$candidate" ]]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    echo "omnivoice-tts.exe not found in build/Release/ or build/" >&2
+    return 1
 }
 
 OUT_NAME="omnivoice-tts-$PLATFORM"
@@ -104,51 +127,27 @@ case "$PLATFORM" in
 esac
 
 case "$PLATFORM" in
-    linux-x86_64)
-        if [[ -x ./buildcpu.sh ]]; then
-            ./buildcpu.sh
-        else
-            cmake -B build -DCMAKE_BUILD_TYPE=Release
-            cmake --build build --config Release -j
-        fi
-        cp -v build/omnivoice-tts "$BIN_DIR/$OUT_NAME"
-        copy_shared_libs
-        ;;
-    linux-aarch64)
-        # Apple Silicon under Asahi Linux: prefer GGML's Vulkan backend so
-        # the Honeykrisp driver can accelerate generation, but degrade to
-        # CPU when the Vulkan dev deps (glslc, SPIRV headers) are absent —
-        # same graceful-fallback pattern as darwin-arm64 Metal above.
-        # ggml-vulkan needs <spirv/unified1/spirv.hpp> at compile time
-        # (Arch: spirv-headers, Debian/Ubuntu: spirv-headers) and glslc to
-        # compile its compute shaders; a configure-only probe misses the
-        # header, hence the compile check.
-        VULKAN_BUILT=0
-        if command -v glslc >/dev/null 2>&1 &&
-            printf '#include <spirv/unified1/spirv.hpp>\nint main(){}\n' |
-                c++ -fsyntax-only -x c++ - 2>/dev/null; then
-            if cmake -B build -DCMAKE_BUILD_TYPE=Release -DGGML_VULKAN=ON &&
-                cmake --build build --config Release -j; then
-                VULKAN_BUILT=1
-            else
-                echo "→ Vulkan build failed; retrying Linux ARM64 with CPU." >&2
-                rm -rf build
-            fi
-        fi
-        if [[ "$VULKAN_BUILT" -eq 0 ]]; then
+    linux-x86_64|linux-aarch64)
+        if ! try_vulkan_build; then
             rm -rf build
-            cmake -B build -DCMAKE_BUILD_TYPE=Release
-            cmake --build build --config Release -j
+            if [[ "$PLATFORM" == linux-x86_64 && -x ./buildcpu.sh ]]; then
+                ./buildcpu.sh
+            else
+                cmake -B build -DCMAKE_BUILD_TYPE=Release
+                cmake --build build --config Release -j
+            fi
         fi
         cp -v build/omnivoice-tts "$BIN_DIR/$OUT_NAME"
         copy_shared_libs
         ;;
     windows-x86_64)
-        # CI runs this from MSYS / git-bash; CMake picks up the MSVC
-        # toolchain via the GitHub Actions runner's default env.
-        cmake -B build -DCMAKE_BUILD_TYPE=Release
-        cmake --build build --config Release -j
-        cp -v build/Release/omnivoice-tts.exe "$BIN_DIR/$OUT_NAME"
+        # MSYS / git-bash uses the runner's configured MSVC toolchain.
+        if ! try_vulkan_build; then
+            cmake -B build -DCMAKE_BUILD_TYPE=Release
+            cmake --build build --config Release -j
+        fi
+        exe="$(built_windows_exe)"
+        cp -v "$exe" "$BIN_DIR/$OUT_NAME"
         copy_shared_libs
         ;;
     darwin-x86_64)
@@ -176,26 +175,36 @@ case "$PLATFORM" in
         ;;
 esac
 
-# Compute SHA-256 and append to bin/checksums.sha256.
+# Compute SHA-256 for the binary and every library copied above, and write
+# them to bin/checksums.sha256.
 cd "$BIN_DIR"
-if command -v sha256sum >/dev/null 2>&1; then
-    DIGEST="$(sha256sum "$OUT_NAME" | awk '{print $1}')"
-elif command -v shasum >/dev/null 2>&1; then
-    DIGEST="$(shasum -a 256 "$OUT_NAME" | awk '{print $1}')"
-else
-    echo "No sha256sum/shasum found; cannot compute checksum." >&2
-    exit 1
-fi
+sha256_of() {
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$1" | awk '{print $1}'
+    elif command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 "$1" | awk '{print $1}'
+    else
+        echo "No sha256sum/shasum found; cannot compute checksum." >&2
+        return 1
+    fi
+}
+DIGEST="$(sha256_of "$OUT_NAME")"
 
-# Rewrite the manifest atomically so we don't accumulate stale entries
-# for renamed platforms.
+# Rewrite the manifest atomically, replacing (not accumulating) the entries
+# this build owns, so renamed platforms and rebuilt libraries never leave a
+# stale digest behind.
 MANIFEST="$BIN_DIR/checksums.sha256"
 TMP_MANIFEST="$(mktemp)"
+OWNED="$(mktemp)"
+{ printf '%s\n' "$OUT_NAME"; sort -u "$COPIED_LIBS"; } > "$OWNED"
 if [[ -f "$MANIFEST" ]]; then
-    grep -v "  $OUT_NAME$" "$MANIFEST" > "$TMP_MANIFEST" || true
+    awk 'NR == FNR { owned[$0] = 1; next } !($2 in owned)' "$OWNED" "$MANIFEST" > "$TMP_MANIFEST"
 fi
-printf '%s  %s\n' "$DIGEST" "$OUT_NAME" >> "$TMP_MANIFEST"
+while IFS= read -r name; do
+    [[ -n "$name" ]] || continue
+    printf '%s  %s\n' "$(sha256_of "$name")" "$name" >> "$TMP_MANIFEST"
+done < "$OWNED"
 sort -k2 -o "$MANIFEST" "$TMP_MANIFEST"
-rm -f "$TMP_MANIFEST"
+rm -f "$TMP_MANIFEST" "$OWNED"
 
 echo "✓ Built $OUT_NAME ($DIGEST)"

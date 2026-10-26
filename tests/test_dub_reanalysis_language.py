@@ -3,6 +3,8 @@ import pytest
 import test_dub_speaker_reanalysis as speaker_analysis
 
 pytest_plugins = ['test_dub_speaker_reanalysis']
+# Transcription mechanics only: the no-ASR-installed preflight has its own suite.
+pytestmark = pytest.mark.usefixtures('asr_model_installed')
 
 
 @pytest.mark.parametrize('source_lang', [None, '', 'nl', 'haw'])
