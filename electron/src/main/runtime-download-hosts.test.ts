@@ -60,6 +60,22 @@ afterEach(() => {
 });
 
 describe('Windows HIP artifact hosts', () => {
+  it('keeps AMD hosts while showing the selected PyPI mirror', async () => {
+    vi.stubEnv('OMNIVOICE_TORCH_VARIANT', 'cpu');
+    const hosts = await runtimeDownloadHosts(
+      BUNDLE,
+      'win32',
+      'x64',
+      { variant: 'rocm', explicit: true },
+      'mirrors.aliyun.com',
+    );
+    expect(hosts.get('torch')).toBe('repo.radeon.com');
+    expect(hosts.get('rocm-sdk-devel')).toBe('repo.radeon.com');
+    expect(hosts.get('numpy')).toBe('mirrors.aliyun.com');
+    expect(hosts.has('ctranslate2')).toBe(false);
+    expect(process.env.OMNIVOICE_TORCH_VARIANT).toBe('cpu');
+  });
+
   it('uses an explicit HIP choice instead of an ambient CPU choice', async () => {
     vi.stubEnv('OMNIVOICE_TORCH_VARIANT', 'cpu');
     const hosts = await runtimeDownloadHosts(BUNDLE, 'win32', 'x64', {
@@ -128,7 +144,10 @@ describe('Windows HIP artifact hosts', () => {
 describe('unchanged host selection', () => {
   it.each([
     ['', 'download.pytorch.org'],
-    ['https://user:secret@linux-mirror.example.invalid:8443/whl/rocm6.4', 'linux-mirror.example.invalid:8443'],
+    [
+      'https://user:secret@linux-mirror.example.invalid:8443/whl/rocm6.4',
+      'linux-mirror.example.invalid:8443',
+    ],
   ])('keeps the Linux ROCm index %j', async (index, host) => {
     vi.stubEnv('OMNIVOICE_TORCH_VARIANT', 'rocm');
     vi.stubEnv('OMNIVOICE_TORCH_INDEX', index);
@@ -152,16 +171,19 @@ describe('unchanged host selection', () => {
     ['linux', 'arm64', 'auto', false, 'files.pythonhosted.org'],
     ['darwin', 'arm64', 'rocm', false, 'files.pythonhosted.org'],
     ['darwin', 'x64', 'auto', false, 'files.pythonhosted.org'],
-  ] as const)('preserves %s/%s %s with NVIDIA=%s', async (platform, arch, variant, nvidia, host) => {
-    vi.stubEnv('OMNIVOICE_TORCH_VARIANT', variant);
-    vi.stubEnv('OMNIVOICE_TORCH_INDEX', 'https://unrelated-linux.example.invalid/rocm');
-    mocks.nvidia.mockReturnValue(nvidia);
-    const hosts = await runtimeDownloadHosts(BUNDLE, platform, arch);
-    expect(hosts.get('torch')).toBe(host);
-    expect(hosts.get('ctranslate2')).toBe('files.pythonhosted.org');
-    expect(hosts.has('rocm-sdk-devel')).toBe(false);
-    expect(vi.mocked(readFile).mock.calls).toHaveLength(1);
-  });
+  ] as const)(
+    'preserves %s/%s %s with NVIDIA=%s',
+    async (platform, arch, variant, nvidia, host) => {
+      vi.stubEnv('OMNIVOICE_TORCH_VARIANT', variant);
+      vi.stubEnv('OMNIVOICE_TORCH_INDEX', 'https://unrelated-linux.example.invalid/rocm');
+      mocks.nvidia.mockReturnValue(nvidia);
+      const hosts = await runtimeDownloadHosts(BUNDLE, platform, arch);
+      expect(hosts.get('torch')).toBe(host);
+      expect(hosts.get('ctranslate2')).toBe('files.pythonhosted.org');
+      expect(hosts.has('rocm-sdk-devel')).toBe(false);
+      expect(vi.mocked(readFile).mock.calls).toHaveLength(1);
+    },
+  );
 
   it('keeps the unsupported Windows ARM64 HIP rejection', async () => {
     vi.stubEnv('OMNIVOICE_TORCH_VARIANT', 'rocm');

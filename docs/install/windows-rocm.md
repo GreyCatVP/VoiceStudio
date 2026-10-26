@@ -201,6 +201,10 @@ Only explicitly started installation downloads AMD packages and the pinned
 OpenNMT/CTranslate2 GitHub release. Installed packages outside the overlay stay
 at their locked versions; package indexes resolve only new dependencies.
 Verification and local smoke are offline. This installation
+keeps regional PyPI wheel mirrors separate from the pinned AMD artifact URLs.
+Mirrored frozen sync restores the bundled lock before readiness is published;
+retrying from the origin preserves the selected runtime family and wheel hashes.
+This installation
 work incorporates focused contributions from
 [#2600](https://github.com/debpalash/VoiceStudio/pull/2600) and
 [#2607](https://github.com/debpalash/VoiceStudio/pull/2607); it does not absorb

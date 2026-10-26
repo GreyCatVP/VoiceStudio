@@ -2,6 +2,7 @@ import { decideMissingRuntime, runtimeWasInstalled } from './runtime-repair';
 import { windowsRocmInstalled, windowsRocmRequested } from './runtime-windows-rocm';
 import { runtimeProjectReady } from './runtime-readiness';
 import { runRuntimeProbe } from './runtime-probe';
+import { pypiFilesHost } from './pypi-mirror';
 import {
   installRuntime,
   MISSING_SYSTEM_LIBRARY_CODE,
@@ -1300,6 +1301,17 @@ export class BackendSupervisor extends EventEmitter<{
         },
         this.runtimeRegion,
         choice,
+        {
+          log: (line) => {
+            if (gen === this.generation) this.pushLog('out', line);
+          },
+          pypiHost: (host) => {
+            if (gen !== this.generation) return;
+            void runtimeDownloadHosts(backendRoot(), process.platform, process.arch, choice, host)
+              .then((hosts) => this.setupProgress.setDownloadHosts(hosts))
+              .catch(() => undefined);
+          },
+        },
       );
       if (gen === this.generation && !controller.signal.aborted) {
         this.completeRuntimeTorchSetup();
@@ -1339,7 +1351,15 @@ export class BackendSupervisor extends EventEmitter<{
   private watchSetupDownloads(gen: number, signal: AbortSignal, choice: TorchChoice): () => void {
     const reporter = new SetupDownloadReporter();
     void Promise.resolve()
-      .then(() => runtimeDownloadHosts(backendRoot(), process.platform, process.arch, choice))
+      .then(() =>
+        runtimeDownloadHosts(
+          backendRoot(),
+          process.platform,
+          process.arch,
+          choice,
+          pypiFilesHost(this.runtimeRegion),
+        ),
+      )
       .then((hosts) => this.setupProgress.setDownloadHosts(hosts))
       .catch(() => undefined);
     let sampling = false;

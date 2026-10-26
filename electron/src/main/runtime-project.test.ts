@@ -109,7 +109,15 @@ describe('packaged runtime setup', () => {
         }
         return undefined;
       });
-      await installRuntime(bundle, project, 'uv', run, new AbortController().signal, undefined, 'global');
+      await installRuntime(
+        bundle,
+        project,
+        'uv',
+        run,
+        new AbortController().signal,
+        undefined,
+        'global',
+      );
       expect(run.mock.calls.some(([, args]) => args.includes(CUDNN8_COMPAT_PIN))).toBe(false);
       expect(run.mock.calls.some(([, args]) => args[1] === RUNTIME_IMPORT_PROBE)).toBe(true);
       expect(await runtimeReady(bundle, project)).toBe(true);
@@ -144,27 +152,38 @@ describe('packaged runtime setup', () => {
   it.each([
     ['after printing its result', true],
     ['before printing anything', false],
-  ])('keeps setting up when the CUDA compatibility probe crashes natively %s', async (_name, printed) => {
-    forcePlatform('win32');
-    vi.spyOn(process, 'arch', 'get').mockReturnValue('x64');
-    vi.stubEnv('OMNIVOICE_TORCH_VARIANT', 'cuda');
-    const { bundle, project } = await fixture();
-    const sitePackages = join(project, '.venv', 'Lib', 'site-packages');
-    const run = vi.fn(async (_command: string, args: string[]) => {
-      if (args[0] === 'sync') await interpreter(project);
-      if (args[1]?.includes('VOICESTUDIO_CUDNN8_PROBE=')) {
-        throw Object.assign(new Error('Runtime setup exited with code 3221225477'), {
-          stdout: printed
-            ? `VOICESTUDIO_CUDNN8_PROBE=${JSON.stringify({ device: 'none', sitePackages })}\n`
-            : '',
-        });
-      }
-      return undefined;
-    });
-    await installRuntime(bundle, project, 'uv', run, new AbortController().signal, undefined, 'global');
-    expect(run.mock.calls.some(([, args]) => args[1] === RUNTIME_IMPORT_PROBE)).toBe(true);
-    expect(await runtimeReady(bundle, project)).toBe(true);
-  });
+  ])(
+    'keeps setting up when the CUDA compatibility probe crashes natively %s',
+    async (_name, printed) => {
+      forcePlatform('win32');
+      vi.spyOn(process, 'arch', 'get').mockReturnValue('x64');
+      vi.stubEnv('OMNIVOICE_TORCH_VARIANT', 'cuda');
+      const { bundle, project } = await fixture();
+      const sitePackages = join(project, '.venv', 'Lib', 'site-packages');
+      const run = vi.fn(async (_command: string, args: string[]) => {
+        if (args[0] === 'sync') await interpreter(project);
+        if (args[1]?.includes('VOICESTUDIO_CUDNN8_PROBE=')) {
+          throw Object.assign(new Error('Runtime setup exited with code 3221225477'), {
+            stdout: printed
+              ? `VOICESTUDIO_CUDNN8_PROBE=${JSON.stringify({ device: 'none', sitePackages })}\n`
+              : '',
+          });
+        }
+        return undefined;
+      });
+      await installRuntime(
+        bundle,
+        project,
+        'uv',
+        run,
+        new AbortController().signal,
+        undefined,
+        'global',
+      );
+      expect(run.mock.calls.some(([, args]) => args[1] === RUNTIME_IMPORT_PROBE)).toBe(true);
+      expect(await runtimeReady(bundle, project)).toBe(true);
+    },
+  );
   it.each([0, 1])(
     'verifies the runtime when .pth repair attempt %i fails',
     async (failedAttempt) => {
@@ -941,5 +960,142 @@ describe('import verification names the module that crashed (#3293)', () => {
     );
     expect(lastImportAttempted('no markers here')).toBeNull();
     expect(lastImportAttempted(undefined)).toBeNull();
+  });
+});
+
+describe('regional PyPI mirror for the frozen sync (#3444)', () => {
+  const WHEEL = 'packages/a8/db/253133d7/accelerate-1.14.0-py3-none-any.whl';
+  const LOCK = [
+    '[[package]]',
+    'name = "accelerate"',
+    'source = { registry = "https://pypi.org/simple" }',
+    `wheels = [{ url = "https://files.pythonhosted.org/${WHEEL}", hash = "sha256:e943", size = 1 }]`,
+    '[[package]]',
+    'name = "torch"',
+    'wheels = [{ url = "https://download-r2.pytorch.org/whl/cu128/torch.whl", hash = "sha256:aa" }]',
+    '',
+  ].join('\n');
+  async function lockedFixture() {
+    const paths = await fixture();
+    await writeFile(join(paths.bundle, 'uv.lock'), LOCK);
+    return paths;
+  }
+  function recordingRun(project: string, fail = 0) {
+    const seen: string[] = [];
+    let failures = fail;
+    const run = vi.fn(async (_command: string, args: string[]) => {
+      if (args[0] !== 'sync') return undefined;
+      seen.push(await readFile(join(project, 'uv.lock'), 'utf8'));
+      if (failures-- > 0) throw new Error('Runtime setup exited with code 2');
+      await interpreter(project);
+      return undefined;
+    });
+    return { run, seen };
+  }
+
+  it('syncs the china region from the aliyun mirror and restores the bundled lock', async () => {
+    const { bundle, project } = await lockedFixture();
+    const { run, seen } = recordingRun(project);
+    const log = vi.fn();
+    await installRuntime(
+      bundle,
+      project,
+      'uv',
+      run,
+      new AbortController().signal,
+      undefined,
+      'china',
+      undefined,
+      {
+        log,
+      },
+    );
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toContain(
+      `url = "https://mirrors.aliyun.com/pypi/${WHEEL}", hash = "sha256:e943"`,
+    );
+    expect(seen[0]).toContain('https://download-r2.pytorch.org/whl/cu128/torch.whl');
+    expect(seen[0]).not.toContain('files.pythonhosted.org');
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('mirrors.aliyun.com'));
+    expect(await readFile(join(project, 'uv.lock'), 'utf8')).toBe(LOCK);
+    expect(await runtimeReady(bundle, project)).toBe(true);
+    expect(await runtimeCompatible(bundle, project)).toBe(true);
+  });
+
+  it.each(['global', 'russia', 'restricted'] as const)(
+    'leaves the lock byte-identical for the %s region',
+    async (region) => {
+      const { bundle, project } = await lockedFixture();
+      const { run, seen } = recordingRun(project);
+      await installRuntime(
+        bundle,
+        project,
+        'uv',
+        run,
+        new AbortController().signal,
+        undefined,
+        region,
+      );
+      expect(seen).toEqual([LOCK]);
+    },
+  );
+
+  it('retries once from the original URLs when the mirrored sync fails', async () => {
+    const { bundle, project } = await lockedFixture();
+    const { run, seen } = recordingRun(project, 1);
+    const log = vi.fn();
+    const pypiHost = vi.fn();
+    await installRuntime(
+      bundle,
+      project,
+      'uv',
+      run,
+      new AbortController().signal,
+      undefined,
+      'china',
+      undefined,
+      {
+        log,
+        pypiHost,
+      },
+    );
+    expect(seen).toHaveLength(2);
+    expect(seen[0]).toContain('mirrors.aliyun.com');
+    expect(seen[1]).toBe(LOCK);
+    expect(pypiHost).toHaveBeenCalledWith('files.pythonhosted.org');
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining('retrying from files.pythonhosted.org'),
+    );
+    expect(await runtimeReady(bundle, project)).toBe(true);
+  });
+
+  it('restores the bundled lock when both attempts fail', async () => {
+    const { bundle, project } = await lockedFixture();
+    const { run, seen } = recordingRun(project, 2);
+    await expect(
+      installRuntime(bundle, project, 'uv', run, new AbortController().signal, undefined, 'china'),
+    ).rejects.toThrow('code 2');
+    expect(seen).toHaveLength(2);
+    expect(await readFile(join(project, 'uv.lock'), 'utf8')).toBe(LOCK);
+  });
+
+  it('treats a lock left on the mirror as the same dependency graph', async () => {
+    const { bundle, project } = await lockedFixture();
+    await installRuntime(
+      bundle,
+      project,
+      'uv',
+      recordingRun(project).run,
+      new AbortController().signal,
+      undefined,
+      'global',
+    );
+    await writeFile(
+      join(project, 'uv.lock'),
+      LOCK.replace('https://files.pythonhosted.org/', 'https://mirrors.aliyun.com/pypi/'),
+    );
+    expect(await runtimeCompatible(bundle, project)).toBe(true);
+    await writeFile(join(project, 'uv.lock'), LOCK.replace('sha256:e943', 'sha256:0000'));
+    expect(await runtimeCompatible(bundle, project)).toBe(false);
   });
 });

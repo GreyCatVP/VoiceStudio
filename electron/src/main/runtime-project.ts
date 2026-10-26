@@ -23,6 +23,12 @@ import { DIRECTORY_RENAME, renameWithRetry } from './rename-retry';
 import { downloadRuntimeInstaller } from './runtime-download';
 import { asciiSafePthFiles } from './pth-ascii';
 import { pruneInterruptedUvDownloads, setupDownloadHosts } from './setup-downloads';
+import {
+  PYPI_FILES_ORIGIN,
+  mirrorLockUrls,
+  normalizeLockHosts,
+  pypiFilesMirror,
+} from './pypi-mirror';
 import { scrubText } from '../shared/utils/scrub';
 import { execFile } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
@@ -195,11 +201,7 @@ async function effectiveRegion(region: RuntimeRegion, signal: AbortSignal): Prom
   return 'restricted';
 }
 
-async function runtimeDownloadEnv(
-  region: RuntimeRegion,
-  signal: AbortSignal,
-): Promise<NodeJS.ProcessEnv> {
-  const effective = await effectiveRegion(region, signal);
+function runtimeDownloadEnv(effective: RuntimeRegion): NodeJS.ProcessEnv {
   return {
     UV_HTTP_TIMEOUT: process.env.UV_HTTP_TIMEOUT || '120',
     UV_HTTP_CONNECT_TIMEOUT: process.env.UV_HTTP_CONNECT_TIMEOUT || '30',
@@ -271,9 +273,11 @@ export async function runtimeDownloadHosts(
   platform: NodeJS.Platform = process.platform,
   arch: string = process.arch,
   choice?: TorchChoice,
+  pypiHost: string = new URL(PYPI_FILES_ORIGIN).host,
 ): Promise<Map<string, string>> {
   const lock = await readFile(join(bundle, 'uv.lock'), 'utf8');
   const variant = (choice ?? resolveTorchVariant(process.env, platform, arch)).variant;
+  let hosts: Map<string, string>;
   if (windowsRocmSelected(variant, platform, arch)) {
     const recipe = JSON.parse(
       await readFile(join(bundle, 'scripts/windows-rocm-recipe.json'), 'utf8'),
@@ -281,7 +285,7 @@ export async function runtimeDownloadHosts(
       torch: { find_links: string; packages: string[]; wheel_files: string[] };
       runtime: { packages: string[]; wheel_files: string[] };
     };
-    const hosts = setupDownloadHosts(lock, { pytorchIndex: cpuTorchApplies(platform, arch) });
+    hosts = setupDownloadHosts(lock, { pytorchIndex: cpuTorchApplies(platform, arch) });
     for (const section of [recipe.torch, recipe.runtime]) {
       const artifactHosts = section.wheel_files.map(
         (artifact) => new URL(recipe.torch.find_links + artifact).host,
@@ -292,16 +296,22 @@ export async function runtimeDownloadHosts(
       for (const pin of section.packages) hosts.set(pin.split('==')[0]!, host);
     }
     hosts.delete('ctranslate2');
-    return hosts;
+  } else {
+    const rocm = variant === 'rocm';
+    const rocmHost = new URL(process.env.OMNIVOICE_TORCH_INDEX || ROCM_TORCH_INDEX).host;
+    hosts = setupDownloadHosts(lock, {
+      pytorchIndex: cpuTorchApplies(platform, arch),
+      overrides: rocm
+        ? Object.fromEntries(ROCM_TORCH_PINS.map((pin) => [pin.split(/[=<>!~]/)[0]!, rocmHost]))
+        : undefined,
+    });
   }
-  const rocm = variant === 'rocm';
-  const rocmHost = new URL(process.env.OMNIVOICE_TORCH_INDEX || ROCM_TORCH_INDEX).host;
-  return setupDownloadHosts(lock, {
-    pytorchIndex: cpuTorchApplies(platform, arch),
-    overrides: rocm
-      ? Object.fromEntries(ROCM_TORCH_PINS.map((pin) => [pin.split(/[=<>!~]/)[0]!, rocmHost]))
-      : undefined,
-  });
+  // A regional mirror serves the PyPI-hosted wheels (#3444); other hosts stay.
+  const origin = new URL(PYPI_FILES_ORIGIN).host;
+  if (pypiHost !== origin) {
+    for (const [name, host] of hosts) if (host === origin) hosts.set(name, pypiHost);
+  }
+  return hosts;
 }
 
 /** Python request for a fresh venv; Windows on ARM needs the emulated x64 build. */
@@ -552,7 +562,9 @@ export async function runtimeDependenciesReady(
         if (!ready) {
           const module = lastImportAttempted(stdout);
           const detail = probeFailureDetail(error, stderr);
-          onFailure?.(module && !String(stderr ?? '').trim() ? `${detail} (importing ${module})` : detail);
+          onFailure?.(
+            module && !String(stderr ?? '').trim() ? `${detail} (importing ${module})` : detail,
+          );
         }
         resolve(ready);
       },
@@ -713,7 +725,11 @@ export async function runtimeCompatible(
       python.isFile() &&
       config.isFile() &&
       bundledProject.equals(installedProject) &&
-      bundledLock.equals(installedLock) &&
+      // The install may have staged the lock with a regional PyPI mirror (#3444):
+      // the same pinned files, so compare with hosts normalized.
+      (bundledLock.equals(installedLock) ||
+        normalizeLockHosts(bundledLock.toString('utf8')) ===
+          normalizeLockHosts(installedLock.toString('utf8'))) &&
       (marker === null
         ? // A Tauri environment carries the lock's default (CUDA) torch: fine for
           // inferred CPU hosts, wrong for an explicit ROCm or CPU request.
@@ -791,6 +807,61 @@ export async function stageRuntimeSources(
   }
 }
 
+/**
+ * Run the frozen sync with the staged lock's PyPI artifact URLs pointed at a
+ * regional mirror (#3444). The mirror serves the same files, and uv checks each
+ * one against the pinned hash. Every outcome restores the bundled lock, and a
+ * failed mirrored sync is retried once from the original URLs: finished wheels
+ * stay in uv's cache, so the retry only fetches what the mirror could not.
+ */
+export interface MirrorReporter {
+  /** A setup log line. */
+  log?: (line: string) => void;
+  /** The host PyPI-hosted wheels download from changed (fallback to the origin). */
+  pypiHost?: (host: string) => void;
+}
+
+export async function syncLockedWithMirror(
+  project: string,
+  mirror: string | null,
+  sync: () => Promise<unknown>,
+  signal: AbortSignal,
+  { log = () => {}, pypiHost = () => {} }: MirrorReporter = {},
+): Promise<void> {
+  const lockPath = join(project, 'uv.lock');
+  const original = mirror ? await readFile(lockPath, 'utf8') : '';
+  const mirrored = mirror ? mirrorLockUrls(original, mirror) : original;
+  if (!mirror || mirrored === original) {
+    await sync();
+    return;
+  }
+  const origin = new URL(PYPI_FILES_ORIGIN).host;
+  log(
+    `PyPI downloads: ${new URL(mirror).host} (regional mirror of ${origin}). ` +
+      'PyTorch wheels still download from their own index; it has no mirror.',
+  );
+  try {
+    await writeFile(lockPath, mirrored);
+    try {
+      await sync();
+      return;
+    } catch (error) {
+      if (signal.aborted) throw error;
+      log(`Mirror download failed (${errorSummary(error)}); retrying from ${origin}.`);
+      pypiHost(origin);
+    }
+    await writeFile(lockPath, original);
+    await sync();
+  } finally {
+    await writeFile(lockPath, original);
+  }
+}
+
+function errorSummary(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.split(/\r?\n/)[0]!.slice(0, 200);
+}
+
 /** Called only by the user's install action; normal startup never downloads. */
 export async function installRuntime(
   bundle: string,
@@ -801,6 +872,7 @@ export async function installRuntime(
   phase: (value: RuntimePhase) => void = () => {},
   region: RuntimeRegion = 'auto',
   choice?: TorchChoice,
+  downloads: MirrorReporter = {},
 ): Promise<void> {
   signal.throwIfAborted();
   phase('checking');
@@ -848,11 +920,12 @@ export async function installRuntime(
     uv = privateUv;
   // #2971: uv and pip unpack wheels into the temp dir. Left at the system default
   // it fills the system drive even when the runtime was placed on another one.
+  const downloadRegion = await effectiveRegion(region, signal);
   const scratch = join(project, '..', '.tmp');
   await mkdir(scratch, { recursive: true });
   const env: NodeJS.ProcessEnv = {
     ...downloadProxyEnv(),
-    ...(await runtimeDownloadEnv(region, signal)),
+    ...runtimeDownloadEnv(downloadRegion),
     OMNIVOICE_TORCH_VARIANT: torch.variant === 'default' ? 'cuda' : torch.variant,
     UV_PROJECT_ENVIRONMENT: join(project, '.venv'),
     // Keep immutable downloads beside the replaceable project. Clean & Retry can
@@ -951,11 +1024,18 @@ export async function installRuntime(
           ...cudaOnlyPackages(await readFile(join(project, 'uv.lock'), 'utf8')),
         ].flatMap((name) => ['--no-install-package', name])
       : [];
-  await runWithChoice(
-    uv,
-    ['sync', '--frozen', '--no-dev', ...pythonArgs, ...repairArgs, ...skipArgs],
+  await syncLockedWithMirror(
     project,
-    env,
+    pypiFilesMirror(downloadRegion),
+    () =>
+      runWithChoice(
+        uv!,
+        ['sync', '--frozen', '--no-dev', ...pythonArgs, ...repairArgs, ...skipArgs],
+        project,
+        env,
+      ),
+    signal,
+    downloads,
   );
   signal.throwIfAborted();
   if (cpuTorch) {
@@ -1038,7 +1118,10 @@ export async function installRuntime(
   }
   signal.throwIfAborted();
   await writeFile(join(project, '.runtime-ready'), await dependencyStamp(bundle, torch));
-  await writeFile(join(project, RUNTIME_TORCH_MARKER), windowsRocm ? 'windows-rocm' : torch.variant);
+  await writeFile(
+    join(project, RUNTIME_TORCH_MARKER),
+    windowsRocm ? 'windows-rocm' : torch.variant,
+  );
   await rm(join(project, '.runtime-installing'), { force: true });
 }
 

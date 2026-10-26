@@ -53,6 +53,65 @@ function selectHost(platform: NodeJS.Platform, arch: typeof process.arch) {
   vi.spyOn(process, 'arch', 'get').mockReturnValue(arch);
 }
 
+it.each([0, 1])(
+  'preserves an explicit HIP choice through regional mirror fallback %s',
+  async (failures) => {
+    vi.stubEnv('OMNIVOICE_TORCH_VARIANT', 'cpu');
+    const { bundle, project } = await fixture();
+    const lock = [
+      '[[package]]',
+      'name = "numpy"',
+      'wheels = [{ url = "https://files.pythonhosted.org/packages/numpy.whl", hash = "sha256:abc" }]',
+      '[[package]]',
+      'name = "nvidia-cudnn-cu12"',
+      '',
+    ].join('\n');
+    await writeFile(join(bundle, 'uv.lock'), lock);
+    const seen: string[] = [];
+    const run = runner(project);
+    const successful = run.getMockImplementation()!;
+    run.mockImplementation(async (...args) => {
+      if (args[1][0] === 'sync') {
+        seen.push(await readFile(join(project, 'uv.lock'), 'utf8'));
+        if (seen.length <= failures) throw new Error('mirror unavailable');
+      }
+      return successful(...args);
+    });
+    const pypiHost = vi.fn();
+
+    await installRuntime(
+      bundle,
+      project,
+      'uv',
+      run,
+      new AbortController().signal,
+      undefined,
+      'china',
+      HIP,
+      { pypiHost },
+    );
+
+    expect(seen).toHaveLength(failures + 1);
+    expect(seen[0]).toContain('https://mirrors.aliyun.com/pypi/packages/numpy.whl');
+    expect(seen[0]).toContain('sha256:abc');
+    if (failures) {
+      expect(seen[1]).toBe(lock);
+      expect(pypiHost).toHaveBeenCalledWith('files.pythonhosted.org');
+    }
+    for (const [, args, , env] of run.mock.calls) {
+      expect(env?.OMNIVOICE_TORCH_VARIANT).toBe('rocm');
+      if (args[0] === 'sync') {
+        expect(args).toContain('--inexact');
+        expect(args).toContain('torch');
+        expect(args).toContain('nvidia-cudnn-cu12');
+      }
+    }
+    expect(await readFile(join(project, 'uv.lock'), 'utf8')).toBe(lock);
+    expect(await runtimeReady(bundle, project, HIP)).toBe(true);
+    expect(process.env.OMNIVOICE_TORCH_VARIANT).toBe('cpu');
+  },
+);
+
 it.each(installs)(
   'keeps $platform/$arch $choice.variant installation and subprocesses independent of $ambient',
   async ({ platform, arch, choice, ambient, python }) => {
