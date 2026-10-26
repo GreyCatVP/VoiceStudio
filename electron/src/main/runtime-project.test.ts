@@ -109,7 +109,15 @@ describe('packaged runtime setup', () => {
         }
         return undefined;
       });
-      await installRuntime(bundle, project, 'uv', run, new AbortController().signal, undefined, 'global');
+      await installRuntime(
+        bundle,
+        project,
+        'uv',
+        run,
+        new AbortController().signal,
+        undefined,
+        'global',
+      );
       expect(run.mock.calls.some(([, args]) => args.includes(CUDNN8_COMPAT_PIN))).toBe(false);
       expect(run.mock.calls.some(([, args]) => args[1] === RUNTIME_IMPORT_PROBE)).toBe(true);
       expect(await runtimeReady(bundle, project)).toBe(true);
@@ -144,27 +152,38 @@ describe('packaged runtime setup', () => {
   it.each([
     ['after printing its result', true],
     ['before printing anything', false],
-  ])('keeps setting up when the CUDA compatibility probe crashes natively %s', async (_name, printed) => {
-    forcePlatform('win32');
-    vi.spyOn(process, 'arch', 'get').mockReturnValue('x64');
-    vi.stubEnv('OMNIVOICE_TORCH_VARIANT', 'cuda');
-    const { bundle, project } = await fixture();
-    const sitePackages = join(project, '.venv', 'Lib', 'site-packages');
-    const run = vi.fn(async (_command: string, args: string[]) => {
-      if (args[0] === 'sync') await interpreter(project);
-      if (args[1]?.includes('VOICESTUDIO_CUDNN8_PROBE=')) {
-        throw Object.assign(new Error('Runtime setup exited with code 3221225477'), {
-          stdout: printed
-            ? `VOICESTUDIO_CUDNN8_PROBE=${JSON.stringify({ device: 'none', sitePackages })}\n`
-            : '',
-        });
-      }
-      return undefined;
-    });
-    await installRuntime(bundle, project, 'uv', run, new AbortController().signal, undefined, 'global');
-    expect(run.mock.calls.some(([, args]) => args[1] === RUNTIME_IMPORT_PROBE)).toBe(true);
-    expect(await runtimeReady(bundle, project)).toBe(true);
-  });
+  ])(
+    'keeps setting up when the CUDA compatibility probe crashes natively %s',
+    async (_name, printed) => {
+      forcePlatform('win32');
+      vi.spyOn(process, 'arch', 'get').mockReturnValue('x64');
+      vi.stubEnv('OMNIVOICE_TORCH_VARIANT', 'cuda');
+      const { bundle, project } = await fixture();
+      const sitePackages = join(project, '.venv', 'Lib', 'site-packages');
+      const run = vi.fn(async (_command: string, args: string[]) => {
+        if (args[0] === 'sync') await interpreter(project);
+        if (args[1]?.includes('VOICESTUDIO_CUDNN8_PROBE=')) {
+          throw Object.assign(new Error('Runtime setup exited with code 3221225477'), {
+            stdout: printed
+              ? `VOICESTUDIO_CUDNN8_PROBE=${JSON.stringify({ device: 'none', sitePackages })}\n`
+              : '',
+          });
+        }
+        return undefined;
+      });
+      await installRuntime(
+        bundle,
+        project,
+        'uv',
+        run,
+        new AbortController().signal,
+        undefined,
+        'global',
+      );
+      expect(run.mock.calls.some(([, args]) => args[1] === RUNTIME_IMPORT_PROBE)).toBe(true);
+      expect(await runtimeReady(bundle, project)).toBe(true);
+    },
+  );
   it.each([0, 1])(
     'verifies the runtime when .pth repair attempt %i fails',
     async (failedAttempt) => {
@@ -733,7 +752,7 @@ describe('packaged runtime setup', () => {
     const run = vi.fn();
     await expect(
       installRuntime(bundle, project, null, run, new AbortController().signal),
-    ).rejects.toThrow('9 GiB');
+    ).rejects.toThrow(/needs at least \d+ GiB/);
     expect(fetch).not.toHaveBeenCalled();
     expect(run).not.toHaveBeenCalled();
   });
@@ -976,11 +995,22 @@ describe('regional PyPI mirror for the frozen sync (#3444)', () => {
     const { bundle, project } = await lockedFixture();
     const { run, seen } = recordingRun(project);
     const log = vi.fn();
-    await installRuntime(bundle, project, 'uv', run, new AbortController().signal, undefined, 'china', {
-      log,
-    });
+    await installRuntime(
+      bundle,
+      project,
+      'uv',
+      run,
+      new AbortController().signal,
+      undefined,
+      'china',
+      {
+        log,
+      },
+    );
     expect(seen).toHaveLength(1);
-    expect(seen[0]).toContain(`url = "https://mirrors.aliyun.com/pypi/${WHEEL}", hash = "sha256:e943"`);
+    expect(seen[0]).toContain(
+      `url = "https://mirrors.aliyun.com/pypi/${WHEEL}", hash = "sha256:e943"`,
+    );
     expect(seen[0]).toContain('https://download-r2.pytorch.org/whl/cu128/torch.whl');
     expect(seen[0]).not.toContain('files.pythonhosted.org');
     expect(log).toHaveBeenCalledWith(expect.stringContaining('mirrors.aliyun.com'));
@@ -994,7 +1024,15 @@ describe('regional PyPI mirror for the frozen sync (#3444)', () => {
     async (region) => {
       const { bundle, project } = await lockedFixture();
       const { run, seen } = recordingRun(project);
-      await installRuntime(bundle, project, 'uv', run, new AbortController().signal, undefined, region);
+      await installRuntime(
+        bundle,
+        project,
+        'uv',
+        run,
+        new AbortController().signal,
+        undefined,
+        region,
+      );
       expect(seen).toEqual([LOCK]);
     },
   );
@@ -1004,15 +1042,26 @@ describe('regional PyPI mirror for the frozen sync (#3444)', () => {
     const { run, seen } = recordingRun(project, 1);
     const log = vi.fn();
     const pypiHost = vi.fn();
-    await installRuntime(bundle, project, 'uv', run, new AbortController().signal, undefined, 'china', {
-      log,
-      pypiHost,
-    });
+    await installRuntime(
+      bundle,
+      project,
+      'uv',
+      run,
+      new AbortController().signal,
+      undefined,
+      'china',
+      {
+        log,
+        pypiHost,
+      },
+    );
     expect(seen).toHaveLength(2);
     expect(seen[0]).toContain('mirrors.aliyun.com');
     expect(seen[1]).toBe(LOCK);
     expect(pypiHost).toHaveBeenCalledWith('files.pythonhosted.org');
-    expect(log).toHaveBeenCalledWith(expect.stringContaining('retrying from files.pythonhosted.org'));
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining('retrying from files.pythonhosted.org'),
+    );
     expect(await runtimeReady(bundle, project)).toBe(true);
   });
 

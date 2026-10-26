@@ -17,12 +17,16 @@ const { version } = JSON.parse(readFileSync(resolve(here, '../package.json'), 'u
 const storeMetadata = JSON.parse(readFileSync(resolve(here, '../store/metadata.json'), 'utf-8'));
 const storeIdentity = storeMetadata.identity;
 const isMacAppStore = DISTRIBUTION_TARGET === 'mac-app-store';
-const artifactLabel =
-  {
-    'microsoft-store': 'MicrosoftStore',
-    'mac-app-store': 'MacAppStore',
-  }[DISTRIBUTION_TARGET] ?? 'Electron';
-const artifactPrefix = `${PRODUCT_NAME.replace(/[^A-Za-z0-9]+/g, '-')}-${artifactLabel}`;
+// Direct downloads are `VoiceStudio-<version>-<os>-<arch>.<ext>`; store builds
+// keep a label so they never collide with them. Releases up to v0.5.7-beta.3
+// used `VoiceStudio-Electron-*`; the installers still resolve those names.
+const artifactLabel = {
+  'microsoft-store': 'MicrosoftStore',
+  'mac-app-store': 'MacAppStore',
+}[DISTRIBUTION_TARGET];
+const artifactPrefix = [PRODUCT_NAME.replace(/[^A-Za-z0-9]+/g, '-'), artifactLabel]
+  .filter(Boolean)
+  .join('-');
 // Stable and Beta are the Electron update feeds (Beta = `-beta.N` prereleases,
 // stamped by electron-release.yml). Packaging rehearsals from main are stamped
 // stable; they are review artifacts and are never published.
