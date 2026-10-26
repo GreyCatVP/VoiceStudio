@@ -114,3 +114,5 @@ def test_pin_recovery_distinguishes_server_sessions_from_browser_storage():
     assert "sign in with the same `OMNIVOICE_API_KEY`" in paragraph
     assert "Restarting keeps the existing data volume" in paragraph
     assert "browser administrator sessions" not in paragraph
+    assert "OMNIVOICE_TRUST_HOST_LOOPBACK=1" in paragraph
+    assert "#trust-host-loopback" in paragraph

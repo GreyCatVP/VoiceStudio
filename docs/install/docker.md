@@ -546,6 +546,12 @@ For host-only Docker use, leave in-app network sharing off and retain
 `-p 127.0.0.1:3900:3900`. For access from another device, follow
 [LAN access](#lan-access) and keep the administrator API key configured.
 
+On a host you alone use, set `OMNIVOICE_TRUST_HOST_LOOPBACK=1` to let that
+browser skip the share PIN without trusting a Docker subnet. It applies only
+to the container's default gateway on the main port, and it does not replace
+`OMNIVOICE_API_KEY`. See
+[Share PIN for the host's own browser](#trust-host-loopback).
+
 `OMNIVOICE_TRUSTED_NETWORKS` can exempt selected peer addresses from the PIN
 and API-key consumption gates, but it does **not** grant administrator access.
 Do not trust an entire Docker subnet just to dismiss the PIN prompt: other
