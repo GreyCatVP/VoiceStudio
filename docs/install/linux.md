@@ -19,7 +19,22 @@ resolves anywhere, the app downloads its own checksummed static build;
 **Settings → Audio tools** shows which binaries are in use and lets you
 override them or update yt-dlp.
 
-## Install (AppImage or .deb)
+## Install (Snap, AppImage or .deb)
+
+<a id="install-snap"></a>
+
+**Snap Store** (Ubuntu and other distributions with snapd):
+
+```bash
+sudo snap install voicestudio
+```
+
+The snap updates itself through snapd. Recording and dictation need the
+microphone interface; if VoiceStudio cannot hear you, connect it once:
+
+```bash
+sudo snap connect voicestudio:audio-record
+```
 
 <a id="install-appimage"></a>
 
