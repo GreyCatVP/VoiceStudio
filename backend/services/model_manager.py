@@ -3354,8 +3354,12 @@ def _release_idle_tts_memory(stage):
     eviction recipe cannot drift between them (#730/#1190)."""
     try:
         try:
-            from services.asr_backend import release_idle_capture_backend
+            from services.asr_backend import (
+                release_idle_capture_backend,
+                release_transcription_backend,
+            )
             release_idle_capture_backend(0.0)  # 0s idle = release if unleased
+            release_transcription_backend(0.0)
         except Exception:  # noqa: BLE001 -- best-effort, never blocks the caller
             logger.debug("capture-ASR pre-%s release failed", stage, exc_info=True)
         release_tts_side_caches()
@@ -3634,9 +3638,14 @@ async def idle_worker():
         # off while a live dictation stream has a lease, so nothing is unloaded
         # mid-sentence.
         try:
-            from services.asr_backend import release_idle_capture_backend
+            from services.asr_backend import (
+                release_idle_capture_backend,
+                release_transcription_backend,
+            )
 
-            if release_idle_capture_backend(idle_timeout):
+            released = release_idle_capture_backend(idle_timeout)
+            # The warm transcription ASR gets the same idle bargain.
+            if release_transcription_backend(idle_timeout) or released:
                 free_vram()
         except Exception:  # noqa: BLE001 — the reaper must never kill idle_worker
             logger.warning("idle capture-ASR release failed", exc_info=True)

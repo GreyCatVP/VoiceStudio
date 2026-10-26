@@ -126,7 +126,11 @@ Every unclassified 500 also carries `error_type` (the Python exception class, ne
 its message), and bug reports record it as "Backend error class" together with the
 "Backend failure topic". A reverse proxy that times out (`502`/`504` with its own HTML
 page) is reported as a proxy problem, not a VoiceStudio one: raise its read timeout
-(for nginx, `proxy_read_timeout`) for long generations. Choosing the best 15-second
+(for nginx, `proxy_read_timeout`) for long generations. Streamed generations
+(`/generate` with `stream=true`) and long-form renders (Audiobook, Stories, resume)
+send a keepalive every 15 seconds of silence (a blank NDJSON line or an SSE comment)
+and ask proxies not to buffer, so an idle cutoff such as Cloudflare's `524` does not
+end them while a slow chunk or chapter renders. Choosing the best 15-second
 window of a long reference clip happens before the generate time budget starts, so a
 slow CPU speech-to-text model no longer causes `TTS generate exceeded 300s`.
 

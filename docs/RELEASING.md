@@ -177,6 +177,7 @@ After publication, verify each maintained channel:
 | Channel             | Workflow                           | Verification                                                                                                                                                 |
 | ------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | GitHub Release      | `electron-release.yml`             | Linux x64, Windows x64 (+ ARM64 when its leg passed), macOS arm64 and x64 installers, updater feeds, checksums, CHANGELOG notes, retained v0.5.3 Tauri feeds |
+| Phone downloads     | `electron-release.yml` → `mobile-release.yml` | Signed Android APK/AAB and unsigned iOS sideload IPA from the same tag |
 | GHCR CUDA           | `docker.yml` (release published)   | `:X.Y.Z`, `:X.Y`, `:stable` manifests                                                                                                                        |
 | GHCR ROCm           | `docker.yml` (release published)   | `:X.Y.Z-rocm`, `:X.Y-rocm`, `:stable-rocm` manifests                                                                                                         |
 | GHCR CUDA arm64     | `docker.yml` (release published)   | `:X.Y.Z-cuda-arm64`, `:X.Y-cuda-arm64`, `:stable-cuda-arm64` manifests (`linux/arm64`)                                                                       |
@@ -225,14 +226,21 @@ It does not replace the post-release verification below; run it every time.
 
 ## Mobile apps
 
-Phone apps ship on their own `mobile-v*` tags through the `mobile-release`
-workflow (a draft GitHub prerelease with the APK, AAB and IPAs; store uploads use
-the TestFlight and Play internal workflows). The version is the root `package.json` version and each run's
-number is the store build number. Setup, secrets and sideloading: `docs/mobile.md`
-→ Releasing. Publishing the draft and promoting the store builds are manual.
-Publish it as a prerelease that is not `latest`; the desktop app's update checks
-and release list read only desktop tags (`vX.Y.Z` and `vX.Y.Z-beta.N`), so
-`mobile-v*` releases never reach them.
+Phone apps build from the same `vX.Y.Z` or `vX.Y.Z-beta.N` tag as desktop.
+`electron-release.yml` calls `mobile-release.yml` and waits for the signed
+Android APK/AAB and unsigned iOS sideload IPA before creating or publishing the
+GitHub Release. All downloads share its version and `SHA256SUMS.txt`. A failed
+phone build blocks publication; do not publish a desktop-only release manually.
+Docker CUDA, ROCm and CUDA arm64 builds are dispatched for that same tag after
+publication; verify their completion before calling the release complete.
+
+App Store signing and store promotion remain separate from GitHub downloads.
+The unsigned IPA requires signing with the user's own Apple ID to sideload; it
+is not a TestFlight build. Apple certificate availability cannot suppress this
+artifact. Manual `mobile-release` runs can set `release_ref` to an existing tag
+and `signed_ios=false` to recover phone artifacts without changing the tag.
+Legacy `mobile-v*` tags remain supported only for historical standalone builds.
+
 
 ## Beta channel
 
