@@ -1587,18 +1587,11 @@ async def longform_render(req: LongformRenderRequest, request: Request = None):
 
 
 def _chapters_done(job_id: str) -> int:
-    """Count chapters that finished rendering, from the job's persisted events.
+    """Count chapters that finished rendering, independently of event retention.
     Best-effort (0 if unavailable) — used only to show resume progress."""
     try:
         from core import job_store
-        n = 0
-        for ev in job_store.events_since(job_id, 0, limit=100_000):
-            try:
-                if json.loads(ev["payload"]).get("type") == "chapter":
-                    n += 1
-            except (ValueError, KeyError, TypeError):
-                continue
-        return n
+        return job_store.chapters_done(job_id)
     except Exception:
         return 0
 

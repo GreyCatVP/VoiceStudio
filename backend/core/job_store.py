@@ -15,7 +15,8 @@ Here we just keep the metadata honest across restarts:
 The tables (`jobs`, `job_events`) live in `core/db.py:_BASE_SCHEMA`.
 
 Retention: we cap `job_events` per job (default 500 rows) by trimming the
-oldest on every insert above the cap. Keeps the DB bounded.
+oldest on every insert above the cap. Completed chapter indices live in job
+metadata independently, so trimming the replay tail does not erase progress.
 """
 from __future__ import annotations
 
@@ -97,11 +98,24 @@ def _update_status(job_id: str, status: str, *, finished: bool = False, error: O
 # ── Events ─────────────────────────────────────────────────────────────────
 
 
+def _chapter_index(payload: str) -> Optional[int]:
+    try:
+        event = json.loads(payload)
+    except (ValueError, TypeError):
+        return None
+    if isinstance(event, dict) and event.get("type") == "chapter":
+        index = event.get("index")
+        if type(index) is int and index >= 0:
+            return index
+    return None
+
+
 def append_event(job_id: str, payload: str) -> int:
     """Persist one SSE event. Returns the new `seq` number.
 
     `payload` is the raw SSE line (e.g. `data: {...}\\n\\n`). The schema keeps
-    it opaque so future event shapes don't require migrations.
+    it unchanged so future event shapes don't require migrations. Chapter
+    completion is also retained in job metadata in this same transaction.
     """
     now = time.time()
     with db_conn() as conn:
@@ -112,6 +126,23 @@ def append_event(job_id: str, payload: str) -> int:
             (job_id, now, payload, job_id),
         ).fetchone()
         next_seq = int(row["seq"])
+        index = _chapter_index(payload)
+        if index is not None:
+            job = conn.execute("SELECT meta_json FROM jobs WHERE id = ?", (job_id,)).fetchone()
+            try:
+                meta = json.loads(job["meta_json"] or "{}") if job else None
+            except (ValueError, TypeError):
+                meta = None
+            if isinstance(meta, dict):
+                saved = meta.get("_completed_chapter_indices")
+                if isinstance(saved, list):
+                    completed = {i for i in saved if type(i) is int and i >= 0}
+                else:
+                    retained = conn.execute("SELECT payload FROM job_events WHERE job_id = ?", (job_id,))
+                    completed = {i for event in retained if (i := _chapter_index(event["payload"])) is not None}
+                completed.add(index)
+                meta["_completed_chapter_indices"] = sorted(completed)
+                conn.execute("UPDATE jobs SET meta_json = ? WHERE id = ?", (json.dumps(meta), job_id))
         # Trim oldest beyond the cap. Cheap: bounded by _EVENT_CAP_PER_JOB.
         cnt = conn.execute(
             "SELECT COUNT(*) AS n FROM job_events WHERE job_id = ?",
@@ -135,6 +166,20 @@ def events_since(job_id: str, after_seq: int = 0, limit: int = 1000) -> list[dic
             (job_id, after_seq, limit),
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+def chapters_done(job_id: str) -> int:
+    """Count completed longform chapters for the resume inventory."""
+    job = get(job_id) or {}
+    try:
+        meta = json.loads(job.get("meta_json") or "{}")
+    except (ValueError, TypeError):
+        meta = None
+    saved = meta.get("_completed_chapter_indices") if isinstance(meta, dict) else None
+    if isinstance(saved, list):
+        return len({i for i in saved if type(i) is int and i >= 0})
+    # Old jobs have only the retained tail; already-pruned events cannot be recovered.
+    return len({i for event in events_since(job_id) if (i := _chapter_index(event["payload"])) is not None})
 
 
 # ── Queries ────────────────────────────────────────────────────────────────
