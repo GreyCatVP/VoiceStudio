@@ -1,0 +1,316 @@
+"""Zero-touch Vulkan sizing for OmniVoice GGUF: adapter discovery, APU shared
+memory, multi-GPU numbering, quant tiers, CPU lock, overrides, promotion and
+the weight download."""
+import importlib
+from types import SimpleNamespace
+
+import pytest
+
+GIB = 1024 ** 3
+
+
+def _device(index, name, kind, vendor, heaps, uuid):
+    """One ``GPU<n>:`` section of real ``vulkaninfo`` output (abridged)."""
+    lines = [
+        f"GPU{index}:",
+        "VkPhysicalDeviceProperties:",
+        "---------------------------",
+        "\tapiVersion        = 1.3.292 (4206884)",
+        f"\tvendorID          = {vendor}",
+        f"\tdeviceType        = PHYSICAL_DEVICE_TYPE_{kind}",
+        f"\tdeviceName        = {name}",
+        "VkPhysicalDeviceIDProperties:",
+        f"\tdeviceUUID      = {uuid}",
+        "VkPhysicalDeviceMemoryProperties:",
+        f"\tmemoryHeaps: count = {len(heaps)}",
+    ]
+    for i, (size, local) in enumerate(heaps):
+        lines += [
+            f"\t\tmemoryHeaps[{i}]:",
+            f"\t\t\tsize   = {size} ({hex(size)}) ({size / GIB:.2f} GiB)",
+            f"\t\t\tbudget = {size} ({hex(size)})",
+            "\t\t\tflags:",
+            "\t\t\t\tMEMORY_HEAP_DEVICE_LOCAL_BIT" if local else "\t\t\t\tNone",
+        ]
+    lines += ["\tmemoryTypes: count = 2", "\t\tmemoryTypes[0]:", "\t\t\theapIndex = 0"]
+    return "\n".join(lines) + "\n"
+
+
+LLVMPIPE = _device(9, "llvmpipe (LLVM 17.0.6, 256 bits)", "CPU", "0x10005",
+                   [(16 * GIB, True)], "6d657361-3233-2e33-2e30-000000000000")
+RADEON_890M = _device(0, "AMD Radeon(TM) 890M Graphics", "INTEGRATED_GPU", "0x1002",
+                      [(512 * 1024 ** 2, True), (16 * GIB, False)],
+                      "00000000-c400-0000-0000-000000000000")
+RX_6700_XT = _device(0, "AMD Radeon RX 6700 XT", "DISCRETE_GPU", "0x1002",
+                     [(12868124672, True), (16 * GIB, False)],
+                     "00000000-0300-0000-0000-000000000000")
+UHD_770 = _device(0, "Intel(R) UHD Graphics 770", "INTEGRATED_GPU", "0x8086",
+                  [(int(0.25 * GIB), True)], "8680a780-0400-0000-0002-000000000000")
+
+
+def _arc(index, name, size_gb, uuid):
+    return _device(index, name, "DISCRETE_GPU", "0x8086", [(size_gb * GIB, True)], uuid)
+
+
+@pytest.fixture
+def vk(monkeypatch):
+    """vulkan_auto with the probe inputs replaced; the cache is cleared."""
+    mod = importlib.import_module("engines.omnivoice_gguf.vulkan_auto")
+    compute = importlib.import_module("engines.omnivoice_gguf.compute")
+    for name in ("OMNIVOICE_DEVICE", "OMNIVOICE_GGUF_BACKEND", "OMNIVOICE_GGUF_DEVICE",
+                 "GGML_BACKEND", "OMNIVOICE_GGUF_QUANT", "OMNIVOICE_TTS_BACKEND"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("OMNIVOICE_DEVICE", "auto")
+    monkeypatch.setattr(compute, "binary_has_vulkan_module", lambda bin_dir=None: True)
+    state = SimpleNamespace(text=None, ram=31.3, loader=False, gpus=())
+    monkeypatch.setattr(mod, "_run_vulkaninfo", lambda: state.text)
+    monkeypatch.setattr(mod, "system_ram_gb", lambda: state.ram)
+    monkeypatch.setattr(mod, "has_vulkan_loader", lambda: state.loader)
+    inventory = importlib.import_module("core.gpu_inventory")
+    monkeypatch.setattr(inventory, "detect_host_gpus", lambda: state.gpus)
+    compute._promotion_for.cache_clear()
+    mod.detect_vulkan_profile.cache_clear()
+    yield SimpleNamespace(mod=mod, compute=compute, state=state)
+    compute._promotion_for.cache_clear()
+    mod.detect_vulkan_profile.cache_clear()
+
+
+def _auto_base():
+    backend = importlib.import_module("engines.omnivoice_gguf.backend")
+    return backend._automatic_entry(backend._load_quant_map())["base"]
+
+
+def test_ryzen_ai_890m_apu_uses_shared_memory_and_bf16(vk):
+    """A 512 MB frame buffer on a 31.3 GB host is budgeted on half the RAM."""
+    vk.state.text = RADEON_890M + LLVMPIPE
+    adapter = vk.compute.selected_vulkan_adapter()
+    assert adapter.name == "AMD Radeon(TM) 890M Graphics"
+    assert adapter.ggml_name == "Vulkan0"
+    assert adapter.dedicated_vram_gb == 0.5
+    assert adapter.shared_memory is True
+    assert adapter.effective_vram_gb >= 15
+    assert vk.compute.automatic_compute_class() == "high-vram"
+    assert _auto_base() == "omnivoice-base-BF16.gguf"
+
+
+def test_apu_on_a_small_host_keeps_its_dedicated_budget(vk):
+    """Below 16 GB of RAM the shared-memory rule does not apply."""
+    vk.state.text = RADEON_890M
+    vk.state.ram = 8.0
+    assert vk.compute.selected_vulkan_adapter().effective_vram_gb == 0.5
+    assert _auto_base() == "omnivoice-base-Q4_K_M.gguf"
+
+
+def test_rx_6700_xt_12gb_lands_on_bf16(vk):
+    vk.state.text = RX_6700_XT
+    adapter = vk.compute.selected_vulkan_adapter()
+    assert adapter.device_type == "DISCRETE_GPU"
+    assert adapter.shared_memory is False
+    assert adapter.effective_vram_gb == pytest.approx(11.98, abs=0.01)
+    assert _auto_base() == "omnivoice-base-BF16.gguf"
+
+
+@pytest.mark.parametrize("card,size_gb", [("Intel(R) Arc(TM) A770 Graphics", 16),
+                                          ("Intel(R) Arc(TM) B580 Graphics", 12)])
+def test_discrete_arc_beats_the_igpu_at_gpu0(vk, monkeypatch, card, size_gb):
+    """UHD at GPU0 and Arc at GPU1: GGML opens the discrete card, Vulkan1."""
+    vk.state.text = UHD_770 + _arc(1, card, size_gb, "8680a056-0800-0000-0300-000000000000")
+    adapter = vk.compute.selected_vulkan_adapter()
+    assert (adapter.name, adapter.ggml_name) == (card, "Vulkan1")
+    assert _auto_base() == "omnivoice-base-BF16.gguf"
+    # The explicit device index names the same adapter.
+    monkeypatch.setenv("OMNIVOICE_GGUF_BACKEND", "vulkan")
+    monkeypatch.setenv("OMNIVOICE_GGUF_DEVICE", "1")
+    assert vk.compute.selected_vulkan_adapter().name == card
+    monkeypatch.setenv("OMNIVOICE_GGUF_DEVICE", "0")
+    assert vk.compute.selected_vulkan_adapter().name == "Intel(R) UHD Graphics 770"
+
+
+def test_a_second_driver_for_the_same_gpu_is_not_a_second_device(vk):
+    """RADV + AMDVLK print one GPU twice; GGML lists it once."""
+    vk.state.text = RX_6700_XT + RX_6700_XT.replace("GPU0:", "GPU1:")
+    assert len(vk.mod.detect_vulkan_profile().adapters) == 1
+
+
+@pytest.mark.parametrize("vendor,name", [("amd", "AMD Radeon RX 7600"),
+                                         ("intel", "Intel(R) Arc(TM) A750 Graphics")])
+def test_8gb_card_from_the_64bit_os_inventory_is_q8(vk, vendor, name):
+    """Without vulkaninfo the 64-bit registry / DRM size is used, never the
+    32-bit WMI AdapterRAM that wraps an 8 GB card to 4 GB or less."""
+    from core.gpu_inventory import HostGPU
+
+    vk.state.loader = True
+    vk.state.gpus = (HostGPU(vendor=vendor, name=name, vram_gb=8.0, discrete=True),)
+    adapter = vk.compute.selected_vulkan_adapter()
+    assert adapter.effective_vram_gb == 8.0
+    assert vk.mod.detect_vulkan_profile().source == "os"
+    assert _auto_base() == "omnivoice-base-Q8_0.gguf"
+
+
+def test_os_inventory_needs_a_vulkan_loader(vk):
+    from core.gpu_inventory import HostGPU
+
+    vk.state.gpus = (HostGPU(vendor="amd", name="AMD Radeon RX 7600", vram_gb=8.0,
+                             discrete=True),)
+    assert vk.compute.selected_vulkan_adapter() is None
+    assert _auto_base() == "omnivoice-base-Q4_K_M.gguf"
+
+
+def test_binary_without_the_vulkan_module_stays_unverified(vk, monkeypatch):
+    vk.state.text = RX_6700_XT
+    monkeypatch.setattr(vk.compute, "binary_has_vulkan_module", lambda bin_dir=None: False)
+    assert vk.compute.selected_vulkan_adapter() is None
+    assert _auto_base() == "omnivoice-base-Q4_K_M.gguf"
+
+
+def test_binary_has_vulkan_module_reads_the_bundle(tmp_path):
+    compute = importlib.import_module("engines.omnivoice_gguf.compute")
+    assert compute.binary_has_vulkan_module(tmp_path) is False
+    (tmp_path / "ggml-vulkan.dll").write_bytes(b"MZ")
+    assert compute.binary_has_vulkan_module(tmp_path) is True
+
+
+@pytest.mark.parametrize("variable,value", [("OMNIVOICE_DEVICE", "cpu"),
+                                            ("OMNIVOICE_GGUF_BACKEND", "cpu"),
+                                            ("GGML_BACKEND", "CPU")])
+def test_explicit_cpu_locks_q4_and_blocks_promotion(vk, monkeypatch, variable, value):
+    vk.state.text = RADEON_890M
+    monkeypatch.setenv(variable, value)
+    assert vk.compute.selected_vulkan_adapter() is None
+    assert _auto_base() == "omnivoice-base-Q4_K_M.gguf"
+    assert vk.compute.vulkan_promotion() is False
+
+
+def test_verified_adapter_is_reported_as_gpu(vk):
+    vk.state.text = RADEON_890M
+    profile = vk.compute.runtime_profile(SimpleNamespace(gpu_compat=("vulkan", "cpu")), None)
+    assert profile["effective_device"] == "vulkan"
+    assert profile["routing_status"] == "accelerated"
+    assert profile["runtime_device_name"] == "AMD Radeon(TM) 890M Graphics"
+    assert profile["runtime_device_verified"] is True
+
+
+@pytest.fixture
+def promotable(vk, monkeypatch):
+    """A CPU-only PyTorch host whose bundled runtime and licence are ready."""
+    from core import device_caps
+
+    gguf = importlib.import_module("engines.omnivoice_gguf.backend")
+    vk.state.text = RADEON_890M
+    monkeypatch.setattr(device_caps, "detect_host_caps",
+                        lambda: SimpleNamespace(family="cpu"))
+    monkeypatch.setattr(gguf._make_backend_class(), "_binary_status",
+                        classmethod(lambda cls: (True, "")))
+    monkeypatch.setattr(vk.compute, "_licence_accepted", lambda: True)
+    return vk
+
+
+def test_apu_promotes_gguf_to_the_default_engine(promotable, monkeypatch):
+    from core import prefs
+    from services import tts_backend
+
+    monkeypatch.setattr(prefs, "resolve", lambda key, env=None, default=None:
+                        "auto" if key == "compute_device" else default)
+    assert promotable.compute.vulkan_promotion() is True
+    assert tts_backend.active_backend_id() == "omnivoice-gguf"
+    # A user's engine choice always wins over the promoted default.
+    monkeypatch.setenv("OMNIVOICE_TTS_BACKEND", "omnivoice")
+    monkeypatch.setattr(prefs, "resolve", lambda key, env=None, default=None:
+                        __import__("os").environ.get(env) or default)
+    assert tts_backend.active_backend_id() == "omnivoice"
+
+
+def test_no_promotion_when_pytorch_has_a_gpu(promotable, monkeypatch):
+    from core import device_caps
+
+    monkeypatch.setattr(device_caps, "detect_host_caps",
+                        lambda: SimpleNamespace(family="cuda"))
+    assert promotable.compute.vulkan_promotion() is False
+
+
+def test_no_promotion_into_a_licence_refusal(promotable, monkeypatch):
+    monkeypatch.setattr(promotable.compute, "_licence_accepted", lambda: False)
+    assert promotable.compute.vulkan_promotion() is False
+
+
+# ── overrides ───────────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("value,expected", [
+    ("Q8_0", "omnivoice-base-Q8_0.gguf"), ("bf16", "omnivoice-base-BF16.gguf"),
+    ("omnivoice-base-F32.gguf", "omnivoice-base-F32.gguf"), ("auto", None), ("", None),
+])
+def test_quant_env_override(monkeypatch, value, expected):
+    gguf = importlib.import_module("engines.omnivoice_gguf.backend")
+    monkeypatch.setenv("OMNIVOICE_GGUF_QUANT", value)
+    assert gguf.env_quant_override() == expected
+
+
+def test_env_override_beats_settings_and_hardware(vk, monkeypatch):
+    gguf = importlib.import_module("engines.omnivoice_gguf.backend")
+    vk.state.text = RX_6700_XT
+    monkeypatch.setattr(gguf, "_persisted_quant_override", lambda: "omnivoice-base-F32.gguf")
+    engine = gguf.OmniVoiceGGUFBackend()
+    assert engine._select_quant_entry()["base"] == "omnivoice-base-F32.gguf"
+    monkeypatch.setenv("OMNIVOICE_GGUF_QUANT", "Q4_K_M")
+    assert engine._select_quant_entry()["base"] == "omnivoice-base-Q4_K_M.gguf"
+
+
+# ── quant picker API ────────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def quants(monkeypatch, tmp_path):
+    from huggingface_hub import constants
+
+    mod = importlib.import_module("engines.omnivoice_gguf.quants")
+    monkeypatch.setattr(constants, "HF_HUB_CACHE", str(tmp_path))
+    monkeypatch.setattr(mod, "installed_pair", lambda *args: None)
+    monkeypatch.delenv("HF_HUB_OFFLINE", raising=False)
+    mod._job.update(state="idle", quant=None, error=None)
+    return mod
+
+
+def test_download_fetches_the_pair_at_the_pinned_revision(quants, monkeypatch):
+    import huggingface_hub
+
+    calls = []
+    monkeypatch.setattr(huggingface_hub, "hf_hub_download",
+                        lambda **kwargs: calls.append(kwargs) or "path")
+    started = []
+    monkeypatch.setattr(quants.threading, "Thread", lambda target, args, **kw:
+                        SimpleNamespace(start=lambda: started.append(target(*args))))
+    result = quants.start_download("Q8_0")
+    assert result["status"] == "started"
+    revision = importlib.import_module(
+        "engines.omnivoice_gguf.backend")._load_quant_map()["_meta"]["source_commit_sha"]
+    assert [c["filename"] for c in calls] == ["omnivoice-base-Q8_0.gguf",
+                                              "omnivoice-tokenizer-Q8_0.gguf"]
+    assert {c["revision"] for c in calls} == {revision}
+    assert {c["repo_id"] for c in calls} == {"Serveurperso/OmniVoice-GGUF"}
+    assert quants._job["state"] == "done"
+
+
+def test_download_respects_offline_mode(quants, monkeypatch):
+    monkeypatch.setenv("HF_HUB_OFFLINE", "1")
+    assert quants.start_download("BF16")["status"] == "failed"
+
+
+def test_unknown_quant_is_rejected(quants):
+    with pytest.raises(ValueError):
+        quants.select_quant("Q2_K")
+    with pytest.raises(ValueError):
+        quants.start_download("Q2_K")
+
+
+@pytest.mark.parametrize("reason,problem", [
+    ("GGUF binary missing at omnivoice-tts-linux-x86_64", "missing"),
+    ("omnivoice-tts-linux-x86_64 is not a usable executable", "placeholder"),
+    ("checksum mismatch for omnivoice-tts-linux-x86_64", "integrity"),
+    ("omnivoice-tts is quarantined by Gatekeeper", "quarantined"),
+])
+def test_runtime_problem_is_separate_from_weights(quants, monkeypatch, reason, problem):
+    gguf = importlib.import_module("engines.omnivoice_gguf.backend")
+    monkeypatch.setattr(gguf._make_backend_class(), "_binary_status",
+                        classmethod(lambda cls: (False, reason)))
+    assert quants._runtime()["problem"] == problem

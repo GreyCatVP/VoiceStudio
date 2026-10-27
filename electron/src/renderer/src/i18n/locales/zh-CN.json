@@ -4454,5 +4454,25 @@
     "generating": "请等待当前生成完成。",
     "name_required": "请先输入名称。",
     "audio_missing": "此条生成没有可保存的音频文件。"
+  },
+  "ggufQuant": {
+    "label": "模型量化",
+    "auto": "自动：{{quant}}（{{target}}）",
+    "target_vulkan": "Vulkan – {{device}}",
+    "target_cpu": "CPU",
+    "target_unverified": "CPU 或原生默认",
+    "option": "{{quant}} · {{size}} MB",
+    "option_installed": "{{quant}} · {{size}} MB · 已安装",
+    "download": "下载 {{quant}}（{{size}} MB）",
+    "downloading": "正在下载 {{quant}}：{{done}} / {{total}} MB",
+    "using_installed": "所选量化下载完成前，使用已安装的 {{quant}}。",
+    "env_pinned": "已由 {{env}} 固定为 {{quant}}。",
+    "runtime_missing": "缺少 omnivoice-tts 运行时。请重新安装 VoiceStudio，或用 scripts/build-omnivoice-tts.sh 构建。",
+    "runtime_placeholder": "随附的 omnivoice-tts 文件只是占位文件，不是可用的运行时。请重新安装 VoiceStudio。",
+    "runtime_integrity": "omnivoice-tts 运行时校验和不匹配。请重新安装 VoiceStudio。",
+    "runtime_quarantined": "操作系统隔离了 omnivoice-tts 运行时。请允许它或重新安装 VoiceStudio。",
+    "runtime_other": "omnivoice-tts 运行时无法启动。详情请查看引擎检查。",
+    "weights_missing": "模型权重尚未下载。现在下载，或在首次生成时自动下载。",
+    "download_failed": "权重下载失败"
   }
 }

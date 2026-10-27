@@ -4456,5 +4456,25 @@
     "generating": "Attendez la fin de la prise en cours.",
     "name_required": "Saisissez d’abord un nom.",
     "audio_missing": "Cette prise n’a pas de fichier audio à enregistrer."
+  },
+  "ggufQuant": {
+    "label": "Quantification du modèle",
+    "auto": "Auto : {{quant}} ({{target}})",
+    "target_vulkan": "Vulkan – {{device}}",
+    "target_cpu": "CPU",
+    "target_unverified": "CPU ou choix natif par défaut",
+    "option": "{{quant}} · {{size}} Mo",
+    "option_installed": "{{quant}} · {{size}} Mo · installé",
+    "download": "Télécharger {{quant}} ({{size}} Mo)",
+    "downloading": "Téléchargement de {{quant}} : {{done}} sur {{total}} Mo",
+    "using_installed": "{{quant}} installé est utilisé jusqu’au téléchargement de la quantification choisie.",
+    "env_pinned": "Fixé sur {{quant}} par {{env}}.",
+    "runtime_missing": "Le moteur omnivoice-tts est absent. Réinstallez VoiceStudio ou compilez-le avec scripts/build-omnivoice-tts.sh.",
+    "runtime_placeholder": "Le fichier omnivoice-tts fourni est un espace réservé, pas un moteur fonctionnel. Réinstallez VoiceStudio.",
+    "runtime_integrity": "La somme de contrôle du moteur omnivoice-tts est invalide. Réinstallez VoiceStudio.",
+    "runtime_quarantined": "Le système a mis le moteur omnivoice-tts en quarantaine. Autorisez-le ou réinstallez VoiceStudio.",
+    "runtime_other": "Le moteur omnivoice-tts ne démarre pas. Consultez le contrôle du moteur pour les détails.",
+    "weights_missing": "Les poids du modèle ne sont pas encore téléchargés. Téléchargez-les maintenant, sinon ils le seront à la première génération.",
+    "download_failed": "Échec du téléchargement des poids"
   }
 }

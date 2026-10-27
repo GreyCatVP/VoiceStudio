@@ -30,6 +30,7 @@ import { EngineDetails, ModelCount } from './engine-details';
 import { FamilyList } from './family-list';
 import type { FamilyItem } from './family-row';
 import { useEngineSelect } from './use-engine-select';
+import { GGUF_ENGINE, GgufQuantPicker } from './gguf-quant-picker';
 
 type Family = 'tts' | 'asr';
 
@@ -99,11 +100,14 @@ function engineItem(ctx: Context, engine: EngineBackend): FamilyItem {
       snippet={engine.available ? null : engine.setup_snippet}
       docsUrl={engine.docs_url}
       tools={
-        <EngineHealth
-          id={engine.id}
-          available={engine.available}
-          isolationMode={engine.isolation_mode}
-        />
+        <>
+          {engine.id === GGUF_ENGINE && engine.available && <GgufQuantPicker />}
+          <EngineHealth
+            id={engine.id}
+            available={engine.available}
+            isolationMode={engine.isolation_mode}
+          />
+        </>
       }
     />
   );

@@ -4454,5 +4454,25 @@
     "generating": "Hãy đợi bản hiện tại hoàn tất.",
     "name_required": "Hãy nhập tên trước.",
     "audio_missing": "Bản này không có tệp âm thanh để lưu."
+  },
+  "ggufQuant": {
+    "label": "Lượng tử hóa mô hình",
+    "auto": "Tự động: {{quant}} ({{target}})",
+    "target_vulkan": "Vulkan – {{device}}",
+    "target_cpu": "CPU",
+    "target_unverified": "CPU hoặc mặc định gốc",
+    "option": "{{quant}} · {{size}} MB",
+    "option_installed": "{{quant}} · {{size}} MB · đã cài",
+    "download": "Tải {{quant}} ({{size}} MB)",
+    "downloading": "Đang tải {{quant}}: {{done}} / {{total}} MB",
+    "using_installed": "Dùng {{quant}} đã cài cho đến khi tải xong bản lượng tử đã chọn.",
+    "env_pinned": "Được cố định ở {{quant}} bởi {{env}}.",
+    "runtime_missing": "Thiếu runtime omnivoice-tts. Cài lại VoiceStudio hoặc dựng bằng scripts/build-omnivoice-tts.sh.",
+    "runtime_placeholder": "Tệp omnivoice-tts đi kèm chỉ là tệp giữ chỗ, không phải runtime hoạt động. Cài lại VoiceStudio.",
+    "runtime_integrity": "Checksum của runtime omnivoice-tts không khớp. Cài lại VoiceStudio.",
+    "runtime_quarantined": "Hệ điều hành đã cách ly runtime omnivoice-tts. Cho phép hoặc cài lại VoiceStudio.",
+    "runtime_other": "Runtime omnivoice-tts không khởi động được. Xem kiểm tra engine để biết chi tiết.",
+    "weights_missing": "Chưa tải trọng số mô hình. Tải ngay, nếu không sẽ tải ở lần tạo đầu tiên.",
+    "download_failed": "Tải trọng số thất bại"
   }
 }

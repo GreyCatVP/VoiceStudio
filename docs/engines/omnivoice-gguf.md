@@ -3,12 +3,14 @@
 OmniVoice GGUF runs the same OmniVoice model as the [default
 engine](omnivoice.md), but through a native binary
 (`bin/omnivoice-tts-<platform>`) loading quantized GGUF weights. Native compute
-adapts to your available backends; automatic quantization starts with the
-smallest model to limit memory use on small GPUs and CPU-only hosts.
+adapts to your available backends. On AMD and Intel GPUs it runs on Vulkan
+with nothing to configure, and the quant is sized to the GPU it will use.
 
 ## When to pick it
 
 - Your GPU is below the default engine's 6 GB VRAM floor.
+- An AMD Radeon or Intel Arc GPU (or a Ryzen AI / Core Ultra iGPU), which
+  PyTorch on Windows cannot use but this engine reaches through Vulkan.
 - CPU-only machines that still want OmniVoice's voice and language coverage.
 - You want generation isolated in a separate process (a crash or leak never
   takes the app down — each generation spawns the binary fresh).
@@ -16,20 +18,34 @@ smallest model to limit memory use on small GPUs and CPU-only hosts.
 ## Quantization selection
 
 Weights come from the `Serveurperso/OmniVoice-GGUF` HuggingFace repo, pinned
-to an exact revision. Automatic selection uses Q4_K_M while the native process's
-selected adapter capacity is unverified: the parent PyTorch GPU may be a
-different adapter. Native GPU acceleration remains enabled. For an explicit
-Settings override, these tiers provide sizing guidance:
+to an exact revision. Automatic selection sizes the quant on the GPU the
+native runtime will open, found without PyTorch (see
+[Vulkan acceleration](#vulkan-acceleration)):
 
 | Hardware | Quant | Approx. VRAM use |
 | --- | --- | --- |
 | 12 GB+ VRAM | BF16 | ~1.6 GB (quality-first) |
 | 4–12 GB VRAM | Q8_0 | ~945 MB (recommended balance) |
 | 1–4 GB VRAM | Q4_K_M | ~659 MB (minimal footprint) |
-| CPU-only | Q4_K_M | RAM-bound, latency-tolerable |
+| CPU-only or unverified GPU | Q4_K_M | RAM-bound, latency-tolerable |
 
-You can override the selection from Settings; overrides are allow-listed
-against the same table (an F32 reference quant, ~3.2 GB, is override-only).
+Integrated GPUs (Ryzen AI APUs such as the Radeon 890M, Intel Core Ultra
+iGPUs) use shared system memory, so their 512 MB BIOS frame buffer is not
+their limit: on a host with at least 16 GB of RAM they are sized on half the
+RAM. A Radeon 890M on a 32 GB laptop therefore gets BF16.
+
+Without a verified Vulkan GPU (no Vulkan driver, a runtime built without the
+Vulkan module, or a CUDA/Metal route the app cannot size) the selection stays
+on Q4_K_M. The parent PyTorch GPU is never used as evidence: it may be a
+different adapter.
+
+**Choosing another quant.** Settings › Models › OmniVoice GGUF shows the
+automatic pick, for example *Auto: BF16 (Vulkan – AMD Radeon 890M)*, and a
+picker for Q4_K_M, Q8_0, BF16 and F32 (an ~3.2 GB reference quant that is
+never picked automatically). `OMNIVOICE_GGUF_QUANT` (`Q4_K_M`, `Q8_0`, `BF16`,
+`F32`, a full `omnivoice-base-*.gguf` filename, or `auto`) pins one from the
+environment and takes precedence over Settings; the picker then shows the pin
+and is locked.
 
 Which quant is actually loaded depends on what is installed:
 
@@ -49,7 +65,12 @@ Which quant is actually loaded depends on what is installed:
 An installed base+tokenizer pair at the pinned revision is always used from
 your local HuggingFace cache. When no usable pair is installed, the first
 generate downloads the selected pair from Hugging Face at that pinned
-revision, the same way every other engine fetches its model.
+revision, the same way every other engine fetches its model. To fetch it ahead
+of time, or to get a bigger quant than the one installed, press **Download**
+next to the quant picker in Settings › Models; it shows progress and saves into
+the app's cache (`OMNIVOICE_CACHE_DIR` when set). Until the selected quant is
+downloaded, the installed one keeps working and the picker says so. Nothing is
+downloaded until you press Download or generate.
 
 ### Pre-installing on an offline host
 
@@ -123,7 +144,11 @@ Store, Mac App Store, Snap Store) and the Docker image do not include it yet;
 use the default in-process OmniVoice engine there, which is the same model.
 
 Select the engine via **Model Catalogue** (TTS tab → **Use**) or
-`OMNIVOICE_TTS_BACKEND=omnivoice-gguf`. The first generate downloads the
+`OMNIVOICE_TTS_BACKEND=omnivoice-gguf`. When Compute device is Auto, PyTorch
+has no GPU and a verified Vulkan GPU is present (with the bundled runtime
+healthy and its model licence accepted), this engine is the default instead
+of in-process OmniVoice, so an AMD or Intel GPU is used out of the box. An
+engine you pick yourself always wins. The first generate downloads the
 weights if they are not installed yet (see [Weights](#weights)).
 
 **Source checkouts:** the repo ships zero-byte placeholders in `bin/` — real
@@ -151,7 +176,30 @@ build falls back to CPU. Expect roughly 2–4x slower generation than macOS
 Metal while upstream Mesa and llama.cpp Vulkan optimizations mature; still
 well ahead of CPU-only.
 
-## Optional Vulkan acceleration
+## Vulkan acceleration
+
+The Windows x64 and Linux x64 installers ship the runtime with GGML's Vulkan
+module (`ggml-vulkan`), built in CI with the Vulkan SDK. Any GPU with a working
+Vulkan driver is used: AMD Radeon and Ryzen AI, Intel Arc and Core Ultra, and
+NVIDIA.
+
+To size the quant and report the device, VoiceStudio finds the adapter GGML
+will open without PyTorch:
+
+1. `vulkaninfo` (installed with the GPU driver on Windows, `vulkan-tools` on
+   Linux) gives each GPU's type and its device-local memory heap as a 64-bit
+   byte count.
+2. Without it, the OS GPU list is used when the Vulkan loader is installed:
+   the 64-bit `HardwareInformation.qwMemorySize` registry value on Windows, or
+   DRM sysfs on Linux. WMI's `AdapterRAM` is never used; it is 32-bit and
+   reports an 8 GB card as 4 GB or less.
+
+GGML numbers every discrete and integrated GPU in Vulkan order and opens the
+first discrete one, else the first integrated one. With an Intel UHD iGPU at
+GPU0 and an Arc card at GPU1 it opens the Arc card (`Vulkan1`), and that is
+the card the quant is sized on. In automatic mode VoiceStudio does not set
+`GGML_BACKEND`, so GGML makes this choice itself. Compute device then lists
+the engine as using the GPU (Vulkan) with the adapter's name.
 
 Windows x64 and Linux x64/ARM64 source builds try Vulkan when the Vulkan SDK
 (Windows), or `glslc` and SPIRV headers (Linux), are available. Missing build
@@ -166,10 +214,11 @@ runtime while preserving optimized CPU fallback. This shares CPU dispatch flags
 with [#3075](https://github.com/debpalash/VoiceStudio/pull/3075); that PR separately
 addresses CPU-only builds and packaging.
 
-The pinned runtime selects its own GPU independently of PyTorch. It cannot
-list its selected device, so VoiceStudio conservatively reports an unverified
-native device and uses the longer CPU generation budget. This does not disable
-native GPU acceleration. A Vulkan loader alone does not prove GPU support.
+The pinned runtime selects its own GPU independently of PyTorch. When no
+Vulkan GPU can be verified as above (no driver, no Vulkan module, or a CUDA or
+Metal route), VoiceStudio reports an unverified native device and uses the
+longer CPU generation budget. This does not disable native GPU acceleration. A
+Vulkan loader alone does not prove GPU support.
 
 Set `OMNIVOICE_GGUF_BACKEND` to `auto` (default), `cpu`, `cuda`, or `vulkan`.
 For CUDA/Vulkan, `OMNIVOICE_GGUF_DEVICE` selects a non-negative device index
@@ -208,6 +257,7 @@ Before reporting ready, the engine:
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `OMNIVOICE_GGUF_GENERATE_TIMEOUT_S` | (generous built-in) | Per-generation timeout for the spawned binary |
+| `OMNIVOICE_GGUF_QUANT` | `auto` | Pin a quant (`Q4_K_M`, `Q8_0`, `BF16`, `F32`); overrides Settings |
 
 ## Troubleshooting
 
@@ -218,9 +268,12 @@ Before reporting ready, the engine:
   The log line `Engine health check failed; engine=omnivoice-gguf` withholds the
   reason by design.
 - "GGUF weights are not installed": the runtime binary is there but the pinned
-  weight pair is not. Follow the install steps in [Weights](#weights); the app
-  never fetches weights for you, and the download has to land in the app's
-  own cache.
+  weight pair is not. Press **Download** in Settings › Models, or generate
+  once with network access. Offline, follow the steps in [Weights](#weights);
+  the download has to land in the app's own cache.
+- The quant picker says *Q4_K_M* on a GPU: no Vulkan GPU was verified. Install
+  the GPU's Vulkan driver (and `vulkan-tools` on Linux), then restart the
+  backend.
 - Checksum mismatch or quarantine messages: follow the printed fix, or
   reinstall.
 - Other issues: [install/troubleshooting.md](../install/troubleshooting.md).

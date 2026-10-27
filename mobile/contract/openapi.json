@@ -2463,6 +2463,25 @@
     "title": "FitOptions",
     "type": "object"
    },
+   "GGUFQuantRequest": {
+    "properties": {
+     "quant": {
+      "anyOf": [
+       {
+        "maxLength": 128,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "\"auto\", a quant tag (Q4_K_M, Q8_0, BF16, F32) or its base filename; omitted on download means the selected quant.",
+      "title": "Quant"
+     }
+    },
+    "title": "GGUFQuantRequest",
+    "type": "object"
+   },
    "GlossaryTerm": {
     "properties": {
      "note": {
@@ -12920,6 +12939,94 @@
      }
     },
     "summary": "List Llm Backends"
+   }
+  },
+  "/engines/omnivoice-gguf/quants": {
+   "get": {
+    "operationId": "omnivoice_gguf_quants_engines_omnivoice_gguf_quants_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Omnivoice Gguf Quants"
+   }
+  },
+  "/engines/omnivoice-gguf/quants/download": {
+   "post": {
+    "operationId": "download_omnivoice_gguf_quant_engines_omnivoice_gguf_quants_download_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/GGUFQuantRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Download Omnivoice Gguf Quant"
+   }
+  },
+  "/engines/omnivoice-gguf/quants/select": {
+   "post": {
+    "operationId": "select_omnivoice_gguf_quant_engines_omnivoice_gguf_quants_select_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/GGUFQuantRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Select Omnivoice Gguf Quant"
    }
   },
   "/engines/select": {

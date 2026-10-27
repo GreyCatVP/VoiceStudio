@@ -4454,5 +4454,25 @@
     "generating": "Wacht tot de huidige opname klaar is.",
     "name_required": "Voer eerst een naam in.",
     "audio_missing": "Deze opname heeft geen audiobestand om op te slaan."
+  },
+  "ggufQuant": {
+    "label": "Modelkwantisatie",
+    "auto": "Auto: {{quant}} ({{target}})",
+    "target_vulkan": "Vulkan – {{device}}",
+    "target_cpu": "CPU",
+    "target_unverified": "CPU of systeemstandaard",
+    "option": "{{quant}} · {{size}} MB",
+    "option_installed": "{{quant}} · {{size}} MB · geïnstalleerd",
+    "download": "{{quant}} downloaden ({{size}} MB)",
+    "downloading": "{{quant}} downloaden: {{done}} van {{total}} MB",
+    "using_installed": "De geïnstalleerde {{quant}} wordt gebruikt tot de gekozen kwantisatie is gedownload.",
+    "env_pinned": "Vastgezet op {{quant}} door {{env}}.",
+    "runtime_missing": "De omnivoice-tts-runtime ontbreekt. Installeer VoiceStudio opnieuw of bouw hem met scripts/build-omnivoice-tts.sh.",
+    "runtime_placeholder": "Het meegeleverde omnivoice-tts-bestand is een tijdelijke aanduiding, geen werkende runtime. Installeer VoiceStudio opnieuw.",
+    "runtime_integrity": "De controlesom van de omnivoice-tts-runtime klopt niet. Installeer VoiceStudio opnieuw.",
+    "runtime_quarantined": "Het besturingssysteem heeft de omnivoice-tts-runtime in quarantaine gezet. Sta hem toe of installeer VoiceStudio opnieuw.",
+    "runtime_other": "De omnivoice-tts-runtime start niet. Zie de enginecontrole voor details.",
+    "weights_missing": "De modelgewichten zijn nog niet gedownload. Download ze nu, anders gebeurt dat bij de eerste generatie.",
+    "download_failed": "Downloaden van gewichten mislukt"
   }
 }

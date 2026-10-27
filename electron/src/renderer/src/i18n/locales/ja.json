@@ -4454,5 +4454,25 @@
     "generating": "現在のテイクが終わるまでお待ちください。",
     "name_required": "まず名前を入力してください。",
     "audio_missing": "このテイクには保存できる音声ファイルがありません。"
+  },
+  "ggufQuant": {
+    "label": "モデルの量子化",
+    "auto": "自動: {{quant}}（{{target}}）",
+    "target_vulkan": "Vulkan – {{device}}",
+    "target_cpu": "CPU",
+    "target_unverified": "CPU またはネイティブ既定",
+    "option": "{{quant}} · {{size}} MB",
+    "option_installed": "{{quant}} · {{size}} MB · インストール済み",
+    "download": "{{quant}} をダウンロード（{{size}} MB）",
+    "downloading": "{{quant}} をダウンロード中: {{done}} / {{total}} MB",
+    "using_installed": "選択した量子化のダウンロードが終わるまで、インストール済みの {{quant}} を使います。",
+    "env_pinned": "{{env}} により {{quant}} に固定されています。",
+    "runtime_missing": "omnivoice-tts ランタイムがありません。VoiceStudio を再インストールするか、scripts/build-omnivoice-tts.sh でビルドしてください。",
+    "runtime_placeholder": "同梱の omnivoice-tts はプレースホルダーで、動作するランタイムではありません。VoiceStudio を再インストールしてください。",
+    "runtime_integrity": "omnivoice-tts ランタイムのチェックサムが一致しません。VoiceStudio を再インストールしてください。",
+    "runtime_quarantined": "OS が omnivoice-tts ランタイムを隔離しました。許可するか VoiceStudio を再インストールしてください。",
+    "runtime_other": "omnivoice-tts ランタイムを起動できません。詳細はエンジンの診断を確認してください。",
+    "weights_missing": "モデルの重みはまだダウンロードされていません。今ダウンロードするか、初回生成時に自動で取得されます。",
+    "download_failed": "重みのダウンロードに失敗しました"
   }
 }

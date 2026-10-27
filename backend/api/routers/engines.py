@@ -469,6 +469,59 @@ def install_audiocpp_runtime():
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
+# ── OmniVoice GGUF quant picker + weight prefetch ──────────────────────────
+#
+# The engine sizes its quant on the verified native GPU (Vulkan) and fetches
+# the pair on first generate. These routes let Settings › Models show that
+# choice, pin a larger (or smaller) quant, and download it ahead of time.
+# A download starts only on an explicit POST.
+
+
+class GGUFQuantRequest(BaseModel):
+    quant: str | None = Field(
+        default=None,
+        max_length=128,
+        description='"auto", a quant tag (Q4_K_M, Q8_0, BF16, F32) or its base '
+        "filename; omitted on download means the selected quant.",
+    )
+
+
+@router.get("/engines/omnivoice-gguf/quants")
+def omnivoice_gguf_quants():
+    from engines.omnivoice_gguf import quants
+
+    return quants.quant_status()
+
+
+@router.post("/engines/omnivoice-gguf/quants/select", dependencies=[Depends(require_admin)])
+def select_omnivoice_gguf_quant(req: GGUFQuantRequest):
+    from engines.omnivoice_gguf import quants
+
+    try:
+        quants.select_quant(req.quant or "auto")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return quants.quant_status()
+
+
+@router.post("/engines/omnivoice-gguf/quants/download", dependencies=[Depends(require_admin)])
+def download_omnivoice_gguf_quant(req: GGUFQuantRequest):
+    from api.routers.setup.models import disk_space_error
+    from engines.omnivoice_gguf import quants
+
+    target = None if req.quant in (None, "auto") else req.quant
+    size = quants.approx_bytes(target)
+    if target is not None and not size:
+        raise HTTPException(status_code=400, detail=f"Unknown OmniVoice GGUF quant {target!r}")
+    no_space = disk_space_error(size)
+    if no_space:
+        raise HTTPException(status_code=507, detail=no_space)
+    try:
+        return quants.start_download(target)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 # ── One-click sidecar-engine install (IndexTTS-2 & friends) ────────────────
 #
 # Sidecar engines (dedicated venv + source checkout + weights, isolated from

@@ -4482,5 +4482,25 @@
     "generating": "Poczekaj, aż bieżące nagranie się zakończy.",
     "name_required": "Najpierw wpisz nazwę.",
     "audio_missing": "To nagranie nie ma pliku audio do zapisania."
+  },
+  "ggufQuant": {
+    "label": "Kwantyzacja modelu",
+    "auto": "Auto: {{quant}} ({{target}})",
+    "target_vulkan": "Vulkan – {{device}}",
+    "target_cpu": "CPU",
+    "target_unverified": "CPU lub domyślny wybór natywny",
+    "option": "{{quant}} · {{size}} MB",
+    "option_installed": "{{quant}} · {{size}} MB · zainstalowano",
+    "download": "Pobierz {{quant}} ({{size}} MB)",
+    "downloading": "Pobieranie {{quant}}: {{done}} z {{total}} MB",
+    "using_installed": "Używany jest zainstalowany {{quant}}, dopóki wybrana kwantyzacja nie zostanie pobrana.",
+    "env_pinned": "Ustawione na {{quant}} przez {{env}}.",
+    "runtime_missing": "Brak środowiska omnivoice-tts. Zainstaluj ponownie VoiceStudio lub zbuduj je skryptem scripts/build-omnivoice-tts.sh.",
+    "runtime_placeholder": "Dołączony plik omnivoice-tts to atrapa, a nie działające środowisko. Zainstaluj ponownie VoiceStudio.",
+    "runtime_integrity": "Suma kontrolna środowiska omnivoice-tts się nie zgadza. Zainstaluj ponownie VoiceStudio.",
+    "runtime_quarantined": "System poddał środowisko omnivoice-tts kwarantannie. Zezwól na nie lub zainstaluj ponownie VoiceStudio.",
+    "runtime_other": "Środowisko omnivoice-tts się nie uruchamia. Szczegóły w kontroli silnika.",
+    "weights_missing": "Wagi modelu nie są jeszcze pobrane. Pobierz je teraz, inaczej pobiorą się przy pierwszym generowaniu.",
+    "download_failed": "Pobieranie wag nie powiodło się"
   }
 }

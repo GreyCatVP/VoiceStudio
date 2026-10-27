@@ -4454,5 +4454,25 @@
     "generating": "현재 테이크가 끝날 때까지 기다리세요.",
     "name_required": "먼저 이름을 입력하세요.",
     "audio_missing": "이 테이크에는 저장할 오디오 파일이 없습니다."
+  },
+  "ggufQuant": {
+    "label": "모델 양자화",
+    "auto": "자동: {{quant}} ({{target}})",
+    "target_vulkan": "Vulkan – {{device}}",
+    "target_cpu": "CPU",
+    "target_unverified": "CPU 또는 기본값",
+    "option": "{{quant}} · {{size}} MB",
+    "option_installed": "{{quant}} · {{size}} MB · 설치됨",
+    "download": "{{quant}} 다운로드 ({{size}} MB)",
+    "downloading": "{{quant}} 다운로드 중: {{done}} / {{total}} MB",
+    "using_installed": "선택한 양자화를 다운로드할 때까지 설치된 {{quant}}를 사용합니다.",
+    "env_pinned": "{{env}}에 의해 {{quant}}로 고정됨.",
+    "runtime_missing": "omnivoice-tts 런타임이 없습니다. VoiceStudio를 다시 설치하거나 scripts/build-omnivoice-tts.sh로 빌드하세요.",
+    "runtime_placeholder": "포함된 omnivoice-tts 파일은 자리표시자이며 작동하는 런타임이 아닙니다. VoiceStudio를 다시 설치하세요.",
+    "runtime_integrity": "omnivoice-tts 런타임의 체크섬이 맞지 않습니다. VoiceStudio를 다시 설치하세요.",
+    "runtime_quarantined": "운영체제가 omnivoice-tts 런타임을 격리했습니다. 허용하거나 VoiceStudio를 다시 설치하세요.",
+    "runtime_other": "omnivoice-tts 런타임을 시작할 수 없습니다. 자세한 내용은 엔진 점검을 확인하세요.",
+    "weights_missing": "모델 가중치가 아직 다운로드되지 않았습니다. 지금 다운로드하거나 첫 생성 때 다운로드됩니다.",
+    "download_failed": "가중치 다운로드 실패"
   }
 }

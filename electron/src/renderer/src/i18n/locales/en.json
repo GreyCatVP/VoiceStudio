@@ -4454,5 +4454,25 @@
     "generating": "Wait until the current take finishes.",
     "name_required": "Enter a name first.",
     "audio_missing": "This take has no audio file to save."
+  },
+  "ggufQuant": {
+    "label": "Model quant",
+    "auto": "Auto: {{quant}} ({{target}})",
+    "target_vulkan": "Vulkan – {{device}}",
+    "target_cpu": "CPU",
+    "target_unverified": "CPU or native default",
+    "option": "{{quant}} · {{size}} MB",
+    "option_installed": "{{quant}} · {{size}} MB · installed",
+    "download": "Download {{quant}} ({{size}} MB)",
+    "downloading": "Downloading {{quant}}: {{done}} of {{total}} MB",
+    "using_installed": "Using the installed {{quant}} until the selected quant is downloaded.",
+    "env_pinned": "Pinned to {{quant}} by {{env}}.",
+    "runtime_missing": "The omnivoice-tts runtime is missing. Reinstall VoiceStudio or build it with scripts/build-omnivoice-tts.sh.",
+    "runtime_placeholder": "The bundled omnivoice-tts file is a placeholder, not a working runtime. Reinstall VoiceStudio.",
+    "runtime_integrity": "The omnivoice-tts runtime failed its checksum. Reinstall VoiceStudio.",
+    "runtime_quarantined": "The omnivoice-tts runtime is quarantined by the operating system. Allow it or reinstall VoiceStudio.",
+    "runtime_other": "The omnivoice-tts runtime cannot start. See the engine health check for details.",
+    "weights_missing": "The model weights are not downloaded yet. Download them now or they download on the first generation.",
+    "download_failed": "Weight download failed"
   }
 }

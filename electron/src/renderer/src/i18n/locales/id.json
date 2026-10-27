@@ -4454,5 +4454,25 @@
     "generating": "Tunggu hingga take saat ini selesai.",
     "name_required": "Masukkan nama terlebih dahulu.",
     "audio_missing": "Take ini tidak memiliki file audio untuk disimpan."
+  },
+  "ggufQuant": {
+    "label": "Kuantisasi model",
+    "auto": "Otomatis: {{quant}} ({{target}})",
+    "target_vulkan": "Vulkan – {{device}}",
+    "target_cpu": "CPU",
+    "target_unverified": "CPU atau bawaan native",
+    "option": "{{quant}} · {{size}} MB",
+    "option_installed": "{{quant}} · {{size}} MB · terpasang",
+    "download": "Unduh {{quant}} ({{size}} MB)",
+    "downloading": "Mengunduh {{quant}}: {{done}} dari {{total}} MB",
+    "using_installed": "{{quant}} yang terpasang dipakai sampai kuantisasi pilihan selesai diunduh.",
+    "env_pinned": "Dikunci ke {{quant}} oleh {{env}}.",
+    "runtime_missing": "Runtime omnivoice-tts tidak ada. Pasang ulang VoiceStudio atau bangun dengan scripts/build-omnivoice-tts.sh.",
+    "runtime_placeholder": "Berkas omnivoice-tts bawaan hanyalah placeholder, bukan runtime yang berfungsi. Pasang ulang VoiceStudio.",
+    "runtime_integrity": "Checksum runtime omnivoice-tts tidak cocok. Pasang ulang VoiceStudio.",
+    "runtime_quarantined": "Sistem operasi mengarantina runtime omnivoice-tts. Izinkan atau pasang ulang VoiceStudio.",
+    "runtime_other": "Runtime omnivoice-tts tidak bisa berjalan. Lihat pemeriksaan mesin untuk detail.",
+    "weights_missing": "Bobot model belum diunduh. Unduh sekarang, atau akan diunduh saat pembuatan pertama.",
+    "download_failed": "Gagal mengunduh bobot"
   }
 }

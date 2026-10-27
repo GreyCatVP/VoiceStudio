@@ -4454,5 +4454,25 @@
     "generating": "Geçerli çekim bitene kadar bekleyin.",
     "name_required": "Önce bir ad girin.",
     "audio_missing": "Bu çekimin kaydedilecek ses dosyası yok."
+  },
+  "ggufQuant": {
+    "label": "Model nicemlemesi",
+    "auto": "Otomatik: {{quant}} ({{target}})",
+    "target_vulkan": "Vulkan – {{device}}",
+    "target_cpu": "CPU",
+    "target_unverified": "CPU veya yerel varsayılan",
+    "option": "{{quant}} · {{size}} MB",
+    "option_installed": "{{quant}} · {{size}} MB · yüklü",
+    "download": "{{quant}} indir ({{size}} MB)",
+    "downloading": "{{quant}} indiriliyor: {{done}} / {{total}} MB",
+    "using_installed": "Seçilen nicemleme inene kadar yüklü {{quant}} kullanılır.",
+    "env_pinned": "{{env}} tarafından {{quant}} olarak sabitlendi.",
+    "runtime_missing": "omnivoice-tts çalışma zamanı eksik. VoiceStudio'yu yeniden kurun veya scripts/build-omnivoice-tts.sh ile derleyin.",
+    "runtime_placeholder": "Paketteki omnivoice-tts dosyası bir yer tutucu, çalışan bir çalışma zamanı değil. VoiceStudio'yu yeniden kurun.",
+    "runtime_integrity": "omnivoice-tts çalışma zamanının sağlama toplamı tutmuyor. VoiceStudio'yu yeniden kurun.",
+    "runtime_quarantined": "İşletim sistemi omnivoice-tts çalışma zamanını karantinaya aldı. İzin verin veya VoiceStudio'yu yeniden kurun.",
+    "runtime_other": "omnivoice-tts çalışma zamanı başlamıyor. Ayrıntılar için motor denetimine bakın.",
+    "weights_missing": "Model ağırlıkları henüz indirilmedi. Şimdi indirin, yoksa ilk üretimde inecekler.",
+    "download_failed": "Ağırlık indirmesi başarısız"
   }
 }

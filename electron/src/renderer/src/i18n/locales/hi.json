@@ -4454,5 +4454,25 @@
     "generating": "मौजूदा टेक पूरा होने तक रुकें।",
     "name_required": "पहले नाम लिखें।",
     "audio_missing": "इस टेक में सहेजने के लिए कोई ऑडियो फ़ाइल नहीं है।"
+  },
+  "ggufQuant": {
+    "label": "मॉडल क्वांटाइज़ेशन",
+    "auto": "ऑटो: {{quant}} ({{target}})",
+    "target_vulkan": "Vulkan – {{device}}",
+    "target_cpu": "CPU",
+    "target_unverified": "CPU या मूल डिफ़ॉल्ट",
+    "option": "{{quant}} · {{size}} MB",
+    "option_installed": "{{quant}} · {{size}} MB · इंस्टॉल है",
+    "download": "{{quant}} डाउनलोड करें ({{size}} MB)",
+    "downloading": "{{quant}} डाउनलोड हो रहा है: {{total}} में से {{done}} MB",
+    "using_installed": "चुना गया क्वांट डाउनलोड होने तक इंस्टॉल किया गया {{quant}} इस्तेमाल होगा।",
+    "env_pinned": "{{env}} ने इसे {{quant}} पर तय किया है।",
+    "runtime_missing": "omnivoice-tts रनटाइम मौजूद नहीं है। VoiceStudio फिर से इंस्टॉल करें या scripts/build-omnivoice-tts.sh से बनाएँ।",
+    "runtime_placeholder": "साथ आई omnivoice-tts फ़ाइल प्लेसहोल्डर है, काम करने वाला रनटाइम नहीं। VoiceStudio फिर से इंस्टॉल करें।",
+    "runtime_integrity": "omnivoice-tts रनटाइम का चेकसम मेल नहीं खाता। VoiceStudio फिर से इंस्टॉल करें।",
+    "runtime_quarantined": "ऑपरेटिंग सिस्टम ने omnivoice-tts को क्वारंटीन किया है। इसे अनुमति दें या VoiceStudio फिर से इंस्टॉल करें।",
+    "runtime_other": "omnivoice-tts रनटाइम शुरू नहीं हो रहा। विवरण के लिए इंजन जाँच देखें।",
+    "weights_missing": "मॉडल वेट अभी डाउनलोड नहीं हुए हैं। अभी डाउनलोड करें, वरना पहली जनरेशन पर होंगे।",
+    "download_failed": "वेट डाउनलोड विफल"
   }
 }

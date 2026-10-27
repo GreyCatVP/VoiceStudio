@@ -4506,5 +4506,25 @@
     "generating": "انتظر حتى تنتهي اللقطة الحالية.",
     "name_required": "أدخل اسمًا أولًا.",
     "audio_missing": "لا يوجد ملف صوتي لهذه اللقطة لحفظه."
+  },
+  "ggufQuant": {
+    "label": "تكميم النموذج",
+    "auto": "تلقائي: {{quant}} ({{target}})",
+    "target_vulkan": "Vulkan – {{device}}",
+    "target_cpu": "المعالج المركزي",
+    "target_unverified": "المعالج المركزي أو الاختيار الافتراضي",
+    "option": "{{quant}} · {{size}} م.ب",
+    "option_installed": "{{quant}} · {{size}} م.ب · مثبّت",
+    "download": "تنزيل {{quant}} ({{size}} م.ب)",
+    "downloading": "جارٍ تنزيل {{quant}}: {{done}} من {{total}} م.ب",
+    "using_installed": "يُستخدم {{quant}} المثبّت حتى يكتمل تنزيل التكميم المختار.",
+    "env_pinned": "مثبّت على {{quant}} بواسطة {{env}}.",
+    "runtime_missing": "بيئة تشغيل omnivoice-tts مفقودة. أعد تثبيت VoiceStudio أو ابنها باستخدام scripts/build-omnivoice-tts.sh.",
+    "runtime_placeholder": "ملف omnivoice-tts المرفق عنصر نائب وليس بيئة تشغيل فعلية. أعد تثبيت VoiceStudio.",
+    "runtime_integrity": "فشل التحقق من المجموع الاختباري لبيئة omnivoice-tts. أعد تثبيت VoiceStudio.",
+    "runtime_quarantined": "وضع النظام بيئة omnivoice-tts في الحجر. اسمح بها أو أعد تثبيت VoiceStudio.",
+    "runtime_other": "تعذّر تشغيل بيئة omnivoice-tts. راجع فحص المحرك للتفاصيل.",
+    "weights_missing": "لم تُنزَّل أوزان النموذج بعد. نزّلها الآن وإلا ستُنزَّل عند أول توليد.",
+    "download_failed": "فشل تنزيل الأوزان"
   }
 }

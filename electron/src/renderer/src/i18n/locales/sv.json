@@ -4454,5 +4454,25 @@
     "generating": "Vänta tills den aktuella tagningen är klar.",
     "name_required": "Ange ett namn först.",
     "audio_missing": "Den här tagningen har ingen ljudfil att spara."
+  },
+  "ggufQuant": {
+    "label": "Modellkvantisering",
+    "auto": "Auto: {{quant}} ({{target}})",
+    "target_vulkan": "Vulkan – {{device}}",
+    "target_cpu": "CPU",
+    "target_unverified": "CPU eller inbyggt standardval",
+    "option": "{{quant}} · {{size}} MB",
+    "option_installed": "{{quant}} · {{size}} MB · installerad",
+    "download": "Ladda ned {{quant}} ({{size}} MB)",
+    "downloading": "Laddar ned {{quant}}: {{done}} av {{total}} MB",
+    "using_installed": "Den installerade {{quant}} används tills den valda kvantiseringen är nedladdad.",
+    "env_pinned": "Låst till {{quant}} av {{env}}.",
+    "runtime_missing": "Körmiljön omnivoice-tts saknas. Installera om VoiceStudio eller bygg den med scripts/build-omnivoice-tts.sh.",
+    "runtime_placeholder": "Den medföljande omnivoice-tts-filen är en platshållare, inte en fungerande körmiljö. Installera om VoiceStudio.",
+    "runtime_integrity": "Kontrollsumman för omnivoice-tts stämmer inte. Installera om VoiceStudio.",
+    "runtime_quarantined": "Operativsystemet har satt omnivoice-tts i karantän. Tillåt den eller installera om VoiceStudio.",
+    "runtime_other": "Körmiljön omnivoice-tts startar inte. Se motorkontrollen för detaljer.",
+    "weights_missing": "Modellvikterna är inte nedladdade än. Ladda ned dem nu, annars sker det vid första genereringen.",
+    "download_failed": "Nedladdningen av vikter misslyckades"
   }
 }

@@ -1,12 +1,25 @@
-"""Compute configuration supported by pinned omnivoice.cpp (src/backend.h)."""
+"""Compute configuration supported by pinned omnivoice.cpp (src/backend.h).
+
+The native runtime picks its own GPU, independently of the parent's PyTorch.
+For a Vulkan build that choice is now *verified* rather than guessed:
+``vulkan_auto`` enumerates the adapters the pinned GGML lists and identifies
+the one it opens, so the quant policy and the Compute-device report size
+against the real adapter. Every other route (CUDA builds, Metal, a binary
+without the Vulkan module, no working Vulkan driver) keeps the conservative
+unverified policy.
+"""
 from __future__ import annotations
 
+import functools
 import os
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from core.device_caps import HostCaps
     from services.tts_backend import TTSBackend
+
+    from .vulkan_auto import VulkanAdapter
 
 BACKEND_ENV = "OMNIVOICE_GGUF_BACKEND"
 DEVICE_ENV = "OMNIVOICE_GGUF_DEVICE"
@@ -54,12 +67,65 @@ def apply_compute_env(env: dict[str, str]) -> dict[str, str]:
     return env
 
 
+def binary_has_vulkan_module(bin_dir: Optional[Path] = None) -> bool:
+    """Whether the bundled runtime ships GGML's Vulkan module.
+
+    Vulkan builds use ``GGML_BACKEND_DL`` (``scripts/lib/omnivoice-vulkan.sh``),
+    so the GPU backend is a ``ggml-vulkan`` shared library beside the binary;
+    its integrity is checked with the rest of the runtime (``bin/checksums``).
+    """
+    try:
+        if bin_dir is None:
+            from .backend import _binary_path
+
+            bin_dir = _binary_path().parent
+        return any(
+            "ggml-vulkan" in p.name.lower() and p.is_file() and p.stat().st_size > 0
+            for p in bin_dir.iterdir()
+        )
+    except OSError:
+        return False
+
+
+def selected_vulkan_adapter() -> Optional["VulkanAdapter"]:
+    """The verified Vulkan adapter the native runtime will open, or None.
+
+    None whenever the route is not a verified Vulkan one: an explicit CPU
+    choice, an explicit CUDA backend (or an ambient non-Vulkan
+    ``GGML_BACKEND``), a binary without the Vulkan module, or no working
+    Vulkan driver. With ``OMNIVOICE_GGUF_BACKEND=vulkan`` the requested
+    ``Vulkan<N>`` is used; otherwise GGML's own automatic pick (first
+    discrete GPU, else first integrated).
+    """
+    effective = apply_compute_env(os.environ.copy())
+    ggml = effective.get("GGML_BACKEND", "").strip()
+    index: Optional[int] = None
+    if ggml:
+        if not ggml.lower().startswith("vulkan") or not ggml[6:].isdecimal():
+            return None
+        index = int(ggml[6:])
+    if not binary_has_vulkan_module():
+        return None
+    from .vulkan_auto import detect_vulkan_profile
+
+    profile = detect_vulkan_profile()
+    return profile.best() if index is None else profile.by_index(index)
+
+
 def automatic_compute_class() -> str:
-    """Use the smallest automatic quant until native adapter capacity is known."""
-    # Validate overrides without treating the parent's PyTorch GPU memory as
-    # evidence about the native process's selected adapter. Compute stays native.
-    apply_compute_env(os.environ.copy())
-    return "cpu"
+    """The quant tier for the automatic policy.
+
+    A verified Vulkan adapter is sized on its effective memory (shared RAM for
+    an APU); anything unverified keeps the smallest tier. Overrides are still
+    validated first, and the parent's PyTorch GPU memory is never used as
+    evidence about the native process's adapter.
+    """
+    adapter = selected_vulkan_adapter()
+    if adapter is None:
+        return "cpu"
+    from .hardware_probe import _bucket
+
+    return _bucket(adapter.effective_vram_mb)
 
 
 def cpu_selection_explicit() -> bool:
@@ -80,14 +146,36 @@ def cpu_selection_explicit() -> bool:
 
 
 def runtime_profile(cls: type[TTSBackend], caps: HostCaps) -> dict:
-    """Do not infer a subprocess's devices from the parent's torch or loader.
+    """Report the native device without inferring it from the parent's torch.
 
-    The pinned runtime has no capability enumeration API. Auto selection still
-    uses native GPU backends, but its unverified route keeps the CPU timeout.
+    A verified Vulkan adapter is reported as accelerated (so Compute device
+    counts the engine as a GPU engine and generation gets the GPU budget).
+    Otherwise the pinned runtime cannot say which device it opened, and the
+    unverified route keeps the CPU timeout.
     """
-    return {
+    base = {
         "gpu_compat": cls.gpu_compat,
         "min_vram_gb": float(getattr(cls, "min_vram_gb", 0) or 0),
+    }
+    try:
+        adapter = selected_vulkan_adapter()
+    except ComputeConfigError:
+        adapter = None
+    if adapter is not None:
+        return {
+            **base,
+            "effective_device": "vulkan",
+            "routing_status": "accelerated",
+            "routing_reason": None,
+            "runtime_backend": "vulkan",
+            "runtime_device_index": adapter.index,
+            "runtime_device_name": adapter.name,
+            "runtime_hardware_family": adapter.vendor,
+            "runtime_vram_gb": adapter.effective_vram_gb,
+            "runtime_device_verified": True,
+        }
+    return {
+        **base,
         "effective_device": "cpu",
         "routing_status": "cpu_only",
         "routing_reason": "Native compute device unverified; using the CPU timeout budget",
@@ -98,3 +186,61 @@ def runtime_profile(cls: type[TTSBackend], caps: HostCaps) -> dict:
         "runtime_vram_gb": None,
         "runtime_device_verified": False,
     }
+
+
+def _promotion_evidence() -> bool:
+    from core.device_caps import detect_host_caps
+
+    if detect_host_caps().family != "cpu":
+        return False  # PyTorch has an accelerator: the in-process engine uses it
+    if selected_vulkan_adapter() is None:
+        return False
+    from .backend import _make_backend_class
+
+    ok, _reason = _make_backend_class()._binary_status()
+    return ok
+
+
+def _licence_accepted() -> bool:
+    from .backend import _make_backend_class
+    from services.tts_backend import ensure_engine_licence
+
+    try:
+        ensure_engine_licence(_make_backend_class())
+    except Exception:  # noqa: BLE001
+        return False
+    return True
+
+
+@functools.lru_cache(maxsize=8)
+def _promotion_for(device_choice: str, backend: str, device: str, ggml: str) -> bool:
+    # Keyed on the inputs a user can change at runtime, so switching Compute
+    # device in Settings re-evaluates instead of serving a stale verdict.
+    try:
+        return _promotion_evidence()
+    except Exception:  # noqa: BLE001 - a probe bug must never break engine selection
+        return False
+
+
+def vulkan_promotion() -> bool:
+    """Whether the default TTS engine should be ``omnivoice-gguf`` on Vulkan.
+
+    True only when Compute device is Auto, PyTorch has no GPU, the bundled
+    runtime ships the Vulkan module, a verified Vulkan adapter is present,
+    the binary passes its integrity checks and its model licence is accepted.
+    An engine the user picked (Settings or ``OMNIVOICE_TTS_BACKEND``) always
+    wins; this only replaces the built-in default.
+    """
+    from core.device_caps import requested_device_override
+
+    choice = requested_device_override()
+    if choice != "auto":
+        return False
+    # The licence is checked on every call (accepting it in Settings must take
+    # effect at once); only the hardware and binary evidence is cached.
+    return _promotion_for(
+        choice,
+        os.environ.get(BACKEND_ENV, ""),
+        os.environ.get(DEVICE_ENV, ""),
+        os.environ.get("GGML_BACKEND", ""),
+    ) and _licence_accepted()

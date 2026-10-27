@@ -4482,5 +4482,25 @@
     "generating": "Дочекайтеся завершення поточного дубля.",
     "name_required": "Спершу введіть назву.",
     "audio_missing": "Цей дубль не має аудіофайлу для збереження."
+  },
+  "ggufQuant": {
+    "label": "Квантування моделі",
+    "auto": "Авто: {{quant}} ({{target}})",
+    "target_vulkan": "Vulkan – {{device}}",
+    "target_cpu": "CPU",
+    "target_unverified": "CPU або типовий вибір",
+    "option": "{{quant}} · {{size}} МБ",
+    "option_installed": "{{quant}} · {{size}} МБ · встановлено",
+    "download": "Завантажити {{quant}} ({{size}} МБ)",
+    "downloading": "Завантаження {{quant}}: {{done}} з {{total}} МБ",
+    "using_installed": "Поки вибране квантування не завантажено, використовується встановлене {{quant}}.",
+    "env_pinned": "Закріплено на {{quant}} через {{env}}.",
+    "runtime_missing": "Середовище omnivoice-tts відсутнє. Перевстановіть VoiceStudio або зберіть його через scripts/build-omnivoice-tts.sh.",
+    "runtime_placeholder": "Файл omnivoice-tts у комплекті — заглушка, а не робоче середовище. Перевстановіть VoiceStudio.",
+    "runtime_integrity": "Контрольна сума omnivoice-tts не збігається. Перевстановіть VoiceStudio.",
+    "runtime_quarantined": "Система помістила omnivoice-tts у карантин. Дозвольте запуск або перевстановіть VoiceStudio.",
+    "runtime_other": "Середовище omnivoice-tts не запускається. Подробиці в перевірці рушія.",
+    "weights_missing": "Ваги моделі ще не завантажено. Завантажте їх зараз, інакше вони завантажаться під час першої генерації.",
+    "download_failed": "Не вдалося завантажити ваги"
   }
 }

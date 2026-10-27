@@ -4456,5 +4456,25 @@
     "generating": "Attendi che la ripresa attuale finisca.",
     "name_required": "Inserisci prima un nome.",
     "audio_missing": "Questa ripresa non ha un file audio da salvare."
+  },
+  "ggufQuant": {
+    "label": "Quantizzazione del modello",
+    "auto": "Auto: {{quant}} ({{target}})",
+    "target_vulkan": "Vulkan – {{device}}",
+    "target_cpu": "CPU",
+    "target_unverified": "CPU o predefinito nativo",
+    "option": "{{quant}} · {{size}} MB",
+    "option_installed": "{{quant}} · {{size}} MB · installato",
+    "download": "Scarica {{quant}} ({{size}} MB)",
+    "downloading": "Download di {{quant}}: {{done}} di {{total}} MB",
+    "using_installed": "Viene usato {{quant}} installato finché la quantizzazione scelta non è scaricata.",
+    "env_pinned": "Fissato su {{quant}} da {{env}}.",
+    "runtime_missing": "Il runtime omnivoice-tts manca. Reinstalla VoiceStudio o compilalo con scripts/build-omnivoice-tts.sh.",
+    "runtime_placeholder": "Il file omnivoice-tts incluso è un segnaposto, non un runtime funzionante. Reinstalla VoiceStudio.",
+    "runtime_integrity": "Il checksum del runtime omnivoice-tts non corrisponde. Reinstalla VoiceStudio.",
+    "runtime_quarantined": "Il sistema ha messo in quarantena il runtime omnivoice-tts. Consentilo o reinstalla VoiceStudio.",
+    "runtime_other": "Il runtime omnivoice-tts non si avvia. Vedi il controllo del motore per i dettagli.",
+    "weights_missing": "I pesi del modello non sono ancora scaricati. Scaricali ora, altrimenti verranno scaricati alla prima generazione.",
+    "download_failed": "Download dei pesi non riuscito"
   }
 }

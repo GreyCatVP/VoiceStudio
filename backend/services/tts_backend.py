@@ -4461,11 +4461,29 @@ def gpu_routing_verdict() -> dict:
     }
 
 
+def default_backend_id() -> str:
+    """The engine used when neither the env nor Settings names one.
+
+    ``omnivoice`` (in-process PyTorch), except on a host whose PyTorch has
+    no GPU but whose bundled GGUF runtime has a verified Vulkan GPU (a Radeon
+    or Arc card with the CPU wheel, a Ryzen AI APU): there the same model runs
+    GPU-accelerated through ``omnivoice-gguf`` with nothing to configure.
+    """
+    try:
+        from engines.omnivoice_gguf.compute import vulkan_promotion
+
+        if vulkan_promotion():
+            return "omnivoice-gguf"
+    except Exception:  # noqa: BLE001 - the default must always resolve
+        logger.debug("GGUF Vulkan promotion check failed", exc_info=True)
+    return "omnivoice"
+
+
 def active_backend_id() -> str:
     # Env var > persisted UI choice > default. Env wins so power-users can
     # pin a backend without the Settings picker silently undoing it.
     from core import prefs
-    return prefs.resolve("tts_backend", env="OMNIVOICE_TTS_BACKEND", default="omnivoice")
+    return prefs.resolve("tts_backend", env="OMNIVOICE_TTS_BACKEND", default=None) or default_backend_id()
 
 
 # Cached active backend instance + its id (MM2-01). Without this, every call

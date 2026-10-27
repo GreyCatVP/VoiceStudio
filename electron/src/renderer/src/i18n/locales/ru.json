@@ -4482,5 +4482,25 @@
     "generating": "Дождитесь окончания текущего дубля.",
     "name_required": "Сначала введите имя.",
     "audio_missing": "У этого дубля нет аудиофайла для сохранения."
+  },
+  "ggufQuant": {
+    "label": "Квантование модели",
+    "auto": "Авто: {{quant}} ({{target}})",
+    "target_vulkan": "Vulkan – {{device}}",
+    "target_cpu": "CPU",
+    "target_unverified": "CPU или выбор по умолчанию",
+    "option": "{{quant}} · {{size}} МБ",
+    "option_installed": "{{quant}} · {{size}} МБ · установлено",
+    "download": "Скачать {{quant}} ({{size}} МБ)",
+    "downloading": "Загрузка {{quant}}: {{done}} из {{total}} МБ",
+    "using_installed": "Пока выбранное квантование не скачано, используется установленное {{quant}}.",
+    "env_pinned": "Закреплено на {{quant}} через {{env}}.",
+    "runtime_missing": "Среда omnivoice-tts отсутствует. Переустановите VoiceStudio или соберите её через scripts/build-omnivoice-tts.sh.",
+    "runtime_placeholder": "Файл omnivoice-tts в комплекте — заглушка, а не рабочая среда. Переустановите VoiceStudio.",
+    "runtime_integrity": "Контрольная сумма omnivoice-tts не совпадает. Переустановите VoiceStudio.",
+    "runtime_quarantined": "Система поместила omnivoice-tts в карантин. Разрешите запуск или переустановите VoiceStudio.",
+    "runtime_other": "Среда omnivoice-tts не запускается. Подробности в проверке движка.",
+    "weights_missing": "Веса модели ещё не скачаны. Скачайте их сейчас, иначе они загрузятся при первой генерации.",
+    "download_failed": "Не удалось скачать веса"
   }
 }

@@ -4454,5 +4454,25 @@
     "generating": "รอจนเทคปัจจุบันเสร็จ",
     "name_required": "ใส่ชื่อก่อน",
     "audio_missing": "เทคนี้ไม่มีไฟล์เสียงให้บันทึก"
+  },
+  "ggufQuant": {
+    "label": "การควอนไทซ์โมเดล",
+    "auto": "อัตโนมัติ: {{quant}} ({{target}})",
+    "target_vulkan": "Vulkan – {{device}}",
+    "target_cpu": "CPU",
+    "target_unverified": "CPU หรือค่าเริ่มต้นของระบบ",
+    "option": "{{quant}} · {{size}} MB",
+    "option_installed": "{{quant}} · {{size}} MB · ติดตั้งแล้ว",
+    "download": "ดาวน์โหลด {{quant}} ({{size}} MB)",
+    "downloading": "กำลังดาวน์โหลด {{quant}}: {{done}} จาก {{total}} MB",
+    "using_installed": "ใช้ {{quant}} ที่ติดตั้งไว้จนกว่าจะดาวน์โหลดควอนต์ที่เลือกเสร็จ",
+    "env_pinned": "ตรึงไว้ที่ {{quant}} โดย {{env}}",
+    "runtime_missing": "ไม่พบรันไทม์ omnivoice-tts ติดตั้ง VoiceStudio ใหม่ หรือสร้างด้วย scripts/build-omnivoice-tts.sh",
+    "runtime_placeholder": "ไฟล์ omnivoice-tts ที่มากับแอปเป็นไฟล์แทนที่ ไม่ใช่รันไทม์ที่ใช้งานได้ ติดตั้ง VoiceStudio ใหม่",
+    "runtime_integrity": "เช็กซัมของรันไทม์ omnivoice-tts ไม่ตรง ติดตั้ง VoiceStudio ใหม่",
+    "runtime_quarantined": "ระบบปฏิบัติการกักกันรันไทม์ omnivoice-tts อนุญาตหรือติดตั้ง VoiceStudio ใหม่",
+    "runtime_other": "รันไทม์ omnivoice-tts เริ่มทำงานไม่ได้ ดูรายละเอียดในการตรวจเอนจิน",
+    "weights_missing": "ยังไม่ได้ดาวน์โหลดน้ำหนักโมเดล ดาวน์โหลดตอนนี้ หรือจะดาวน์โหลดเมื่อสร้างครั้งแรก",
+    "download_failed": "ดาวน์โหลดน้ำหนักไม่สำเร็จ"
   }
 }
