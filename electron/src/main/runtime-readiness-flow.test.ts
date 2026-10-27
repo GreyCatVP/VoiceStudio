@@ -7,7 +7,11 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { installRuntime, runtimeDependenciesReady } from './runtime-project';
 import type { TorchChoice } from './runtime-project';
 import { runtimeProjectReady } from './runtime-readiness';
-import { RUNTIME_TORCH_MARKER } from './runtime-windows-rocm';
+import {
+  RUNTIME_TORCH_MARKER,
+  windowsRocmReady,
+  withWindowsRocmReadinessDecision,
+} from './runtime-windows-rocm';
 const host = vi.hoisted(() => ({ data: '' }));
 const originalResources = Object.getOwnPropertyDescriptor(process, 'resourcesPath');
 afterEach(() => {
@@ -56,6 +60,47 @@ function nativeCalls() {
     .mocked(execFile)
     .mock.calls.filter(([, args]) => (args as string[]).includes('--verify-only'));
 }
+
+it.each([true, false])(
+  'SDK isolation propagates configured ownership=%s through readiness and imports',
+  async (owned) => {
+    const { target, internal } = await prepared();
+    await writeFile(
+      join(host.data, 'runtime-location.json'),
+      JSON.stringify({ root: dirname(target), owned }),
+    );
+    vi.stubEnv('HIP_PATH', 'parent-sdk');
+    const choice: TorchChoice = { variant: 'rocm', explicit: true };
+    expect((await internal.resolveRuntimeProject(choice)).ready).toBe(true);
+    expect(nativeCalls()).toHaveLength(1);
+    expect(vi.mocked(execFile).mock.calls).toHaveLength(2);
+    for (const [, , options] of vi.mocked(execFile).mock.calls) {
+      expect((options as { env: NodeJS.ProcessEnv }).env.HIP_PATH).toBe(
+        owned ? undefined : 'parent-sdk',
+      );
+    }
+    expect(process.env.HIP_PATH).toBe('parent-sdk');
+  },
+);
+
+it('SDK isolation keeps managed and unmanaged native results separate within one readiness decision', async () => {
+  const { target } = await prepared();
+  vi.stubEnv('HIP_PATH', 'parent-sdk');
+  const ready = await withWindowsRocmReadinessDecision(async () => {
+    const actual = [
+      await windowsRocmReady(target, undefined, true),
+      await windowsRocmReady(target, undefined, false),
+      await windowsRocmReady(target, undefined, true),
+    ];
+    expect(actual).toEqual([true, true, true]);
+    return actual.every(Boolean);
+  });
+  expect(ready).toBe(true);
+  expect(nativeCalls()).toHaveLength(2);
+  expect((nativeCalls()[0][2] as { env: NodeJS.ProcessEnv }).env.HIP_PATH).toBeUndefined();
+  expect((nativeCalls()[1][2] as { env: NodeJS.ProcessEnv }).env.HIP_PATH).toBe('parent-sdk');
+  expect(process.env.HIP_PATH).toBe('parent-sdk');
+});
 
 it.each(['rocm', 'cpu'])(
   'resolves a healthy ROCm project with one native verification and ambient %s',

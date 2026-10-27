@@ -24,6 +24,73 @@ const CUDA: TorchChoice = { variant: 'default', explicit: true };
 const HIP: TorchChoice = { variant: 'rocm', explicit: true };
 const INFERRED_CPU: TorchChoice = { variant: 'cpu', explicit: false };
 
+it.each(['ready', 'compatible', 'imports'] as const)(
+  'SDK isolation reaches the actual managed %s child environment',
+  async (operation) => {
+    const { bundle, project } = await fixture();
+    await installRuntime(
+      bundle,
+      project,
+      'uv',
+      runner(project),
+      new AbortController().signal,
+      undefined,
+      'global',
+      HIP,
+    );
+    const selectors = ['HIP_PATH', 'ROCM_HOME', 'ROCM_PATH'];
+    for (const key of selectors) vi.stubEnv(key, 'parent-sdk');
+    vi.stubEnv('HIP_VISIBLE_DEVICES', '0');
+    vi.stubEnv('HSA_OVERRIDE_GFX_VERSION', 'unqualified');
+    vi.mocked(execFile).mockClear();
+    const ready =
+      operation === 'ready'
+        ? await runtimeReady(bundle, project, HIP, true)
+        : operation === 'compatible'
+          ? await runtimeCompatible(bundle, project, HIP, true)
+          : await runtimeDependenciesReady(project, undefined, HIP, true);
+    expect(ready).toBe(true);
+    expect(vi.mocked(execFile).mock.calls).toHaveLength(operation === 'imports' ? 2 : 1);
+    for (const [, args, options] of vi.mocked(execFile).mock.calls) {
+      expect(['-m', '-c']).toContain((args as string[])[0]);
+      const env = (options as { env: NodeJS.ProcessEnv }).env;
+      expect(Object.keys(env).filter((key) => selectors.includes(key.toUpperCase()))).toEqual([]);
+      expect(env.HIP_VISIBLE_DEVICES).toBe('0');
+      expect(env.HSA_OVERRIDE_GFX_VERSION).toBe('unqualified');
+    }
+    expect(selectors.map((key) => process.env[key])).toEqual(selectors.map(() => 'parent-sdk'));
+  },
+);
+
+it.each([
+  { platform: 'win32', choice: HIP, managed: false },
+  { platform: 'win32', choice: HIP, managed: undefined },
+  { platform: 'win32', choice: CPU, managed: true },
+  { platform: 'win32', choice: CUDA, managed: true },
+  { platform: 'linux', choice: HIP, managed: true },
+] as const)(
+  'SDK isolation preserves user SDK for $platform/$choice.variant managed=$managed imports',
+  async ({ platform, choice, managed }) => {
+    const { project } = await fixture();
+    vi.spyOn(process, 'platform', 'get').mockReturnValue(platform);
+    vi.stubEnv('HIP_PATH', 'user-sdk');
+    vi.stubEnv('ROCM_HOME', 'user-sdk');
+    vi.stubEnv('ROCM_PATH', 'user-sdk');
+    vi.mocked(execFile).mockClear();
+    expect(await runtimeDependenciesReady(project, undefined, choice, managed)).toBe(true);
+    expect(execFile).toHaveBeenCalled();
+    for (const [, , options] of vi.mocked(execFile).mock.calls) {
+      const env = (options as { env: NodeJS.ProcessEnv }).env;
+      expect([env.HIP_PATH, env.ROCM_HOME, env.ROCM_PATH]).toEqual([
+        'user-sdk',
+        'user-sdk',
+        'user-sdk',
+      ]);
+    }
+    expect(process.env.HIP_PATH).toBe('user-sdk');
+  },
+);
+
 const installs = [
   { platform: 'win32', arch: 'x64', choice: CPU, ambient: 'rocm', python: '3.11' },
   { platform: 'win32', arch: 'x64', choice: CUDA, ambient: 'cpu', python: '3.11' },

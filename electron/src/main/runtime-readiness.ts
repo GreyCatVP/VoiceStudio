@@ -7,11 +7,12 @@ export function runtimeProjectReady(
   bundle: string,
   project: string,
   choice?: TorchChoice,
+  managed = false,
 ): Promise<boolean> {
   return withWindowsRocmReadinessDecision(
     async () =>
-      ((await runtimeReady(bundle, project, choice)) ||
-        (await runtimeCompatible(bundle, project, choice))) &&
-      (await runtimeDependenciesReady(project, undefined, choice)),
+      ((await runtimeReady(bundle, project, choice, managed)) ||
+        (await runtimeCompatible(bundle, project, choice, managed))) &&
+      (await runtimeDependenciesReady(project, undefined, choice, managed)),
   );
 }

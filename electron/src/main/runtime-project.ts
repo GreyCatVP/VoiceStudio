@@ -6,6 +6,7 @@ import {
 export { nvidiaDriverPresent, cudaOnlyPackages } from '../../scripts/torch-variant.mjs';
 import { inspectRuntimeInterpreter } from './runtime-interpreter';
 import { WINDOWS_ROCM_IMPORT_TIMEOUT_MS } from './runtime-probe';
+import { runtimeChildEnv } from './runtime-environment';
 import {
   windowsRocmSelected,
   windowsRocmStamp,
@@ -567,6 +568,7 @@ export async function runtimeDependenciesReady(
   project: string,
   onFailure?: (detail: string) => void,
   choice?: TorchChoice,
+  managed = false,
 ): Promise<boolean> {
   let windowsRocm: boolean;
   try {
@@ -575,13 +577,20 @@ export async function runtimeDependenciesReady(
     onFailure?.(error instanceof Error ? error.message : String(error));
     return false;
   }
-  if (windowsRocm && !(await windowsRocmReady(project, onFailure))) return false;
-  const env: NodeJS.ProcessEnv = {
-    ...process.env,
-    ...(choice
-      ? { OMNIVOICE_TORCH_VARIANT: choice.variant === 'default' ? 'cuda' : choice.variant }
-      : {}),
-  };
+  if (windowsRocm && !(await windowsRocmReady(project, onFailure, managed))) return false;
+  const env = runtimeChildEnv(
+    {
+      ...process.env,
+      ...(choice
+        ? { OMNIVOICE_TORCH_VARIANT: choice.variant === 'default' ? 'cuda' : choice.variant }
+        : {}),
+    },
+    {
+      managed,
+      platform: process.platform,
+      variant: windowsRocm ? 'rocm' : (choice?.variant ?? 'default'),
+    },
+  );
   delete env.PYTHONHOME;
   delete env.PYTHONPATH;
   env.HF_HUB_OFFLINE = '1';
@@ -784,6 +793,7 @@ export async function runtimeReady(
   bundle: string,
   project: string,
   choice?: TorchChoice,
+  managed = false,
 ): Promise<boolean> {
   if (await runtimeIncomplete(project)) return false;
   try {
@@ -794,7 +804,8 @@ export async function runtimeReady(
         await readFile(join(project, RUNTIME_READY_MARKER), 'utf8'),
       ) &&
       (!windowsRocmSelected(choice?.variant) ||
-        ((await windowsRocmRecipeMatches(bundle, project)) && (await windowsRocmReady(project))))
+        ((await windowsRocmRecipeMatches(bundle, project)) &&
+          (await windowsRocmReady(project, undefined, managed))))
     );
   } catch {
     return false;
@@ -811,6 +822,7 @@ export async function runtimeCompatible(
   bundle: string,
   project: string,
   choice?: TorchChoice,
+  managed = false,
 ): Promise<boolean> {
   if (await runtimeIncomplete(project)) return false;
   try {
@@ -845,7 +857,8 @@ export async function runtimeCompatible(
           !torch.explicit || torch.variant === 'default'
         : (await acceptedStamps(bundle, torch)).includes(marker)) &&
       (!windowsRocmSelected(torch.variant) ||
-        ((await windowsRocmRecipeMatches(bundle, project)) && (await windowsRocmReady(project))))
+        ((await windowsRocmRecipeMatches(bundle, project)) &&
+          (await windowsRocmReady(project, undefined, managed))))
     );
   } catch {
     return false;

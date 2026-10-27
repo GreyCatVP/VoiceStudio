@@ -69,9 +69,153 @@ vi.mock('./runtime-project', async (importOriginal) => ({
   runtimeDownloadHosts: fixture.hosts,
 }));
 
-import { BackendSupervisor } from './backend';
+import { BackendSupervisor, resolveSpawnPlan } from './backend';
 
 const supervisors: BackendSupervisor[] = [];
+
+it('SDK ownership refuses Clean and Retry when the exact default root is explicitly unowned', async () => {
+  const root = join(fixture.profile, 'runtime');
+  writeFileSync(
+    join(fixture.profile, 'runtime-location.json'),
+    JSON.stringify({ root, owned: false }),
+  );
+  const instance = supervisor();
+  Object.assign(instance, { stage: 'setup_required', runtimeProject: join(root, 'project') });
+  const failure = await instance.cleanSetupRuntime().then(
+    () => null,
+    (error: Error) => error,
+  );
+  expect(fixture.remove).not.toHaveBeenCalled();
+  expect(fixture.install).not.toHaveBeenCalled();
+  expect(failure).toMatchObject({
+    message: 'Runtime cleanup refused for an unowned environment',
+  });
+});
+
+it('SDK ownership prevents a ready child changing Torch when the exact default root is explicitly unowned', async () => {
+  const root = join(fixture.profile, 'runtime');
+  writeFileSync(
+    join(fixture.profile, 'runtime-location.json'),
+    JSON.stringify({ root, owned: false }),
+  );
+  seedPreferences({ region: 'global', torchPreference: 'cpu' });
+  const before = readFileSync(join(fixture.profile, 'runtime-preferences.json'), 'utf8');
+  const instance = supervisor();
+  const child = ownedReady(instance);
+  const failure = await instance.beginRuntimeTorchSetup('rocm').then(
+    () => null,
+    (error: Error) => error,
+  );
+  expect(readFileSync(join(fixture.profile, 'runtime-preferences.json'), 'utf8')).toBe(before);
+  expect(instance.status.runtimeTorchSwitchable).toBe(false);
+  expect(failure).toMatchObject({ message: 'runtime_torch_not_owned' });
+  expect((instance as unknown as { child: unknown }).child).toBe(child);
+  expect(fixture.kill).not.toHaveBeenCalled();
+  expect(fixture.remove).not.toHaveBeenCalled();
+  expect(fixture.install).not.toHaveBeenCalled();
+});
+
+it.each([
+  { location: 'none', project: 'default', owned: false, managed: true },
+  { location: 'custom', project: 'custom', owned: true, managed: true },
+  { location: 'custom', project: 'custom', owned: false, managed: false },
+  { location: 'default', project: 'default', owned: false, managed: false },
+  { location: 'custom', project: 'other', owned: true, managed: false },
+] as const)(
+  'SDK isolation binds plan ownership for location=$location project=$project owned=$owned',
+  async ({ location, project, owned, managed }) => {
+    const roots = {
+      default: join(fixture.profile, 'runtime'),
+      custom: join(fixture.profile, 'chosen'),
+      other: join(fixture.profile, 'external'),
+    };
+    if (location !== 'none')
+      writeFileSync(
+        join(fixture.profile, 'runtime-location.json'),
+        JSON.stringify({ root: roots[location], owned }),
+      );
+    const plan = await resolveSpawnPlan(3900, join(roots[project], 'project'));
+    expect(plan).toHaveProperty('argv');
+    expect(('managedRuntime' in plan && plan.managedRuntime) === true).toBe(managed);
+  },
+);
+
+it.each([true, false])(
+  'SDK isolation reaches the real supervisor spawn for owned=%s',
+  async (owned) => {
+    const root = join(fixture.profile, 'chosen');
+    writeFileSync(join(fixture.profile, 'runtime-location.json'), JSON.stringify({ root, owned }));
+    seedPreferences({ region: 'global', torchPreference: 'rocm' });
+    vi.stubEnv('HIP_PATH', 'parent-sdk');
+    fixture.ready.mockResolvedValue(true);
+    const instance = supervisor();
+    await instance.start();
+    const choice = { variant: 'rocm', explicit: true };
+    expect(fixture.dependencies).toHaveBeenCalledWith(
+      join(root, 'project'),
+      undefined,
+      choice,
+      owned,
+    );
+    expect(fixture.spawn).toHaveBeenCalledOnce();
+    const env = fixture.spawn.mock.calls[0][2].env;
+    expect(env.HIP_PATH).toBe(owned ? undefined : 'parent-sdk');
+    expect(process.env.HIP_PATH).toBe('parent-sdk');
+  },
+);
+
+it.each([false, true])(
+  'SDK isolation sanitizes final installer overrides after owned fallback, timed=%s',
+  async (timed) => {
+    const external = join(fixture.profile, 'external');
+    mkdirSync(external);
+    writeFileSync(join(external, 'personal.txt'), 'retain');
+    writeFileSync(
+      join(fixture.profile, 'runtime-location.json'),
+      JSON.stringify({ root: external, owned: false }),
+    );
+    seedPreferences({ region: 'global', torchPreference: 'rocm' });
+    vi.stubEnv('HIP_PATH', 'parent-sdk');
+    const instance = supervisor();
+    await instance.start();
+    vi.spyOn(instance, 'start').mockResolvedValue(undefined);
+    fixture.install.mockImplementation(async (_bundle, project, _uv, run) => {
+      await run(
+        'fixture-python',
+        ['-c', 'pass'],
+        project,
+        {
+          HIP_PATH: 'late-sdk',
+          ROCM_HOME: 'late-sdk',
+          ROCM_PATH: 'late-sdk',
+          HIP_VISIBLE_DEVICES: '0',
+          HSA_OVERRIDE_GFX_VERSION: 'unqualified',
+          MIOPEN_DISABLE_CACHE: '1',
+        },
+        timed ? { timeoutMs: 5000 } : undefined,
+      );
+    });
+    await instance.setupRuntime();
+    expect(fixture.install).toHaveBeenCalledOnce();
+    const env = fixture.spawn.mock.calls[0][2].env;
+    expect(
+      Object.keys(env).filter((key) =>
+        ['HIP_PATH', 'ROCM_HOME', 'ROCM_PATH'].includes(key.toUpperCase()),
+      ),
+    ).toEqual([]);
+    expect(env).toMatchObject({
+      HIP_VISIBLE_DEVICES: '0',
+      HSA_OVERRIDE_GFX_VERSION: 'unqualified',
+      MIOPEN_DISABLE_CACHE: '1',
+    });
+    expect(
+      JSON.parse(readFileSync(join(fixture.profile, 'runtime-location.json'), 'utf8')),
+    ).toMatchObject({ root: join(fixture.profile, 'runtime'), owned: true });
+    expect(readFileSync(join(external, 'personal.txt'), 'utf8')).toBe('retain');
+    expect(process.env.HIP_PATH).toBe('parent-sdk');
+  },
+);
+
 const resourcesPathDescriptor = Object.getOwnPropertyDescriptor(process, 'resourcesPath');
 function supervisor(): BackendSupervisor {
   const instance = new BackendSupervisor();
@@ -411,8 +555,18 @@ it.each(
       variant: preference === 'cuda' ? 'default' : preference,
       explicit: true,
     });
-    expect(fixture.ready).toHaveBeenCalledWith(expect.any(String), expect.any(String), choice);
-    expect(fixture.compatible).toHaveBeenCalledWith(expect.any(String), expect.any(String), choice);
+    expect(fixture.ready).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      choice,
+      true,
+    );
+    expect(fixture.compatible).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      choice,
+      true,
+    );
     expect(fixture.hosts).toHaveBeenCalledWith(
       expect.any(String),
       platform,
@@ -444,7 +598,7 @@ it('passes the same ROCm choice to dependency verification and the owned backend
   await instance.start();
   const choice = fixture.ready.mock.calls[0][2];
   expect(choice).toEqual({ variant: 'rocm', explicit: true });
-  expect(fixture.dependencies).toHaveBeenCalledWith(expect.any(String), undefined, choice);
+  expect(fixture.dependencies).toHaveBeenCalledWith(expect.any(String), undefined, choice, true);
   expect(fixture.spawn.mock.calls[0][2].env).toMatchObject({
     OMNIVOICE_TORCH_VARIANT: 'rocm',
     HF_ENDPOINT: 'https://hf-mirror.com',

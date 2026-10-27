@@ -1,6 +1,7 @@
 import { decideMissingRuntime, runtimeWasInstalled } from './runtime-repair';
 import { windowsRocmInstalled, windowsRocmRequested } from './runtime-windows-rocm';
 import { runtimeProjectReady } from './runtime-readiness';
+import { runtimeChildEnv } from './runtime-environment';
 import { runRuntimeProbe } from './runtime-probe';
 import { pypiFilesHost } from './pypi-mirror';
 import {
@@ -397,6 +398,7 @@ function venvPython(root: string): string {
 interface SpawnPlan {
   argv: string[];
   cwd: string;
+  managedRuntime?: boolean;
 }
 
 interface LegacyInstallConfig {
@@ -518,6 +520,13 @@ function samePath(left: string, right: string): boolean {
     : normalizedLeft === normalizedRight;
 }
 
+function ownsRuntimeProject(project: string): boolean {
+  if (!app.isPackaged || parseBackendCmdOverride(process.env.OMNIVOICE_BACKEND_CMD)) return false;
+  const configured = storedRuntimeLocation();
+  if (configured && samePath(project, join(configured.root, 'project'))) return configured.owned;
+  return samePath(project, join(defaultRuntimeRoot(), 'project'));
+}
+
 export async function resolveSpawnPlan(
   port: number,
   packagedProject?: string,
@@ -532,6 +541,7 @@ export async function resolveSpawnPlan(
     return {
       argv: [runtimePython(project), '-m', ...UVICORN_ARGS, '--port', String(port)],
       cwd: project,
+      managedRuntime: ownsRuntimeProject(project),
     };
   }
   // Setup is explicit: `uv run` can sync gigabytes inside the health-check
@@ -677,9 +687,13 @@ export function managedBackendSpawnOptions(
   region: RuntimeRegion = 'auto',
   platform = process.platform,
   choice?: TorchChoice,
+  managed = false,
 ): { env: NodeJS.ProcessEnv; stdio: StdioOptions; drainFd: number | null } {
   const drainFd = platform === 'win32' ? null : 3;
-  const env = { ...childEnv(port, region, platform, choice), ...backendOnlyEnv };
+  const env = runtimeChildEnv(
+    { ...childEnv(port, region, platform, choice), ...backendOnlyEnv },
+    { managed, platform, variant: choice?.variant ?? 'default' },
+  );
   if (drainFd !== null) env.OMNIVOICE_DESKTOP_DRAIN_FD = String(drainFd);
   return {
     env,
@@ -1190,7 +1204,12 @@ export class BackendSupervisor extends EventEmitter<{
     this.setStage('installing', { message: undefined });
     const stopWatching = this.watchSetupDownloads(gen, controller.signal, choice);
     try {
-      const reusable = await runtimeProjectReady(backendRoot(), project, choice);
+      const reusable = await runtimeProjectReady(
+        backendRoot(),
+        project,
+        choice,
+        ownsRuntimeProject(project),
+      );
       if (gen !== this.generation || controller.signal.aborted) return;
       if (reusable) {
         this.completeRuntimeTorchSetup();
@@ -1217,7 +1236,12 @@ export class BackendSupervisor extends EventEmitter<{
           'Creating a separate Electron runtime; existing environment preserved.',
         );
         this.emitStatus();
-        const fallbackReusable = await runtimeProjectReady(backendRoot(), project, choice);
+        const fallbackReusable = await runtimeProjectReady(
+          backendRoot(),
+          project,
+          choice,
+          ownsRuntimeProject(project),
+        );
         if (gen !== this.generation || controller.signal.aborted) return;
         if (fallbackReusable) {
           this.completeRuntimeTorchSetup();
@@ -1239,25 +1263,27 @@ export class BackendSupervisor extends EventEmitter<{
         project,
         findUv(),
         (command, args, cwd, env, options) => {
+          const runtimeEnv = runtimeChildEnv(
+            { ...childEnv(this.port, this.runtimeRegion, process.platform, choice), ...env },
+            {
+              managed: ownsRuntimeProject(project),
+              platform: process.platform,
+              variant: choice.variant,
+            },
+          );
           if (options?.timeoutMs)
-            return runRuntimeProbe(
-              command,
-              args,
-              cwd,
-              { ...childEnv(this.port, this.runtimeRegion, process.platform, choice), ...env },
-              {
-                timeoutMs: options.timeoutMs,
-                signal: controller.signal,
-                onSpawn: (child) => {
-                  this.child = child;
-                  this.attachLineReader(child.stdout, 'out');
-                  this.attachLineReader(child.stderr, 'err');
-                },
-                onClose: (child) => {
-                  if (this.child === child) this.child = null;
-                },
+            return runRuntimeProbe(command, args, cwd, runtimeEnv, {
+              timeoutMs: options.timeoutMs,
+              signal: controller.signal,
+              onSpawn: (child) => {
+                this.child = child;
+                this.attachLineReader(child.stdout, 'out');
+                this.attachLineReader(child.stderr, 'err');
               },
-            );
+              onClose: (child) => {
+                if (this.child === child) this.child = null;
+              },
+            });
           return new Promise<string>((resolve, reject) => {
             if (controller.signal.aborted) {
               reject(controller.signal.reason);
@@ -1265,7 +1291,7 @@ export class BackendSupervisor extends EventEmitter<{
             }
             const child = spawn(command, args, {
               cwd,
-              env: { ...childEnv(this.port, this.runtimeRegion, process.platform, choice), ...env },
+              env: runtimeEnv,
               windowsHide: true,
               detached: process.platform !== 'win32',
               stdio: ['pipe', 'pipe', 'pipe'],
@@ -1411,10 +1437,8 @@ export class BackendSupervisor extends EventEmitter<{
     const project = join(runtimeRoot, 'project');
     if (!samePath(candidate, project))
       throw new Error('Runtime cleanup refused for an invalid project path');
-    const owned =
-      samePath(runtimeRoot, defaultRuntimeRoot()) ||
-      Boolean(configured?.owned && samePath(configured.root, runtimeRoot));
-    if (!owned) throw new Error('Runtime cleanup refused for an unowned environment');
+    if (!ownsRuntimeProject(project))
+      throw new Error('Runtime cleanup refused for an unowned environment');
     this.runtimeProject = project;
     const gen = this.generation;
     this.cleaningRuntime = true;
@@ -1669,7 +1693,7 @@ export class BackendSupervisor extends EventEmitter<{
       configured ? [configured] : [this.runtimeProject, own, ...legacyTauriRuntimeProjects()]
     ).filter((candidate): candidate is string => Boolean(candidate));
     for (const project of new Set(candidates.map((candidate) => resolve(candidate)))) {
-      if (await runtimeProjectReady(bundle, project, choice)) {
+      if (await runtimeProjectReady(bundle, project, choice, ownsRuntimeProject(project))) {
         this.runtimeProject = project;
         if (project !== own && project !== configured)
           this.pushLog('out', `Reusing compatible Tauri runtime: ${project}`);
@@ -1775,6 +1799,7 @@ export class BackendSupervisor extends EventEmitter<{
       this.runtimeRegion,
       process.platform,
       choice,
+      plan.managedRuntime === true,
     );
     try {
       child = spawn(command, args, {
@@ -1921,11 +1946,7 @@ export class BackendSupervisor extends EventEmitter<{
    * repair must never run `uv sync` inside files another install owns.
    */
   private ownsRuntimeProject(): boolean {
-    const project = this.runtimeProject;
-    if (!project) return false;
-    if (samePath(project, join(defaultRuntimeRoot(), 'project'))) return true;
-    const configured = storedRuntimeLocation();
-    return Boolean(configured?.owned && samePath(project, join(configured.root, 'project')));
+    return Boolean(this.runtimeProject && ownsRuntimeProject(this.runtimeProject));
   }
 
   private canRepairRuntime(): boolean {

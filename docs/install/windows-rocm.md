@@ -106,6 +106,15 @@ This feature must be present in the installed build; older releases do not gain
 it from an environment variable. See the
 [Releases page](https://github.com/debpalash/VoiceStudio/releases) for available builds.
 
+For Windows ROCm runtimes owned by the installed app, Electron selects the
+interpreter's bundled SDK by removing inherited `HIP_PATH`, `ROCM_HOME` and
+`ROCM_PATH` from the child environment before backend startup, setup verification
+and readiness/import checks. Windows environment settings and saved preferences
+are unchanged. Source checkouts, custom backend commands and externally managed
+runtimes retain these variables, as do CPU/CUDA runtimes and other platforms.
+Architecture, device-visibility and MIOpen overrides still undergo the strict
+profile checks below; incompatible SDK/TEMP/cache paths still reject WhisperX.
+
 ## Verify locally
 
 Run these from the source root, or from the managed runtime directory named in

@@ -17,6 +17,15 @@ Python 3.12, ROCm/SDK 7.2.1, Torch i torchaudio 2.9.1+rocm7.2.1,
 torchvision 0.24.1+rocm7.2.1 oraz CTranslate2 4.8.2 z koła HIP o przypiętych sumach.
 Zwykłe koło CT2 CUDA nie uzyskuje obsługi HIP przez instalację AMD PyTorch.
 
+W środowisku Windows ROCm należącym do zainstalowanej aplikacji Electron wybiera
+SDK dołączone do interpretera: usuwa odziedziczone `HIP_PATH`, `ROCM_HOME` i
+`ROCM_PATH` wyłącznie ze środowiska procesów uruchamiających backend, instalację
+oraz kontrole gotowości i importów. Ustawienia Windows i zapisane preferencje
+pozostają bez zmian. Kopie źródłowe, własne komendy backendu i środowiska zarządzane
+zewnętrznie zachowują te zmienne; dotyczy to także CPU/CUDA i pozostałych systemów.
+Nadpisania architektury, widoczności GPU i MIOpen nadal podlegają ścisłej kontroli.
+Niezgodne ścieżki SDK/TEMP/cache nadal blokują WhisperX.
+
 ## WhisperX w katalogu modeli
 
 W istniejącym środowisku AMD wybierz **WhisperX** w karcie ASR katalogu modeli.

@@ -741,6 +741,7 @@ it('reuses a healthy default runtime after explicit setup leaves an unowned envi
     join('/private/voicestudio', 'runtime', 'project'),
     undefined,
     expect.objectContaining({ explicit: false }),
+    true,
   );
   expect(restart).toHaveBeenCalledOnce();
   restart.mockRestore();
