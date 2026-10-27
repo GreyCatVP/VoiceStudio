@@ -17,6 +17,7 @@ import mimetypes
 import os
 from pathlib import Path
 import secrets
+import socket
 import sys
 from typing import Any
 from urllib import error, request
@@ -24,8 +25,10 @@ from urllib.parse import urlsplit
 
 try:
     from core.app_config import DEFAULT_BACKEND_PORT
+    from core.path_security import portable_filename
 except ModuleNotFoundError:  # ``python -m backend.speech_client`` from the repo root
     from backend.core.app_config import DEFAULT_BACKEND_PORT
+    from backend.core.path_security import portable_filename
 
 DEFAULT_ENGINE_URL = f"http://127.0.0.1:{DEFAULT_BACKEND_PORT}"
 
@@ -75,7 +78,15 @@ def _is_loopback_host(host: str | None) -> bool:
     try:
         return ipaddress.ip_address(host).is_loopback
     except ValueError:
+        pass
+    # Match the OS's numeric IPv4 spellings without resolving a hostname.
+    try:
+        addresses = socket.getaddrinfo(host, None, flags=socket.AI_NUMERICHOST)
+    except OSError:
         return False
+    return bool(addresses) and all(
+        ipaddress.ip_address(info[4][0]).is_loopback for info in addresses
+    )
 
 
 def _open(req: request.Request, timeout: float = 300.0) -> tuple[bytes, str]:
@@ -131,7 +142,8 @@ def _encode_multipart(
                 b"\r\n",
             ]
         )
-    safe_filename = Path(filename).name.replace('"', "") or "audio.wav"
+    basename = filename.replace("\\", "/").rsplit("/", 1)[-1]
+    safe_filename = portable_filename(basename, default="audio.wav")
     content_type = mimetypes.guess_type(safe_filename)[0] or "application/octet-stream"
     if Path(safe_filename).suffix.lower() in {".wav", ".wave"}:
         content_type = "audio/wav"
