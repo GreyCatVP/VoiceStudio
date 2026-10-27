@@ -63,8 +63,8 @@ Local workflows run on your hardware. Remote services are optional; usage analyt
 
 On Windows and Linux, OmniVoice GGUF uses AMD, Intel and NVIDIA GPUs through
 Vulkan with nothing to configure, sizes its model to the GPU (including Ryzen
-AI and Core Ultra iGPUs on shared memory), and becomes the default engine when
-PyTorch has no GPU; see the [native engine guide](docs/engines/omnivoice-gguf.md#vulkan-acceleration).
+AI and Core Ultra iGPUs on shared memory), and offers to switch to it
+when PyTorch has no GPU; see the [native engine guide](docs/engines/omnivoice-gguf.md#vulkan-acceleration).
 
 ## Get started
 

@@ -111,6 +111,7 @@ GET /engines/audiocpp/runtime/install/status
 GET /engines/diarisation
 GET /engines/effects/presets
 GET /engines/llm
+GET /engines/omnivoice-gguf/gpu-offer
 GET /engines/omnivoice-gguf/quants
 GET /engines/sidecar/{engine_id}/install/status
 GET /engines/sonitranslate/status
@@ -244,6 +245,7 @@ POST /dub/upload
 POST /dub/use-downloaded-captions/{job_id}
 POST /engines/audiocpp/runtime/install
 POST /engines/diarisation/select
+POST /engines/omnivoice-gguf/gpu-offer
 POST /engines/omnivoice-gguf/quants/download
 POST /engines/omnivoice-gguf/quants/select
 POST /engines/select

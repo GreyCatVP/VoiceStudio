@@ -173,12 +173,12 @@ def test_binary_has_vulkan_module_reads_the_bundle(tmp_path):
 @pytest.mark.parametrize("variable,value", [("OMNIVOICE_DEVICE", "cpu"),
                                             ("OMNIVOICE_GGUF_BACKEND", "cpu"),
                                             ("GGML_BACKEND", "CPU")])
-def test_explicit_cpu_locks_q4_and_blocks_promotion(vk, monkeypatch, variable, value):
+def test_explicit_cpu_locks_q4_and_blocks_the_gpu_offer(vk, monkeypatch, variable, value):
     vk.state.text = RADEON_890M
     monkeypatch.setenv(variable, value)
     assert vk.compute.selected_vulkan_adapter() is None
     assert _auto_base() == "omnivoice-base-Q4_K_M.gguf"
-    assert vk.compute.vulkan_promotion() is False
+    assert vk.compute.vulkan_eligible() is False
 
 
 def test_verified_adapter_is_reported_as_gpu(vk):
@@ -191,46 +191,91 @@ def test_verified_adapter_is_reported_as_gpu(vk):
 
 
 @pytest.fixture
-def promotable(vk, monkeypatch):
-    """A CPU-only PyTorch host whose bundled runtime and licence are ready."""
-    from core import device_caps
+def eligible(vk, monkeypatch, tmp_path):
+    """A CPU-only PyTorch host whose bundled runtime is ready, with prefs in
+    memory."""
+    from core import device_caps, prefs
 
     gguf = importlib.import_module("engines.omnivoice_gguf.backend")
     vk.state.text = RADEON_890M
+    store: dict = {}
+    monkeypatch.setattr(prefs, "get", lambda key, default=None: store.get(key, default))
+    monkeypatch.setattr(prefs, "set_", lambda key, value: store.__setitem__(key, value))
+    monkeypatch.setattr(prefs, "resolve", lambda key, env=None, default=None:
+                        __import__("os").environ.get(env or "") or store.get(key, default))
     monkeypatch.setattr(device_caps, "detect_host_caps",
                         lambda: SimpleNamespace(family="cpu"))
     monkeypatch.setattr(gguf._make_backend_class(), "_binary_status",
                         classmethod(lambda cls: (True, "")))
     monkeypatch.setattr(vk.compute, "_licence_accepted", lambda: True)
+    quants = importlib.import_module("engines.omnivoice_gguf.quants")
+    downloads = []
+    monkeypatch.setattr(quants, "start_download",
+                        lambda value=None: downloads.append(value) or {"status": "started"})
+    monkeypatch.setattr(quants, "installed_pair", lambda *args: None)
+    vk.store, vk.downloads = store, downloads
+    vk.offer = importlib.import_module("engines.omnivoice_gguf.gpu_offer")
     return vk
 
 
-def test_apu_promotes_gguf_to_the_default_engine(promotable, monkeypatch):
-    from core import prefs
+def test_apu_gets_the_gpu_offer_instead_of_a_silent_switch(eligible):
     from services import tts_backend
 
-    monkeypatch.setattr(prefs, "resolve", lambda key, env=None, default=None:
-                        "auto" if key == "compute_device" else default)
-    assert promotable.compute.vulkan_promotion() is True
-    assert tts_backend.active_backend_id() == "omnivoice-gguf"
-    # A user's engine choice always wins over the promoted default.
-    monkeypatch.setenv("OMNIVOICE_TTS_BACKEND", "omnivoice")
-    monkeypatch.setattr(prefs, "resolve", lambda key, env=None, default=None:
-                        __import__("os").environ.get(env) or default)
+    status = eligible.offer.offer_status()
+    assert status["show"] is True
+    assert status["gpu_name"] == "AMD Radeon(TM) 890M Graphics"
+    assert status["shared_memory"] is True
+    assert (status["quant"], status["download_mb"]) == ("BF16", 1600)
+    # Nothing changes until the user answers.
     assert tts_backend.active_backend_id() == "omnivoice"
+    assert eligible.downloads == []
 
 
-def test_no_promotion_when_pytorch_has_a_gpu(promotable, monkeypatch):
+def test_accepting_switches_engine_and_downloads(eligible):
+    from services import tts_backend
+
+    eligible.offer.respond(True)
+    assert tts_backend.active_backend_id() == "omnivoice-gguf"
+    assert eligible.store["gguf_vulkan_offer"] == "accepted"
+    assert eligible.downloads == [None]
+    assert eligible.offer.offer_status()["show"] is False
+
+
+def test_declining_is_remembered_and_keeps_the_engine(eligible):
+    from services import tts_backend
+
+    eligible.offer.respond(False)
+    assert tts_backend.active_backend_id() == "omnivoice"
+    assert eligible.downloads == []
+    status = eligible.offer.offer_status()
+    assert (status["show"], status["eligible"], status["answer"]) == (False, True, "declined")
+
+
+def test_accepting_needs_the_model_licence_first(eligible, monkeypatch):
+    from services import tts_backend
+    from services.model_acceptance import ModelLicenceNotAccepted
+
+    def refuse(cls):
+        raise ModelLicenceNotAccepted([])
+
+    monkeypatch.setattr(tts_backend, "ensure_engine_licence", refuse)
+    with pytest.raises(ModelLicenceNotAccepted):
+        eligible.offer.respond(True)
+    assert "tts_backend" not in eligible.store
+    assert eligible.downloads == []
+
+
+def test_no_offer_when_the_user_picked_an_engine(eligible):
+    eligible.store["tts_backend"] = "kokoro"
+    assert eligible.offer.offer_status()["show"] is False
+
+
+def test_no_offer_when_pytorch_has_a_gpu(eligible, monkeypatch):
     from core import device_caps
 
     monkeypatch.setattr(device_caps, "detect_host_caps",
                         lambda: SimpleNamespace(family="cuda"))
-    assert promotable.compute.vulkan_promotion() is False
-
-
-def test_no_promotion_into_a_licence_refusal(promotable, monkeypatch):
-    monkeypatch.setattr(promotable.compute, "_licence_accepted", lambda: False)
-    assert promotable.compute.vulkan_promotion() is False
+    assert eligible.offer.offer_status()["eligible"] is False
 
 
 # ── overrides ───────────────────────────────────────────────────────────────

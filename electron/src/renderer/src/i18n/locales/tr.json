@@ -4474,5 +4474,19 @@
     "runtime_other": "omnivoice-tts çalışma zamanı başlamıyor. Ayrıntılar için motor denetimine bakın.",
     "weights_missing": "Model ağırlıkları henüz indirilmedi. Şimdi indirin, yoksa ilk üretimde inecekler.",
     "download_failed": "Ağırlık indirmesi başarısız"
+  },
+  "gpuOffer": {
+    "title": "Daha hızlı konuşma için GPU kullanılsın mı?",
+    "body": "VoiceStudio {{gpu}} buldu. OmniVoice GGUF, CPU yerine Vulkan ile bunun üzerinde {{quant}} modeliyle çalışabilir.",
+    "body_shared": "VoiceStudio sistem belleğini paylaşan {{gpu}} buldu. OmniVoice GGUF, CPU yerine Vulkan ile bunun üzerinde {{quant}} modeliyle çalışabilir.",
+    "download": "Bir kez {{size}} MB indirilir.",
+    "no_download": "Hiçbir şey indirilmesi gerekmiyor.",
+    "licence": "GGUF modeli ticari olmayan kullanım içindir; önce lisansını kabul etmeniz istenecek.",
+    "accept": "GPU kullan",
+    "decline": "Şimdi değil",
+    "later": "Bunu daha sonra Ayarlar › {{section}} bölümünden değiştirebilirsiniz.",
+    "licence_then_retry": "Lisansı kabul edin, ardından GPU kullan'a yeniden basın.",
+    "switched": "Konuşma için artık {{gpu}} kullanılıyor.",
+    "switched_downloading": "Konuşma için artık {{gpu}} kullanılıyor. {{quant}} modeli indiriliyor…"
   }
 }

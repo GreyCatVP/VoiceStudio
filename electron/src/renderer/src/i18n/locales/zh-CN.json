@@ -4474,5 +4474,19 @@
     "runtime_other": "omnivoice-tts 运行时无法启动。详情请查看引擎检查。",
     "weights_missing": "模型权重尚未下载。现在下载，或在首次生成时自动下载。",
     "download_failed": "权重下载失败"
+  },
+  "gpuOffer": {
+    "title": "使用 GPU 加快语音生成？",
+    "body": "VoiceStudio 发现了 {{gpu}}。OmniVoice GGUF 可以通过 Vulkan 在它上面运行 {{quant}} 模型，而不是使用 CPU。",
+    "body_shared": "VoiceStudio 发现了共享系统内存的 {{gpu}}。OmniVoice GGUF 可以通过 Vulkan 在它上面运行 {{quant}} 模型，而不是使用 CPU。",
+    "download": "只需下载一次，大小 {{size}} MB。",
+    "no_download": "无需下载。",
+    "licence": "GGUF 模型仅限非商业用途；系统会先请你接受其许可证。",
+    "accept": "使用 GPU",
+    "decline": "暂不",
+    "later": "之后可在 设置 › {{section}} 中更改。",
+    "licence_then_retry": "请先接受许可证，然后再次点击“使用 GPU”。",
+    "switched": "现在使用 {{gpu}} 生成语音。",
+    "switched_downloading": "现在使用 {{gpu}} 生成语音。正在下载 {{quant}} 模型…"
   }
 }

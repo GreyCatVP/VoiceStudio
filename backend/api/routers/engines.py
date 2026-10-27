@@ -500,7 +500,7 @@ def select_omnivoice_gguf_quant(req: GGUFQuantRequest):
     try:
         quants.select_quant(req.quant or "auto")
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail="Unknown OmniVoice GGUF quant") from exc
     return quants.quant_status()
 
 
@@ -519,7 +519,34 @@ def download_omnivoice_gguf_quant(req: GGUFQuantRequest):
     try:
         return quants.start_download(target)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail="Unknown OmniVoice GGUF quant") from exc
+
+
+class GGUFGpuOfferAnswer(BaseModel):
+    accept: bool
+
+
+@router.get("/engines/omnivoice-gguf/gpu-offer")
+def omnivoice_gguf_gpu_offer():
+    """The one-time "use your GPU?" offer: eligibility, GPU, quant, download size."""
+    from engines.omnivoice_gguf import gpu_offer
+
+    return gpu_offer.offer_status()
+
+
+@router.post("/engines/omnivoice-gguf/gpu-offer", dependencies=[Depends(require_admin)])
+def answer_omnivoice_gguf_gpu_offer(req: GGUFGpuOfferAnswer):
+    """Accept (switch to GGUF on Vulkan and fetch the weights) or decline the
+    offer. An unaccepted model licence answers 403 so the app shows its
+    licence dialog first."""
+    from engines.omnivoice_gguf import gpu_offer
+
+    try:
+        return gpu_offer.respond(req.accept)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=409, detail="GPU acceleration is not available on this machine",
+        ) from exc
 
 
 # ── One-click sidecar-engine install (IndexTTS-2 & friends) ────────────────

@@ -4474,5 +4474,19 @@
     "runtime_other": "omnivoice-tts 런타임을 시작할 수 없습니다. 자세한 내용은 엔진 점검을 확인하세요.",
     "weights_missing": "모델 가중치가 아직 다운로드되지 않았습니다. 지금 다운로드하거나 첫 생성 때 다운로드됩니다.",
     "download_failed": "가중치 다운로드 실패"
+  },
+  "gpuOffer": {
+    "title": "더 빠른 음성 생성을 위해 GPU를 사용할까요?",
+    "body": "VoiceStudio가 {{gpu}}를 찾았습니다. OmniVoice GGUF는 CPU 대신 Vulkan으로 이 GPU에서 {{quant}} 모델을 실행할 수 있습니다.",
+    "body_shared": "VoiceStudio가 시스템 메모리를 공유하는 {{gpu}}를 찾았습니다. OmniVoice GGUF는 CPU 대신 Vulkan으로 이 GPU에서 {{quant}} 모델을 실행할 수 있습니다.",
+    "download": "{{size}} MB를 한 번만 다운로드합니다.",
+    "no_download": "다운로드할 것이 없습니다.",
+    "licence": "GGUF 모델은 비상업적 용도 전용이며, 먼저 라이선스에 동의하라는 안내가 나옵니다.",
+    "accept": "GPU 사용",
+    "decline": "나중에",
+    "later": "나중에 설정 › {{section}}에서 바꿀 수 있습니다.",
+    "licence_then_retry": "라이선스에 동의한 뒤 GPU 사용을 다시 누르세요.",
+    "switched": "이제 음성에 {{gpu}}를 사용합니다.",
+    "switched_downloading": "이제 음성에 {{gpu}}를 사용합니다. {{quant}} 모델을 다운로드하는 중…"
   }
 }

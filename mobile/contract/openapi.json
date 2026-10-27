@@ -2463,6 +2463,19 @@
     "title": "FitOptions",
     "type": "object"
    },
+   "GGUFGpuOfferAnswer": {
+    "properties": {
+     "accept": {
+      "title": "Accept",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "accept"
+    ],
+    "title": "GGUFGpuOfferAnswer",
+    "type": "object"
+   },
    "GGUFQuantRequest": {
     "properties": {
      "quant": {
@@ -12939,6 +12952,58 @@
      }
     },
     "summary": "List Llm Backends"
+   }
+  },
+  "/engines/omnivoice-gguf/gpu-offer": {
+   "get": {
+    "description": "The one-time \"use your GPU?\" offer: eligibility, GPU, quant, download size.",
+    "operationId": "omnivoice_gguf_gpu_offer_engines_omnivoice_gguf_gpu_offer_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Omnivoice Gguf Gpu Offer"
+   },
+   "post": {
+    "description": "Accept (switch to GGUF on Vulkan and fetch the weights) or decline the\noffer. An unaccepted model licence answers 403 so the app shows its\nlicence dialog first.",
+    "operationId": "answer_omnivoice_gguf_gpu_offer_engines_omnivoice_gguf_gpu_offer_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/GGUFGpuOfferAnswer"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Answer Omnivoice Gguf Gpu Offer"
    }
   },
   "/engines/omnivoice-gguf/quants": {

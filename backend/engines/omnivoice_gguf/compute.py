@@ -222,25 +222,22 @@ def _promotion_for(device_choice: str, backend: str, device: str, ggml: str) -> 
         return False
 
 
-def vulkan_promotion() -> bool:
-    """Whether the default TTS engine should be ``omnivoice-gguf`` on Vulkan.
+def vulkan_eligible() -> bool:
+    """Whether the GPU offer applies: Compute device is Auto, PyTorch has no
+    GPU, the bundled runtime ships the Vulkan module and passes its integrity
+    checks, and a verified Vulkan adapter is present.
 
-    True only when Compute device is Auto, PyTorch has no GPU, the bundled
-    runtime ships the Vulkan module, a verified Vulkan adapter is present,
-    the binary passes its integrity checks and its model licence is accepted.
-    An engine the user picked (Settings or ``OMNIVOICE_TTS_BACKEND``) always
-    wins; this only replaces the built-in default.
+    This only qualifies the host for the one-time offer
+    (:mod:`.gpu_offer`); the engine changes only when the user accepts it.
     """
     from core.device_caps import requested_device_override
 
     choice = requested_device_override()
     if choice != "auto":
         return False
-    # The licence is checked on every call (accepting it in Settings must take
-    # effect at once); only the hardware and binary evidence is cached.
     return _promotion_for(
         choice,
         os.environ.get(BACKEND_ENV, ""),
         os.environ.get(DEVICE_ENV, ""),
         os.environ.get("GGML_BACKEND", ""),
-    ) and _licence_accepted()
+    )

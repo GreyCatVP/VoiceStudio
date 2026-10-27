@@ -4474,5 +4474,19 @@
     "runtime_other": "De omnivoice-tts-runtime start niet. Zie de enginecontrole voor details.",
     "weights_missing": "De modelgewichten zijn nog niet gedownload. Download ze nu, anders gebeurt dat bij de eerste generatie.",
     "download_failed": "Downloaden van gewichten mislukt"
+  },
+  "gpuOffer": {
+    "title": "Je GPU gebruiken voor snellere spraak?",
+    "body": "VoiceStudio heeft {{gpu}} gevonden. OmniVoice GGUF kan daarop via Vulkan draaien in plaats van op de CPU, met het {{quant}}-model.",
+    "body_shared": "VoiceStudio heeft {{gpu}} gevonden, die je systeemgeheugen deelt. OmniVoice GGUF kan daarop via Vulkan draaien in plaats van op de CPU, met het {{quant}}-model.",
+    "download": "Eenmalige download van {{size}} MB.",
+    "no_download": "Er hoeft niets gedownload te worden.",
+    "licence": "Het GGUF-model is voor niet-commercieel gebruik; je wordt eerst gevraagd de licentie te accepteren.",
+    "accept": "GPU gebruiken",
+    "decline": "Niet nu",
+    "later": "Je kunt dit later wijzigen via Instellingen › {{section}}.",
+    "licence_then_retry": "Accepteer de licentie en druk daarna opnieuw op GPU gebruiken.",
+    "switched": "{{gpu}} wordt nu gebruikt voor spraak.",
+    "switched_downloading": "{{gpu}} wordt nu gebruikt voor spraak. Het {{quant}}-model wordt gedownload…"
   }
 }

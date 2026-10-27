@@ -59,7 +59,7 @@
 
 </details>
 
-在 Windows 和 Linux 上，OmniVoice GGUF 无需任何配置即可通过 Vulkan 使用 AMD、Intel 和 NVIDIA GPU，按 GPU（包括使用共享内存的 Ryzen AI 与 Core Ultra 核显）选择模型量化，并在 PyTorch 没有 GPU 时成为默认引擎；详见[原生引擎指南](../../docs/engines/omnivoice-gguf.md#vulkan-acceleration)。
+在 Windows 和 Linux 上，OmniVoice GGUF 无需任何配置即可通过 Vulkan 使用 AMD、Intel 和 NVIDIA GPU，按 GPU（包括使用共享内存的 Ryzen AI 与 Core Ultra 核显）选择模型量化，并在 PyTorch 没有 GPU 时提示你切换到它；详见[原生引擎指南](../../docs/engines/omnivoice-gguf.md#vulkan-acceleration)。
 
 ## 开始使用
 

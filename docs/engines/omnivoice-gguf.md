@@ -144,11 +144,18 @@ Store, Mac App Store, Snap Store) and the Docker image do not include it yet;
 use the default in-process OmniVoice engine there, which is the same model.
 
 Select the engine via **Model Catalogue** (TTS tab → **Use**) or
-`OMNIVOICE_TTS_BACKEND=omnivoice-gguf`. When Compute device is Auto, PyTorch
-has no GPU and a verified Vulkan GPU is present (with the bundled runtime
-healthy and its model licence accepted), this engine is the default instead
-of in-process OmniVoice, so an AMD or Intel GPU is used out of the box. An
-engine you pick yourself always wins. The first generate downloads the
+`OMNIVOICE_TTS_BACKEND=omnivoice-gguf`.
+
+**GPU offer.** When Compute device is Auto, PyTorch has no GPU, and the bundled
+runtime with its Vulkan module finds a GPU, VoiceStudio asks once: *Use your
+GPU for faster speech?* The prompt names the GPU, the quant it would run and
+the download size, and says that the GGUF model is licensed for noncommercial
+use only. **Use GPU** asks you to accept that licence if you have not yet,
+switches the TTS engine to OmniVoice GGUF and starts the weight download.
+**Not now** keeps your current engine and is remembered. Nothing changes and
+nothing downloads until you choose. The same **Use GPU** action stays in
+Settings › GPU acceleration for as long as your computer qualifies. The prompt
+is not shown if you already picked another engine. The first generate downloads the
 weights if they are not installed yet (see [Weights](#weights)).
 
 **Source checkouts:** the repo ships zero-byte placeholders in `bin/` — real
@@ -198,7 +205,7 @@ GGML numbers every discrete and integrated GPU in Vulkan order and opens the
 first discrete one, else the first integrated one. With an Intel UHD iGPU at
 GPU0 and an Arc card at GPU1 it opens the Arc card (`Vulkan1`), and that is
 the card the quant is sized on. In automatic mode VoiceStudio does not set
-`GGML_BACKEND`, so GGML makes this choice itself. Compute device then lists
+`GGML_BACKEND`, so GGML makes this choice itself. Settings › GPU acceleration then lists
 the engine as using the GPU (Vulkan) with the adapter's name.
 
 Windows x64 and Linux x64/ARM64 source builds try Vulkan when the Vulkan SDK
@@ -247,8 +254,10 @@ explicit quant override remains authoritative in either case.
    \<GPU\>)*. The same data is at
    `http://127.0.0.1:3900/engines/omnivoice-gguf/quants` (`hardware` gives the
    adapter, `Vulkan<N>`, dedicated and effective memory).
-4. **Settings › Compute device** lists OmniVoice GGUF as using the GPU
-   (Vulkan) with your GPU's name.
+4. **Settings › GPU acceleration** lists OmniVoice GGUF as using the GPU
+   (Vulkan) with your GPU's name. On a computer whose PyTorch has no GPU, the
+   *Use your GPU for faster speech?* prompt appears once; **Use GPU** switches
+   to this engine.
 5. **Generate** one sentence. Press Download first, or let the first
    generation fetch the weights. Watch GPU usage in Task Manager (Windows) or
    `radeontop` / `intel_gpu_top` (Linux).

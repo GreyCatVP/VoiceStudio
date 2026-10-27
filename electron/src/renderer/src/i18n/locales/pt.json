@@ -4476,5 +4476,19 @@
     "runtime_other": "O runtime omnivoice-tts não inicia. Veja a verificação do motor para detalhes.",
     "weights_missing": "Os pesos do modelo ainda não foram baixados. Baixe-os agora ou eles serão baixados na primeira geração.",
     "download_failed": "Falha ao baixar os pesos"
+  },
+  "gpuOffer": {
+    "title": "Usar sua GPU para uma voz mais rápida?",
+    "body": "O VoiceStudio encontrou {{gpu}}. O OmniVoice GGUF pode rodar nela via Vulkan em vez da CPU, usando o modelo {{quant}}.",
+    "body_shared": "O VoiceStudio encontrou {{gpu}}, que compartilha a memória do sistema. O OmniVoice GGUF pode rodar nela via Vulkan em vez da CPU, usando o modelo {{quant}}.",
+    "download": "Baixa {{size}} MB uma única vez.",
+    "no_download": "Nada precisa ser baixado.",
+    "licence": "O modelo GGUF é para uso não comercial; você precisará aceitar a licença antes.",
+    "accept": "Usar GPU",
+    "decline": "Agora não",
+    "later": "Você pode mudar isso depois em Configurações › {{section}}.",
+    "licence_then_retry": "Aceite a licença e toque em Usar GPU novamente.",
+    "switched": "Agora {{gpu}} é usada para a voz.",
+    "switched_downloading": "Agora {{gpu}} é usada para a voz. Baixando o modelo {{quant}}…"
   }
 }

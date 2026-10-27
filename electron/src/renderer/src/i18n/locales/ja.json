@@ -4474,5 +4474,19 @@
     "runtime_other": "omnivoice-tts ランタイムを起動できません。詳細はエンジンの診断を確認してください。",
     "weights_missing": "モデルの重みはまだダウンロードされていません。今ダウンロードするか、初回生成時に自動で取得されます。",
     "download_failed": "重みのダウンロードに失敗しました"
+  },
+  "gpuOffer": {
+    "title": "GPU を使って音声をもっと速く生成しますか？",
+    "body": "VoiceStudio は {{gpu}} を検出しました。OmniVoice GGUF は CPU の代わりに Vulkan 経由でこの GPU 上で {{quant}} モデルを実行できます。",
+    "body_shared": "VoiceStudio はシステムメモリを共有する {{gpu}} を検出しました。OmniVoice GGUF は CPU の代わりに Vulkan 経由でこの GPU 上で {{quant}} モデルを実行できます。",
+    "download": "{{size}} MB を一度だけダウンロードします。",
+    "no_download": "ダウンロードは不要です。",
+    "licence": "GGUF モデルは非商用利用向けです。先にライセンスへの同意を求められます。",
+    "accept": "GPU を使う",
+    "decline": "今はしない",
+    "later": "あとで 設定 › {{section}} から変更できます。",
+    "licence_then_retry": "ライセンスに同意してから、もう一度「GPU を使う」を押してください。",
+    "switched": "音声に {{gpu}} を使用しています。",
+    "switched_downloading": "音声に {{gpu}} を使用しています。{{quant}} モデルをダウンロード中…"
   }
 }

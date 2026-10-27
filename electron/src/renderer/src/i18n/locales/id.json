@@ -4474,5 +4474,19 @@
     "runtime_other": "Runtime omnivoice-tts tidak bisa berjalan. Lihat pemeriksaan mesin untuk detail.",
     "weights_missing": "Bobot model belum diunduh. Unduh sekarang, atau akan diunduh saat pembuatan pertama.",
     "download_failed": "Gagal mengunduh bobot"
+  },
+  "gpuOffer": {
+    "title": "Pakai GPU untuk suara lebih cepat?",
+    "body": "VoiceStudio menemukan {{gpu}}. OmniVoice GGUF bisa berjalan di sana lewat Vulkan, bukan di CPU, dengan model {{quant}}.",
+    "body_shared": "VoiceStudio menemukan {{gpu}} yang berbagi memori sistem. OmniVoice GGUF bisa berjalan di sana lewat Vulkan, bukan di CPU, dengan model {{quant}}.",
+    "download": "Mengunduh {{size}} MB sekali saja.",
+    "no_download": "Tidak ada yang perlu diunduh.",
+    "licence": "Model GGUF untuk penggunaan nonkomersial; Anda akan diminta menerima lisensinya dulu.",
+    "accept": "Pakai GPU",
+    "decline": "Nanti saja",
+    "later": "Anda bisa mengubahnya nanti di Pengaturan › {{section}}.",
+    "licence_then_retry": "Terima lisensinya, lalu tekan Pakai GPU lagi.",
+    "switched": "Suara sekarang memakai {{gpu}}.",
+    "switched_downloading": "Suara sekarang memakai {{gpu}}. Mengunduh model {{quant}}…"
   }
 }

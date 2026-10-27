@@ -4474,5 +4474,19 @@
     "runtime_other": "Körmiljön omnivoice-tts startar inte. Se motorkontrollen för detaljer.",
     "weights_missing": "Modellvikterna är inte nedladdade än. Ladda ned dem nu, annars sker det vid första genereringen.",
     "download_failed": "Nedladdningen av vikter misslyckades"
+  },
+  "gpuOffer": {
+    "title": "Använda grafikkortet för snabbare tal?",
+    "body": "VoiceStudio hittade {{gpu}}. OmniVoice GGUF kan köras på den via Vulkan i stället för på processorn, med modellen {{quant}}.",
+    "body_shared": "VoiceStudio hittade {{gpu}}, som delar systemminnet. OmniVoice GGUF kan köras på den via Vulkan i stället för på processorn, med modellen {{quant}}.",
+    "download": "Laddar ned {{size}} MB en gång.",
+    "no_download": "Inget behöver laddas ned.",
+    "licence": "GGUF-modellen är för icke-kommersiellt bruk; du blir först ombedd att godkänna licensen.",
+    "accept": "Använd GPU",
+    "decline": "Inte nu",
+    "later": "Du kan ändra det senare under Inställningar › {{section}}.",
+    "licence_then_retry": "Godkänn licensen och tryck sedan på Använd GPU igen.",
+    "switched": "{{gpu}} används nu för tal.",
+    "switched_downloading": "{{gpu}} används nu för tal. Laddar ned modellen {{quant}}…"
   }
 }
