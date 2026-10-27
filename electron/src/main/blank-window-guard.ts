@@ -17,7 +17,7 @@ const FALLBACK_COPY: Record<string, FallbackCopy> = {
   en: { title: 'Something went wrong', retry: 'Try again' },
   es: { title: 'algo salió mal', retry: 'Inténtalo de nuevo' },
   fr: { title: "Quelque chose s'est mal passé", retry: 'Réessayez' },
-  gl: { title: 'Produciuse un erro', retry: 'Tentar de novo' },
+  gl: { title: 'Erro', retry: 'Téntao de novo' },
   hi: { title: 'कुछ ग़लत हो गया', retry: 'पुनः प्रयास करें' },
   id: { title: 'Ada yang tidak beres', retry: 'Coba lagi' },
   it: { title: 'Qualcosa è andato storto', retry: 'Riprova' },
