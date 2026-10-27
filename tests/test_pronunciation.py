@@ -307,6 +307,16 @@ def test_project_lexicon_overlays_db():
     assert out == "PROJECT"
 
 
+@pytest.mark.parametrize(("text", "expected"), [
+    ("Take the [[route|route]] today.", "Take the route today."),
+    ("[[route]] and route", "route and root"),
+    ("route [[label|route]] [[other|route]]", "root route route"),
+    ("route [[]]", "root "),
+])
+def test_explicit_inline_respelling_is_protected_from_dictionaries(text, expected):
+    assert apply_pronunciation(text, lexicon={"route": "root"}) == expected
+
+
 def test_inline_redos_safe():
     import time
     s = "[[" * 5000 + "a" + "]]" * 5000

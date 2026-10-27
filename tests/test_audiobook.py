@@ -213,3 +213,18 @@ def test_synthesize_chapter_applies_lexicon():
     # The engine sees the respelled text, never the original "Dr".
     assert any("Doctor" in t for t in seen)
     assert not any("Dr " in t or t.endswith(" Dr") for t in seen)
+
+
+def test_synthesize_chapter_preserves_explicit_inline_pronunciation():
+    torch = pytest.importorskip("torch")
+    from services.audiobook import Span
+
+    seen = []
+
+    def synth(text, voice_id, speed=None):
+        seen.append(text)
+        return torch.ones(100, dtype=torch.float32)
+
+    synthesize_chapter([Span(voice_id="v", text="route [[route|route]]")], synth,
+                       16000, lexicon={"route": "root"})
+    assert seen == ["root route"]
