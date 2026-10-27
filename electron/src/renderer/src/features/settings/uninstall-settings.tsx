@@ -37,8 +37,10 @@ const ICONS: Record<UninstallTarget['key'], LucideIcon> = {
 };
 
 export function uninstallBytes(targets: UninstallTarget[], includeModels: boolean): number {
-  return targets
-    .filter((target) => target.exists && (includeModels || !target.shared))
+  const selected = targets.filter((target) => target.exists && (includeModels || !target.shared));
+  const paths = new Set(selected.map((target) => target.path));
+  return selected
+    .filter((target) => !target.covered_by?.some((parent) => paths.has(parent)))
     .reduce((sum, target) => sum + target.size_bytes, 0);
 }
 

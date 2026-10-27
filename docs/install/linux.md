@@ -9,7 +9,8 @@ is no longer maintained; if you still run it, follow the
 - **Linux x86_64** with a graphical desktop session (X11 or Wayland). There are
   no ARM64 Linux packages.
 - **~10 GB free disk** for the app, its Python environment, and model weights.
-- Optional: an **NVIDIA driver** for CUDA acceleration. Without one, setup
+- Optional: an **NVIDIA driver** for CUDA acceleration. In **Automatic** mode,
+  without one, setup
   installs the CPU build of PyTorch (see below). For AMD GPUs see
   [AMD GPU (ROCm)](#amd-gpu-rocm).
 
@@ -41,10 +42,10 @@ sudo snap connect voicestudio:audio-record
 Download a package from the
 [Releases page](https://github.com/debpalash/VoiceStudio/releases/latest):
 
-| Package | File |
-|---|---|
+| Package                     | File                                       |
+| --------------------------- | ------------------------------------------ |
 | AppImage (any distribution) | `VoiceStudio-<version>-linux-x64.AppImage` |
-| Debian / Ubuntu package | `VoiceStudio-<version>-linux-x64.deb` |
+| Debian / Ubuntu package     | `VoiceStudio-<version>-linux-x64.deb`      |
 
 **AppImage:**
 
@@ -72,8 +73,9 @@ Compare any download with the release's `SHA256SUMS.txt` before installing.
 
 ### Machines without an NVIDIA GPU
 
-Laptops and desktops with Intel/AMD integrated graphics (or any GPU without
-an NVIDIA driver) run the whole app on the CPU, just slower. When no NVIDIA
+With **Automatic** runtime packages selected, laptops and desktops with
+Intel/AMD integrated graphics (or any GPU without an NVIDIA driver) run the
+whole app on the CPU, just slower. When no NVIDIA
 driver is found, the packaged app's runtime setup installs the small CPU build
 of PyTorch rather than the CUDA build and its ~3 GB of `nvidia-*` packages,
 and needs about 5 GiB of free disk instead of 9 GiB. Pick a light voice engine
@@ -133,11 +135,11 @@ bun run dev         # Electron with hot reload; it starts and supervises the bac
 Do not start the backend in a second terminal; Electron attaches to a backend
 already listening on port 3900, otherwise it starts its own. Other commands:
 
-| Command | What it does |
-|---|---|
-| `bun run desktop-prod` | Build Electron and launch the production bundle |
-| `bun run dist` | Build local installers (AppImage and `.deb`) in `electron/release/` without publishing |
-| `bun run smoke-test` | Build and launch an isolated packaged app |
+| Command                | What it does                                                                           |
+| ---------------------- | -------------------------------------------------------------------------------------- |
+| `bun run desktop-prod` | Build Electron and launch the production bundle                                        |
+| `bun run dist`         | Build local installers (AppImage and `.deb`) in `electron/release/` without publishing |
+| `bun run smoke-test`   | Build and launch an isolated packaged app                                              |
 
 See [Electron setup](../../electron/README.md) for backend configuration and
 quality gates. The first launch downloads model weights only when you install
@@ -274,10 +276,10 @@ If the dependency download is slow or stalls, see
 
 <a id="amd-gpu-rocm"></a>
 
-ROCm support is **Linux-only and opt-in**. The **default install ships the
-CUDA build** of PyTorch (the `pytorch-cuda` index in `pyproject.toml`), so on
-an AMD-only machine `torch.cuda.is_available()` is `False` and VoiceStudio runs
-on CPU until you opt into the ROCm variant.
+ROCm acceleration is **opt-in** on supported Linux x86_64 AMD GPUs. This section
+covers Linux; native Windows has a separate [ROCm setup recipe](windows-rocm.md).
+The packaged app's **Automatic** runtime choice selects CUDA when an NVIDIA
+driver is detected, otherwise CPU. Choose ROCm explicitly for a supported AMD card.
 
 > **Running in Docker or Podman instead?** There's a prebuilt ROCm image —
 > `ghcr.io/debpalash/voicestudio:stable-rocm` — with GPU acceleration out of the
@@ -295,30 +297,50 @@ RDNA3 kernels cannot run on it.
 
 Ways to opt in, in order of preference:
 
-**1. Packaged app (environment variable).** Install the ROCm userspace
-(`/opt/rocm` or `rocminfo` on PATH), then launch VoiceStudio once with
-`OMNIVOICE_TORCH_VARIANT=rocm` set, for example
+**1. Packaged app (GUI, recommended).** Install the ROCm userspace
+(`/opt/rocm` or `rocminfo` on PATH). Linux x64 AppImage and `.deb` builds offer
+**Automatic**, **CPU only**, **NVIDIA CUDA** and **AMD ROCm (supported cards)**
+under **Runtime packages** during first setup and in **Settings > Performance**.
+Choose **AMD ROCm (supported cards)**, then explicitly choose **Install** (or
+**Resume** / **Retry**) in setup. Saving a choice alone starts no download.
+
+For an already working app-managed local runtime, save the choice for the next
+app start, finish tasks, fully quit VoiceStudio (including its tray process),
+and reopen it. Setup then asks for an explicit install action; saving does not
+restart the current backend. User data, model caches and storage locations are
+retained; existing CPU sidecars are not automatically converted. Remote,
+attached and user-managed backends cannot be converted through this control.
+The package selector is not offered on macOS or ARM targets because these wheel
+variants are unavailable there.
+
+A valid inherited `OMNIVOICE_TORCH_VARIANT` takes precedence over the saved GUI
+choice and pins the selector. To use that optional environment-variable route,
+fully quit the app and launch it with `OMNIVOICE_TORCH_VARIANT=rocm`, for example
 `OMNIVOICE_TORCH_VARIANT=rocm ./VoiceStudio-*-linux-x64.AppImage`.
+Keep using that launch method while the override is wanted; removing the
+override makes the saved GUI choice available again.
 Runtime setup then reinstalls `torch`/`torchaudio` from the ROCm wheel index
 (`https://download.pytorch.org/whl/rocm6.4` by default) right after the
 dependency sync, matched to the app's pinned `torch==2.8.0` (the rocm6.2 index
 only ever published up to torch 2.5.1). **Settings → Performance → GPU
-acceleration** reports which PyTorch build is installed. The option is ignored
-on macOS and Windows.
+acceleration** reports which PyTorch build is installed. These Linux wheel
+instructions do not apply to macOS; Windows uses its separate native recipe.
 
 **2. Source checkout.** `OMNIVOICE_TORCH_VARIANT=rocm bun run setup:api` swaps
 torch right after `uv sync`; `bun run dev` then starts the backend from that
 environment, and `bun run dev:api` launches it without re-syncing, so the
-wheel is not reverted (#1665). Running `bun run setup:api` without the
-variable restores the lockfile's CUDA build — a hand-swapped ROCm wheel does
-not survive it. `OMNIVOICE_TORCH_INDEX=<url>` overrides the wheel
+wheel is not reverted (#1665). Keep the variable set on subsequent
+`bun run setup:api` invocations: a hand-swapped ROCm wheel does not survive
+dependency sync without the ROCm opt-in. `OMNIVOICE_TORCH_INDEX=<url>` overrides the wheel
 index when you need a different ROCm version — e.g. AMD publishes newer
 driver-matched builds (7.2.x) at `repo.radeon.com` as a `--find-links` page
 rather than a PyPI-style index:
+
 ```bash
 uv pip install --reinstall torch==2.8.0 torchaudio==2.8.0 \
   --find-links https://repo.radeon.com/rocm/manylinux/rocm-rel-7.2.4/
 ```
+
 run that manually if you want a specific ROCm point release; the
 `OMNIVOICE_TORCH_INDEX` env var only accepts a PEP 503 index URL, not a
 find-links page. If the reinstall fails (network, unsupported card), VoiceStudio
@@ -347,6 +369,7 @@ uv run python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_
 ```
 
 Notes:
+
 - ROCm is exercised far less than the default CUDA/MPS/CPU paths — it works,
   but expect rough edges on consumer cards and report what you hit.
 - Unsupported GFX (e.g. some consumer RDNA cards): if it still won't run, set
