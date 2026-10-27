@@ -316,33 +316,37 @@ it.each([
 );
 
 it.each([
-  [false, 'design', false],
-  [null, 'none', true],
-  [true, 'none', true],
+  [false, 'design', false, false],
+  [null, 'none', true, true],
+  [true, 'none', true, true],
 ] as const)(
-  'blocks Voice Design on an engine that declares it cannot design (supports_voice_design=%s)',
-  async (design, expectedBlocker, sends) => {
-    engine.design = design;
-    vi.mocked(generateClone).mockReset().mockRejectedValue(new Error('stop'));
-    function DesignConsumer() {
+  'uses the declared Voice Design capability %s',
+  async (capability, expectedBlocker, expectedAllowed, sends) => {
+    engine.design = capability;
+    vi.mocked(generateClone).mockReset().mockRejectedValue(new Error('request ended'));
+    function CapabilityConsumer() {
       const state = useGenerateClone();
       return (
         <button
-          onClick={() => void state.generateDesign({ text: 'Hi', instruct: 'male', seed: 1 })}
+          onClick={() =>
+            void state.generateDesign({ text: 'Capability check', instruct: 'calm', seed: 19 })
+          }
         >
-          blocker {state.designBlocker ?? 'none'} {String(state.canGenerateDesign)}
+          {state.designBlocker ?? 'none'}:{String(state.canGenerateDesign)}
         </button>
       );
     }
     render(
       <QueryClientProvider client={new QueryClient()}>
         <GenerationProvider>
-          <DesignConsumer />
+          <CapabilityConsumer />
         </GenerationProvider>
       </QueryClientProvider>,
     );
-    const button = screen.getByText(`blocker ${expectedBlocker} ${String(sends)}`);
-    fireEvent.click(button);
+    const action = screen.getByRole('button', {
+      name: `${expectedBlocker}:${String(expectedAllowed)}`,
+    });
+    fireEvent.click(action);
     if (sends) await waitFor(() => expect(generateClone).toHaveBeenCalled());
     else {
       await act(async () => {});

@@ -31,7 +31,7 @@ const FALLBACK_COPY: Record<string, FallbackCopy> = {
   tr: { title: 'Bir şeyler ters gitti', retry: 'Tekrar dene' },
   uk: { title: 'Щось пішло не так', retry: 'Спробуйте знову' },
   vi: { title: 'Đã xảy ra lỗi', retry: 'Thử lại' },
-  'zh-CN': { title: '出了点问题', retry: '再试一次' },
+  'zh-CN': { title: '出现了问题', retry: '再试一次' },
   'zh-TW': { title: '出了點問題', retry: '再試一次' },
 };
 

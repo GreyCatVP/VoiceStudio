@@ -77,6 +77,8 @@ export interface EngineBackend {
   reason: string | null;
   hint?: string | null;
   supports_cloning?: boolean | null;
+  /** Speech-to-speech conversion: Convert's "Keep my delivery" (#3421). */
+  supports_voice_conversion?: boolean;
   /** Graded emotion conditioning (IndexTTS2): text, strength and vector. */
   supports_emotion?: boolean;
   /** Built-in voices a request may pick (`preset_voice`); empty or absent when the engine has none (#2938). */

@@ -231,7 +231,7 @@ class TTSBackend(ABC):
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         # Enforce lifetime at the engine boundary so every caller is covered.
-        for name in ("generate", "generate_batch", "_ensure_loaded"):
+        for name in ("generate", "generate_batch", "_ensure_loaded", "convert_voice"):
             method = cls.__dict__.get(name)
             if method is not None:
                 setattr(cls, name, _lease_render(method))
@@ -444,11 +444,10 @@ class TTSBackend(ABC):
     #: the reference voice. Read through :func:`rendered_dialects`.
     rendered_dialects: tuple[str, ...] = ()
 
-    #: Whether this engine already emits mastered, studio-grade audio and should
-    #: therefore skip the shared apply_mastering() chain (highpass + Compressor,
-    #: tuned for OmniVoice's 24 kHz output). Studio engines like VoxCPM2 (native
-    #: 48 kHz) set this True so their clean output isn't pumped. Loudness
-    #: normalisation is applied regardless — it's a benign peak scale.
+    #: True bypasses ``apply_mastering()``: its high-pass filter and compressor
+    #: target the default engine's 24 kHz cloned audio. Finished high-rate
+    #: engines such as VoxCPM2 opt out to avoid damaging their studio output;
+    #: loudness normalisation is still applied independently.
     applies_own_mastering: bool = False
 
     #: Whether this engine can clone an arbitrary voice from reference audio
@@ -457,6 +456,21 @@ class TTSBackend(ABC):
     #: (issue #312 class) before committing to a job that needs it, instead
     #: of silently falling back to OmniVoice or mis-cloning per segment.
     supports_cloning: bool = True
+
+    #: Whether :meth:`convert_voice` works: speech-to-speech conversion that
+    #: keeps the source recording's timing, rhythm and intonation and changes
+    #: only the timbre (#3421). Convert's "Keep my delivery" mode routes to an
+    #: engine that declares it instead of transcribing and re-speaking.
+    supports_voice_conversion: bool = False
+
+    def convert_voice(self, source_audio: str, *, ref_audio: str, seed: Optional[int] = None) -> torch.Tensor:
+        """Re-voice the speech in ``source_audio`` with ``ref_audio``'s timbre.
+
+        Both are local WAV paths. Returns a ``(1, n_samples)`` tensor at
+        :attr:`sample_rate` that follows the source's timing. Engines that
+        declare :attr:`supports_voice_conversion` override this.
+        """
+        raise NotImplementedError(f"{self.id} does not support voice conversion")
 
     #: Longest stretch of a reference clip this engine actually conditions on,
     #: in seconds, and how it chooses that stretch from a longer clip:
@@ -2135,7 +2149,7 @@ class VoxCPM2Backend(TTSBackend):
     # _prepare_voxcpm_ref keeps the first _VOXCPM_REF_MAX_S after silence trim.
     max_ref_seconds = _VOXCPM_REF_MAX_S
     ref_strategy = "head"
-    applies_own_mastering = True  # native 48 kHz studio output — skip apply_mastering()
+    applies_own_mastering = True  # Native studio-grade 48 kHz needs no apply_mastering().
     gpu_compat = ("cuda", "mps", "cpu")
 
     def __init__(self):
@@ -3522,41 +3536,38 @@ class GPTSoVITSBackend(TTSBackend):
 
 
 def _sherpa_model_file(model_dir: str) -> Optional[str]:
-    """The VITS ``.onnx`` file in a sherpa-onnx model directory, or ``None``.
+    """Find the single VITS model that can be loaded from ``model_dir``.
 
-    Most sherpa-onnx VITS releases name it ``model.onnx``, but every Piper
-    voice (``vits-piper-*``, the only option for many languages, e.g.
-    ``tr_TR-dfki-medium.onnx``) keeps its voice name. Prefer ``model.onnx``;
-    otherwise accept exactly one ``*.onnx`` so an ambiguous directory still
-    fails with the setup hint instead of loading the wrong file.
+    Piper archives commonly name the ONNX file after the voice instead of
+    using ``model.onnx``.  Accepting that layout is important because Piper is
+    the only sherpa-onnx voice available for many languages, while refusing
+    directories with several candidates keeps model selection deterministic.
     """
     if not model_dir or not os.path.isdir(model_dir):
         return None
-    preferred = os.path.join(model_dir, "model.onnx")
-    if os.path.isfile(preferred):
-        return preferred
-    candidates = sorted(
-        name for name in os.listdir(model_dir)
+
+    conventional = os.path.join(model_dir, "model.onnx")
+    if os.path.isfile(conventional):
+        return conventional
+
+    candidates = [
+        os.path.join(model_dir, name)
+        for name in os.listdir(model_dir)
         if name.lower().endswith(".onnx")
         and os.path.isfile(os.path.join(model_dir, name))
-    )
-    return os.path.join(model_dir, candidates[0]) if len(candidates) == 1 else None
+    ]
+    return candidates[0] if len(candidates) == 1 else None
 
 
 def _sherpa_vits_extras(model_dir: str) -> dict[str, str]:
-    """Optional VITS config files the release ships next to the model.
-
-    Piper voices phonemize with espeak-ng and need ``espeak-ng-data`` as
-    ``data_dir``; lexicon-based VITS models (MeloTTS, Chinese voices) need
-    ``lexicon.txt``. Without them sherpa-onnx rejects the config or reads
-    nothing. A release's ``dict/`` is not passed: sherpa-onnx >= 1.13.3
-    ignores ``dict_dir`` for VITS and logs an error when it is set.
-    """
+    """Return optional phonemizer inputs present beside a VITS model."""
+    if not model_dir:
+        return {}
     extras: dict[str, str] = {}
-    espeak = os.path.join(model_dir, "espeak-ng-data")
-    if os.path.isdir(espeak):
-        extras["data_dir"] = espeak
+    data_dir = os.path.join(model_dir, "espeak-ng-data")
     lexicon = os.path.join(model_dir, "lexicon.txt")
+    if os.path.isdir(data_dir):
+        extras["data_dir"] = data_dir
     if os.path.isfile(lexicon):
         extras["lexicon"] = lexicon
     return extras
@@ -3622,11 +3633,11 @@ class SherpaOnnxBackend(TTSBackend):
             )
         if _sherpa_model_file(model_dir) is None:
             return False, (
-                f"No model.onnx in OMNIVOICE_SHERPA_MODEL ({model_dir}). Point "
-                "it at a sherpa-onnx TTS model directory containing model.onnx "
-                "(or a single <voice>.onnx, as Piper voices ship) + tokens.txt. "
-                "Download models from "
-                "https://github.com/k2-fsa/sherpa-onnx/releases"
+                f"OMNIVOICE_SHERPA_MODEL points to {model_dir!r}, but that directory "
+                "does not contain model.onnx or exactly one voice-named .onnx file. "
+                "Choose a sherpa-onnx TTS model directory containing that model and "
+                "tokens.txt (Piper archives use a per-voice filename). Download models "
+                "from https://github.com/k2-fsa/sherpa-onnx/releases"
             )
         return True, "ready"
 
@@ -3643,9 +3654,11 @@ class SherpaOnnxBackend(TTSBackend):
     def _ensure_loaded(self):
         if self._tts is not None:
             return
+
         ok, msg = self.is_available()
         if not ok:
             raise RuntimeError(f"Sherpa-ONNX unavailable: {msg}")
+
         import sherpa_onnx
 
         if not self._model_dir:
@@ -3654,27 +3667,25 @@ class SherpaOnnxBackend(TTSBackend):
                 "TTS model directory (containing model.onnx + tokens.txt)."
             )
 
-        # Auto-detect model type from directory contents
-        model_onnx = _sherpa_model_file(self._model_dir)
-        tokens = os.path.join(self._model_dir, "tokens.txt")
-
-        if model_onnx is None:
+        model_file = _sherpa_model_file(self._model_dir)
+        tokens_file = os.path.join(self._model_dir, "tokens.txt")
+        if model_file is None:
             raise RuntimeError(
                 f"No model.onnx found in {self._model_dir}. "
                 "Download a model from https://github.com/k2-fsa/sherpa-onnx/releases"
             )
 
         logger.info("Loading sherpa-onnx TTS from %s", self._model_dir)
-        tts_config = sherpa_onnx.OfflineTtsConfig(
+        config = sherpa_onnx.OfflineTtsConfig(
             model=sherpa_onnx.OfflineTtsModelConfig(
                 vits=sherpa_onnx.OfflineTtsVitsModelConfig(
-                    model=model_onnx,
-                    tokens=tokens,
+                    model=model_file,
+                    tokens=tokens_file,
                     **_sherpa_vits_extras(self._model_dir),
-                ),
-            ),
+                )
+            )
         )
-        self._tts = sherpa_onnx.OfflineTts(tts_config)
+        self._tts = sherpa_onnx.OfflineTts(config)
 
     def generate(self, text: str, **kw) -> torch.Tensor:
         import numpy as np
@@ -4120,6 +4131,8 @@ def list_backends(*, include_hidden: bool = False) -> list[dict]:
             # upgrade hint). None unless ok and the message carries advice.
             "hint": _available_hint(msg) if ok else None,
             "supports_cloning": _clone if isinstance(_clone, bool) else None,
+            # Speech-to-speech conversion (#3421): Convert's "Keep my delivery".
+            "supports_voice_conversion": bool(getattr(cls, "supports_voice_conversion", False)),
             # Graded-emotion capability (#1208) — drives the Audiobook emotion
             # panel's engine gate. Class attr, defaults False.
             "supports_emotion": bool(getattr(cls, "supports_emotion", False)),
@@ -4851,6 +4864,21 @@ async def resolve_generation_backend(
         raise ValueError(cloning_unavailable_detail(engine_id, backend, cloning_purpose))
 
     return backend
+
+
+def voice_conversion_engine_ids() -> list[str]:
+    """Registered engines whose effective class converts speech to speech."""
+    return [
+        bid for bid, cls in _REGISTRY.items()
+        if getattr(_effective_backend_class(bid, cls), "supports_voice_conversion", False) is True
+    ]
+
+
+VOICE_CONVERSION_MISSING = (
+    "Keep my delivery needs an engine that converts a recording directly. "
+    "Install CosyVoice 3 from Model Catalogue → Engines, or turn off Keep my "
+    "delivery to re-speak the text instead."
+)
 
 
 # ── PEP 562 lazy attribute re-export ───────────────────────────────────────

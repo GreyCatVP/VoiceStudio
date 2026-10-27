@@ -22,12 +22,13 @@ consent question; declining or skipping keeps analytics disabled, and
 server image runs FastAPI with the pre-built React interface over HTTP, making
 it suitable for an AMD64 homelab or GPU server that you control from a browser.
 
-The primary image and `:rocm` variant support `linux/amd64` only. NVIDIA ARM
-servers such as DGX Spark/GB10, GH200, and GB200 can use the native
-`linux/arm64` tag `:stable-cuda-arm64`. On Apple Silicon, install the
-[native macOS app](https://github.com/debpalash/VoiceStudio/blob/main/docs/install/macos.md)
-for Apple GPU acceleration; a Linux container cannot access the Mac GPU through
-MPS or MLX. Other ARM64 systems have no native image, so use an AMD64 host or
+The primary image and `:rocm` variant support `linux/amd64` only.
+The `:stable-cuda-arm64` tag provides a native `linux/arm64` image for NVIDIA
+ARM hardware, including DGX Spark/GB10, GH200, and GB200 servers. For Apple GPU
+acceleration on Apple Silicon, use the
+[native macOS app](https://github.com/debpalash/VoiceStudio/blob/main/docs/install/macos.md),
+since neither MPS nor MLX can expose the Mac's GPU to a Linux container.
+Other ARM64 systems have no native image, so use an AMD64 host or
 accept the substantial slowdown of emulation. Review the
 [architecture guidance](https://github.com/debpalash/VoiceStudio/blob/main/docs/install/docker.md#architecture)
 before choosing an image.

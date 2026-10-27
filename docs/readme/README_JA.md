@@ -95,16 +95,14 @@ Linux では Snap Store からもインストールできます：`sudo snap ins
 
 ### プロンプトでインストール
 
-コーディングエージェント（Claude Code、Codex、Cursor など）に貼り付けてください：
+Claude Code、Codex、Cursor などのコーディングエージェントにインストールを任せる場合は、以下のプロンプトを渡します：
 
 ```text
 Install the VoiceStudio Electron app on this device and verify it works, following
 https://github.com/debpalash/VoiceStudio/blob/main/docs/install/agent.md
 ```
 
-[エージェントガイド](../../docs/install/agent.md)では、ハードウェアの検出、既存データの再利用、
-モデルダウンロード前の確認、テスト生成について説明しています。スキルに対応したエージェントでは
-`npx skills add debpalash/VoiceStudio` も実行できます。
+作業の流れは[エージェント向けガイド](../../docs/install/agent.md)で確認できます。既存データを活用しながらハードウェアを判別し、モデル取得の前にユーザーへ確認したうえで、最後に生成テストを行う手順です。スキル機能があるエージェントなら、`npx skills add debpalash/VoiceStudio` も利用できます。
 
 <details>
 <summary><strong>ソースから Electron プレビューを実行する</strong></summary>

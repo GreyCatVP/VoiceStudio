@@ -1416,11 +1416,20 @@ async def _render_longform_sse(
         if title:
             done["title"] = str(title)[:200]
         try:
+            completed_chapters = [
+                chapter for index, chapter in enumerate(plan.chapters)
+                if index not in failed
+            ]
             done["summary"] = _render_summary(
-                [c for i, c in enumerate(plan.chapters) if i not in failed],
-                default_voice, voice_map, resolved_lang, fmt, opts)
-        except Exception:  # noqa: BLE001 - the summary is optional detail
-            logger.warning("[%s] render summary skipped", job_id, exc_info=True)
+                completed_chapters,
+                default_voice,
+                voice_map,
+                resolved_lang,
+                fmt,
+                opts,
+            )
+        except Exception:  # noqa: BLE001
+            logger.warning("[%s] render summary could not be built", job_id, exc_info=True)
         # Loudness verdict only when a preset was requested — off/None paths keep
         # the exact legacy `done` shape (additive, old clients unaffected).
         if norm in LOUDNESS_PRESETS:

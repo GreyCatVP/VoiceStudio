@@ -20,9 +20,8 @@ _REPO_ID = re.compile(r"[A-Za-z0-9][\w.-]*/[\w.-]+")
 _PROGRAM_REPOS = {"0xShug0/audio.cpp", "zackees/ffmpeg_bins"}
 # A local checkout subdirectory and an SDK alias also match org/model syntax.
 _LOCAL_MODEL_PATHS = {"pretrained_models/Fun-CosyVoice3-0.5B"}
-# Phone-only models are recorded from this manifest under namespaced engine ids.
-_PHONE_SOURCE = "mobile/contract/"
-_PHONE_ENGINE = "mobile:"
+_PHONE_RECORD_SOURCE = "mobile/contract/"
+_PHONE_ENGINE_PREFIX = "mobile:"
 _MODEL_ALIASES = {
     "moonshine/base": "UsefulSensors/moonshine-base",
     "moonshine/tiny": "UsefulSensors/moonshine-tiny",
@@ -158,16 +157,14 @@ def validate(registry, catalog, source_ids=()):
                 errors.append(f"{rid}: unsupported {field} assessment")
         if record.get("data_kind", "production") != "production":
             errors.append(f"{rid}: test/illustrative data is not production evidence")
-        # The desktop licence gate collects a model for every engine id it lists
-        # (model_acceptance.repos_for_engine). Phone runtimes share names with
-        # desktop engines ("sherpa-onnx"), so phone-only rows carry a "mobile:"
-        # prefix; otherwise a desktop engine asks for phone models' licences.
-        phone = str(record.get("configured_at", "")).startswith(_PHONE_SOURCE)
+        phone_only = str(record.get("configured_at", "")).startswith(_PHONE_RECORD_SOURCE)
         for engine in record.get("engines") or []:
-            if not isinstance(engine, str) or engine.startswith(_PHONE_ENGINE) != phone:
+            has_phone_prefix = isinstance(engine, str) and engine.startswith(_PHONE_ENGINE_PREFIX)
+            if not isinstance(engine, str) or has_phone_prefix != phone_only:
+                requirement = "must" if phone_only else "must not"
                 errors.append(
-                    f"{rid}: engine {engine!r} must "
-                    f"{'' if phone else 'not '}start with {_PHONE_ENGINE!r}"
+                    f"{rid}: engine {engine!r} {requirement} start with "
+                    f"{_PHONE_ENGINE_PREFIX!r}"
                 )
         try:
             _component(record)

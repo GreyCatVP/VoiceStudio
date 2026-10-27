@@ -109,17 +109,17 @@ curl -fsSL https://raw.githubusercontent.com/debpalash/VoiceStudio/main/scripts/
 
 ### 通过提示词安装
 
-将下面内容粘贴到编码智能体（Claude Code、Codex、Cursor 等）中：
+若要让 Claude Code、Codex、Cursor 等编程智能体完成安装，请直接向它提供下面的提示词：
 
 ```text
 Install the VoiceStudio Electron app on this device and verify it works, following
 https://github.com/debpalash/VoiceStudio/blob/main/docs/install/agent.md
 ```
 
-[智能体安装指南](../../docs/install/agent.md)介绍硬件检测、复用已有数据、下载模型前询问用户以及测试生成。支持技能的智能体也可以运行 `npx skills add debpalash/VoiceStudio`。
+开始前可查阅[智能体指南](../../docs/install/agent.md)：其中既说明如何识别硬件和复用现有数据，也要求下载模型前先询问用户，并安排一次生成测试。智能体若支持技能，还能通过 `npx skills add debpalash/VoiceStudio` 获取所需技能。
 
 <details>
-<summary><strong>从源码运行 Electron 预览版</strong></summary>
+<summary><strong>从源代码运行 Electron 预览版</strong></summary>
 
 ```bash
 git clone https://github.com/debpalash/VoiceStudio.git
@@ -129,7 +129,7 @@ bun run setup:api  # prepare Python dependencies before starting Electron
 bun run dev
 ```
 
-前置要求和后端配置请参见 [Electron 设置](../../electron/README.md)。运行 `bun run smoke-test` 可构建并启动隔离的打包应用；添加 `-- --install` 可检查联网安装。
+必备环境及后端配置方法均列在 [Electron 设置说明](../../electron/README.md) 中。要构建并启动独立隔离的打包应用，可运行 `bun run smoke-test`；如需同时检查联网安装托管运行时的流程，请追加 `-- --install`。
 
 </details>
 

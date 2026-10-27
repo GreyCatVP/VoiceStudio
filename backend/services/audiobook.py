@@ -25,7 +25,7 @@ from __future__ import annotations
 import json
 import zlib
 from dataclasses import dataclass, field
-from typing import Callable, Optional
+from typing import Callable, ClassVar, Optional
 
 
 #: Mix constant for the per-occurrence seed nonce (#1208) — a large odd
@@ -94,16 +94,19 @@ class ExpressiveOptions:
     emo_text: Optional[str] = None
     emo_alpha: Optional[float] = None
     vary_repeats: bool = False
-    # Join settings: how rendered lines are stitched, not how they are spoken.
     line_gap_ms: int = 0
     paragraph_gap_ms: int = 0
     trim_edges: bool = False
 
-    JOIN_KEYS = ("line_gap_ms", "paragraph_gap_ms", "trim_edges")
+    JOIN_KEYS: ClassVar[tuple[str, str, str]] = (
+        "line_gap_ms",
+        "paragraph_gap_ms",
+        "trim_edges",
+    )
 
     def join_kwargs(self) -> dict:
-        """The join settings as keyword arguments for ``synthesize_chapter``."""
-        return dict(zip(self.JOIN_KEYS, (self.line_gap_ms, self.paragraph_gap_ms, self.trim_edges)))
+        """Return the chapter-stitching options as keyword arguments."""
+        return {name: getattr(self, name) for name in self.JOIN_KEYS}
 
     @property
     def is_default(self) -> bool:

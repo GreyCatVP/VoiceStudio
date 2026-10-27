@@ -43,6 +43,13 @@ class CosyVoiceSubprocessBackend(SubprocessBackend):
     # The sidecar seeds its own torch RNG from the request (#3413): the
     # parent's torch.manual_seed never reaches another process.
     supports_generation_seed = True
+    # Upstream's inference_vc: the source recording's speech tokens are kept
+    # as they are and re-rendered with the reference voice, so timing and
+    # rhythm stay the speaker's own (#3421).
+    supports_voice_conversion = True
+    #: Upstream's speech tokenizer refuses clips longer than 30 s; callers
+    #: split longer sources (services.voice_conversion).
+    max_vc_source_seconds = 30.0
 
     @classmethod
     def is_available(cls) -> tuple[bool, str]:
@@ -89,6 +96,12 @@ class CosyVoiceSubprocessBackend(SubprocessBackend):
         from services.tts_backend import CosyVoiceBackend
 
         return CosyVoiceBackend.supported_languages.fget(self)
+
+    def convert_voice(self, source_audio: str, *, ref_audio: str, seed=None):
+        msg = {"op": "convert", "source_audio": str(source_audio), "ref_audio": str(ref_audio)}
+        if seed is not None:
+            msg["seed"] = int(seed)
+        return self._exchange(msg, deadline_text="")
 
     def model_identity(self) -> str:
         # v1/v2/v3 share the one "cosyvoice" id; the folder name tells them
