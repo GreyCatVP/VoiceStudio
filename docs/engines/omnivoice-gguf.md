@@ -231,6 +231,42 @@ explicit CPU choice also selects the CPU quant (Q4_K_M) and requires that
 pair to be installed — a larger cached quant is not substituted for it. An
 explicit quant override remains authoritative in either case.
 
+## Checking Vulkan on your machine
+
+1. **Driver.** Run `vulkaninfo --summary` (installed with the GPU driver on
+   Windows; `vulkan-tools` on Linux). It should list your GPU with
+   `PHYSICAL_DEVICE_TYPE_DISCRETE_GPU` or `..._INTEGRATED_GPU`. Only
+   `llvmpipe` or an error means no Vulkan driver: install or update the GPU
+   driver first.
+2. **Runtime.** An installer includes the Vulkan module. On a source checkout,
+   download the `omnivoice-tts-<platform>` artifact from a
+   `build-omnivoice-tts` CI run and unpack it into `bin/`. Either way,
+   `bin/` (or `resources/bin/` in an install) must contain `ggml-vulkan.dll`
+   or `libggml-vulkan.so`.
+3. **Settings › Models › OmniVoice GGUF** shows *Auto: \<quant\> (Vulkan –
+   \<GPU\>)*. The same data is at
+   `http://127.0.0.1:3900/engines/omnivoice-gguf/quants` (`hardware` gives the
+   adapter, `Vulkan<N>`, dedicated and effective memory).
+4. **Settings › Compute device** lists OmniVoice GGUF as using the GPU
+   (Vulkan) with your GPU's name.
+5. **Generate** one sentence. Press Download first, or let the first
+   generation fetch the weights. Watch GPU usage in Task Manager (Windows) or
+   `radeontop` / `intel_gpu_top` (Linux).
+
+Expected automatic picks:
+
+| GPU | Device | Effective memory | Quant |
+| --- | --- | --- | --- |
+| Radeon 890M APU, 32 GB RAM | Vulkan0, shared memory | ~15–16 GB (half the RAM) | BF16 |
+| Radeon RX 6700 XT 12 GB | Vulkan0 | ~12 GB | BF16 |
+| RX 7600 / Arc A750 8 GB | Vulkan0 (or the discrete card's index) | ~8 GB | Q8_0 |
+| Intel UHD iGPU + Arc A770 / B580 | Vulkan1 (the Arc card) | 16 / 12 GB | BF16 |
+| Compute device set to CPU | — | — | Q4_K_M |
+
+If yours differs, report the `vulkaninfo --summary` device list, the
+`/engines/omnivoice-gguf/quants` response, and your OS, GPU driver version and
+RAM.
+
 ## Integrity and self-healing
 
 Before reporting ready, the engine:
