@@ -20,7 +20,8 @@ export const DEFAULT_FIXTURES = {
   '/history': [],
   // The Calls view at #/calls (Workflows moved to #/workflows): no Twilio set up, no calls yet.
   '/calls': { calls: [] },
-  '/calls/readiness': { items: [] },
+  // backend/services/telephony/calls.py readiness() returns a bare list.
+  '/calls/readiness': [],
   '/calls/settings': {
     from_number: '',
     disclosure_template: '',

@@ -155,7 +155,10 @@ try {
   assert.equal(renames, 1);
   assert.equal(writes, 1);
   assert.equal(row.state.preserveBg, false);
-  await workspaces.getByRole('link', { name: 'Dubbing', exact: true }).click();
+  // Away from its own pages the Dubbing group is closed: open it, then follow its link from the
+  // group's popover (rendered outside the navigation landmark in the compact rail).
+  await workspaces.getByRole('button', { name: 'Dubbing', exact: true }).click();
+  await page.getByRole('link', { name: 'Dubbing', exact: true }).click();
   await openSaveForm();
   assert.equal(await page.locator('#project-name').inputValue(), 'Library renamed');
   await workspaces.getByRole('link', { name: 'Projects', exact: true }).click();
