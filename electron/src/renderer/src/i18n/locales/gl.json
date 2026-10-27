@@ -4458,5 +4458,15 @@
     "generating": "Agarda ata que remate a toma actual.",
     "name_required": "Introduza primeiro un nome.",
     "audio_missing": "Esta toma non ten ficheiro de audio para gardar."
+  },
+  "expression": {
+    "direction_label": "Dirección da interpretación",
+    "direction_ph": "p. ex. nervioso ao principio, despois emocionado",
+    "direction_help": "Aplícase a toda a toma, como guía para {{engine}}.",
+    "unsupported": "A emoción non está dispoñible con {{engine}}. IndexTTS2 ofrece emoción graduada; CosyVoice 3 e VoxCPM2 aceptan unha dirección escrita.",
+    "tags_hint": "Para momentos dentro dunha liña, engade reaccións como {{example}} desde Inserir no guión.",
+    "tags_unsupported": "{{engine}} lería en voz alta as etiquetas en gris como palabras.",
+    "guide": "Guía de fala expresiva",
+    "tip": "Consello: dálle forma á interpretación con Emoción, aquí abaixo, e engade reaccións como risas ou suspiros desde Inserir no guión."
   }
 }
