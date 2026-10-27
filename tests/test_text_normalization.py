@@ -36,6 +36,11 @@ _CHANGE_CASES = [
     ("English", "It is 3:30 now", "It is three thirty now"),
     ("English", "At 3:00 sharp", "At three o'clock sharp"),
     ("English", "At 12:05 sharp", "At twelve oh five sharp"),
+    # A 24-hour time on the hour is read in hundreds, not with "o'clock".
+    ("English", "Dinner at 19:00 sharp", "Dinner at nineteen hundred sharp"),
+    ("English", "Closes at 0:00 tonight", "Closes at zero hundred tonight"),
+    ("English", "At 12:00 sharp", "At twelve o'clock sharp"),
+    ("English", "At 18:30 sharp", "At eighteen thirty sharp"),
     ("English", "the 21st of May", "the twenty-first of May"),
     ("English", "It costs $5", "It costs five dollars"),
     ("English", "Just $1 more", "Just one dollar more"),
