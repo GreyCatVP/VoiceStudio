@@ -130,6 +130,14 @@ failing at spawn time; build one with
 `scripts/build-omnivoice-tts.sh --platform <slug>` or use the default
 in-process engine.
 
+**x86-64 CPUs:** Windows, Linux and Intel Mac builds compile every ggml CPU
+variant (`GGML_CPU_ALL_VARIANTS`) and pick the best one this processor supports
+at startup, so a binary built on a newer machine (for example one with AVX-512)
+also runs on older or AVX2-only CPUs ([#2780](https://github.com/debpalash/VoiceStudio/issues/2780)).
+A binary built some other way that stops with an *illegal instruction* is
+reported as such, and the engine shows *Unavailable* until that binary is
+rebuilt with `scripts/build-omnivoice-tts.sh` or replaced.
+
 **Linux ARM64 (Asahi Apple Silicon):** the `linux-aarch64` binary prefers
 GGML's Vulkan backend when built on a host with `glslc` and the Khronos
 SPIRV headers installed (Arch: `pacman -S shaderc spirv-headers`; Debian:

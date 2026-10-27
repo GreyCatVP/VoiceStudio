@@ -11,6 +11,12 @@ from services.performance_budget import TIERS as _PERFORMANCE_TIERS
 #: the backend gates and the renderer (via ``tts_tiered_engines``).
 TIERED_TTS_ENGINES = frozenset({"omnivoice", "omnivoice-subprocess"})
 
+#: ASR engines the performance tiers manage: the CTranslate2 Whisper runtime.
+#: Any other active ASR engine (MLX Whisper / Parakeet MLX on Apple Silicon,
+#: PyTorch Whisper on ROCm, or one the user picked) is kept: a preset must not
+#: move a Mac from its GPU engine to CPU faster-whisper.
+TIERED_ASR_ENGINES = frozenset({"faster-whisper", "faster-whisper-isolated", "whisperx"})
+
 
 _PERFORMANCE_PROFILE_KEY = "performance_profile"
 _PERFORMANCE_FAMILIES = (
@@ -155,6 +161,8 @@ def _activate_asr_model(tier: str) -> dict | None:
     if os.environ.get("OMNIVOICE_ASR_BACKEND") or prefs.is_env_shadowed(
         "ASR_MODEL_FASTER"
     ):
+        return None
+    if asr_backend.active_backend_id() not in TIERED_ASR_ENGINES:
         return None
     model = _tier_choice(
         _installed_ct2_models(), tier, size=lambda item: item.get("size_gb")

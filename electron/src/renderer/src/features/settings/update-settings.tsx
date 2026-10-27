@@ -16,7 +16,7 @@ import {
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { MarkdownLite } from '@/components/markdown-lite';
+import { InlineMarkdown, MarkdownLite } from '@/components/markdown-lite';
 import { appVersion, getBridge } from '@/components/bridge';
 import { dubSession, flushDubDraft, useDubSession } from '@/features/dub/dub-session';
 import { hasActiveAppWork, useAppActivityCount } from '@/lib/app-activity';
@@ -412,11 +412,7 @@ export function UpdateSettings() {
                     )}
                   </summary>
                   <div className="mt-3 space-y-4 pl-6 text-xs leading-5 text-muted-foreground">
-                    {release.intro && (
-                      <p className="font-medium text-foreground">
-                        {release.intro.replaceAll('**', '')}
-                      </p>
-                    )}
+                    {release.intro && <MarkdownLite text={release.intro} />}
                     {release.sections?.map((section, sectionIndex) => (
                       <section key={`${section.title || 'notes'}-${sectionIndex}`}>
                         {section.title && (
@@ -424,7 +420,9 @@ export function UpdateSettings() {
                         )}
                         <ul className="list-disc space-y-1.5 pl-4">
                           {section.bullets.map((bullet, bulletIndex) => (
-                            <li key={bulletIndex}>{bullet}</li>
+                            <li key={bulletIndex}>
+                              <InlineMarkdown text={bullet} />
+                            </li>
                           ))}
                         </ul>
                       </section>

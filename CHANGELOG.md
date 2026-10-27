@@ -8,6 +8,8 @@ metadata and the backend fallback mirror it.
 
 ## [Unreleased]
 
+## [0.5.7] — 2026-10-26
+
 **First, an apology.** This release took much longer than it should have. Urgent family matters kept me away for a while, and I'm sorry for the wait and for the issues that sat unanswered meanwhile. Thank you for your patience and for every report, fix and kind word in the meantime.
 
 **Welcome Shimul Debnath ([@velixio](https://github.com/velixio)) to the core team.** Shimul now helps maintain VoiceStudio — reviewing pull requests, triaging issues and keeping releases moving — so the project no longer waits on one person.
@@ -25,6 +27,8 @@ This release also adds an opt-in Beta update channel, a bottom player for takes,
 | macOS Apple Silicon | [DMG](https://github.com/debpalash/VoiceStudio/releases/download/v0.5.7/VoiceStudio-0.5.7-mac-arm64.dmg) |
 | macOS Intel | [DMG](https://github.com/debpalash/VoiceStudio/releases/download/v0.5.7/VoiceStudio-0.5.7-mac-x64.dmg) |
 | Linux x64 | [AppImage](https://github.com/debpalash/VoiceStudio/releases/download/v0.5.7/VoiceStudio-0.5.7-linux-x64.AppImage) · [deb](https://github.com/debpalash/VoiceStudio/releases/download/v0.5.7/VoiceStudio-0.5.7-linux-x64.deb) |
+| Android | [APK](https://github.com/debpalash/VoiceStudio/releases/download/v0.5.7/VoiceStudio-0.5.7-android.apk) · [AAB](https://github.com/debpalash/VoiceStudio/releases/download/v0.5.7/VoiceStudio-0.5.7-android.aab) |
+| iPhone | [Unsigned IPA](https://github.com/debpalash/VoiceStudio/releases/download/v0.5.7/VoiceStudio-0.5.7-ios-unsigned.ipa) (sideload with your own Apple ID) |
 
 **Upgrading:** Install over your existing Electron app; voices, projects and settings are kept. If setup asks, choose **Install local runtime** to refresh its dependencies.
 
@@ -48,6 +52,10 @@ This release also adds an opt-in Beta update channel, a bottom player for takes,
 
 ### Changed
 
+- Desktop downloads are now named `VoiceStudio-<version>-<platform>-<arch>` (no "Electron"); the install scripts still find older releases' files (#3504)
+- Every collapsible section uses the same chevron, labels like Target languages and Cast are no longer shouted in capitals (with several bad translations fixed), and Home's contributor avatars no longer leave a gap above the cards (#3497)
+- Calmer screens: header links sit beside search instead of looking like page titles, Transcribe and Stories stop repeating the same hint, "1 chapter" reads correctly, and the Directorial AI tool is described in plain words (#3493)
+- Dubbing is calmer: one-row source with a File actions menu, a preview of the loaded file, files without sound shown as a note instead of an error, and a tidier Dub into panel (#3465)
 - Workflows is easier to use: templates open from a picker, steps are added from a toolbar on the canvas, the name is edited in the header, and steps missing settings are flagged before you run (#3464)
 - Calmer title bar and sidebar: quieter Get Pro and Star buttons on one line, the page title shown once, a labelled speed/quality control with an Auto tooltip, and evenly sized navigation rows (#3454)
 - The Colab notebook now downloads the speech-to-text model during setup, so voices you clone in the web UI get a transcript right away (#3440) — thanks @Liularina!
@@ -228,6 +236,18 @@ This release also adds an opt-in Beta update channel, a bottom player for takes,
 
 ### Fixed
 
+- The Sherpa-ONNX engine loads Piper voices (such as Turkish) and lexicon-based VITS models instead of reporting "No model.onnx" (#3373) — thanks @MehmetinLove!
+- The desktop Sherpa-ONNX engine no longer asks you to accept licences for phone-only models (#3373) — thanks @MehmetinLove!
+- Runtime setup on a Mac asks for 5 GiB of free space instead of 9, since Mac builds download no CUDA libraries (#3503)
+- Dubbing keeps one-word replies and lines between speaker turns with the right speaker, and no line clones from audio with two voices (#3500)
+- Radeon RX 9060 / 9070 (RDNA4) owners on Linux are no longer told to remap their card onto RX 7000 kernels; the ROCm build runs them natively, and the AMD docs now cover RDNA4 and the Windows ROCm setup (#3418, #3499)
+- Choosing the China download region now downloads the locked PyPI packages from the Aliyun mirror, keeping every pinned hash and retrying from PyPI if the mirror fails; PyTorch wheels still come from PyTorch (#3498)
+- Full disk: transcription, generation and dubbing now say the disk is full and how to free space, instead of a generic internal error (#3495)
+- Settings → Updates says why in-app updates are off: a development build, your package manager, or the app store (#3494)
+- Settings → Updates shows the real version in development builds, lists release notes only up to the version you run, and shows the Stable/Beta switch there too (#3491)
+- Saving a voice in Voice design now confirms it with a "Voice profile saved" message (#3489)
+- Streamed previews of near-full-scale takes keep their AI-provenance watermark: a take is turned down just enough that marking it no longer pushes it past full scale, so the encoder cannot clip the mark away (#3468)
+- A model download started from Voice Cloning keeps its progress and Cancel after you pick a voice, and Voice Design no longer swaps away a take you just opened (#3467)
 - Loud streamed preview chunks are scaled to fit instead of clipped, and long renders no longer report a fast chunk as taking 0.0 s (#3466)
 - Reference passages trim leading and trailing silence before selection, so clones no longer start or end mid-pause (#3461) — thanks @alvig060121-afk!
 - Automatically selected reference passages are trimmed to the nearest pauses, so clones no longer start or end mid-word (#3461) — thanks @alvig060121-afk!
@@ -554,6 +574,8 @@ This release also adds an opt-in Beta update channel, a bottom player for takes,
 
 ### CI
 
+- The release helper opens a release pull request and tags `main` after it merges, instead of pushing to `main` (#3492)
+- Release builds no longer fail on the Intel Mac runner over a test that assumed the host can install the local runtime (#3490)
 - Avoid false stuck-loading reports when background polling overlaps UI crawler checks. (#3383)
 - Pull requests from forks wait for a maintainer's approval before CI uses any runner, so outside PRs can no longer queue the whole matrix unreviewed (#3341)
 - CI: the macOS release signing check retries Apple's staple validation, so a dropped connection no longer fails a tag run (#3330)

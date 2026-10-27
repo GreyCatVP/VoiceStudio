@@ -85,19 +85,12 @@ jobs:
           fi
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
-      # Linux-only: upstream `buildcpu.sh` enables `-DGGML_BLAS=ON` which
-      # requires a system BLAS implementation at cmake configure time.
-      - name: Linux system deps (BLAS for ggml-blas backend)
-        if: startsWith(matrix.platform, 'linux')
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libopenblas-dev pkg-config
-
       # linux-aarch64: let the build script's Vulkan path (Honeykrisp GPU
       # on Asahi) engage instead of silently falling back to CPU.
       - name: Vulkan dev deps (linux-aarch64 GPU backend)
         if: matrix.platform == 'linux-aarch64'
         run: |
+          sudo apt-get update
           sudo apt-get install -y glslc libvulkan-dev spirv-headers
 
       - name: Build omnivoice-tts

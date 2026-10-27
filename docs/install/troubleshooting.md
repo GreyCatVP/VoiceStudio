@@ -101,6 +101,16 @@ Streaming and HTTP generation failures can identify these causes. Electron and
 web clients show the recovery guidance in the selected language; API clients
 receive a stable `docs_topic` and a safe fallback message, never private exception text.
 
+In the desktop app every diagnosed topic (the full list is in
+`backend/core/failure.py`) shows a short message in the app language and, where
+the app can fix it, a button that does so: **Install speech-to-text model** and
+**Add transcript** for `REFERENCE_STT_MISSING`, **Free memory** for `GPU_OOM` and
+`HOST_MEMORY_EXHAUSTED`, **Open Storage** for a full or unwritable drive,
+**Choose device** for an unsupported GPU, **Open Audio tools** for a missing
+ffmpeg, **Add token** for Hugging Face access errors, and the matching Models
+page for missing or damaged models. **Open docs** and **Copy diagnostic** stay
+next to it, and the backend's English text stays under **Details**.
+
 | Topic | Recovery |
 | --- | --- |
 | `GPU_ARCH_UNSUPPORTED` | The installed PyTorch build cannot run kernels on this GPU. Select CPU in Settings → Performance & Device, or use a PyTorch build compatible with the GPU. |
@@ -116,7 +126,11 @@ Every unclassified 500 also carries `error_type` (the Python exception class, ne
 its message), and bug reports record it as "Backend error class" together with the
 "Backend failure topic". A reverse proxy that times out (`502`/`504` with its own HTML
 page) is reported as a proxy problem, not a VoiceStudio one: raise its read timeout
-(for nginx, `proxy_read_timeout`) for long generations. Choosing the best 15-second
+(for nginx, `proxy_read_timeout`) for long generations. Streamed generations
+(`/generate` with `stream=true`) and long-form renders (Audiobook, Stories, resume)
+send a keepalive every 15 seconds of silence (a blank NDJSON line or an SSE comment)
+and ask proxies not to buffer, so an idle cutoff such as Cloudflare's `524` does not
+end them while a slow chunk or chapter renders. Choosing the best 15-second
 window of a long reference clip happens before the generate time budget starts, so a
 slow CPU speech-to-text model no longer causes `TTS generate exceeded 300s`.
 
@@ -464,6 +478,14 @@ cu128 arch list captured in #1285 still carried `sm_61`.
 **Linked issue:** [#1931](https://github.com/debpalash/VoiceStudio/issues/1931)
 — thanks to the reporter for the full diagnosis, including the verification
 commands above.
+
+## 5c. OmniVoice is not preloaded at startup
+
+Startup only preloads the native OmniVoice model when OmniVoice is the selected
+TTS engine (and the host uses its native backend). Selecting another engine,
+such as VoxCPM2, leaves OmniVoice unloaded at startup to preserve memory for
+that engine. `OMNIVOICE_TTS_BACKEND`, when set, takes precedence over the saved
+engine choice. Models still load on demand when requested.
 
 ## 6. `uv venv` Python download fails (restricted network)
 
@@ -1231,6 +1253,13 @@ runtime's `.uv-cache` folder, and the next attempt reuses it, including after
 The next attempt deletes the unfinished parts a cancelled attempt left behind,
 so repeated retries do not fill the disk.
 
+**Resume after an interrupted setup** keeps the existing Python environment and
+installs only what is missing, from the same `.uv-cache`; it never evicts wheels
+that already finished downloading. A runtime whose setup finished is never shown
+as interrupted, even if an old setup marker was left behind in
+`runtime\project`: VoiceStudio sees that setup completed after it and opens
+normally.
+
 **What to do:**
 
 1. **If the bytes are still moving, let it run.** A stall notice only appears
@@ -1424,7 +1453,8 @@ the message:
 
 When the app recognises the cause it also names it in one line and puts the
 matching action first: **Choose another folder** for a missing environment, a
-write-permission error or a cloud-synced folder, **Copy diagnostics** for a
+write-permission error or a cloud-synced folder (installed app only; a source
+checkout gets **Retry**, which re-checks its `.venv` after `bun run setup:api`), **Copy diagnostics** for a
 native crash such as exit code `3221225477`, and **Retry** otherwise.
 
 The failure screen shows a single status pill (Starting, Recovering or Failed)
@@ -1462,15 +1492,15 @@ reconnecting automatically; the workspace stays usable.
   slowest because antivirus scans every new file; later starts are much faster.
 - **Installed app, Python environment deleted** (antivirus, disk cleanup, interrupted update): VoiceStudio rebuilds it by itself on the next launch with the normal setup progress screen, once per launch. If that repair fails the setup screen says so; check the engine log and press Retry. Your voices and projects are never touched.
 - **`The Python environment in <folder> is missing`** or **`… is incomplete:
-  <reason>`** (running from a source checkout) — run `bun run setup:api` in the
-  repository and let it finish (the message names the folder to open the terminal in; it is never taken from the terminal's working directory, so running from `C:\Windows\System32` does not matter). A folder without `pyproject.toml` is not a source checkout: install from the release installer instead. *Missing* means no `.venv` exists yet.
+  <reason>`** (running from a source checkout, e.g. `bun run dev`; an installed app never shows this message and repairs its own runtime from the setup screen) — run `bun run setup:api` in the
+  repository, let it finish, then press **Retry** (the message names the folder to open the terminal in; it is never taken from the terminal's working directory, so running from `C:\Windows\System32` does not matter). A folder without `pyproject.toml` is not a source checkout: install from the release installer instead. *Missing* means no `.venv` exists yet.
   *Incomplete* quotes the import that failed, e.g. `ModuleNotFoundError: No
   module named 'sentencepiece'` (setup did not finish: rerun it) or `ImportError:
   DLL load failed` (Windows: rerun setup, which installs the Visual C++
   runtime). If the folder is inside OneDrive, Dropbox, iCloud Drive or Google
   Drive, move the checkout to a plain local folder first: online-only
   placeholders and file locking break the Python environment. The same applies to `error loading dynamically imported module: http://localhost:3902/@fs/…/node_modules/.vite/deps/…` from a dev server running inside OneDrive (installed builds never load from a dev server).
-- **`EPERM: operation not permitted, rename …\.previous-backend`** — a scanner or OneDrive held the runtime folder while VoiceStudio refreshed it. The app retries for about 10 s, then updates the files in place; if it still fails, exclude the runtime folder from antivirus and quit any VoiceStudio left in Task Manager.
+- **`EPERM: operation not permitted, rename …\.previous-backend`** or **`… rename …\.incoming-backend -> …\backend`** — a scanner, OneDrive or a VoiceStudio backend still running held the runtime folder while VoiceStudio refreshed it. The app retries each rename, copy and cleanup step for about 10 s, then updates the files in place. If a file stays locked through all of that, setup says **Another program is using VoiceStudio's files**: pause OneDrive (or other sync apps), exclude the runtime folder from antivirus, quit any VoiceStudio left in Task Manager, then press Retry.
 
 A native crash (`3221225477`, `-1073741819`) right after pressing Generate
 shortly after launch was caused by the startup preload and the first generation
@@ -1521,6 +1551,15 @@ The import verification now prints `VOICESTUDIO_IMPORT=<module>` before loading
 each runtime module, and a crash names the module in the error (`the import
 check stopped while importing "<module>"`). Include that line from the setup log
 in your report: the last `VOICESTUDIO_IMPORT=` line is the module that crashed.
+
+If that module is `sentencepiece` (or another C++ library) and the system's
+Visual C++ runtime is older than 14.40, setup now says so: **This Windows
+system's Microsoft Visual C++ Redistributable (x64) is too old**, with the
+`MSVCP140.dll` path and version it found. Newer wheels such as sentencepiece
+0.2.2 are built with Visual Studio 2022 17.10 or later and crash with
+`3221225477` against an older `MSVCP140.dll`. Install the latest
+[Microsoft Visual C++ Redistributable (x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe)
+and press Retry; reinstalling the Python packages cannot update a system library.
 
 ### "Backend exited unexpectedly (exit code 3221225477)" while loading a model
 

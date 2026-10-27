@@ -1979,3 +1979,48 @@ def test_engines_dir_env_relocates_managed_roots(monkeypatch, tmp_path):
     elsewhere = tmp_path / "bigdrive"
     monkeypatch.setenv("OMNIVOICE_ENGINES_DIR", str(elsewhere))
     assert si.managed_root(spec) == elsewhere / spec.engine_id
+
+
+# ── missing C++ compiler (#3423) ───────────────────────────────────────────
+# CosyVoice builds PyWORLD from source; without build tools the install used
+# to fail with only "a network hiccup, re-run", which never helps.
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "error: Microsoft Visual C++ 14.0 or greater is required. Get it with "
+        "\"Microsoft C++ Build Tools\"",
+        "xcrun: error: invalid active developer path (/Library/Developer/CommandLineTools)",
+        "error: command 'c++' failed: No such file or directory",
+    ],
+)
+def test_missing_compiler_names_the_build_tools(monkeypatch, line):
+    from collections import deque
+
+    spec = si.get_spec("cosyvoice")
+    monkeypatch.setattr(si, "_locate_uv", lambda: "/fake/uv")
+    monkeypatch.setattr(si, "_host_family", lambda: "cpu")
+
+    def failing_run(job, argv, timeout=None, env=None):
+        job["_last_run_output"] = deque(["Building pyworld", line])
+        return 1
+
+    monkeypatch.setattr(si, "_run_logged", failing_run)
+    with pytest.raises(si._StepError) as err:
+        si._step_install_deps(spec, si._new_job("cosyvoice"))
+    assert "no C++ compiler" in str(err.value)
+    assert "compiler was found" in err.value.remediation
+    assert "network hiccup" not in err.value.remediation
+
+
+def test_missing_compiler_remediation_per_platform():
+    assert "Build Tools" in si._missing_compiler_remediation("win32")
+    assert "xcode-select --install" in si._missing_compiler_remediation("darwin")
+    assert "build-essential" in si._missing_compiler_remediation("linux")
+    assert not si._output_shows_missing_compiler(["connection reset by peer"])
+    # An installed compiler that fails to build is a build error, not a
+    # missing toolchain.
+    assert not si._output_shows_missing_compiler([
+        "pyworld.cpp(12): error C2065: 'foo': undeclared identifier",
+        "error: command 'C:\\BuildTools\\VC\\bin\\cl.exe' failed with exit code 2",
+    ])

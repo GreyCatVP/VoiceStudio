@@ -1068,6 +1068,54 @@ def _output_shows_disk_full(lines: Iterable[str]) -> bool:
     return is_disk_full_error("\n".join(lines))
 
 
+# Output a source build prints when no C/C++ compiler is installed. CosyVoice
+# builds PyWORLD from source and dots.tts builds pynini, so on a machine
+# without build tools the one-click install died with only "a network hiccup,
+# re-run" (#3423). Lower-cased substrings from setuptools/distutils, MSVC
+# detection, Xcode's stub tools and meson/CMake.
+_MISSING_COMPILER_MARKERS = (
+    "microsoft visual c++ 14.0 or greater is required",
+    "unable to find vcvarsall.bat",
+    "xcrun: error: invalid active developer path",
+    "no developer tools were found",
+    "unable to execute 'gcc'",
+    "unable to execute 'g++'",
+    "unable to execute 'c++'",
+    "command 'gcc' failed: no such file",
+    "command 'g++' failed: no such file",
+    "command 'c++' failed: no such file",
+    "unknown compiler(s)",
+    "no cmake_cxx_compiler could be found",
+    "no cmake_c_compiler could be found",
+)
+
+
+def _output_shows_missing_compiler(lines: Iterable[str]) -> bool:
+    """True when a failing build's own output says no compiler is installed."""
+    text = "\n".join(lines).lower()
+    return any(marker in text for marker in _MISSING_COMPILER_MARKERS)
+
+
+def _missing_compiler_remediation(platform: str = sys.platform) -> str:
+    if platform == "win32":
+        tools = (
+            "install Visual Studio Build Tools with the \"Desktop development "
+            "with C++\" workload (free from Microsoft)"
+        )
+    elif platform == "darwin":
+        tools = "run `xcode-select --install` to add Apple's Command Line Tools"
+    else:
+        tools = (
+            "install your distribution's C++ build tools (for example "
+            "`sudo apt install build-essential`)"
+        )
+    return (
+        "This engine builds part of its code on your machine and no C++ "
+        f"compiler was found. To fix it, {tools}, then re-run the install. It "
+        "resumes from where it stopped."
+    )
+
+
 def _log(job: dict, line: str) -> None:
     line = line.rstrip()
     if line:
@@ -1658,6 +1706,11 @@ def _step_install_deps(spec: SidecarSpec, job: dict) -> None:
         if _output_shows_disk_full(job.get("_last_run_output") or ()):
             raise _StepError(f"uv pip install failed (exit {rc}): no space left on device.",
                              _DISK_FULL_REMEDIATION)
+        if _output_shows_missing_compiler(job.get("_last_run_output") or ()):
+            raise _StepError(
+                f"uv pip install failed (exit {rc}): no C++ compiler found.",
+                _missing_compiler_remediation(),
+            )
         hint = (
             "Usually a network hiccup — re-run the install to resume. Behind a "
             "proxy, set HTTPS_PROXY in Settings → Environment first."

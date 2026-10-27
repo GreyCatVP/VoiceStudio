@@ -6,6 +6,7 @@ import { expect, it, vi } from 'vitest';
 // opening Settings never swaps it for a different panel.
 
 const route = vi.hoisted(() => ({ pathname: '/clone' }));
+const platform = vi.hoisted(() => ({ mac: false }));
 vi.mock('@tanstack/react-router', () => ({
   useRouterState: ({ select }: any) => select({ location: route }),
   Outlet: () => <div data-testid="outlet" />,
@@ -19,7 +20,7 @@ vi.mock('./system-notifications', () => ({ SystemNotifications: () => null }));
 vi.mock('./account-corner', () => ({ AccountCorner: () => <div data-testid="account-corner" /> }));
 vi.mock('@/components/command-palette', () => ({ CommandPalette: () => null }));
 vi.mock('../backend-gate', () => ({ BackendGate: ({ children }: any) => <>{children}</> }));
-vi.mock('../bridge', () => ({ isMac: () => false }));
+vi.mock('../bridge', () => ({ isMac: () => platform.mac }));
 vi.mock('@/hooks/use-backend-status', () => ({ useBackendStatus: () => ({ stage: 'ready' }) }));
 import { AppShell } from './app-shell';
 
@@ -40,4 +41,18 @@ it.each(['/clone', '/settings/account'])('shows the signed-in corner badge on %s
   route.pathname = pathname;
   render(<AppShell />);
   expect(screen.getByTestId('account-corner')).toBeInTheDocument();
+});
+
+it.each([
+  ['/pro', true],
+  ['/integrations', true],
+  ['/settings/general', false],
+])('gives %s headers clearance from the macOS account corner: %s', (pathname, padded) => {
+  platform.mac = true;
+  route.pathname = pathname;
+  const { container } = render(<AppShell />);
+  expect(container.firstElementChild!.classList.contains('macos-notification-safe-area')).toBe(
+    padded,
+  );
+  platform.mac = false;
 });

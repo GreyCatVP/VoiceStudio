@@ -57,6 +57,21 @@ DIRECTML_MARKER = "DirectML device present"
 # their machine simply has no GPU.
 UNUSABLE_GPU_MARKER = "present but PyTorch cannot use it"
 
+
+def cuda_forced() -> bool:
+    """``OMNIVOICE_FORCE_CUDA`` asks for CUDA even when the installed wheel has
+    no kernels for the card (#3067).
+
+    Shared by the routing badge (``services.engine_routing``) and the GPU
+    report. ``services.model_manager.get_best_device`` reads the same flag
+    with the same truthy values through its ``_env_flag`` helper (kept
+    separate to avoid an import cycle); tests/test_engine_routing.py checks
+    the two agree."""
+    return os.environ.get("OMNIVOICE_FORCE_CUDA", "").strip().lower() in {
+        "1", "true", "yes", "on",
+    }
+
+
 # NOTE: the NVIDIA driver-version check (CUDA 12.x minor-compat floor: R525.60.13 Linux / R528.33 Windows)
 # is intentionally NOT done here — it requires shelling to ``nvidia-smi``, which
 # would put a subprocess on the cold-start probe path. That check stays in
@@ -846,4 +861,5 @@ __all__ = [
     "KERNEL_RISK_MARKER",
     "DIRECTML_MARKER",
     "UNUSABLE_GPU_MARKER",
+    "cuda_forced",
 ]

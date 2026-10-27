@@ -43,7 +43,9 @@ It differs from upstream's own setup:
   third-party package index. Upstream uses them for extra speed on Linux;
   synthesis works without them. PyWORLD requires a C++ compiler: Xcode Command
   Line Tools on macOS, Visual Studio Build Tools with C++ on Windows, or the
-  distribution’s C++ build tools on Linux. SoX is not needed.
+  distribution’s C++ build tools on Linux. Without one, the install stops
+  with "no C++ compiler found" and names the tools for your system; install
+  them and click **Install** again to resume. SoX is not needed.
 - **Patched dependencies.** Where upstream pins a release with a published
   security advisory (diffusers, hydra-core, lightning, modelscope, onnx,
   protobuf, transformers), the install uses the fixed release. That set was

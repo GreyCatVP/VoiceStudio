@@ -396,6 +396,16 @@ def transcribe_request_kwargs(backend, options: dict) -> dict:
     }
 
 
+#: Sequential Whisper decoders (faster-whisper, MLX Whisper) feed each 30 s
+#: window the previous window's text by default. On long audio one
+#: hallucinated window is then repeated through the rest of the file, so we
+#: decode every window on its own. Clips under 30 s are a single window, so
+#: short dictation and reference clips decode exactly as before. WhisperX and
+#: the batched/transformers pipelines already decode windows independently.
+#: The ASR sidecar (engines/_asr_sidecar/main.py) applies the same option.
+WHISPER_LONG_FORM_OPTIONS = {"condition_on_previous_text": False}
+
+
 def whisper_request_options(language, initial_prompt, temperature, task) -> dict:
     """Whisper-family decode kwargs for the options that were actually set."""
     opts: dict = {}
@@ -1287,6 +1297,7 @@ class FasterWhisperBackend(ASRBackend):
             word_timestamps=word_timestamps,
             vad_filter=True,  # built-in Silero VAD — cleaner segment starts
             **asr_decode_defaults(),
+            **WHISPER_LONG_FORM_OPTIONS,
             **whisper_request_options(language, initial_prompt, temperature, task),
         )
         segments = list(segments_iter)
@@ -1409,6 +1420,7 @@ class MLXWhisperBackend(ASRBackend):
             audio,
             path_or_hf_repo=_local_model_source(self._model_name),
             word_timestamps=word_timestamps,
+            **WHISPER_LONG_FORM_OPTIONS,
             **whisper_request_options(language, initial_prompt, temperature, task),
         )
         # Forced alignment, same as WhisperX (#1127). On Apple Silicon this
@@ -3224,9 +3236,14 @@ def _licence_accepted(repo_id: str | None) -> bool:
 
 def load_active_asr_backend(
     *, asr_pipe=None, require_installed: bool = False, defer_pytorch: bool = False,
+    warm: bool = False,
 ) -> ASRBackend:
     """:func:`get_active_asr_backend` + eager ``ensure_loaded()``, degrading
     past backends whose deep import chain is broken (#1185).
+
+    ``warm=True`` reuses one loaded instance across requests (see
+    :func:`_load_warm_transcription_backend`); dub and batch keep private
+    instances because they release ASR before TTS loads.
 
     ``is_available()`` is a shallow probe (``import whisperx`` succeeds even
     with broken transitive deps, because pyannote/pytorch_lightning only
@@ -3251,6 +3268,8 @@ def load_active_asr_backend(
     the TTS model's installed-only fallback, without eagerly loading a second
     copy that the reference caller would immediately discard.
     """
+    if warm and asr_pipe is None and not defer_pytorch:
+        return _load_warm_transcription_backend(require_installed=require_installed)
     from core.scrub import scrub_text
     tried: set[str] = set()
     while True:
@@ -3310,6 +3329,72 @@ def load_active_asr_backend(
                 "(%s) — marking it unavailable and falling through to the "
                 "next engine (#1185)", bid, e,
             )
+
+
+# ── Warm transcription backend ──────────────────────────────────────────────
+# `get_active_asr_backend()` builds a fresh instance per call for the whisper
+# family, so every accurate / reference / OpenAI-route / voice-convert
+# transcription reloaded the weights (seconds of load for a second of
+# decoding). Those request paths opt in with ``warm=True`` and share one loaded
+# instance per (engine, model). It is released like the warm dictation ASR: by
+# the idle worker, before TTS loads or generates, and by the Unload control.
+# Releasing only drops this reference, so a request still holding the instance
+# finishes normally and the weights are freed once it lets go.
+_transcribe_backend: ASRBackend | None = None
+_transcribe_backend_key: tuple | None = None
+_transcribe_last_used: float = 0.0
+_transcribe_backend_lock = threading.Lock()
+
+
+def _backend_identity(backend: ASRBackend) -> tuple:
+    """What a warm instance was loaded for: a Settings change of engine or
+    model makes the next request load the new selection."""
+    name = getattr(backend, "_model_name", None)
+    if callable(name):
+        try:
+            name = name()
+        except Exception:  # noqa: BLE001 — identity only, never fatal
+            name = None
+    spec_id = getattr(getattr(backend, "spec", None), "id", None)
+    return (type(backend), getattr(backend, "id", None), str(name or ""), str(spec_id or ""))
+
+
+def _load_warm_transcription_backend(*, require_installed: bool) -> ASRBackend:
+    global _transcribe_backend, _transcribe_backend_key, _transcribe_last_used
+    selected = get_active_asr_backend()
+    key = _backend_identity(selected)
+    with _transcribe_backend_lock:
+        cached = _transcribe_backend if _transcribe_backend_key == key else None
+    if cached is not None:
+        ensure_backend_licence(cached)  # per use: a revoked acceptance applies now
+        with _transcribe_backend_lock:
+            _transcribe_last_used = time.monotonic()
+        return cached
+    backend = load_active_asr_backend(require_installed=require_installed)
+    with _transcribe_backend_lock:
+        _transcribe_backend = backend
+        _transcribe_backend_key = _backend_identity(backend)
+        _transcribe_last_used = time.monotonic()
+    return backend
+
+
+def warm_transcription_backend() -> ASRBackend | None:
+    """The warm transcription instance, if one is loaded (listing only)."""
+    return _transcribe_backend
+
+
+def release_transcription_backend(idle_s: float = 0.0, *, now: float | None = None) -> bool:
+    """Drop the warm transcription instance once unused for ``idle_s`` seconds.
+    Returns True when one was released. Never raises."""
+    global _transcribe_backend, _transcribe_backend_key
+    now = time.monotonic() if now is None else now
+    with _transcribe_backend_lock:
+        if _transcribe_backend is None or now - _transcribe_last_used < idle_s:
+            return False
+        backend = _transcribe_backend
+        _transcribe_backend, _transcribe_backend_key = None, None
+    logger.info("Releasing the warm transcription ASR (%s).", type(backend).__name__)
+    return True
 
 
 # ── Reference-transcript cache (#1032) ──────────────────────────────────────

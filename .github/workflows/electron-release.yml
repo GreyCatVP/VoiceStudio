@@ -308,8 +308,17 @@ jobs:
             electron/release/electron-*.yml
             electron/release/store-artifact-manifest-*.json
 
+  # Both phone apps are required on the same tag as desktop. App Store uploads
+  # remain separate; GitHub users sideload the unsigned IPA with their Apple ID.
+  mobile:
+    needs: validate
+    uses: ./.github/workflows/mobile-release.yml
+    with:
+      release_ref: ${{ inputs.release_tag || github.ref_name }}
+    secrets: inherit
+
   release:
-    needs: [validate, package]
+    needs: [validate, package, mobile]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -330,6 +339,16 @@ jobs:
           pattern: electron-release-*
           merge-multiple: true
           path: release-assets
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: VoiceStudio-*
+          path: phone-assets
+      - name: Collect phone binaries
+        run: |
+          VERSION="${TAG#v}"
+          cp phone-assets/VoiceStudio-android-release/VoiceStudio.apk "release-assets/VoiceStudio-${VERSION}-android.apk"
+          cp phone-assets/VoiceStudio-android-release/VoiceStudio.aab "release-assets/VoiceStudio-${VERSION}-android.aab"
+          cp phone-assets/VoiceStudio-ios-unsigned/VoiceStudio-unsigned.ipa "release-assets/VoiceStudio-${VERSION}-ios-unsigned.ipa"
       - name: Validate all platforms before creating a release
         run: |
           python3 scripts/prepare_electron_release.py --assets release-assets --tag "$TAG" --repo "$GITHUB_REPOSITORY"
@@ -357,7 +376,18 @@ jobs:
             "repos/$GITHUB_REPOSITORY/contents/scripts/release_signing_notes.py?ref=$GITHUB_SHA" \
             > "$RUNNER_TEMP/release_signing_notes.py"
           # The table leads the notes so downloaders see it before the changelog.
-          { python3 "$RUNNER_TEMP/release_signing_notes.py" release-signing; echo; cat release-assets/RELEASE_NOTES.md; } > "$RUNNER_TEMP/RELEASE_NOTES.md"
+          {
+            python3 "$RUNNER_TEMP/release_signing_notes.py" release-signing
+            echo
+            echo '### Phone downloads'
+            echo
+            BASE="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/VoiceStudio-${TAG#v}"
+            echo "Android: [signed APK](${BASE}-android.apk) · [Play bundle](${BASE}-android.aab)."
+            echo
+            echo "iPhone: [unsigned sideload IPA](${BASE}-ios-unsigned.ipa). Sign with your own Apple ID to install; this is not a TestFlight build."
+            echo
+            cat release-assets/RELEASE_NOTES.md
+          } > "$RUNNER_TEMP/RELEASE_NOTES.md"
           mv "$RUNNER_TEMP/RELEASE_NOTES.md" release-assets/RELEASE_NOTES.md
       - name: Create or update draft
         run: |

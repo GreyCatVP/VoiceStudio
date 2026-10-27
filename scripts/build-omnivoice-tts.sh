@@ -77,7 +77,7 @@ git -C "$WORK/src" submodule update --init --recursive
 
 cd "$WORK/src"
 
-# A dynamically-linked build (buildcpu.sh, or cmake when it finds BLAS)
+# A dynamically-linked build (the portable x86-64 CPU or Vulkan build)
 # leaves the ggml runtime as shared libraries inside the build tree; only
 # copying the executable ships a binary that dies on first spawn with
 # exit 127 — "libggml.so.0: cannot open shared object file" — because the
@@ -121,6 +121,19 @@ built_windows_exe() {
     return 1
 }
 
+# x86-64 CPU builds must run on every x86-64 CPU, not just the build host.
+# A plain configure defaults to GGML_NATIVE=ON, compiling for the CI runner's
+# CPU (AVX-512 on current hosted runners); the shipped runtime then dies with
+# an illegal instruction on older or AVX2-only CPUs (#2780). Instead build
+# every CPU variant as a loadable backend and let ggml pick the best one the
+# host supports at startup (the same flags the Vulkan path uses).
+portable_x86_cpu_build() {
+    cmake -B build -DCMAKE_BUILD_TYPE=Release \
+        -DGGML_BACKEND_DL=ON -DBUILD_SHARED_LIBS=ON \
+        -DGGML_NATIVE=OFF -DGGML_CPU_ALL_VARIANTS=ON "$@"
+    cmake --build build --config Release -j
+}
+
 OUT_NAME="omnivoice-tts-$PLATFORM"
 case "$PLATFORM" in
     windows-x86_64) OUT_NAME="$OUT_NAME.exe" ;;
@@ -130,8 +143,9 @@ case "$PLATFORM" in
     linux-x86_64|linux-aarch64)
         if ! try_vulkan_build; then
             rm -rf build
-            if [[ "$PLATFORM" == linux-x86_64 && -x ./buildcpu.sh ]]; then
-                ./buildcpu.sh
+            if [[ "$PLATFORM" == linux-x86_64 ]]; then
+                # Not upstream buildcpu.sh: it compiles for the build host.
+                portable_x86_cpu_build
             else
                 cmake -B build -DCMAKE_BUILD_TYPE=Release
                 cmake --build build --config Release -j
@@ -143,8 +157,7 @@ case "$PLATFORM" in
     windows-x86_64)
         # MSYS / git-bash uses the runner's configured MSVC toolchain.
         if ! try_vulkan_build; then
-            cmake -B build -DCMAKE_BUILD_TYPE=Release
-            cmake --build build --config Release -j
+            portable_x86_cpu_build
         fi
         exe="$(built_windows_exe)"
         cp -v "$exe" "$BIN_DIR/$OUT_NAME"
@@ -152,8 +165,7 @@ case "$PLATFORM" in
         ;;
     darwin-x86_64)
         # x86_64 Macs build the CPU variant; Metal on Intel is undocumented.
-        cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=x86_64
-        cmake --build build --config Release -j
+        portable_x86_cpu_build -DCMAKE_OSX_ARCHITECTURES=x86_64
         cp -v build/omnivoice-tts "$BIN_DIR/$OUT_NAME"
         copy_shared_libs
         ;;

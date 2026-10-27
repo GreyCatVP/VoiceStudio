@@ -26,6 +26,12 @@ import re
 _RELEASE_RE = re.compile(r"^##\s+\[(?P<version>[^\]]+)\]\s*(?:[—–-]\s*(?P<date>.+?))?\s*$")
 _SECTION_RE = re.compile(r"^###\s+(?P<title>.+?)\s*$")
 _BULLET_RE = re.compile(r"^\s*[-*]\s+(?P<text>.*\S)\s*$")
+#: ``| a | b |`` download-table rows and ``![alt](src)`` images belong to the
+#: GitHub release page, not the in-app notes.
+_TABLE_ROW_RE = re.compile(r"^\|.*\|$")
+_IMAGE_ONLY_RE = re.compile(r"^!\[[^\]]*\]\([^)\s]*\)$")
+#: A bold-only label paragraph (``**Download**``) that introduces a table.
+_TABLE_LABEL_RE = re.compile(r"^\*\*[^*]+\*\*:?$")
 
 
 def changelog_path() -> str | None:
@@ -120,6 +126,18 @@ def parse_changelog(
 
         line = raw.strip()
         if not line:
+            bullet_open = False
+            intro_new_para = True
+            continue
+
+        if _TABLE_ROW_RE.match(line) or _IMAGE_ONLY_RE.match(line):
+            if (
+                _TABLE_ROW_RE.match(line)
+                and section is None
+                and intro_parts
+                and _TABLE_LABEL_RE.match(intro_parts[-1])
+            ):
+                intro_parts.pop()
             bullet_open = False
             intro_new_para = True
             continue

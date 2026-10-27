@@ -5,6 +5,7 @@ import {
   useState,
   type CSSProperties,
   type ReactNode,
+  type RefObject,
 } from 'react';
 import { PanelLeftCloseIcon, PanelLeftOpenIcon, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -46,6 +47,27 @@ function useTrafficLightInset(enabled: boolean) {
   return [ref, inset] as const;
 }
 import { MAC_TRAFFIC_LIGHTS_INLINE_END } from '@shared/utils/windowChrome';
+import { paneTitleInShell } from '@/components/app-shell/workspace-header';
+
+/** Whether the page header above already shows this pane's title. */
+function useTitleInShell(row: RefObject<HTMLElement | null>, title: string): boolean {
+  const [inShell, setInShell] = useState(false);
+  useLayoutEffect(() => {
+    const node = row.current;
+    if (!node) return;
+    const check = () => setInShell(paneTitleInShell(node, title));
+    check();
+    const heading = node
+      .closest('[data-slot="workspace-content"]')
+      ?.querySelector('[data-slot="workspace-header"]');
+    if (!heading || typeof MutationObserver === 'undefined') return;
+    // Only the header is watched (its title changes with language), never the page.
+    const observer = new MutationObserver(check);
+    observer.observe(heading, { subtree: true, childList: true, characterData: true });
+    return () => observer.disconnect();
+  }, [row, title]);
+  return inShell;
+}
 
 const WIDTHS = {
   default: { minimum: 248, initial: 280, maximum: 515, reserve: 480 },
@@ -106,6 +128,7 @@ export function SecondarySidebar({
   const collapsed = controlledCollapsed ?? uncontrolledCollapsed;
   // Collapsed, the header row is an empty drag strip, so nothing needs to clear the lights.
   const [headerRef, lightsInset] = useTrafficLightInset(isMac() && !fullscreen && !collapsed);
+  const titleInShell = useTitleInShell(headerRef, title);
   const [view, setView] = useState<'controls' | 'library'>('controls');
   const [libraryVisited, setLibraryVisited] = useState(false);
   const tabsId = useId();
@@ -229,12 +252,19 @@ export function SecondarySidebar({
             <span className="grid size-7 shrink-0 place-items-center rounded-lg border border-border/45 bg-background/50 text-primary shadow-[inset_0_1px_0_rgb(255_255_255/7%)]">
               <Icon aria-hidden="true" className="size-4" />
             </span>
+            {/* The page header already names the page top left; a same-named pane keeps
+                its name for assistive tech only. */}
             <span
-              className="min-w-0 flex-1 truncate text-sm font-semibold tracking-[-0.014em] text-foreground/95"
+              data-slot="secondary-sidebar-title"
+              className={cn(
+                'min-w-0 flex-1 truncate text-sm font-semibold tracking-[-0.014em] text-foreground/95',
+                titleInShell && 'sr-only',
+              )}
               title={title}
             >
               {title}
             </span>
+            {titleInShell && <span className="flex-1" aria-hidden="true" />}
             {meta !== undefined && meta !== null && (
               <span className="shrink-0 rounded-md border border-border/40 bg-muted/55 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
                 {meta}

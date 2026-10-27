@@ -260,6 +260,12 @@ def _check_gpu_routing() -> dict:
                           "short, or pick a lighter engine.")
         return _check("gpu_routing", "GPU routing", OK, f"{engine} -> {dev} (accelerated)")
     if status == "cpu_fallback":
+        if reason and KERNEL_RISK_MARKER in reason:  # wheel lacks this GPU's arch (#3067)
+            return _check("gpu_routing", "GPU routing", WARN,
+                          f"{engine} runs on CPU: {reason}",
+                          "The installed PyTorch build has no kernels for this GPU's "
+                          "architecture, so a driver update will not help. Install a "
+                          "PyTorch build that covers it, or continue on CPU (slower).")
         return _check("gpu_routing", "GPU routing", WARN,
                       f"{engine} runs on CPU: {reason or 'no GPU path for this host'}",
                       "Pick an engine that supports this host's GPU for a big speedup, "

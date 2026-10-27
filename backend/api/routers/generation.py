@@ -36,7 +36,6 @@ from services.model_acceptance import ModelLicenceNotAccepted
 from core import event_bus
 from core.render_trace import call as trace_call
 from core.logging_utils import log_safe
-from omnivoice.utils.voice_design import heal_design_instruct
 from core.browser_guard import reject_cross_site_get
 
 router = APIRouter()
@@ -274,19 +273,14 @@ def _design_recipe_json(raw: Optional[str]) -> Optional[str]:
     )
 
 
-def _profile_instruct(row):
-    """Validator-safe instruct for a stored profile row.
+def _profile_instruct(row, engine_id=None):
+    """Engine-appropriate stored instruction (legacy tags or native recipe).
 
-    Sanitizes the persisted instruct (dropping the ``"[object Object]"``
-    sentinel / freeform prose that older builds saved) and, for a design row,
-    rebuilds the tags from ``vd_states`` when the stored value is unusable — so
-    a poisoned/legacy profile never 400-s generation (#550 #571 #594 #596).
+    Legacy records retain the OmniVoice sanitizer. Only profiles that
+    explicitly saved a validated recipe may supply free-form descriptions.
     """
-    try:
-        vd = row["vd_states"]
-    except (KeyError, IndexError):
-        vd = None
-    return heal_design_instruct(row["instruct"], vd)
+    from services.voice_design_profiles import profile_instruct
+    return profile_instruct(row, engine_id)
 
 
 def _design_instruct_key(value):
@@ -303,7 +297,7 @@ def _design_instruct_key(value):
     )
 
 
-def _design_request_diverges(row, *, instruct=None, seed=None):
+def _design_request_diverges(row, *, instruct=None, seed=None, engine_id=None):
     """True when a request edits a design profile instead of re-rendering it.
 
     A design profile's rendered sample *is* the voice it was saved with. A
@@ -319,6 +313,7 @@ def _design_request_diverges(row, *, instruct=None, seed=None):
         stored = {
             _design_instruct_key(row["instruct"]),
             _design_instruct_key(_profile_instruct(row)),
+            _design_instruct_key(_profile_instruct(row, engine_id)),
         }
         if requested not in stored:
             return True
@@ -363,7 +358,10 @@ def _conditioning_refusal(backend_cls, *, profile_id=None, has_ref_audio=False,
                 "SELECT * FROM voice_profiles WHERE id=?", (profile_id,)
             ).fetchone()
         if row is not None:
-            cond = _resolve_profile_conditioning(row, instruct=instruct, seed=seed)
+            cond = _resolve_profile_conditioning(
+                row, instruct=instruct, seed=seed,
+                engine_id=getattr(backend_cls, "id", None),
+            )
             reference = bool(cond["ref_audio_path"])
             designing = designing or cond["kind"] == "design"
     name = getattr(backend_cls, "display_name", None) or getattr(backend_cls, "id", "This engine")
@@ -386,7 +384,7 @@ def _conditioning_refusal(backend_cls, *, profile_id=None, has_ref_audio=False,
 
 
 def _resolve_profile_conditioning(row, *, ref_text=None, instruct=None,
-                                  seed=None, language=None):
+                                  seed=None, language=None, engine_id=None):
     """Resolve a ``voice_profiles`` row into generation conditioning.
 
     Extracted verbatim from /generate's inline profile-resolution block so
@@ -427,12 +425,13 @@ def _resolve_profile_conditioning(row, *, ref_text=None, instruct=None,
     locked_take = bool(row["is_locked"] and row["locked_audio_path"])
     if profile_kind == "design" and _design_request_diverges(
         row, instruct=instruct, seed=None if locked_take else seed,
+        engine_id=engine_id,
     ):
         # Design from the request's attributes and seed; only the gaps it
         # left (an omitted instruct or seed) come from the profile.
         out["diverged"] = True
         if not out["instruct"]:
-            out["instruct"] = _profile_instruct(row)
+            out["instruct"] = _profile_instruct(row, engine_id)
         if out["seed"] is None and row["seed"] is not None:
             out["seed"] = row["seed"]
     elif row["is_locked"] and row["locked_audio_path"]:
@@ -440,7 +439,7 @@ def _resolve_profile_conditioning(row, *, ref_text=None, instruct=None,
         if not out["ref_text"]:
             out["ref_text"] = row["ref_text"]
         if not out["instruct"]:
-            out["instruct"] = _profile_instruct(row)
+            out["instruct"] = _profile_instruct(row, engine_id)
         if out["seed"] is None and row["seed"] is not None:
             out["seed"] = row["seed"]
     elif profile_kind == "design":
@@ -450,14 +449,14 @@ def _resolve_profile_conditioning(row, *, ref_text=None, instruct=None,
         if out["ref_audio_path"] and not out["ref_text"] and row["ref_text"]:
             out["ref_text"] = row["ref_text"]
         if not out["instruct"]:
-            out["instruct"] = _profile_instruct(row)
+            out["instruct"] = _profile_instruct(row, engine_id)
         if out["seed"] is None and row["seed"] is not None:
             out["seed"] = row["seed"]
     elif row["instruct"] and not row["is_locked"] and not row["ref_audio_path"]:
         # Legacy design-shaped row (pre-0004 archetype materialization failure
         # path): instruct-only conditioning.
         if not out["instruct"]:
-            out["instruct"] = _profile_instruct(row)
+            out["instruct"] = _profile_instruct(row, engine_id)
         if out["seed"] is None and row["seed"] is not None:
             out["seed"] = row["seed"]
     else:
@@ -538,7 +537,8 @@ def _wants_edge_trim(effect_preset, duration=None):
     return (effect_preset or "broadcast") != "raw" and not duration
 
 
-def _render_with_pauses(gen_span, segments, sample_rate, *, trim_spans=False):
+def _render_with_pauses(gen_span, segments, sample_rate, *, trim_spans=False,
+                        max_chunk_chars=0, crossfade_ms=0, dropped_sink=None):
     """Synthesize ``[(text, pause_ms), ...]`` spans and stitch silence between
     them (issue #276).
 
@@ -550,17 +550,46 @@ def _render_with_pauses(gen_span, segments, sample_rate, *, trim_spans=False):
     requested, matching the audio tensor's channel dims / dtype / device.
     Returns the concatenated waveform. Kept model-free (``gen_span`` is injected)
     so the stitching is unit-testable without loading the TTS model.
+
+    A span longer than ``max_chunk_chars`` is split with the same sentence
+    splitter as marker-free text and its chunks crossfaded, exactly like the
+    no-pause path: a pause marker does not make the text around it short, and
+    a 1,000+ char span sent in one shot degrades the same way unchunked text
+    does. Each chunk of a split span is rendered with
+    ``gen_span(chunk, chunk_index=k)`` where ``k`` counts engine calls across
+    the whole input, so callers can derive a per-chunk seed. A span that fits
+    keeps the plain ``gen_span(text)`` call. ``max_chunk_chars <= 0`` disables
+    splitting.
     """
     import torch
 
+    from services.chunked_tts import concatenate_audio_chunks, split_text_into_chunks
+
     items = []  # ('a', tensor) for audio, ('s', n_samples) for silence
+    calls = 0  # engine calls so far — the chunk index handed to gen_span
     for span_text, pause_ms in segments:
         if span_text and span_text.strip():
-            audio = gen_span(span_text)
-            if trim_spans:
-                audio = _trim_output_edges(audio, sample_rate)
-            items.append(("a", audio))
-            _note_generate_progress()
+            chunks = split_text_into_chunks(span_text, max_chunk_chars) if max_chunk_chars > 0 else [span_text]
+            if len(chunks) > 1:
+                parts = []
+                for chunk_text in chunks:
+                    parts.append(gen_span(chunk_text, chunk_index=calls))
+                    calls += 1
+                    _note_generate_progress()
+                audio = concatenate_audio_chunks(
+                    parts, sample_rate, crossfade_ms, texts=chunks, sink=dropped_sink)
+                if all(part is None or part.shape[-1] == 0 for part in parts):
+                    # Every chunk came back empty (already reported above): leave
+                    # the span out so its 1-D fallback cannot break the final join.
+                    audio = None
+            else:
+                audio = gen_span(span_text)
+                calls += 1
+                _note_generate_progress()
+            if audio is not None:
+                if trim_spans:
+                    audio = _trim_output_edges(audio, sample_rate)
+                items.append(("a", audio))
         if pause_ms > 0:
             n = int(round(sample_rate * pause_ms / 1000.0))
             if n > 0:
@@ -1208,24 +1237,29 @@ def _run_inference(
         segments = parse_pause_markers(text)
         has_pause = len(segments) > 1 or (segments and segments[0][1] > 0)
 
+        from services.chunked_tts import (
+            DEFAULT_CROSSFADE_MS, DEFAULT_MAX_CHUNK_CHARS,
+            concatenate_audio_chunks, split_text_into_chunks,
+        )
+        _max_chars = DEFAULT_MAX_CHUNK_CHARS if max_chunk_chars is None else max_chunk_chars
+        _xfade_ms = DEFAULT_CROSSFADE_MS if crossfade_ms is None else crossfade_ms
+
         if has_pause:
-            def _gen_span(span_text):
+            def _gen_span(span_text, chunk_index=None):
                 # Per-span duration is left to the model; an explicit overall
-                # `duration` can't be meaningfully split across spans.
+                # `duration` can't be meaningfully split across spans. Chunks
+                # of a long span get the no-pause path's per-chunk seed.
+                if chunk_index is not None and used_seed is not None:
+                    torch.manual_seed(used_seed + chunk_index)
                 return _gen(span_text, None)[0]
-            audio_out = _render_with_pauses(_gen_span, segments, sr,
-                                            trim_spans=_wants_edge_trim(effect_preset))
+            audio_out = _render_with_pauses(
+                _gen_span, segments, sr, trim_spans=_wants_edge_trim(effect_preset),
+                max_chunk_chars=_max_chars, crossfade_ms=_xfade_ms, dropped_sink=dropped_sink)
         else:
             # Wave 1.2: long text is split at sentence boundaries and the
             # per-chunk audio crossfaded — removes the length ceiling. Short
             # text takes the single-shot path below unchanged. [pause] inputs
-            # keep the dedicated stitcher above (spans are already short).
-            from services.chunked_tts import (
-                DEFAULT_CROSSFADE_MS, DEFAULT_MAX_CHUNK_CHARS,
-                concatenate_audio_chunks, split_text_into_chunks,
-            )
-            _max_chars = DEFAULT_MAX_CHUNK_CHARS if max_chunk_chars is None else max_chunk_chars
-            _xfade_ms = DEFAULT_CROSSFADE_MS if crossfade_ms is None else crossfade_ms
+            # use the stitcher above, which chunks each long span the same way.
             text_chunks = split_text_into_chunks(text, _max_chars)
             if len(text_chunks) > 1:
                 parts = []
@@ -1321,29 +1355,36 @@ def _run_backend_inference(
         segments = parse_pause_markers(text)
         has_pause = len(segments) > 1 or (segments and segments[0][1] > 0)
 
+        from services.chunked_tts import (
+            DEFAULT_CROSSFADE_MS, DEFAULT_MAX_CHUNK_CHARS,
+            concatenate_audio_chunks, split_text_into_chunks,
+        )
+        _max_chars = DEFAULT_MAX_CHUNK_CHARS if max_chunk_chars is None else max_chunk_chars
+        _xfade_ms = DEFAULT_CROSSFADE_MS if crossfade_ms is None else crossfade_ms
+
         if has_pause:
             first_span = True
 
-            def _gen_span(span_text):
+            def _gen_span(span_text, chunk_index=None):
                 nonlocal first_span
                 # Per-span duration is left to the engine; an explicit overall
-                # `duration` can't be meaningfully split across spans.
+                # `duration` can't be meaningfully split across spans. Chunks
+                # of a long span get the no-pause path's per-chunk seed.
                 span_kwargs = dict(gen_kwargs)
-                if forwards_seed and first_span and used_seed is not None:
+                if chunk_index is not None and used_seed is not None:
+                    torch.manual_seed(used_seed + chunk_index)
+                    if forwards_seed:
+                        span_kwargs["seed"] = used_seed + chunk_index
+                elif forwards_seed and first_span and used_seed is not None:
                     span_kwargs["seed"] = used_seed
                 first_span = False
                 return trace_call("synthesis", backend.generate, span_text, duration=None, **span_kwargs)
-            audio_out = _render_with_pauses(_gen_span, segments, sr,
-                                            trim_spans=_wants_edge_trim(effect_preset))
+            audio_out = _render_with_pauses(
+                _gen_span, segments, sr, trim_spans=_wants_edge_trim(effect_preset),
+                max_chunk_chars=_max_chars, crossfade_ms=_xfade_ms, dropped_sink=dropped_sink)
         else:
             # Wave 1.2: sentence-boundary chunking for long text (see
             # _run_inference for the rationale; behavior is identical here).
-            from services.chunked_tts import (
-                DEFAULT_CROSSFADE_MS, DEFAULT_MAX_CHUNK_CHARS,
-                concatenate_audio_chunks, split_text_into_chunks,
-            )
-            _max_chars = DEFAULT_MAX_CHUNK_CHARS if max_chunk_chars is None else max_chunk_chars
-            _xfade_ms = DEFAULT_CROSSFADE_MS if crossfade_ms is None else crossfade_ms
             text_chunks = split_text_into_chunks(text, _max_chars)
             if len(text_chunks) > 1:
                 parts = []
@@ -2081,7 +2122,7 @@ async def generate_speech(
             # language fill, #1032 transcript-cache signal).
             _cond = _resolve_profile_conditioning(
                 row, ref_text=ref_text, instruct=instruct, seed=used_seed,
-                language=language,
+                language=language, engine_id=engine_id,
             )
             # An edited design is a new voice, not a take of this profile.
             resolved_profile_id = None if _cond["diverged"] else profile_id
@@ -2250,7 +2291,8 @@ async def generate_speech(
     # the SAME concat → effect-chain → watermark → save → history pipeline as
     # the classic path, so the on-disk take is identical to a non-streamed
     # one. [pause]-marker inputs and single-chunk (short) texts keep their
-    # unchanged single-shot pipeline and stream as one chunk. All prep above
+    # unchanged single-shot pipeline and stream as one chunk (that pipeline
+    # still splits each long [pause] span into sentence chunks). All prep above
     # (engine warm under the #1039 model-load budget, routing gate, profile /
     # seed / normalization) already ran, so per-chunk jobs spend the generate
     # budget on generation only — and each chunk gets its own budget, so a
@@ -2579,13 +2621,17 @@ async def generate_speech(
                 if cleanup_ref and ref_lease is not None:
                     ref_lease.finish_request()
 
+        from core.stream_keepalive import NDJSON_KEEPALIVE, NO_BUFFER_HEADERS, with_keepalive
+
         # Routing notice (#21): known before the stream starts.
         _stream_headers = _apply_routing_headers({
             "X-Seed": str(used_seed) if used_seed is not None else "",
-            "Cache-Control": "no-cache",
+            **NO_BUFFER_HEADERS,
         }, _routing_notice)
         return StreamingResponse(
-            _stream_events(),
+            # A chunk can render for minutes without a byte; blank lines keep
+            # proxies (Cloudflare 524) from cutting the stream meanwhile.
+            with_keepalive(_stream_events(), NDJSON_KEEPALIVE),
             media_type="application/x-ndjson",
             headers=_stream_headers,
         )
@@ -2737,19 +2783,12 @@ async def generate_speech(
         # naming parameters and files the user cannot act on — those get the
         # owned remedy for their class instead (#1879). Unclassified ones keep
         # passing through, so this cannot swallow a good message.
-        from core.failure import classify, public_hint_for_topic
+        from core.public_errors import classified_request_detail
 
-        _topic = classify(str(e))
-        _owned = public_hint_for_topic(_topic) if _topic else ""
-        if _topic == "REFERENCE_STT_MISSING" and _owned:
-            # Structured so the client can show its localized copy (#2929/#2678)
-            # instead of the English sentence, and so the topic reaches the
-            # bug report.
-            raise HTTPException(
-                status_code=400,
-                detail={"docs_topic": _topic, "message": _owned, "hint": _owned},
-            ) from e
-        raise HTTPException(status_code=400, detail=_owned or str(e)) from e
+        _classified = classified_request_detail(str(e))
+        if _classified:
+            raise HTTPException(status_code=400, detail=_classified) from e
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         tb = traceback.format_exc()
         logger.error("Inference failed: %s\n%s", e, tb)

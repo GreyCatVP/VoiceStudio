@@ -92,7 +92,7 @@ it('leaves a missing engine to the page notice instead of repeating it', () => {
       onStop={vi.fn()}
     />,
   );
-  const status = screen.getByText('The voice engine is not ready. Check Settings → Engines.');
+  const status = screen.getByText('The voice engine is not ready. Check Settings → Models.');
   // Still read out with the disabled button, but not shown twice on screen.
   expect(status).toHaveClass('sr-only');
   expect(screen.getByRole('button', { name: 'Create audiobook' })).toHaveAttribute(

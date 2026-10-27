@@ -46,6 +46,17 @@ Pick a model in the **Model Catalogue** curated picker
 `OMNIVOICE_MLX_AUDIO_MODEL` to either a curated key (`kokoro`) or any full
 HF repo id. The env var overrides the persisted UI choice.
 
+## OuteTTS voice cloning
+
+OuteTTS reads the reference clip with a Whisper model before it clones the
+voice. Download **Whisper large-v3 Turbo (OuteTTS voice-clone reader,
+mlx-audio)** (`mlx-community/whisper-large-v3-turbo-asr-fp16`) from **Model
+Catalogue** first; without it, generation stops right away and names that entry
+instead of downloading during synthesis
+([#2700](https://github.com/debpalash/VoiceStudio/issues/2700)). The voice
+built from each clip is kept under `outetts_speakers/` in the data folder, so
+later generations with the same clip skip that step.
+
 ## First use of CSM
 
 1. On an Apple Silicon Mac, open **Model Catalogue** and download

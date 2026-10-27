@@ -483,6 +483,18 @@ class SubprocessBackend(TTSBackend):
         raise NotImplementedError
 
     @classmethod
+    def shares_parent_torch(cls) -> bool:
+        """Whether the sidecar runs this process's interpreter, and so imports
+        this process's PyTorch build.
+
+        Must stay cheap and side-effect free: the Settings GPU report asks it
+        for every subprocess engine, so it may not resolve, probe or bootstrap
+        a venv the way some ``venv_python()`` implementations do. Subclasses
+        whose ``venv_python()`` can return ``sys.executable`` override it.
+        """
+        return False
+
+    @classmethod
     def sidecar_script(cls) -> Path:
         """Path to the sidecar entrypoint (`backend/engines/<id>/main.py`)."""
         raise NotImplementedError

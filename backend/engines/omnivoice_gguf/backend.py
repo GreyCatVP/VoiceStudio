@@ -207,6 +207,54 @@ def _mismatched_runtime_library(bin_dir: Path, manifest: dict[str, str]) -> str 
     return None
 
 
+#: Exit statuses meaning "this CPU cannot execute an instruction in the
+#: runtime": a negative signal number from subprocess on POSIX (SIGILL), the
+#: shell's 128+SIGILL, and Windows STATUS_ILLEGAL_INSTRUCTION in both its
+#: unsigned and signed spellings. A runtime compiled for newer CPU features
+#: than the host has (#2780) fails this way on every generate.
+_ILLEGAL_INSTRUCTION_EXITS = frozenset({-4, 132, 0xC000001D, 0xC000001D - (1 << 32)})
+
+#: Binaries that hit an illegal instruction, keyed by path, valued by the
+#: file identity they had then. Until the file changes (rebuilt/reinstalled),
+#: the engine reports itself unavailable instead of failing every generate.
+_CPU_INCOMPATIBLE: dict[str, tuple[int, int]] = {}
+
+
+def _file_identity(path: Path) -> tuple[int, int] | None:
+    try:
+        st = path.stat()
+    except OSError:
+        return None
+    return (st.st_size, st.st_mtime_ns)
+
+
+def _cpu_incompatible_reason(bin_path: Path) -> str:
+    return (
+        f"GGUF binary {bin_path.name} stopped with an illegal instruction: it "
+        f"was built for CPU features this processor does not have. Rebuild it "
+        f"with `scripts/build-omnivoice-tts.sh --platform {_platform_slug()}` "
+        f"(portable x86-64 build), reinstall VoiceStudio, or use the default "
+        f"in-process OmniVoice engine (Model Catalogue)."
+    )
+
+
+def _raise_if_illegal_instruction(bin_path: Path, returncode) -> None:
+    """Record and raise a typed error when the runtime cannot run on this CPU."""
+    if returncode not in _ILLEGAL_INSTRUCTION_EXITS:
+        return
+    identity = _file_identity(bin_path)
+    if identity is not None:
+        _CPU_INCOMPATIBLE[str(bin_path)] = identity
+    from services.binary_preflight import InvalidBinaryError
+
+    raise InvalidBinaryError(
+        bin_path,
+        "it stopped with an illegal instruction (built for CPU features this "
+        "processor does not have)",
+        _binary_repair_hint(),
+    )
+
+
 def _binary_repair_hint() -> str:
     """One actionable sentence for a broken/placeholder GGUF binary (#1172).
 
@@ -536,6 +584,11 @@ def _make_backend_class():
                         f"VoiceStudio, or use the default in-process "
                         f"OmniVoice engine (Model Catalogue)."
                     )
+                known_bad = _CPU_INCOMPATIBLE.get(str(bin_path))
+                if known_bad is not None:
+                    if _file_identity(bin_path) == known_bad:
+                        return False, _cpu_incompatible_reason(bin_path)
+                    _CPU_INCOMPATIBLE.pop(str(bin_path), None)  # replaced: re-check
                 # Manifest-based SHA-256 verification (T-04-01).
                 try:
                     manifest = _load_checksum_manifest()
@@ -761,6 +814,7 @@ def _make_backend_class():
                     bin_path, f"the OS refused to execute it ({exc})",
                     _binary_repair_hint(),
                 ) from exc
+            _raise_if_illegal_instruction(bin_path, proc.returncode)
             # `--help` typically exits 0 or 1 (some CLIs use 1 to signal
             # "help shown, no work done"). We accept both as long as the
             # binary actually emitted something.
@@ -972,6 +1026,7 @@ def _make_backend_class():
                     _binary_repair_hint(),
                 ) from exc
 
+            _raise_if_illegal_instruction(Path(argv[0]), proc.returncode)
             if proc.returncode != 0:
                 stderr = _mask_token(proc.stderr or "")
                 raise RuntimeError(

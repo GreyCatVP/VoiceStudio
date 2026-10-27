@@ -118,6 +118,34 @@ describe('UpdateSettings', () => {
 
   afterEach(cleanup);
 
+  test("renders What's new markdown without raw tables, links or asterisks", async () => {
+    mocks.api.mockImplementation(async (path: string) => {
+      if (path.includes('/changelog'))
+        return {
+          available: true,
+          releases: [
+            {
+              version: '1.0.0',
+              date: '2026-10-01',
+              intro:
+                '**Big news.** It ships.\n\n| Windows | [Installer](https://example.test/a.exe) |\n\nSee the [guide](https://example.test/g).',
+              sections: [{ title: 'Fixed', bullets: ['**Lead.** Uses `code`. (#1)'] }],
+            },
+          ],
+        };
+      if (path.includes('/db-backup')) return { available: false, latest: null };
+      return {};
+    });
+    const { container } = renderSettings();
+    expect(await screen.findByText('Big news.')).toBeInTheDocument();
+    expect(screen.getByText('See the guide.')).toBeInTheDocument();
+    expect(screen.getByText('code').tagName).toBe('CODE');
+    const text = container.textContent ?? '';
+    expect(text).not.toContain('|');
+    expect(text).not.toContain('**');
+    expect(text).not.toContain('https://');
+  });
+
   test('checks for updates and hides the channel choice when the build cannot switch', async () => {
     renderSettings();
     fireEvent.click(await screen.findByRole('button', { name: 'updates.check_now' }));

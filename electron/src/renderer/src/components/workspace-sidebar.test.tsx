@@ -3,10 +3,13 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { FilmIcon } from 'lucide-react';
 import { MAC_TRAFFIC_LIGHTS_INLINE_END } from '@shared/utils/windowChrome';
 import { SecondarySidebar } from './workspace-sidebar';
+import { WorkspaceHeader } from '@/components/app-shell/workspace-header';
 
 const platform = vi.hoisted(() => ({ mac: false }));
 vi.mock('@/components/bridge', () => ({ isMac: () => platform.mac }));
 vi.mock('@/hooks/use-window-fullscreen', () => ({ useWindowFullscreen: () => false }));
+vi.mock('@/components/app-shell/support-shortcut', () => ({ SupportShortcut: () => null }));
+vi.mock('@/components/app-shell/sidebar-toggle', () => ({ SidebarToggle: () => null }));
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 
@@ -213,4 +216,23 @@ it('collapses to one expand control, leaving the titlebar row empty', () => {
   expect(header.querySelector('button')).toBeNull();
   expect(screen.getAllByRole('button', { expanded: false })).toHaveLength(1);
   expect(screen.getByRole('button', { name: 'Voice' })).toHaveAttribute('aria-expanded', 'false');
+});
+
+it('leaves the page title top left and hides a same-named pane title visually', () => {
+  const page = (pane: string) => (
+    <main data-slot="workspace-content">
+      <WorkspaceHeader>
+        <h1>Dub</h1>
+      </WorkspaceHeader>
+      <SecondarySidebar title={pane} icon={FilmIcon}>
+        <section>Preview</section>
+      </SecondarySidebar>
+    </main>
+  );
+  const view = render(page('Dub'));
+  const title = () => document.querySelector('[data-slot="secondary-sidebar-title"]')!;
+  expect(screen.getByRole('heading', { name: 'Dub', level: 1 })).not.toHaveClass('sr-only');
+  expect(title()).toHaveClass('sr-only');
+  view.rerender(page('History'));
+  expect(title()).not.toHaveClass('sr-only');
 });
