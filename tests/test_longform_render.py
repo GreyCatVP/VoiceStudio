@@ -27,6 +27,18 @@ from services.longform_render import (
     validate_cover_image,
 )
 
+
+def test_inline_pronunciation_invalidates_only_affected_audio_cache_keys():
+    from services.longform_render import segment_cache_key
+
+    options = {"sample_rate": 24000, "engine_id": "test"}
+    # Released keys for ordinary text must stay reusable, including an unchanged
+    # segment next to an overridden span in the same chapter.
+    assert chapter_cache_key([("v", "route", 0, None)], **options) == "2ffe9096abb84a252951"
+    assert segment_cache_key("route", voice_id="v", **options) == "7a199e657ab040b96e64"
+    assert chapter_cache_key([("v", "[[route|route]]", 0, None)], **options) != "b694769e85c28d6a4009"
+    assert segment_cache_key("[[route|route]]", voice_id="v", **options) != "6af2679a54f2fd7b2c8c"
+
 # A verified ffmpeg loudnorm measure-JSON fixture (n8.1.1 shape).
 _MEASURE_JSON = """[Parsed_loudnorm_0 @ 0x55]
 {

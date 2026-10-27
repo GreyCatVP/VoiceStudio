@@ -213,6 +213,9 @@ def chapter_cache_key(
                   + ([s[4]] if len(s) > 4 and s[4] else []) for s in spans],
         "voices": {k: voice_sig[k] for k in sorted(voice_sig)} if voice_sig else {},
     }
+    from services.pronunciation import apply_inline_overrides
+    if any(apply_inline_overrides(s[1]) != s[1] for s in payload["spans"]):
+        payload["inline_pronunciation"] = 1
     raw = json.dumps(payload, sort_keys=True, ensure_ascii=False)
     # Content-addressing only — not a security digest. usedforsecurity=False
     # keeps bandit's B324 (weak-hash) check quiet.
@@ -446,6 +449,9 @@ def segment_cache_key(
         # Absent when 0 so the derivation is byte-identical to pre-#1208 for
         # every normal (non-vary_repeats) render.
         payload["nonce"] = int(nonce)
+    from services.pronunciation import apply_inline_overrides
+    if apply_inline_overrides(text) != text:
+        payload["inline_pronunciation"] = 1
     raw = json.dumps(payload, sort_keys=True, ensure_ascii=False)
     # Content-addressing only — not a security digest (see chapter_cache_key).
     return hashlib.sha1(raw.encode("utf-8"), usedforsecurity=False).hexdigest()[:20]

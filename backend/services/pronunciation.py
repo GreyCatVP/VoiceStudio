@@ -464,7 +464,8 @@ def apply_pronunciation(
       1. DB dictionary rows (``entries``) filtered to ``language`` + an optional
          per-project ``lexicon`` JSON overlay (project wins on term conflict,
          matching the audiobook layering). Both go through one ``apply_lexicon``
-         pass (longest-term-first, word-boundary aware, idempotent).
+         pass outside explicit inline spans (longest-term-first, word-boundary
+         aware, idempotent).
       2. Inline ``[[…]]`` one-off overrides resolved last, so an inline override
          always wins over any dictionary entry for that occurrence.
 
@@ -477,8 +478,14 @@ def apply_pronunciation(
     if lexicon:
         # Project-local JSON overlays the DB defaults; project wins on conflict.
         merged.update(normalize_lexicon(lexicon))
-    out = apply_lexicon(text, merged) if merged else text
-    return apply_inline_overrides(out)
+    parts = []
+    cursor = 0
+    for match in _INLINE_RE.finditer(text):
+        parts.append(apply_lexicon(text[cursor:match.start()], merged))
+        parts.append(apply_inline_overrides(match.group(0)))
+        cursor = match.end()
+    parts.append(apply_lexicon(text[cursor:], merged))
+    return "".join(parts)
 
 
 # ── DB load/save ──────────────────────────────────────────────────────────────

@@ -16,6 +16,10 @@ Playback and export remain independent of generation. Vidstack plays the output;
 
 Draft writes reuse the coalesced persistence helper and flush on lifecycle events. Working drafts currently use browser storage. Named Stories and Audiobook projects use the shared native IndexedDB adapter in a separate Electron database. Saves await the committed transaction, concurrent writes are serialized, and opening or deleting a project requires confirmation. Projects include script/lines, voices, settings and the last output reference. Storage failures are surfaced. Book details include author, narrator, year, genre, description and an uploaded JPEG/PNG cover. Loudness offers off, ACX and podcast presets. Audiobook pronunciation rows reach the existing lexicon engine; duplicate words are flagged before rendering. These settings persist with the draft. Full cast management and other advanced controls remain tracked in `electron/PARITY.md`.
 
+Explicit `[[label|respelling]]` and `[[respelling]]` choices take precedence over pronunciation
+dictionaries in chapter rendering. Chapters and segments containing these overrides regenerate once
+after the precedence correction; ordinary narration keeps its existing cache entries.
+
 `electron/tests/longform-smoke.mjs` verifies the main flows with mocked generation and real audio playback. Runtime tests cover stop, duplicate prevention, truncated responses, explicit resume and shared Stories compilation. Real installed-model verification passed for one English chapter: MP3 rendering, cached WAV chapter audition, and Electron-driven M4B rendering/playback. Multi-voice, multi-chapter, cancellation/recovery and other engines still require real runtime coverage.
 
 Script voice tags now expose saved-profile assignments in the Cast section. Only names present in the current script are sent as `voice_map`; assignments persist for reuse if a tag is reintroduced. An assignment to a removed profile blocks rendering until changed or reset to Default. Chapter, word and estimated runtime counts reuse the Tauri script helpers.
