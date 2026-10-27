@@ -24,15 +24,23 @@ native runtime will open, found without PyTorch (see
 
 | Hardware | Quant | Approx. VRAM use |
 | --- | --- | --- |
-| 12 GB+ VRAM | BF16 | ~1.6 GB (quality-first) |
-| 4–12 GB VRAM | Q8_0 | ~945 MB (recommended balance) |
+| 12 GB+ VRAM with native BF16 | BF16 | ~1.6 GB (quality-first) |
+| 4–12 GB VRAM, or 12 GB+ without native BF16 | Q8_0 | ~945 MB (recommended balance) |
 | 1–4 GB VRAM | Q4_K_M | ~659 MB (minimal footprint) |
 | CPU-only or unverified GPU | Q4_K_M | RAM-bound, latency-tolerable |
 
 Integrated GPUs (Ryzen AI APUs such as the Radeon 890M, Intel Core Ultra
 iGPUs) use shared system memory, so their 512 MB BIOS frame buffer is not
 their limit: on a host with at least 16 GB of RAM they are sized on half the
-RAM. A Radeon 890M on a 32 GB laptop therefore gets BF16.
+RAM. A Radeon 890M on a 32 GB laptop therefore gets the 12 GB+ budget.
+
+BF16 needs native bfloat16 shaders (`VK_KHR_shader_bfloat16`, shown as
+`bf16: 1` in the `ggml_vulkan:` log line). Without them ggml-vulkan emulates
+BF16: on a Radeon RX 6700 XT (`bf16: 0`) BF16 generated 1.8× slower than a
+quantized model. So a 12 GB+ GPU gets BF16 only when `vulkaninfo` confirms the
+extension; otherwise, including when only the OS GPU inventory was available,
+it gets Q8_0. `OMNIVOICE_GGUF_QUANT=BF16` or the Settings picker still selects
+BF16.
 
 Without a verified Vulkan GPU (no Vulkan driver, a runtime built without the
 Vulkan module, or a CUDA/Metal route the app cannot size) the selection stays
@@ -40,7 +48,7 @@ on Q4_K_M. The parent PyTorch GPU is never used as evidence: it may be a
 different adapter.
 
 **Choosing another quant.** Settings › Models › OmniVoice GGUF shows the
-automatic pick, for example *Auto: BF16 (Vulkan – AMD Radeon 890M)*, and a
+automatic pick, for example *Auto: Q8_0 (Vulkan – AMD Radeon 890M)*, and a
 picker for Q4_K_M, Q8_0, BF16 and F32 (an ~3.2 GB reference quant that is
 never picked automatically). `OMNIVOICE_GGUF_QUANT` (`Q4_K_M`, `Q8_0`, `BF16`,
 `F32`, a full `omnivoice-base-*.gguf` filename, or `auto`) pins one from the
@@ -266,10 +274,10 @@ Expected automatic picks:
 
 | GPU | Device | Effective memory | Quant |
 | --- | --- | --- | --- |
-| Radeon 890M APU, 32 GB RAM | Vulkan0, shared memory | ~15–16 GB (half the RAM) | BF16 |
-| Radeon RX 6700 XT 12 GB | Vulkan0 | ~12 GB | BF16 |
+| Radeon 890M APU, 32 GB RAM | Vulkan0, shared memory | ~15–16 GB (half the RAM) | Q8_0 (BF16 if `bf16: 1`) |
+| Radeon RX 6700 XT 12 GB (`bf16: 0`) | Vulkan0 | ~12 GB | Q8_0 |
 | RX 7600 / Arc A750 8 GB | Vulkan0 (or the discrete card's index) | ~8 GB | Q8_0 |
-| Intel UHD iGPU + Arc A770 / B580 | Vulkan1 (the Arc card) | 16 / 12 GB | BF16 |
+| Intel UHD iGPU + Arc A770 / B580 | Vulkan1 (the Arc card) | 16 / 12 GB | Q8_0 (BF16 if `bf16: 1`) |
 | Compute device set to CPU | — | — | Q4_K_M |
 
 If yours differs, report the `vulkaninfo --summary` device list, the

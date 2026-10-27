@@ -75,6 +75,8 @@ class VulkanAdapter:
     dedicated_vram_gb: float    #: largest device-local heap (or OS VRAM)
     effective_vram_gb: float    #: budget the quant policy sizes against
     shared_memory: bool         #: budgeted on shared system RAM (APU / iGPU)
+    #: native bfloat16 shaders (``VK_KHR_shader_bfloat16``); None when unknown
+    bf16: Optional[bool] = None
 
     @property
     def effective_vram_mb(self) -> int:
@@ -192,12 +194,17 @@ def _int_value(raw: str) -> Optional[int]:
 
 def parse_vulkaninfo(text: str) -> list[dict]:
     """Physical devices from ``vulkaninfo`` text output (full or
-    ``--summary``), as ``{vk_index, name, type, vendor_id, uuid, heap_bytes}``.
+    ``--summary``), as ``{vk_index, name, type, vendor_id, uuid, heap_bytes,
+    bf16}``.
 
     Device sections start at a ``GPU<n>:`` line. Inside one, the memory heap
     blocks (``memoryHeaps[i]:`` … ``size = …`` … ``MEMORY_HEAP_DEVICE_LOCAL_BIT``)
     give the device-local heap; the largest one wins. A device printed in more
     than one section is merged by index.
+
+    ``bf16`` is the ``shaderBFloat16Type`` feature when printed, else whether
+    ``VK_KHR_shader_bfloat16`` is in the device's extension list, else None
+    (``--summary`` output lists neither).
     """
     devices: dict[int, dict] = {}
     current: Optional[dict] = None
@@ -209,11 +216,16 @@ def parse_vulkaninfo(text: str) -> list[dict]:
             current = devices.setdefault(idx, {
                 "vk_index": idx, "name": "", "type": "", "vendor_id": None,
                 "uuid": "", "heap_bytes": 0,
+                "_bf16_feature": None, "_bf16_ext": False, "_ext_list": False,
             })
             heap = None
             continue
         if current is None:
             continue
+        if s.startswith("Device Extensions"):
+            current["_ext_list"] = True
+        elif s.startswith("VK_KHR_shader_bfloat16"):
+            current["_bf16_ext"] = True
         if s.startswith("memoryHeaps[") and s.endswith(":"):
             heap = {"size": None}
             continue
@@ -237,7 +249,15 @@ def parse_vulkaninfo(text: str) -> list[dict]:
             current["vendor_id"] = _int_value(value)
         elif key == "deviceUUID" and not current["uuid"]:
             current["uuid"] = value
-    return [devices[i] for i in sorted(devices)]
+        elif key == "shaderBFloat16Type" and current["_bf16_feature"] is None:
+            current["_bf16_feature"] = value.lower() == "true"
+    out = []
+    for i in sorted(devices):
+        dev = devices[i]
+        feature, ext, listed = dev.pop("_bf16_feature"), dev.pop("_bf16_ext"), dev.pop("_ext_list")
+        dev["bf16"] = feature if feature is not None else (True if ext else False if listed else None)
+        out.append(dev)
+    return out
 
 
 def adapters_from_vulkaninfo(devices: list[dict], ram_gb: float) -> tuple[VulkanAdapter, ...]:
@@ -266,6 +286,7 @@ def adapters_from_vulkaninfo(devices: list[dict], ram_gb: float) -> tuple[Vulkan
             index=len(out), vk_index=dev["vk_index"], name=name,
             vendor=_vendor(dev.get("vendor_id"), name), device_type=device_type,
             dedicated_vram_gb=dedicated, effective_vram_gb=budget, shared_memory=shared,
+            bf16=dev.get("bf16"),
         ))
     return tuple(out)
 

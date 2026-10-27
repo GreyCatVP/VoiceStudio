@@ -116,7 +116,10 @@ def automatic_compute_class() -> str:
     """The quant tier for the automatic policy.
 
     A verified Vulkan adapter is sized on its effective memory (shared RAM for
-    an APU); anything unverified keeps the smallest tier. Overrides are still
+    an APU); anything unverified keeps the smallest tier. BF16 (the high tier)
+    needs native bfloat16 shaders: without them ggml-vulkan emulates it and
+    runs ~1.8x slower than a quantized model (measured on an RX 6700 XT), so an
+    adapter without confirmed support stops at Q8_0. Overrides are still
     validated first, and the parent's PyTorch GPU memory is never used as
     evidence about the native process's adapter.
     """
@@ -125,7 +128,10 @@ def automatic_compute_class() -> str:
         return "cpu"
     from .hardware_probe import _bucket
 
-    return _bucket(adapter.effective_vram_mb)
+    tier = _bucket(adapter.effective_vram_mb)
+    if tier == "high-vram" and adapter.bf16 is not True:
+        return "mid-vram"
+    return tier
 
 
 def cpu_selection_explicit() -> bool:

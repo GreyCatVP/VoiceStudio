@@ -9,8 +9,11 @@ import pytest
 GIB = 1024 ** 3
 
 
-def _device(index, name, kind, vendor, heaps, uuid):
-    """One ``GPU<n>:`` section of real ``vulkaninfo`` output (abridged)."""
+def _device(index, name, kind, vendor, heaps, uuid, bf16=None):
+    """One ``GPU<n>:`` section of real ``vulkaninfo`` output (abridged).
+
+    ``bf16`` None prints no extension list (like ``--summary``); True / False
+    lists the device extensions with / without ``VK_KHR_shader_bfloat16``."""
     lines = [
         f"GPU{index}:",
         "VkPhysicalDeviceProperties:",
@@ -33,6 +36,13 @@ def _device(index, name, kind, vendor, heaps, uuid):
             "\t\t\t\tMEMORY_HEAP_DEVICE_LOCAL_BIT" if local else "\t\t\t\tNone",
         ]
     lines += ["\tmemoryTypes: count = 2", "\t\tmemoryTypes[0]:", "\t\t\theapIndex = 0"]
+    if bf16 is not None:
+        lines += ["Device Extensions: count = 2",
+                  "\tVK_KHR_16bit_storage                   : extension revision 1"]
+        if bf16:
+            lines += ["\tVK_KHR_shader_bfloat16                 : extension revision 1",
+                      "VkPhysicalDeviceShaderBfloat16FeaturesKHR:",
+                      "\tshaderBFloat16Type             = true"]
     return "\n".join(lines) + "\n"
 
 
@@ -43,13 +53,13 @@ RADEON_890M = _device(0, "AMD Radeon(TM) 890M Graphics", "INTEGRATED_GPU", "0x10
                       "00000000-c400-0000-0000-000000000000")
 RX_6700_XT = _device(0, "AMD Radeon RX 6700 XT", "DISCRETE_GPU", "0x1002",
                      [(12868124672, True), (16 * GIB, False)],
-                     "00000000-0300-0000-0000-000000000000")
+                     "00000000-0300-0000-0000-000000000000", bf16=False)
 UHD_770 = _device(0, "Intel(R) UHD Graphics 770", "INTEGRATED_GPU", "0x8086",
                   [(int(0.25 * GIB), True)], "8680a780-0400-0000-0002-000000000000")
 
 
-def _arc(index, name, size_gb, uuid):
-    return _device(index, name, "DISCRETE_GPU", "0x8086", [(size_gb * GIB, True)], uuid)
+def _arc(index, name, size_gb, uuid, bf16=None):
+    return _device(index, name, "DISCRETE_GPU", "0x8086", [(size_gb * GIB, True)], uuid, bf16)
 
 
 @pytest.fixture
@@ -80,8 +90,9 @@ def _auto_base():
     return backend._automatic_entry(backend._load_quant_map())["base"]
 
 
-def test_ryzen_ai_890m_apu_uses_shared_memory_and_bf16(vk):
-    """A 512 MB frame buffer on a 31.3 GB host is budgeted on half the RAM."""
+def test_ryzen_ai_890m_apu_uses_shared_memory(vk):
+    """A 512 MB frame buffer on a 31.3 GB host is budgeted on half the RAM.
+    Native BF16 is not confirmed (no extension list), so the pick is Q8_0."""
     vk.state.text = RADEON_890M + LLVMPIPE
     adapter = vk.compute.selected_vulkan_adapter()
     assert adapter.name == "AMD Radeon(TM) 890M Graphics"
@@ -89,8 +100,9 @@ def test_ryzen_ai_890m_apu_uses_shared_memory_and_bf16(vk):
     assert adapter.dedicated_vram_gb == 0.5
     assert adapter.shared_memory is True
     assert adapter.effective_vram_gb >= 15
-    assert vk.compute.automatic_compute_class() == "high-vram"
-    assert _auto_base() == "omnivoice-base-BF16.gguf"
+    assert adapter.bf16 is None
+    assert vk.compute.automatic_compute_class() == "mid-vram"
+    assert _auto_base() == "omnivoice-base-Q8_0.gguf"
 
 
 def test_apu_on_a_small_host_keeps_its_dedicated_budget(vk):
@@ -101,13 +113,44 @@ def test_apu_on_a_small_host_keeps_its_dedicated_budget(vk):
     assert _auto_base() == "omnivoice-base-Q4_K_M.gguf"
 
 
-def test_rx_6700_xt_12gb_lands_on_bf16(vk):
+def test_rx_6700_xt_without_native_bf16_lands_on_q8(vk):
+    """RDNA 2 has no bfloat16 shaders; emulated BF16 ran 1.8x slower there."""
     vk.state.text = RX_6700_XT
     adapter = vk.compute.selected_vulkan_adapter()
     assert adapter.device_type == "DISCRETE_GPU"
     assert adapter.shared_memory is False
     assert adapter.effective_vram_gb == pytest.approx(11.98, abs=0.01)
-    assert _auto_base() == "omnivoice-base-BF16.gguf"
+    assert adapter.bf16 is False
+    assert _auto_base() == "omnivoice-base-Q8_0.gguf"
+
+
+@pytest.mark.parametrize("bf16,base", [(True, "omnivoice-base-BF16.gguf"),
+                                       (False, "omnivoice-base-Q8_0.gguf"),
+                                       (None, "omnivoice-base-Q8_0.gguf")])
+def test_bf16_needs_native_bfloat16_shaders(vk, bf16, base):
+    """12 GB+ gets BF16 only when the device reports VK_KHR_shader_bfloat16."""
+    vk.state.text = _arc(0, "Intel(R) Arc(TM) B580 Graphics", 12,
+                         "8680a056-0800-0000-0300-000000000000", bf16)
+    assert vk.compute.selected_vulkan_adapter().bf16 is bf16
+    assert _auto_base() == base
+
+
+def test_bf16_feature_flag_wins_over_the_extension_name(vk):
+    """An extension listed with its feature off is not native BF16."""
+    vk.state.text = _arc(0, "Intel(R) Arc(TM) A770 Graphics", 16,
+                         "8680a056-0800-0000-0300-000000000000", True).replace(
+        "shaderBFloat16Type             = true", "shaderBFloat16Type             = false")
+    assert vk.compute.selected_vulkan_adapter().bf16 is False
+    assert _auto_base() == "omnivoice-base-Q8_0.gguf"
+
+
+def test_os_inventory_never_assumes_bf16(vk):
+    vk.state.loader = True
+    vk.state.gpus = (SimpleNamespace(vendor="amd", name="AMD Radeon RX 6700 XT",
+                                     discrete=True, vram_gb=12.0),)
+    adapter = vk.compute.selected_vulkan_adapter()
+    assert (adapter.effective_vram_gb, adapter.bf16) == (12.0, None)
+    assert _auto_base() == "omnivoice-base-Q8_0.gguf"
 
 
 @pytest.mark.parametrize("card,size_gb", [("Intel(R) Arc(TM) A770 Graphics", 16),
@@ -117,7 +160,7 @@ def test_discrete_arc_beats_the_igpu_at_gpu0(vk, monkeypatch, card, size_gb):
     vk.state.text = UHD_770 + _arc(1, card, size_gb, "8680a056-0800-0000-0300-000000000000")
     adapter = vk.compute.selected_vulkan_adapter()
     assert (adapter.name, adapter.ggml_name) == (card, "Vulkan1")
-    assert _auto_base() == "omnivoice-base-BF16.gguf"
+    assert _auto_base() == "omnivoice-base-Q8_0.gguf"
     # The explicit device index names the same adapter.
     monkeypatch.setenv("OMNIVOICE_GGUF_BACKEND", "vulkan")
     monkeypatch.setenv("OMNIVOICE_GGUF_DEVICE", "1")
@@ -225,7 +268,7 @@ def test_apu_gets_the_gpu_offer_instead_of_a_silent_switch(eligible):
     assert status["show"] is True
     assert status["gpu_name"] == "AMD Radeon(TM) 890M Graphics"
     assert status["shared_memory"] is True
-    assert (status["quant"], status["download_mb"]) == ("BF16", 1600)
+    assert (status["quant"], status["download_mb"]) == ("Q8_0", 945)
     # Nothing changes until the user answers.
     assert tts_backend.active_backend_id() == "omnivoice"
     assert eligible.downloads == []

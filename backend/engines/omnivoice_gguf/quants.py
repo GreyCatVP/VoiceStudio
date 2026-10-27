@@ -110,6 +110,7 @@ def _hardware() -> dict:
         "dedicated_vram_gb": adapter.dedicated_vram_gb if adapter else None,
         "effective_vram_gb": adapter.effective_vram_gb if adapter else None,
         "shared_memory": adapter.shared_memory if adapter else False,
+        "native_bf16": adapter.bf16 if adapter else None,
         "system_ram_gb": profile.system_ram_gb,
         "probe_source": profile.source,
     }

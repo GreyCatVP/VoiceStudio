@@ -25,6 +25,7 @@ export interface GgufQuantStatus {
     device: string | null;
     gpu_name: string | null;
     shared_memory: boolean;
+    native_bf16?: boolean | null;
     effective_vram_gb: number | null;
   };
   recommended: string;
