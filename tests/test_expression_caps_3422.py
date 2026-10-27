@@ -14,6 +14,7 @@ REPO = Path(__file__).resolve().parents[1]
 
 
 def _registry():
+    """The live `tts_backend` module and its catalogue, keyed by engine id."""
     # Resolve per test: other suites rebind `services.tts_backend` in sys.modules.
     tts_backend = importlib.import_module("services.tts_backend")
     return tts_backend, {entry["id"]: entry for entry in tts_backend.list_backends(include_hidden=True)}
@@ -31,6 +32,7 @@ def test_omnivoice_tags_match_the_model_tokenizer():
 
 
 def test_catalogue_reports_each_engines_mechanism():
+    """Each engine kind reports the mechanism its UI panel is built from."""
     _, entries = _registry()
     expression = importlib.import_module("services.expression")
     assert entries["omnivoice"]["expression_caps"] == {
@@ -47,6 +49,7 @@ def test_catalogue_reports_each_engines_mechanism():
 
 
 def test_every_entry_has_a_well_formed_capability():
+    """No engine, declared or not, ships a malformed capability to clients."""
     _, entries = _registry()
     for bid, entry in entries.items():
         caps = entry["expression_caps"]
