@@ -177,9 +177,10 @@ export function designRequestSeed(
 }
 
 /**
- * Merge the server's reading of the prose into this draft. Picks from the same
- * prose survive; older picks yield when the new prose changes their detail or
- * an exclusive detail that applying the pick would clear.
+ * Reconcile details inferred from a description with the user's explicit picks.
+ * New wording replaces an older pick when it changes that detail (or its
+ * mutually exclusive counterpart); otherwise the pick is reapplied over the
+ * inferred values. Picks made for the current wording also survive a late map.
  */
 export function applyDescription(
   current: DesignDraft,

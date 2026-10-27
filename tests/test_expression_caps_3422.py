@@ -14,10 +14,12 @@ REPO = Path(__file__).resolve().parents[1]
 
 
 def _registry():
-    """The live `tts_backend` module and its catalogue, keyed by engine id."""
-    # Resolve per test: other suites rebind `services.tts_backend` in sys.modules.
     tts_backend = importlib.import_module("services.tts_backend")
-    return tts_backend, {entry["id"]: entry for entry in tts_backend.list_backends(include_hidden=True)}
+    entries = {
+        entry["id"]: entry
+        for entry in tts_backend.list_backends(include_hidden=True)
+    }
+    return tts_backend, entries
 
 
 def test_omnivoice_tags_match_the_model_tokenizer():

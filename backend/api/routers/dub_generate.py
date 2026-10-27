@@ -1609,9 +1609,9 @@ async def dub_generate(job_id: str, req: DubRequest):
         os.makedirs(os.path.dirname(track_path), exist_ok=True)
         mix_samples = max(total_samples, 1)
         mix_fd, mix_file = tempfile.mkstemp(
-            prefix=f".{os.path.basename(track_path)}.mix.",
-            suffix=".f32",
             dir=os.path.dirname(track_path),
+            prefix=f".{os.path.basename(track_path)}.",
+            suffix=".raw-f32.mix",
         )
         os.close(mix_fd)
         mix_audio = None
