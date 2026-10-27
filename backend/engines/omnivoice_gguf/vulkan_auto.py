@@ -80,10 +80,12 @@ class VulkanAdapter:
 
     @property
     def effective_vram_mb(self) -> int:
+        """The effective budget in MiB, as the quant buckets expect."""
         return int(self.effective_vram_gb * 1024)
 
     @property
     def ggml_name(self) -> str:
+        """The device name GGML uses, e.g. ``Vulkan1``."""
         return f"Vulkan{self.index}"
 
 
@@ -108,11 +110,13 @@ class VulkanProfile:
         return None
 
     def by_index(self, index: int) -> Optional[VulkanAdapter]:
+        """The adapter GGML numbers ``index``, or None (also when unverified)."""
         if not self.verified:
             return None
         return next((a for a in self.adapters if a.index == index), None)
 
     def to_dict(self) -> dict:
+        """JSON-ready profile, with the adapter GGML would open as ``selected``."""
         data = asdict(self)
         best = self.best()
         data["selected"] = asdict(best) if best else None
@@ -167,6 +171,7 @@ def effective_vram(
 
 
 def _vendor(vendor_id: Optional[int], name: str) -> str:
+    """Vendor slug from the PCI vendor ID, else from the device name."""
     if vendor_id in _VENDOR_IDS:
         return _VENDOR_IDS[vendor_id]
     upper = name.upper()
@@ -292,6 +297,7 @@ def adapters_from_vulkaninfo(devices: list[dict], ram_gb: float) -> tuple[Vulkan
 
 
 def _run_vulkaninfo() -> Optional[str]:
+    """Full ``vulkaninfo`` output, or None when it is absent, fails or lists no device."""
     exe = shutil.which("vulkaninfo")
     if not exe:
         return None
@@ -334,6 +340,7 @@ def adapters_from_inventory(gpus, ram_gb: float) -> tuple[VulkanAdapter, ...]:
 
 
 def _probe() -> VulkanProfile:
+    """Build the profile: ``vulkaninfo`` first, then the OS inventory when the loader exists."""
     ram = system_ram_gb()
     text = _run_vulkaninfo()
     if text is not None:

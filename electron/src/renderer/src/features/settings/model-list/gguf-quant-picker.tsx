@@ -31,6 +31,7 @@ export interface GgufQuantStatus {
   recommended: string;
   selection: string;
   selection_source: 'env' | 'settings' | 'auto';
+  selection_valid?: boolean;
   env_var: string;
   selected: string;
   in_use: string | null;

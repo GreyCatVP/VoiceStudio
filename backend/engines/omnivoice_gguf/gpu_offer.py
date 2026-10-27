@@ -29,16 +29,24 @@ ENGINE_ID = "omnivoice-gguf"
 
 
 def _answer() -> Optional[str]:
+    """The stored answer, ``accepted`` / ``declined``, or None while unanswered."""
     value = prefs.get(PREF_KEY)
     return value if value in ("accepted", "declined") else None
 
 
 def _engine_chosen() -> Optional[str]:
     """The TTS engine the user picked (env or Settings), or None."""
-    return os.environ.get("OMNIVOICE_TTS_BACKEND") or prefs.get("tts_backend") or None
+    return _env_engine() or prefs.get("tts_backend") or None
+
+
+def _env_engine() -> Optional[str]:
+    """``OMNIVOICE_TTS_BACKEND``: it wins over Settings, so while it names
+    another engine accepting the offer could not switch anything."""
+    return os.environ.get("OMNIVOICE_TTS_BACKEND", "").strip() or None
 
 
 def _licence_accepted() -> bool:
+    """Whether the GGUF model licence has already been accepted."""
     from .compute import _licence_accepted as accepted
 
     return accepted()
@@ -49,11 +57,14 @@ def offer_status() -> dict:
     from .compute import vulkan_eligible
     from .quants import quant_status
 
-    eligible = vulkan_eligible()
+    env_engine = _env_engine()
+    blocked = env_engine is not None and env_engine != ENGINE_ID
+    eligible = vulkan_eligible() and not blocked
     chosen = _engine_chosen()
     answer = _answer()
     status: dict = {
         "eligible": eligible,
+        "blocked_by_environment": blocked,
         "answer": answer,
         "active": chosen == ENGINE_ID,
         "show": bool(eligible and answer is None and chosen in (None, "omnivoice")),
@@ -80,9 +91,7 @@ def respond(accept: bool) -> dict:
     if not accept:
         prefs.set_(PREF_KEY, "declined")
         return {**offer_status(), "download": None}
-    from .compute import vulkan_eligible
-
-    if not vulkan_eligible():
+    if not offer_status()["eligible"]:
         raise ValueError("GPU acceleration is not available on this machine")
     from .backend import _make_backend_class
     from services.tts_backend import ensure_engine_licence

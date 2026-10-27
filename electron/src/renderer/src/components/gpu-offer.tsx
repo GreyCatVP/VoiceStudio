@@ -14,6 +14,7 @@ export const gpuOfferKey = ['gguf-gpu-offer'] as const;
 
 export interface GpuOfferStatus {
   eligible: boolean;
+  blocked_by_environment?: boolean;
   answer: 'accepted' | 'declined' | null;
   active: boolean;
   show: boolean;

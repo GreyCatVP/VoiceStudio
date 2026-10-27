@@ -34,6 +34,7 @@ class ComputeConfigError(RuntimeError, ValueError):
     """
 
     def __init__(self, problem: str):
+        """Append how to fix the backend / device variables to ``problem``."""
         super().__init__(
             f"{problem}. Fix or clear {BACKEND_ENV} / {DEVICE_ENV} "
             "(for example OMNIVOICE_GGUF_BACKEND=vulkan OMNIVOICE_GGUF_DEVICE=0) "
@@ -195,12 +196,16 @@ def runtime_profile(cls: type[TTSBackend], caps: HostCaps) -> dict:
 
 
 def _promotion_evidence() -> bool:
+    """Host facts behind the offer: CPU-only PyTorch, a verified adapter, a usable binary."""
     from core.device_caps import detect_host_caps
 
     if detect_host_caps().family != "cpu":
         return False  # PyTorch has an accelerator: the in-process engine uses it
-    if selected_vulkan_adapter() is None:
-        return False
+    try:
+        if selected_vulkan_adapter() is None:
+            return False
+    except ComputeConfigError:
+        return False  # an invalid backend/device pin is reported by generate
     from .backend import _make_backend_class
 
     ok, _reason = _make_backend_class()._binary_status()
@@ -208,6 +213,7 @@ def _promotion_evidence() -> bool:
 
 
 def _licence_accepted() -> bool:
+    """Whether the GGUF model licence is accepted. Uncached: it can change at any time."""
     from .backend import _make_backend_class
     from services.tts_backend import ensure_engine_licence
 
@@ -222,6 +228,7 @@ def _licence_accepted() -> bool:
 def _promotion_for(device_choice: str, backend: str, device: str, ggml: str) -> bool:
     # Keyed on the inputs a user can change at runtime, so switching Compute
     # device in Settings re-evaluates instead of serving a stale verdict.
+    """Cached eligibility for one combination of compute choice and backend/device env."""
     try:
         return _promotion_evidence()
     except Exception:  # noqa: BLE001 - a probe bug must never break engine selection

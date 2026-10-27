@@ -356,6 +356,7 @@ def quants(monkeypatch, tmp_path):
     monkeypatch.setattr(mod, "installed_pair", lambda *args: None)
     monkeypatch.delenv("HF_HUB_OFFLINE", raising=False)
     mod._job.update(state="idle", quant=None, error=None)
+    monkeypatch.setattr(mod, "_RUNTIME_CACHE", {})
     return mod
 
 
@@ -402,3 +403,48 @@ def test_runtime_problem_is_separate_from_weights(quants, monkeypatch, reason, p
     monkeypatch.setattr(gguf._make_backend_class(), "_binary_status",
                         classmethod(lambda cls: (False, reason)))
     assert quants._runtime()["problem"] == problem
+
+
+def test_runtime_check_is_cached_until_the_binary_changes(quants, monkeypatch, tmp_path):
+    """The picker polls status every 1.5 s; the binary is hashed once per file."""
+    gguf = importlib.import_module("engines.omnivoice_gguf.backend")
+    binary = tmp_path / "omnivoice-tts"
+    binary.write_bytes(b"v1")
+    monkeypatch.setattr(gguf, "_binary_path", lambda slug=None: binary)
+    calls = []
+    monkeypatch.setattr(gguf._make_backend_class(), "_binary_status",
+                        classmethod(lambda cls: calls.append(1) or (True, "")))
+    assert quants._runtime()["ready"] is True
+    assert quants._runtime()["ready"] is True
+    assert len(calls) == 1
+    binary.write_bytes(b"version 2")  # a reinstall: size changes
+    quants._runtime()
+    assert len(calls) == 2
+
+
+def test_bad_backend_pin_does_not_break_the_picker(vk, quants, monkeypatch):
+    """An invalid OMNIVOICE_GGUF_BACKEND is generate's error, not a 500 here."""
+    vk.state.text = RX_6700_XT
+    monkeypatch.setenv("OMNIVOICE_GGUF_BACKEND", "vulkan")
+    monkeypatch.setenv("OMNIVOICE_GGUF_DEVICE", "not-a-number")
+    status = quants.quant_status()
+    assert status["recommended"] == "omnivoice-base-Q4_K_M.gguf"
+    vk.compute._promotion_for.cache_clear()
+    assert vk.compute.vulkan_eligible() is False
+
+
+def test_unknown_env_quant_is_shown_as_itself(vk, quants, monkeypatch):
+    vk.state.text = RX_6700_XT
+    monkeypatch.setenv("OMNIVOICE_GGUF_QUANT", "BF17")
+    status = quants.quant_status()
+    assert status["selected"] == "omnivoice-base-BF17.gguf"
+    assert status["selection_valid"] is False
+    assert not any(o["selected"] for o in status["options"])
+
+
+def test_no_offer_while_the_environment_pins_another_engine(eligible, monkeypatch):
+    monkeypatch.setenv("OMNIVOICE_TTS_BACKEND", "omnivoice")
+    status = eligible.offer.offer_status()
+    assert (status["eligible"], status["show"], status["blocked_by_environment"]) == (False, False, True)
+    with pytest.raises(ValueError):
+        eligible.offer.respond(True)

@@ -91,6 +91,7 @@ def _incomplete_bytes() -> int:
 
 
 def _hardware() -> dict:
+    """The adapter the engine will open, as the picker shows it. Never raises."""
     from .compute import cpu_selection_explicit, selected_vulkan_adapter
     from .vulkan_auto import detect_vulkan_profile
 
@@ -116,9 +117,35 @@ def _hardware() -> dict:
     }
 
 
+_RUNTIME_CACHE: dict[tuple, dict] = {}
+
+
 def _runtime() -> dict:
     """Is the native binary usable — kept apart from the weights so the UI
-    can say which of the two files is missing."""
+    can say which of the two files is missing.
+
+    ``_binary_status`` hashes the binary against its manifest, and the picker
+    polls this every 1.5 s during a download, so the answer is cached per
+    binary (path, size, mtime): replacing the binary invalidates it.
+    """
+    from .backend import _binary_path, _file_identity
+
+    try:
+        path = _binary_path()
+        key = (str(path), _file_identity(path))
+    except Exception:  # noqa: BLE001 - an unresolvable path is not cached
+        key = None
+    if key is not None and key in _RUNTIME_CACHE:
+        return dict(_RUNTIME_CACHE[key])
+    result = _runtime_uncached()
+    if key is not None:
+        _RUNTIME_CACHE.clear()
+        _RUNTIME_CACHE[key] = result
+    return dict(result)
+
+
+def _runtime_uncached() -> dict:
+    """Classify ``_binary_status`` into a problem code the UI can translate."""
     from .backend import _make_backend_class
     from .compute import binary_has_vulkan_module
 
@@ -143,11 +170,20 @@ def quant_status() -> dict:
     """Everything the quant picker renders. No network, no binary spawn."""
     q = _load_quant_map()
     revision = q["_meta"]["source_commit_sha"]
-    recommended = _automatic_entry(q)
+    from .compute import ComputeConfigError
+
+    try:
+        recommended = _automatic_entry(q)
+    except ComputeConfigError:
+        # An invalid OMNIVOICE_GGUF_BACKEND / _DEVICE: generation reports it;
+        # the picker still renders, on the conservative tier.
+        recommended = q["cpu"]
     env_pin = env_quant_override()
     pin = env_pin or _persisted_quant_override()
     pin_entry = entry_for(q, pin) if pin else None
-    selected = pin_entry or recommended
+    # An unknown pin is shown as itself, not as the automatic pick:
+    # generation refuses it rather than silently using another precision.
+    selected_base = pin_entry["base"] if pin_entry else (pin or recommended["base"])
     in_use, problem = _in_use(revision)
     with _lock:
         job = dict(_job)
@@ -161,7 +197,7 @@ def quant_status() -> dict:
             "approx_size_mb": int(entry.get("approx_size_mb") or 0),
             "rationale": entry.get("rationale", ""),
             "recommended": entry["base"] == recommended["base"],
-            "selected": entry["base"] == selected["base"],
+            "selected": entry["base"] == selected_base,
             "in_use": entry["base"] == in_use,
             "installed": installed_pair(_HF_REPO_ID, revision, entry) is not None,
         })
@@ -172,7 +208,8 @@ def quant_status() -> dict:
         "selection": pin or "auto",
         "selection_source": "env" if env_pin else ("settings" if pin else "auto"),
         "env_var": QUANT_ENV,
-        "selected": selected["base"],
+        "selected": selected_base,
+        "selection_valid": not pin or pin_entry is not None,
         "in_use": in_use,
         "problem": None if in_use else problem,
         "options": options,
@@ -194,6 +231,7 @@ def select_quant(value: str) -> None:
 
 
 def _download(entry: dict, revision: str) -> None:
+    """Background worker: fetch the base + tokenizer pair, recording progress in ``_job``."""
     from huggingface_hub import hf_hub_download
 
     try:
